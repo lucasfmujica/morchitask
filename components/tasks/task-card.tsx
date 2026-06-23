@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Pause, Play, Trash2, Users } from "lucide-react";
+import { Clock, Pause, Play, Plus, Trash2, Users } from "lucide-react";
 import { useDeleteTask, useToggleTask, useUpdateTask } from "@/lib/queries/tasks";
 import { useToggleSubtaskByDate } from "@/lib/queries/subtasks";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
@@ -63,15 +63,36 @@ export function TaskCard({
         done && "opacity-65",
       )}
     >
-      {/* Top: scheduled-time pill (left) + timer + duration chip (right) */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        {task.block_start && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">
-            <Clock className="h-3 w-3" aria-hidden />
-            {timeInTimeZone(task.block_start, TZ)}
-          </span>
-        )}
-        <div className="ml-auto flex items-center gap-1.5">
+      {/* Title row: checkbox + title, with time controls inline on the right so
+          there's no empty band above the name. */}
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5">
+          <TaskCheckbox
+            checked={done}
+            onToggle={() => {
+              if (timer.running) timer.stopTimer();
+              toggle.mutate(task);
+            }}
+          />
+        </span>
+        <button
+          onClick={() => openDetail(task)}
+          className={cn(
+            "min-w-0 flex-1 cursor-pointer text-left text-[15px] leading-snug",
+            done ? "text-subtle line-through" : "text-fg",
+          )}
+        >
+          {task.title}
+        </button>
+
+        {/* Scheduled-time pill + stopwatch + duration chip */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {task.block_start && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">
+              <Clock className="h-3 w-3" aria-hidden />
+              {timeInTimeZone(task.block_start, TZ)}
+            </span>
+          )}
           {/* Stopwatch: running pill, or a play button (+ logged time if any) */}
           {timer.running ? (
             <button
@@ -100,38 +121,21 @@ export function TaskCard({
           <button
             onClick={cycleEstimate}
             aria-label="Estimación de tiempo"
+            title="Estimar tiempo"
             className={cn(
-              "cursor-pointer rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
+              "inline-flex cursor-pointer items-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
               task.time_estimate_min
                 ? "bg-surface-2 text-muted hover:bg-border"
                 : "text-subtle opacity-0 hover:text-muted group-hover:opacity-100 touch:opacity-100",
             )}
           >
-            {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "+ tiempo"}
+            {task.time_estimate_min ? (
+              formatMinutes(task.time_estimate_min)
+            ) : (
+              <Plus className="h-3 w-3" aria-hidden />
+            )}
           </button>
         </div>
-      </div>
-
-      {/* Title row */}
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5">
-          <TaskCheckbox
-            checked={done}
-            onToggle={() => {
-              if (timer.running) timer.stopTimer();
-              toggle.mutate(task);
-            }}
-          />
-        </span>
-        <button
-          onClick={() => openDetail(task)}
-          className={cn(
-            "min-w-0 flex-1 cursor-pointer text-left text-[15px] leading-snug",
-            done ? "text-subtle line-through" : "text-fg",
-          )}
-        >
-          {task.title}
-        </button>
       </div>
 
       {/* Checklist */}

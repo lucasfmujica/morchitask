@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pause, Play, Plus, Trash2, X } from "lucide-react";
-import { useChannels } from "@/lib/queries/channels";
+import { CHANNEL_COLORS, useChannels, useCreateChannel } from "@/lib/queries/channels";
 import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import {
@@ -88,6 +88,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const update = useUpdateTask();
   const remove = useDeleteTask();
   const channelsQ = useChannels();
+  const createChannel = useCreateChannel();
   const objectivesQ = useObjectives();
   const profiles = useProfiles().data ?? [];
   const me = useMe().data;
@@ -101,8 +102,28 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes ?? "");
   const [newSub, setNewSub] = useState("");
+  const [addingChannel, setAddingChannel] = useState(false);
+  const [newChannel, setNewChannel] = useState("");
 
   const subtasks = subtasksQ.data ?? [];
+  const channels = channelsQ.data ?? [];
+
+  async function addChannel() {
+    const name = newChannel.trim();
+    if (!name) {
+      setAddingChannel(false);
+      setNewChannel("");
+      return;
+    }
+    const created = await createChannel.mutateAsync({
+      name,
+      color: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length],
+    });
+    // Assign the freshly-created category to this task right away.
+    update.mutate({ task, patch: { channel_id: created.id } });
+    setNewChannel("");
+    setAddingChannel(false);
+  }
 
   function saveTitle() {
     const t = title.trim();
@@ -193,13 +214,13 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
       {/* Channel */}
       <Field label="Categoría">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Chip
             active={!task.channel_id}
             label="Sin categoría"
             onClick={() => update.mutate({ task, patch: { channel_id: null } })}
           />
-          {(channelsQ.data ?? []).map((c) => (
+          {channels.map((c) => (
             <Chip
               key={c.id}
               active={task.channel_id === c.id}
@@ -208,6 +229,43 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               onClick={() => update.mutate({ task, patch: { channel_id: c.id } })}
             />
           ))}
+
+          {/* Create a new category right here */}
+          {addingChannel ? (
+            <span className="inline-flex min-h-8 items-center gap-1.5 rounded-pill border border-primary bg-primary-soft px-3 py-1.5">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{
+                  backgroundColor: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length],
+                }}
+                aria-hidden
+              />
+              <input
+                autoFocus
+                value={newChannel}
+                onChange={(e) => setNewChannel(e.target.value)}
+                onBlur={addChannel}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addChannel();
+                  if (e.key === "Escape") {
+                    setNewChannel("");
+                    setAddingChannel(false);
+                  }
+                }}
+                placeholder="Nombre…"
+                aria-label="Nueva categoría"
+                className="w-24 bg-transparent text-xs font-medium text-primary placeholder:text-primary/50 outline-none"
+              />
+            </span>
+          ) : (
+            <button
+              onClick={() => setAddingChannel(true)}
+              className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-pill border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-primary hover:text-primary"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Nueva
+            </button>
+          )}
         </div>
       </Field>
 
