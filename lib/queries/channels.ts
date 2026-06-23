@@ -46,9 +46,16 @@ export function useChannels() {
     queryFn: async (): Promise<Channel[]> => {
       const supabase = createClient();
       const uid = await currentUserId();
-      let q = supabase.from("channels").select("*").is("archived_at", null);
-      if (uid) q = q.eq("owner_id", uid);
-      const { data, error } = await q.order("sort_order", { ascending: true });
+      // If we don't know who's signed in yet, show nothing rather than widening
+      // to every household member's categories — that briefly leaked a partner's
+      // categories (e.g. Sofi's "Medicos") into the picker during auth load.
+      if (!uid) return [];
+      const { data, error } = await supabase
+        .from("channels")
+        .select("*")
+        .is("archived_at", null)
+        .eq("owner_id", uid)
+        .order("sort_order", { ascending: true });
       if (error) throw error;
       return data;
     },
