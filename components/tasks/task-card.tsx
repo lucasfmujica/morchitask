@@ -64,7 +64,7 @@ export function TaskCard({
       )}
     >
       {/* Top: scheduled-time pill (left) + timer + duration chip (right) */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {task.block_start && (
           <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">
             <Clock className="h-3 w-3" aria-hidden />
@@ -159,15 +159,15 @@ export function TaskCard({
       )}
 
       {/* Footer: category + notes/checklist meta (left), owner + delete (right) */}
-      <div className="flex items-center gap-2 pl-[30px]">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-[30px]">
         {channel && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted">
+          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-muted">
             <span
-              className="h-2 w-2 rounded-full"
+              className="h-2 w-2 shrink-0 rounded-full"
               style={{ backgroundColor: channel.color }}
               aria-hidden
             />
-            #{channel.name}
+            <span className="truncate">#{channel.name}</span>
           </span>
         )}
         {subtasks.length > 0 && (
@@ -188,14 +188,14 @@ export function TaskCard({
         )}
         {assignedBy && (
           <span
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-accent"
+            className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-accent"
             title={`Te la asignó ${assignedBy.display_name}`}
           >
-            de {assignedBy.display_name}
+            <span className="truncate">de {assignedBy.display_name}</span>
           </span>
         )}
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <OwnerAvatar profile={owner} />
           <button
             onClick={() => {
