@@ -42,7 +42,7 @@ export function BacklogView() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5 py-5">
+    <div className="flex max-w-3xl flex-col gap-5">
       <header className="flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
           <Inbox className="h-5 w-5" aria-hidden />

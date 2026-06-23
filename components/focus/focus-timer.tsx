@@ -116,7 +116,7 @@ export function FocusTimer() {
   const C = 2 * Math.PI * R;
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-7 py-8">
+    <div className="mx-auto flex max-w-md flex-col items-center gap-7 py-4">
       <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
         {(["focus", "break"] as const).map((m) => (
           <button

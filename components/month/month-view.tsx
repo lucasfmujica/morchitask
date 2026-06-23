@@ -23,7 +23,7 @@ export function MonthView({ date }: { date: string }) {
   const counts = useMonthCounts(gridStart, gridEnd).data;
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 py-5 lg:max-w-4xl">
+    <div className="flex max-w-3xl flex-col gap-4 lg:max-w-4xl">
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold tracking-tight text-fg">{monthLabel(date)}</h1>
         <div className="flex shrink-0 items-center gap-1">

@@ -42,7 +42,7 @@ export function ResumenView() {
   const maxMin = Math.max(1, ...channelRows.map((r) => r.min));
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 py-6">
+    <div className="flex max-w-3xl flex-col gap-6">
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight text-fg">Resumen</h1>
         <p className="text-sm text-muted">Esta semana · {weekRangeLabel(week)}</p>

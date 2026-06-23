@@ -22,7 +22,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - ✅ Base de datos con login, hogar compartido, canales y tareas (con seguridad por fila)
 - ✅ Login con Google (requiere una configuración tuya — ver `docs/GOOGLE_SETUP.md`)
 - ✅ Vista del **Día**: agregar, completar, editar, borrar, **reordenar arrastrando**
-- ✅ Vista **Semana** (estilo Sunsama): **mini-calendario a la izquierda** para saltar de semana, **barra de progreso** arriba de cada día (se llena al tildar tareas, verde al 100%), **filtro por categorías**, y columnas anchas por día que se **deslizan dentro del panel** (no toda la página), con tarjetas que muestran el **checklist tildable**, la duración y la categoría
+- ✅ Vista **Semana** (estilo Sunsama): el **mini-calendario** y el **filtro por categorías** viven en la **barra lateral única** (como Sunsama), así las columnas de días usan **todo el ancho**; **barra de progreso** arriba de cada día (se llena al tildar tareas, verde al 100%), con tarjetas que muestran el **checklist tildable**, la duración y la categoría
 - ✅ Vista **Mes**: calendario con puntos por día; tocás un día y lo planificás
 - ✅ **Agenda / time-blocking**: poné un horario a una tarea y vela en una línea de tiempo
 - ✅ Backlog (tareas sin fecha)
@@ -35,7 +35,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - **/login** — entrar con Google.
 - **/today** y **/day/AAAA-MM-DD** — la vista del Día (con pestañas **Lista** y **Agenda**).
 - **/plan/AAAA-MM-DD** — **planificar el día** (ritual de la mañana): poné tu foco del día, traé lo que quedó de ayer o del backlog, ajustá duraciones y mirá la **capacidad del día**.
-- **/week** y **/week/AAAA-MM-DD** — la semana, ahora con un **mini-calendario y filtro de categorías** a la izquierda (en compu) y una **barra de progreso** por día; las columnas se deslizan dentro de su panel. Cada tarjeta muestra su checklist, duración y categoría.
+- **/week** y **/week/AAAA-MM-DD** — la semana. El **mini-calendario** y el **filtro de categorías** están en la **barra lateral** (en compu), no en una segunda columna, así los días ocupan todo el ancho. Cada día tiene su **barra de progreso** y cada tarjeta muestra su checklist, duración y categoría.
 - **/month** y **/month/AAAA-MM-DD** — el calendario mensual.
 - **/backlog** — tareas sin fecha asignada.
 - **/metas** — tus **objetivos** de la semana y del mes; cada meta muestra una barra de progreso con las tareas que tenés enganchadas.
@@ -43,7 +43,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 ## Componentes
 
 - **components/ui/** — la "caja de herramientas" visual reusable: `Button`, `Card`, `Input`, `Badge`.
-- **components/layout/** — la barra superior, navegación inferior y el selector de fecha.
+- **components/layout/** — la barra lateral/superior, navegación inferior, el selector de fecha y los **atajos de rituales** (`ritual-nav.tsx`: Planificar / Cerrar día con indicador de estado).
 - **components/tasks/** — la tarjeta de tarea, el cuadro para agregar, la lista y la fila compacta.
 - **components/day/** — las vistas de Día (Lista + Agenda) y Backlog.
 - **components/week/** y **components/month/** — las vistas de Semana y Mes.
@@ -57,6 +57,14 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - `lib/supabase/` — conexión a la base de datos.
 - `public/` — íconos de la app.
 
+**Anchos y márgenes (desktop):** el contenido arranca siempre en el **mismo borde izquierdo**, pegado a la barra lateral (el margen lo pone `<main>` en `components/layout/app-chrome.tsx`, con `md:px-8 md:py-6`). Cada pantalla elige su ancho máximo:
+
+- **Hoy, Semana, Mes** = lienzos anchos (usan casi toda la pantalla).
+- **Backlog, Metas, Rutinas, Resumen, Ajustes, Planificar, Cerrar el día** = columna única ancha (`max-w-3xl`), alineada a la izquierda.
+- **Foco** = angosto y centrado a propósito (es la pantalla de concentración).
+
+Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se cambia el `max-w-…` del `<div>` de más afuera de su componente.
+
 ## Cómo personalizar
 
 - **Cambiar un color:** en `app/globals.css`, buscá la sección "SEMANTIC TOKENS" y cambiá el valor (ej. `--primary` para el teal). El cambio se aplica en toda la app.
@@ -64,6 +72,9 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 
 ## Cambios recientes
 
+- 2026-06-23: **Los rituales del día (Planificar / Cerrar el día) ahora viven en la barra lateral.** Antes solo se llegaba a ellos desde los botones Sol/Luna arriba de la pantalla del Día, el buscador (Cmd+K) o el aviso de las 8am — quedaban medio escondidos. Ahora la **barra lateral** tiene una sección propia con **"Planificar"** (☀) y **"Cerrar día"** (☾), cada uno con un **indicador de estado**: un **puntito** si todavía no lo hiciste y un **tilde ✓** cuando ya lo cerraste hoy. Además se **resalta solo según la hora**: a la mañana se ilumina "Planificar" (en naranja) y a la tarde/noche "Cerrar día" (en teal); cuando ya hiciste los dos, la barra queda tranquila con los dos tildes. En el **celular**, los mismos dos íconos aparecen arriba a la derecha con su indicador. (Nuevo: `components/layout/ritual-nav.tsx`.)
+- 2026-06-23: **Vista Semana con una sola barra (como Sunsama).** Antes parecía que había **dos barras** a la izquierda: la de navegación y, al lado, una segunda columna con el **mini-calendario** y el **filtro de categorías** (que encima repetía las categorías que ya están en la barra principal). Ahora todo eso vive en **una sola barra**: el **calendario** aparece arriba de las categorías cuando estás en Semana, y las **categorías de la barra principal se volvieron clickeables para filtrar** (tocás una o varias para ver solo esas tareas; aparece **"Mostrar todas"** para volver a ver todo). Así desaparece la duplicación y las **columnas de los días usan todo el ancho**, con tarjetas más anchas y legibles. El filtro se limpia solo cuando salís de la Semana.
+- 2026-06-23: **Layout de desktop más prolijo y aprovechando el espacio.** Antes, al pasar de una pantalla a otra, el contenido **se corría de lugar** (cada pantalla se centraba sola con un ancho distinto, así que el borde izquierdo "saltaba" hasta ~290px de una vista a otra) y varias pantallas quedaban **flotando angostas en el medio**, desperdiciando espacio. Ahora **todo arranca en el mismo borde izquierdo**, pegado a la barra lateral, y el espaciado de arriba es **parejo** en todas las vistas. Las pantallas de columna (Backlog, Metas, Rutinas, Resumen, Ajustes, Planificar, Cerrar el día) son **más anchas** y van alineadas a la izquierda; Hoy/Semana/Mes siguen siendo lienzos anchos; y Foco queda centrado a propósito.
 - 2026-06-23: **El cronómetro ahora guarda hasta los segundos.** Antes, cuando pausabas una tarea, el tiempo se guardaba redondeado a minutos enteros, así que una medición de pocos segundos se podía perder. Ahora **al pausar se guarda el tiempo exacto**, incluso si fueron solo 5 segundos, y se va sumando bien sesión tras sesión. En las tarjetas, cuando el tiempo trabajado es menos de un minuto, se ve en segundos (ej. **"23s"**, **"1m 30s"**).
 - 2026-06-23: **Selector de tarea más lindo en Foco.** En la pantalla de **Foco**, el menú para elegir "¿en qué te concentrás?" dejó de ser el desplegable gris del sistema: ahora es un selector propio que combina con la app, con el **puntito de color de la categoría**, la **estimación de tiempo** al costado, un **tilde** en la tarea elegida y una apertura suave. Si no tenés tareas para hoy, lo dice; y siempre podés elegir "Sin tarea".
 - 2026-06-23: **Crear categoría desde la tarea + tarjetas más compactas.** Ahora, al abrir una tarea, en "Categoría" hay un botón **"+ Nueva"**: escribís el nombre, apretás Enter y se crea la categoría (con un color automático) y **queda asignada a esa tarea** al instante, sin tener que ir al menú de la izquierda. Y arreglé el **espacio de más que quedaba arriba del nombre** en las tarjetas: la hora, el cronómetro y la estimación de tiempo ahora van **en la misma línea del título** (a la derecha), así la tarjeta queda más prolija y ocupa menos alto.

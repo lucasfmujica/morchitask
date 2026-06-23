@@ -48,7 +48,7 @@ export function SettingsView() {
   }
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 py-6">
+    <div className="flex max-w-3xl flex-col gap-6">
       <h1 className="text-2xl font-extrabold tracking-tight text-fg">Ajustes</h1>
 
       {/* Profile */}

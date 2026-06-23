@@ -20,7 +20,7 @@ export function ShutdownView({ date }: { date: string }) {
 
   if (tasksQ.isLoading || noteQ.isLoading || !me) {
     return (
-      <div className="mx-auto max-w-xl py-10">
+      <div className="max-w-3xl py-10">
         <div className="h-40 animate-pulse rounded-card bg-surface-2" />
       </div>
     );
@@ -71,7 +71,7 @@ function ShutdownForm({
   }
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 py-6">
+    <div className="flex max-w-3xl flex-col gap-6">
       {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
       <header className="flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">

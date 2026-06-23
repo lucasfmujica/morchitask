@@ -86,7 +86,7 @@ export function DayView({ date }: { date: string }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 py-5 lg:max-w-5xl">
+    <div className="flex max-w-3xl flex-col gap-4 lg:max-w-5xl">
       {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">

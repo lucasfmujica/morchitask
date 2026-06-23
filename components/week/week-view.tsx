@@ -25,11 +25,10 @@ import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
 import { filterTasksByChannels } from "@/lib/week-filter";
+import { useChannelFilter } from "@/lib/channel-filter";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
-import { WeekCalendarRail } from "./week-calendar-rail";
-import { CategoryFilter } from "./category-filter";
 import { DayProgressBar } from "./day-progress-bar";
 
 const arrow =
@@ -109,8 +108,8 @@ export function WeekView({ date }: { date: string }) {
   const profilesById = new Map((profilesQ.data ?? []).map((p) => [p.id, p]));
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  // Category filter, scoped to this view. Empty set = "Todas" (show everything).
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Category filter lives in the sidebar (shared via context). Empty = "Todas".
+  const { selected } = useChannelFilter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function onDragStart(e: DragStartEvent) {
@@ -129,7 +128,7 @@ export function WeekView({ date }: { date: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 py-5">
+    <div className="flex flex-col gap-4">
       <header className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight text-fg">Semana</h1>
@@ -191,73 +190,61 @@ export function WeekView({ date }: { date: string }) {
         </button>
       </div>
 
-      <div className="flex gap-6">
-        {/* Left rail: mini month-calendar + category filter (desktop only).
-            Sticky so it stays put while the day columns scroll vertically. */}
-        <aside className="hidden shrink-0 flex-col gap-5 lg:flex lg:w-60 lg:sticky lg:top-5 lg:self-start">
-          <WeekCalendarRail date={date} />
-          <CategoryFilter
-            channels={channelsQ.data ?? []}
-            selected={selected}
-            onChange={setSelected}
-          />
-        </aside>
-
-        {/* Right pane: day columns. `min-w-0` lets the strip scroll inside the
-            pane instead of pushing the layout wider. */}
-        <div className="min-w-0 flex-1">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={pointerWithin}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-            onDragCancel={() => setActiveTask(null)}
-          >
-            {/* Mobile: one day per screen, swipeable (mandatory snap).
+      {/* Day columns now span the full width — the calendar and category filter
+          moved into the sidebar. `min-w-0` keeps the day strip scrolling inside
+          the pane instead of pushing the layout wider. */}
+      <div className="min-w-0">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={pointerWithin}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => setActiveTask(null)}
+        >
+          {/* Mobile: one day per screen, swipeable (mandatory snap).
                 lg: fixed 5-column grid (Mon–Fri), no horizontal scroll. */}
-            <div
-              ref={scrollRef}
-              onScroll={onDaysScroll}
-              className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:snap-proximity md:scroll-pl-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
-            >
-              {week.map((d, i) => {
-                const all = (results[i].data ?? []) as Task[];
-                return (
-                  <DayColumn
-                    key={d}
-                    date={d}
-                    today={today}
-                    weekend={i >= 5}
-                    tasks={filterTasksByChannels(all, selected)}
-                    subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
-                    channelsById={channelsById}
-                    profilesById={profilesById}
-                    dragging={!!activeTask}
-                    onAdd={(title) =>
-                      create.mutate({
-                        title,
-                        plannedDate: d,
-                        channelId: null,
-                        timeEstimateMin: null,
-                        // Order against the full (unfiltered) day so a hidden
-                        // filter never corrupts sort positions.
-                        sortOrder: orderForAppend(all.map((t) => t.sort_order)),
-                      })
-                    }
-                  />
-                );
-              })}
-            </div>
+          <div
+            ref={scrollRef}
+            onScroll={onDaysScroll}
+            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:snap-proximity md:scroll-pl-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
+          >
+            {week.map((d, i) => {
+              const all = (results[i].data ?? []) as Task[];
+              return (
+                <DayColumn
+                  key={d}
+                  date={d}
+                  today={today}
+                  weekend={i >= 5}
+                  tasks={filterTasksByChannels(all, selected)}
+                  subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
+                  channelsById={channelsById}
+                  profilesById={profilesById}
+                  dragging={!!activeTask}
+                  onAdd={(title) =>
+                    create.mutate({
+                      title,
+                      plannedDate: d,
+                      channelId: null,
+                      timeEstimateMin: null,
+                      // Order against the full (unfiltered) day so a hidden
+                      // filter never corrupts sort positions.
+                      sortOrder: orderForAppend(all.map((t) => t.sort_order)),
+                    })
+                  }
+                />
+              );
+            })}
+          </div>
 
-            <DragOverlay dropAnimation={null}>
-              {activeTask && (
-                <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
-                  {activeTask.title}
-                </div>
-              )}
-            </DragOverlay>
-          </DndContext>
-        </div>
+          <DragOverlay dropAnimation={null}>
+            {activeTask && (
+              <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
+                {activeTask.title}
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       </div>
     </div>
   );
