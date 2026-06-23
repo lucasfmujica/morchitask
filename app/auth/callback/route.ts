@@ -18,9 +18,31 @@ export async function GET(request: Request) {
       // Present only when consent requested offline access (calendar connect).
       const refreshToken = data.session?.provider_refresh_token;
 
-      // TEMP diagnostic: record what Google actually returned on this OAuth
-      // round-trip (whether a refresh token came back + the access token's
-      // granted scope). Remove once calendar sync is confirmed working.
+      // Store the refresh token so the edge functions can act on the calendar.
+      // upsert (not delete+insert) so a leftover row can never cause a
+      // primary-key clash that silently drops the whole connection.
+      let credError: string | null = null;
+      if (refreshToken) {
+        const { error: credErr } = await supabase
+          .from("google_credentials")
+          .upsert(
+            { owner_id: data.user.id, refresh_token: refreshToken },
+            { onConflict: "owner_id" },
+          );
+        credError = credErr?.message ?? null;
+        if (credErr) {
+          console.error("[auth/callback] google_credentials upsert failed:", credErr.message);
+        } else {
+          await supabase
+            .from("profiles")
+            .update({ google_calendar_connected: true })
+            .eq("id", data.user.id);
+        }
+      } else {
+        console.warn("[auth/callback] no provider_refresh_token returned (calendar not stored)");
+      }
+
+      // TEMP diagnostic: record what Google returned + whether storing worked.
       try {
         const providerToken = data.session?.provider_token;
         let grantedScope: string | null = null;
@@ -33,35 +55,19 @@ export async function GET(request: Request) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any).from("gcal_sync_log").insert({
           owner_id: data.user.id,
-          ok: !!refreshToken,
+          ok: !!refreshToken && !credError,
           write_status: 0,
           granted_scope: grantedScope,
           detail: {
             from: "callback",
             has_refresh: !!refreshToken,
             has_provider_token: !!providerToken,
+            cred_error: credError,
             next,
           },
         });
       } catch {
         // diagnostics must never block the login redirect
-      }
-      if (refreshToken) {
-        // delete + insert (avoids any ON CONFLICT/RLS quirk of upsert).
-        await supabase.from("google_credentials").delete().eq("owner_id", data.user.id);
-        const { error: credErr } = await supabase
-          .from("google_credentials")
-          .insert({ owner_id: data.user.id, refresh_token: refreshToken });
-        if (credErr) {
-          console.error("[auth/callback] google_credentials insert failed:", credErr.message);
-        } else {
-          await supabase
-            .from("profiles")
-            .update({ google_calendar_connected: true })
-            .eq("id", data.user.id);
-        }
-      } else {
-        console.warn("[auth/callback] no provider_refresh_token returned (calendar not stored)");
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
