@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+/* Class-based dark mode: `.dark` on <html> forces dark, `.light` forces light,
+   no class follows the system preference (see media query below). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   LAYER 1 — PRIMITIVES (raw palette, never used directly in JSX)
+   ============================================================ */
+:root {
+  /* Cool gray neutrals (Sunsama-style clean light base) */
+  --gray-50: #f7f8fa;
+  --gray-100: #f1f3f5;
+  --gray-200: #e6e8eb;
+  --gray-300: #d4d8dd;
+  --gray-400: #9aa1ab;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f242b;
+  --gray-900: #1a1d23;
+
+  /* Teal — focus / primary */
+  --teal-50: #f0fdfa;
+  --teal-100: #ccfbf1;
+  --teal-400: #2dd4bf;
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+
+  /* Orange — action / CTA */
+  --orange-50: #fff7ed;
+  --orange-400: #fb923c;
+  --orange-500: #f97316;
+  --orange-600: #ea580c;
+  --orange-700: #c2410c;
+
+  /* State */
+  --red-400: #f87171;
+  --red-600: #dc2626;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --amber-500: #f59e0b;
+
+  /* ============================================================
+     LAYER 2 — SEMANTIC TOKENS (light theme defaults)
+     Components reference ONLY these (via the @theme map below).
+     ============================================================ */
+  --bg: var(--gray-50);
+  --surface: #ffffff;
+  --surface-2: var(--gray-100);
+  --border: var(--gray-200);
+  --fg: var(--gray-900);
+  --muted: var(--gray-500);
+  --subtle: var(--gray-400);
+
+  --primary: var(--teal-600);
+  --primary-hover: var(--teal-700);
+  --on-primary: #ffffff;
+  --primary-soft: var(--teal-50);
+
+  --accent: var(--orange-600);
+  --accent-hover: var(--orange-700);
+  --on-accent: #ffffff;
+  --accent-soft: var(--orange-50);
+
+  --focus: var(--teal-500);
+  --danger: var(--red-600);
+  --on-danger: #ffffff;
+  --success: var(--green-600);
+  --warning: var(--amber-500);
+}
+
+/* Dark theme — desaturated / lighter tonal variants, not inverted.
+   Shared block applied for system preference (when no explicit class)... */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg: #15171b;
+    --surface: #1d2025;
+    --surface-2: #25282e;
+    --border: #30343b;
+    --fg: var(--gray-50);
+    --muted: var(--gray-400);
+    --subtle: #7a828d;
+
+    --primary: var(--teal-500);
+    --primary-hover: var(--teal-400);
+    --on-primary: #07120f;
+    --primary-soft: #0f2a26;
+
+    --accent: var(--orange-400);
+    --accent-hover: var(--orange-500);
+    --on-accent: #1a0f06;
+    --accent-soft: #2a1a0d;
+
+    --focus: var(--teal-400);
+    --danger: var(--red-400);
+    --on-danger: #1a0707;
+    --success: var(--green-500);
+  }
+}
+
+/* ...and the same block for an explicit `.dark` toggle (wins over system). */
+.dark {
+  --bg: #15171b;
+  --surface: #1d2025;
+  --surface-2: #25282e;
+  --border: #30343b;
+  --fg: var(--gray-50);
+  --muted: var(--gray-400);
+  --subtle: #7a828d;
+
+  --primary: var(--teal-500);
+  --primary-hover: var(--teal-400);
+  --on-primary: #07120f;
+  --primary-soft: #0f2a26;
+
+  --accent: var(--orange-400);
+  --accent-hover: var(--orange-500);
+  --on-accent: #1a0f06;
+  --accent-soft: #2a1a0d;
+
+  --focus: var(--teal-400);
+  --danger: var(--red-400);
+  --on-danger: #1a0707;
+  --success: var(--green-500);
+}
+
+/* ============================================================
+   LAYER 3 — TAILWIND THEME MAP
+   Exposes semantic tokens as utilities: bg-bg, bg-surface, text-fg,
+   text-muted, bg-primary, border-border, ring-focus, etc.
+   ============================================================ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-focus: var(--focus);
+  --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --font-sans: var(--font-jakarta);
+  --font-display: var(--font-jakarta);
+
+  --radius-card: 1rem;
+  --radius-pill: 9999px;
+
+  --shadow-soft: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.06);
+  --shadow-card: 0 1px 3px rgba(17, 24, 39, 0.06), 0 8px 24px rgba(17, 24, 39, 0.08);
+}
+
+/* ============================================================
+   SAFE-AREA UTILITIES (iPhone notch / home indicator)
+   ============================================================ */
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Respect reduced-motion globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
