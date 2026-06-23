@@ -1,6 +1,6 @@
 "use client";
 
-import { ListChecks } from "lucide-react";
+import { ListChecks, type LucideIcon } from "lucide-react";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { SortableTaskList } from "@/components/dnd/sortable-task-list";
 
@@ -13,6 +13,7 @@ export function TaskListSection({
   onReorder,
   emptyTitle,
   emptyHint,
+  emptyIcon,
 }: {
   tasks: Task[];
   isLoading: boolean;
@@ -22,9 +23,11 @@ export function TaskListSection({
   onReorder: (task: Task, sortOrder: number) => void;
   emptyTitle: string;
   emptyHint: string;
+  emptyIcon?: LucideIcon;
 }) {
   if (isLoading) return <SkeletonList />;
-  if (tasks.length === 0) return <EmptyState title={emptyTitle} hint={emptyHint} />;
+  if (tasks.length === 0)
+    return <EmptyState title={emptyTitle} hint={emptyHint} icon={emptyIcon ?? ListChecks} />;
 
   return (
     <SortableTaskList
@@ -50,16 +53,31 @@ function SkeletonList() {
   );
 }
 
-function EmptyState({ title, hint }: { title: string; hint: string }) {
+function EmptyState({
+  title,
+  hint,
+  icon: Icon,
+}: {
+  title: string;
+  hint: string;
+  icon: LucideIcon;
+}) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-border px-6 py-12 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-        <ListChecks className="h-6 w-6" aria-hidden />
+        <Icon className="h-6 w-6" aria-hidden />
       </span>
       <div>
         <p className="font-semibold text-fg">{title}</p>
         <p className="mt-1 text-sm text-muted">{hint}</p>
       </div>
+      <p className="mt-1 text-xs text-subtle">
+        Tip: apretá{" "}
+        <kbd className="rounded border border-border bg-surface-2 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-muted">
+          N
+        </kbd>{" "}
+        para una nueva tarea
+      </p>
     </div>
   );
 }

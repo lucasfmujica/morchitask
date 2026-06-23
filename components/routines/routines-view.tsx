@@ -188,7 +188,7 @@ function RoutineRow({ routine, channels }: { routine: RecurringTemplate; channel
         <div className="flex flex-wrap gap-1.5">
           <Chip
             active={!routine.channel_id}
-            label="Sin canal"
+            label="Sin categoría"
             onClick={() => patch({ channel_id: null })}
           />
           {channels.map((c) => (

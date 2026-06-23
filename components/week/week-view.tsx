@@ -1,15 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { tasksForDateQueryOptions, useCreateTask } from "@/lib/queries/tasks";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
+import { tasksForDateQueryOptions, useCreateTask, useMoveTaskToDate } from "@/lib/queries/tasks";
 import { subtasksForDateQueryOptions } from "@/lib/queries/subtasks";
 import { useChannels } from "@/lib/queries/channels";
 import { useProfiles } from "@/lib/queries/profiles";
-import type { Subtask, Task } from "@/lib/queries/types";
+import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
 import { formatMinutes } from "@/lib/format";
@@ -24,7 +36,7 @@ const NO_SUBTASKS = new Map<string, Subtask[]>();
 export function WeekView({ date }: { date: string }) {
   const router = useRouter();
   const today = todayISO();
-  const week = useMemo(() => weekRange(date, 1), [date]);
+  const week = weekRange(date, 1);
   const thisWeek = week.includes(today);
 
   // On phones the week is a horizontal swipe; land on "today" instead of Monday.
@@ -41,15 +53,28 @@ export function WeekView({ date }: { date: string }) {
   const channelsQ = useChannels();
   const profilesQ = useProfiles();
   const create = useCreateTask();
+  const move = useMoveTaskToDate();
 
-  const channelsById = useMemo(
-    () => new Map((channelsQ.data ?? []).map((c) => [c.id, c])),
-    [channelsQ.data],
-  );
-  const profilesById = useMemo(
-    () => new Map((profilesQ.data ?? []).map((p) => [p.id, p])),
-    [profilesQ.data],
-  );
+  const channelsById = new Map((channelsQ.data ?? []).map((c) => [c.id, c]));
+  const profilesById = new Map((profilesQ.data ?? []).map((p) => [p.id, p]));
+
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  function onDragStart(e: DragStartEvent) {
+    setActiveTask((e.active.data.current?.task as Task) ?? null);
+  }
+  function onDragEnd(e: DragEndEvent) {
+    setActiveTask(null);
+    const task = e.active.data.current?.task as Task | undefined;
+    const overId = e.over?.id;
+    if (!task || typeof overId !== "string" || !overId.startsWith("day-")) return;
+    const toDate = overId.slice(4);
+    if (toDate === task.planned_date) return;
+    const idx = week.indexOf(toDate);
+    const targetTasks = (results[idx]?.data ?? []) as Task[];
+    move.mutate({ task, toDate, sortOrder: orderForAppend(targetTasks.map((t) => t.sort_order)) });
+  }
 
   return (
     <div className="flex flex-col gap-4 py-5">
@@ -87,65 +112,150 @@ export function WeekView({ date }: { date: string }) {
       </header>
 
       {/* Wide day columns, horizontally swipeable (Sunsama-style). */}
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:scroll-pl-8 md:px-8 [&::-webkit-scrollbar]:hidden">
-        {week.map((d, i) => {
-          const tasks = (results[i].data ?? []) as Task[];
-          const subsMap = (subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>;
-          const done = tasks.filter((t) => t.status === "done").length;
-          const plannedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
-          const isToday = d === today;
-          return (
-            <section
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => setActiveTask(null)}
+      >
+        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:scroll-pl-8 md:px-8 [&::-webkit-scrollbar]:hidden">
+          {week.map((d, i) => (
+            <DayColumn
               key={d}
-              ref={isToday ? todayRef : undefined}
-              className="flex w-[86vw] shrink-0 snap-start flex-col gap-2 sm:w-[320px]"
-            >
-              <Link href={isToday ? "/today" : `/day/${d}`} className="group mb-1 block">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span
-                    className={cn(
-                      "text-[15px] font-bold tracking-tight transition-colors group-hover:text-primary",
-                      isToday ? "text-primary" : "text-fg",
-                    )}
-                  >
-                    {weekDayHeading(d, today)}
-                  </span>
-                  {tasks.length > 0 && (
-                    <span className="shrink-0 text-[11px] font-medium text-subtle">
-                      {done}/{tasks.length}
-                      {plannedMin > 0 ? ` · ${formatMinutes(plannedMin)}` : ""}
-                    </span>
-                  )}
-                </div>
-              </Link>
+              date={d}
+              today={today}
+              tasks={(results[i].data ?? []) as Task[]}
+              subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
+              channelsById={channelsById}
+              profilesById={profilesById}
+              columnRef={d === today ? todayRef : undefined}
+              dragging={!!activeTask}
+              onAdd={(title, tasks) =>
+                create.mutate({
+                  title,
+                  plannedDate: d,
+                  channelId: null,
+                  timeEstimateMin: null,
+                  sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
+                })
+              }
+            />
+          ))}
+        </div>
 
-              <div className="flex flex-1 flex-col gap-2">
-                {tasks.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-                    owner={profilesById.get(t.owner_id)}
-                    subtasks={subsMap.get(t.id) ?? []}
-                  />
-                ))}
-              </div>
+        <DragOverlay dropAnimation={null}>
+          {activeTask && (
+            <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
+              {activeTask.title}
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
+    </div>
+  );
+}
 
-              <QuickAdd
-                onAdd={(title) =>
-                  create.mutate({
-                    title,
-                    plannedDate: d,
-                    channelId: null,
-                    timeEstimateMin: null,
-                    sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
-                  })
-                }
-              />
-            </section>
-          );
-        })}
+function DayColumn({
+  date,
+  today,
+  tasks,
+  subsMap,
+  channelsById,
+  profilesById,
+  columnRef,
+  dragging,
+  onAdd,
+}: {
+  date: string;
+  today: string;
+  tasks: Task[];
+  subsMap: Map<string, Subtask[]>;
+  channelsById: Map<string, Channel>;
+  profilesById: Map<string, Profile>;
+  columnRef?: React.RefObject<HTMLElement | null>;
+  dragging: boolean;
+  onAdd: (title: string, tasks: Task[]) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `day-${date}` });
+  const isToday = date === today;
+  const done = tasks.filter((t) => t.status === "done").length;
+  const plannedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
+
+  return (
+    <section
+      ref={columnRef}
+      className="flex w-[86vw] shrink-0 snap-start flex-col gap-2 sm:w-[320px]"
+    >
+      <Link href={isToday ? "/today" : `/day/${date}`} className="group mb-1 block">
+        <div className="flex items-baseline justify-between gap-2">
+          <span
+            className={cn(
+              "text-[15px] font-bold tracking-tight transition-colors group-hover:text-primary",
+              isToday ? "text-primary" : "text-fg",
+            )}
+          >
+            {weekDayHeading(date, today)}
+          </span>
+          {tasks.length > 0 && (
+            <span className="shrink-0 text-[11px] font-medium text-subtle">
+              {done}/{tasks.length}
+              {plannedMin > 0 ? ` · ${formatMinutes(plannedMin)}` : ""}
+            </span>
+          )}
+        </div>
+      </Link>
+
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "flex flex-1 flex-col gap-2 rounded-xl transition-colors",
+          dragging && "outline-dashed outline-1 outline-transparent",
+          isOver && "bg-primary-soft/50 outline-primary",
+        )}
+      >
+        {tasks.map((t) => (
+          <WeekCard
+            key={t.id}
+            task={t}
+            channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
+            owner={profilesById.get(t.owner_id)}
+            subtasks={subsMap.get(t.id) ?? []}
+          />
+        ))}
       </div>
+
+      <QuickAdd onAdd={(title) => onAdd(title, tasks)} />
+    </section>
+  );
+}
+
+function WeekCard({
+  task,
+  channel,
+  owner,
+  subtasks,
+}: {
+  task: Task;
+  channel?: Channel;
+  owner?: Profile;
+  subtasks: Subtask[];
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `wk-${task.id}`,
+    data: { task },
+  });
+  return (
+    <div ref={setNodeRef} className={cn("group/wk relative", isDragging && "opacity-40")}>
+      <button
+        {...attributes}
+        {...listeners}
+        aria-label="Mover a otro día"
+        className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 active:cursor-grabbing"
+      >
+        <GripVertical className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
     </div>
   );
 }

@@ -34,9 +34,11 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - **/** — redirige a "Hoy".
 - **/login** — entrar con Google.
 - **/today** y **/day/AAAA-MM-DD** — la vista del Día (con pestañas **Lista** y **Agenda**).
+- **/plan/AAAA-MM-DD** — **planificar el día** (ritual de la mañana): poné tu foco del día, traé lo que quedó de ayer o del backlog, ajustá duraciones y mirá la **capacidad del día**.
 - **/week** y **/week/AAAA-MM-DD** — la semana en columnas por día (se deslizan al costado); cada tarjeta muestra su checklist, duración y categoría.
 - **/month** y **/month/AAAA-MM-DD** — el calendario mensual.
 - **/backlog** — tareas sin fecha asignada.
+- **/metas** — tus **objetivos** de la semana y del mes; cada meta muestra una barra de progreso con las tareas que tenés enganchadas.
 
 ## Componentes
 
@@ -62,6 +64,12 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 
 ## Cambios recientes
 
+- 2026-06-23: **Google Calendar en dos vías + Recordatorio diario.** Ahora cuando le ponés un **horario a una tarea** (pestaña Agenda), se crea/actualiza sola en tu **Google Calendar**; si le sacás el horario o borrás la tarea, también se borra del calendario. Lo activás en **Ajustes → Google Calendar → Reconectar** (vos y Sofi, una vez). Y un **recordatorio diario**: a las **8:00** te llega una notificación para planificar el día (abre directo la pantalla de planificar) — lo prendés en **Ajustes → Notificaciones**. En iPhone hace falta tener la app **instalada** (Compartir → Agregar a inicio).
+- 2026-06-23: **Detalles que dan gusto (delight).** **Buscador rápido con ⌘K / Ctrl+K**: abrís una barra para saltar a cualquier vista o crear una tarea al toque desde donde estés. **Confeti** cuando terminás todas tus tareas del día (y al cerrar el día con todo hecho). En **Foco**, cuando termina un bloque suena un _chime_ y te llega una notificación. En el **celular**, **deslizá una tarea hacia la derecha para completarla** (solo touch; en compu no cambia nada). Todo respeta "menos animaciones" si lo tenés activado en el sistema.
+- 2026-06-23: **Metas (objetivos de semana y mes).** Nueva pantalla `/metas` para anotar tus objetivos. Desde el **detalle de una tarea** la enganchás a una meta ("Meta"), y cada meta muestra una **barra de progreso** con cuántas de sus tareas terminaste. Las tareas enganchadas muestran un pequeño ícono de meta. Vos y Sofi ven las metas del otro, pero cada uno edita las suyas.
+- 2026-06-23: **Planificá tu día (ritual de la mañana) + Capacidad del día.** Nueva pantalla `/plan/AAAA-MM-DD` (botón "Planificar" arriba en el Día): escribís tu **foco del día**, traés con un toque lo que **quedó de ayer** o del **backlog**, y ajustás las duraciones. Arriba, una **barra de capacidad** te muestra cuánto tiempo planeaste vs. tu objetivo del día (6 h por defecto) y se pone **amarilla/roja** si te pasás, con un aviso para sacar algo o moverlo a mañana. La misma barra aparece también en la vista del Día. Así se completa el círculo: **planificar a la mañana ↔ cerrar a la noche**.
+- 2026-06-23: **Arrastrar tareas entre días en la Semana** (agarrás la tarjeta de la manija y la soltás en otra columna). **Ayuda de atajos** con la tecla `?`, y las flechas ← → ahora también cambian de semana (en Semana) y de mes (en Mes).
+- 2026-06-23: **Arrastrar tareas al calendario** (Agenda) para agendarlas o moverlas, con resaltado del horario. **Atajos de teclado** (N = nueva tarea, ← → = cambiar de día, T = ir a hoy). Indicador **"de [Nombre]"** en tareas que te asignó la otra persona, e indicador **"compartida"**. Estados vacíos más cálidos con tip de teclado.
 - 2026-06-23: **Rediseño estilo Sunsama.** Paleta nueva limpia (gris/blanco frío en vez del papel cálido), **tarjetas de tarea más ricas** (checklist tildable adentro, chip de duración, hora agendada y categoría `#nombre`) en Hoy y Semana, **vista Semana en columnas anchas** que se deslizan al costado, y **calendario del día en bloques pastel**. Por detrás: carga de subtareas "por día" (una sola consulta, sin N+1).
 - 2026-06-23: **Mejoras mobile.** En el celular, la Semana se desliza de lado y **arranca en el día de hoy**, con scroll más suave (sin barra fea, sin “rebote” lateral). Colores de la PWA (barra de estado y pantalla de carga) actualizados a la paleta nueva.
 - 2026-06-23: **Tareas privadas + asignar + compartir.** Cada persona ve solo SUS tareas; en el detalle podés cambiar el "Responsable" (asignarle una tarea al otro) o activar "Compartir" para que la vea también. Las rutinas también son por persona.

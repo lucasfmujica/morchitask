@@ -12,6 +12,7 @@ import {
   Plus,
   Repeat,
   Settings,
+  Target,
   Timer,
 } from "lucide-react";
 import { CHANNEL_COLORS, useChannels, useCreateChannel } from "@/lib/queries/channels";
@@ -19,6 +20,8 @@ import { useMe } from "@/lib/queries/profiles";
 import { cn } from "@/lib/utils";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
+import { CommandPalette } from "./command-palette";
+import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { SignOutButton } from "./sign-out-button";
 
 type NavItem = {
@@ -69,6 +72,7 @@ const TOOL_NAV: NavItem[] = [
     match: (p) => p.startsWith("/routines"),
     bottom: true,
   },
+  { href: "/metas", label: "Metas", icon: Target, match: (p) => p.startsWith("/metas") },
   { href: "/resumen", label: "Resumen", icon: BarChart3, match: (p) => p.startsWith("/resumen") },
 ];
 const BOTTOM_NAV = [...PLAN_NAV, ...TOOL_NAV].filter((n) => n.bottom);
@@ -124,6 +128,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
       </div>
 
       <TaskDetailSheet />
+      <KeyboardShortcuts />
+      <CommandPalette />
     </div>
   );
 }

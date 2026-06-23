@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { ThemeSelector } from "./theme-selector";
 import { ChannelsManager } from "./channels-manager";
+import { NotificationsCard } from "./notifications-card";
 
 export function SettingsView() {
   const router = useRouter();
@@ -26,7 +27,9 @@ export function SettingsView() {
     await createClient().auth.signInWithOAuth({
       provider: "google",
       options: {
-        scopes: "https://www.googleapis.com/auth/calendar.readonly",
+        // readonly = ver todos tus calendarios; events = crear/editar (2 vías).
+        scopes:
+          "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
         queryParams: { access_type: "offline", prompt: "consent" },
         redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
       },
@@ -84,13 +87,22 @@ export function SettingsView() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-fg">Google Calendar</p>
-            <p className="text-xs text-muted">Ver tus eventos junto a tu agenda del día.</p>
+            <p className="text-xs text-muted">
+              Ver tus eventos y mandar tus bloques de tarea al calendario (2 vías).
+            </p>
           </div>
           {connected ? (
             <div className="flex shrink-0 items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
                 <Check className="h-3 w-3" aria-hidden /> Conectado
               </span>
+              <button
+                onClick={connectCalendar}
+                className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                title="Volvé a conectar para activar la sincronización en dos vías"
+              >
+                Reconectar
+              </button>
               <button
                 onClick={disconnectCalendar}
                 className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-danger"
@@ -107,6 +119,11 @@ export function SettingsView() {
             </button>
           )}
         </div>
+      </Section>
+
+      {/* Notifications */}
+      <Section title="Notificaciones">
+        <NotificationsCard />
       </Section>
 
       <button

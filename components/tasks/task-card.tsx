@@ -1,13 +1,15 @@
 "use client";
 
-import { Clock, Trash2 } from "lucide-react";
+import { Clock, Trash2, Users } from "lucide-react";
 import { useDeleteTask, useToggleTask, useUpdateTask } from "@/lib/queries/tasks";
 import { useToggleSubtaskByDate } from "@/lib/queries/subtasks";
+import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/format";
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
+import { ObjectiveBadge } from "@/components/objectives/objective-badge";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskCheckbox } from "./task-checkbox";
 
@@ -32,7 +34,15 @@ export function TaskCard({
   const update = useUpdateTask();
   const toggleSub = useToggleSubtaskByDate(task.planned_date ?? "");
   const openDetail = useTaskDetail((s) => s.open);
+  const me = useMe().data;
+  const profiles = useProfiles().data ?? [];
   const done = task.status === "done";
+
+  // A task that's mine but created by my partner = assigned to me.
+  const assignedBy =
+    task.owner_id === me?.id && task.created_by && task.created_by !== me?.id
+      ? profiles.find((p) => p.id === task.created_by)
+      : undefined;
 
   function cycleEstimate() {
     const cur = task.time_estimate_min;
@@ -130,7 +140,25 @@ export function TaskCard({
             {doneSubs}/{subtasks.length}
           </span>
         )}
+        {task.objective_id && <ObjectiveBadge objectiveId={task.objective_id} />}
         {task.notes && <span className="text-[11px] text-subtle">· nota</span>}
+        {task.shared && (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary"
+            title="Compartida"
+          >
+            <Users className="h-3 w-3" aria-hidden />
+            compartida
+          </span>
+        )}
+        {assignedBy && (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-accent"
+            title={`Te la asignó ${assignedBy.display_name}`}
+          >
+            de {assignedBy.display_name}
+          </span>
+        )}
 
         <div className="ml-auto flex items-center gap-1.5">
           <OwnerAvatar profile={owner} />

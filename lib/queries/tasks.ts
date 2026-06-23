@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { profileKeys } from "./profiles";
+import { syncTaskCalendar } from "./calendar";
 import type { Profile, Task } from "./types";
 
 export const taskKeys = {
@@ -138,6 +139,9 @@ function buildOptimisticTask(input: NewTask, ownerId: string, householdId: strin
     shared: false,
     template_id: null,
     template_date: null,
+    objective_id: null,
+    gcal_event_id: null,
+    gcal_synced_at: null,
     created_by: ownerId,
     created_at: now,
     updated_at: now,
@@ -232,6 +236,8 @@ type TaskPatch = Pick<
   | "block_end"
   | "owner_id"
   | "shared"
+  | "objective_id"
+  | "gcal_event_id"
 >;
 
 export function useUpdateTask() {
@@ -271,6 +277,10 @@ export function useDeleteTask() {
       const supabase = createClient();
       const { error } = await supabase.from("tasks").delete().eq("id", task.id);
       if (error) throw error;
+      // Remove its Google Calendar event too (only if it was ever synced).
+      if (task.gcal_event_id) {
+        syncTaskCalendar({ action: "delete", eventId: task.gcal_event_id }).catch(() => {});
+      }
     },
     onMutate: async (task) => {
       const key = listKey(task.planned_date);
@@ -283,6 +293,61 @@ export function useDeleteTask() {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
     onSettled: (_d, _e, task) => qc.invalidateQueries({ queryKey: listKey(task.planned_date) }),
+  });
+}
+
+/** Move a task to a different day (Week drag-and-drop). Clears any time-block. */
+export function useMoveTaskToDate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      task,
+      toDate,
+      sortOrder,
+    }: {
+      task: Task;
+      toDate: string;
+      sortOrder: number;
+    }): Promise<void> => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ planned_date: toDate, sort_order: sortOrder, block_start: null, block_end: null })
+        .eq("id", task.id);
+      if (error) throw error;
+    },
+    onMutate: async ({ task, toDate, sortOrder }) => {
+      const fromKey = listKey(task.planned_date);
+      const toKey = listKey(toDate);
+      await Promise.all([
+        qc.cancelQueries({ queryKey: fromKey }),
+        qc.cancelQueries({ queryKey: toKey }),
+      ]);
+      const prevFrom = qc.getQueryData<Task[]>(fromKey);
+      const prevTo = qc.getQueryData<Task[]>(toKey);
+      qc.setQueryData<Task[]>(fromKey, (old = []) => old.filter((t) => t.id !== task.id));
+      const moved = {
+        ...task,
+        planned_date: toDate,
+        sort_order: sortOrder,
+        block_start: null,
+        block_end: null,
+      };
+      qc.setQueryData<Task[]>(toKey, (old = []) =>
+        [...old.filter((t) => t.id !== task.id), moved].sort(bySortOrder),
+      );
+      return { fromKey, toKey, prevFrom, prevTo };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx) {
+        qc.setQueryData(ctx.fromKey, ctx.prevFrom);
+        qc.setQueryData(ctx.toKey, ctx.prevTo);
+      }
+    },
+    onSettled: (_d, _e, { task, toDate }) => {
+      qc.invalidateQueries({ queryKey: listKey(task.planned_date) });
+      qc.invalidateQueries({ queryKey: listKey(toDate) });
+    },
   });
 }
 

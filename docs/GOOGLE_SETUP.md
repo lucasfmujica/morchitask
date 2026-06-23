@@ -73,3 +73,44 @@ La función que lee el calendario necesita tu Client ID y Secret (los mismos de 
 2. Volvés a la app; andá a **Hoy → pestaña Agenda**: deberían aparecer tus eventos del día (en gris, distintos de tus bloques de tarea).
 
 Avisame cuando hagas A y B y lo probamos juntos.
+
+---
+
+# Fase 4 (2 vías) — mandar tus bloques al calendario
+
+Ya está el código y la función `google-calendar-write` desplegada. Lo único que falta:
+
+1. **Permiso de escritura en Google** (si no estaba): Google Cloud → tu proyecto → **Pantalla de consentimiento → Acceso a datos** → agregá el permiso `.../auth/calendar.events` (dejá también el `calendar.readonly`). _(Confirmaste que ya estaba.)_
+2. **Reconectar** en la app (vos **y** Sofi, una vez): **Ajustes → Google Calendar → Reconectar** → aceptás los permisos nuevos. Esto es obligatorio porque cambió el permiso.
+
+No hace falta ningún secret nuevo (usa el mismo `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` de antes).
+
+**Probar:** en **Hoy → Agenda**, ponéle un horario a una tarea → debería aparecer el evento en tu Google Calendar. Sacale el horario → desaparece.
+
+---
+
+# Fase 5 — Notificaciones (recordatorio diario 8:00)
+
+Ya está el código, la función `send-push` desplegada y el cron diario creado (11:00 UTC = 08:00 ART).
+Falta cargar los **secrets** en Supabase y redesplegar Vercel.
+
+## A) Secrets en Supabase (Edge Functions → Secrets)
+
+https://supabase.com/dashboard/project/bodkrhcmzdvbeqipsqzx/settings/functions
+
+- `VAPID_PUBLIC_KEY` = tu clave pública de VAPID
+- `VAPID_PRIVATE_KEY` = tu clave privada de VAPID
+- `VAPID_SUBJECT` = `mailto:lucasfmujica@gmail.com`
+- `CRON_SECRET` = el valor que te pasé por el chat _(no lo escribimos acá por seguridad; ya está puesto en el cron, así que tiene que coincidir exactamente)_
+
+## B) Vercel (Environment Variables) + Redeploy
+
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` = tu clave **pública** de VAPID _(la misma de arriba)_
+- Después de agregarla, **Redeploy** el proyecto.
+- (Para probar en el preview local, agregá la misma línea a `.env.local`.)
+
+## Probar
+
+1. Instalá la app en el iPhone (**Compartir → Agregar a inicio**) y abrila desde el ícono.
+2. **Ajustes → Notificaciones → Recordatorio diario** → activar → aceptá el permiso.
+3. Avisame y disparo la función `send-push` a mano para que te llegue una de prueba (sin esperar a las 8).

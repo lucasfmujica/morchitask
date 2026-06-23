@@ -22,8 +22,10 @@ import { GripVertical } from "lucide-react";
 import { useHydrated } from "@/lib/use-hydrated";
 import { orderBetween } from "@/lib/ordering";
 import { EASE_OUT } from "@/lib/motion";
+import { useToggleTask } from "@/lib/queries/tasks";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { TaskCard } from "@/components/tasks/task-card";
+import { SwipeToComplete } from "@/components/tasks/swipe-to-complete";
 
 const NO_SUBTASKS: Subtask[] = [];
 
@@ -128,6 +130,8 @@ function SortableRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
   });
+  const toggle = useToggleTask();
+  const done = task.status === "done";
 
   return (
     <div
@@ -145,7 +149,9 @@ function SortableRow({
           <GripVertical className="h-4 w-4" aria-hidden />
         </button>
         <div className="flex-1">
-          <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
+          <SwipeToComplete disabled={done} onComplete={() => toggle.mutate(task)}>
+            <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
+          </SwipeToComplete>
         </div>
       </div>
     </div>

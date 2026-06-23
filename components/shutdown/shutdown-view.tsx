@@ -11,6 +11,7 @@ import type { DailyNote, Task } from "@/lib/queries/types";
 import { addDays, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Confetti } from "@/components/ui/confetti";
 
 export function ShutdownView({ date }: { date: string }) {
   const tasksQ = useTasksForDate(date);
@@ -47,6 +48,7 @@ function ShutdownForm({
   const [rolledCount, setRolledCount] = useState<number | null>(null);
 
   const pending = mine.filter((t) => t.status === "todo");
+  const [celebrate, setCelebrate] = useState(pending.length === 0 && mine.length > 0);
   const done = mine.filter((t) => t.status === "done");
   const doneMin = done.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
   const tomorrow = addDays(date, 1);
@@ -70,6 +72,7 @@ function ShutdownForm({
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 py-6">
+      {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
       <header className="flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
           <Moon className="h-5 w-5" aria-hidden />

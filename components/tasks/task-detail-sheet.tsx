@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Trash2, X } from "lucide-react";
 import { useChannels } from "@/lib/queries/channels";
+import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useDeleteTask, useUpdateTask } from "@/lib/queries/tasks";
 import {
@@ -58,6 +59,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
   const update = useUpdateTask();
   const remove = useDeleteTask();
   const channelsQ = useChannels();
+  const objectivesQ = useObjectives();
   const profiles = useProfiles().data ?? [];
   const me = useMe().data;
   const partner = profiles.find((p) => p.id !== me?.id);
@@ -197,6 +199,27 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
           ))}
         </div>
       </Field>
+
+      {/* Objective */}
+      {(objectivesQ.data ?? []).length > 0 && (
+        <Field label="Meta">
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={!task.objective_id}
+              label="Ninguna"
+              onClick={() => update.mutate({ task, patch: { objective_id: null } })}
+            />
+            {(objectivesQ.data ?? []).map((o) => (
+              <Chip
+                key={o.id}
+                active={task.objective_id === o.id}
+                label={o.title}
+                onClick={() => update.mutate({ task, patch: { objective_id: o.id } })}
+              />
+            ))}
+          </div>
+        </Field>
+      )}
 
       {/* Description */}
       <Field label="Descripción">

@@ -46,7 +46,11 @@ export function useMe() {
 export function useUpdateMyProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (patch: { display_name?: string; color?: string }) => {
+    mutationFn: async (patch: {
+      display_name?: string;
+      color?: string;
+      capacity_target_min?: number | null;
+    }) => {
       const supabase = createClient();
       const {
         data: { user },

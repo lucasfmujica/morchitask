@@ -40,6 +40,7 @@ export function TaskComposer({
           <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
         </button>
         <input
+          data-task-composer
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {

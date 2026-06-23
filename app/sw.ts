@@ -28,3 +28,39 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// ------------------------------------------------------------ Web Push
+// Daily "plan your day" reminder (sent by the send-push edge function).
+self.addEventListener("push", (event) => {
+  let payload: { title?: string; body?: string; url?: string } = {};
+  try {
+    payload = event.data?.json() ?? {};
+  } catch {
+    payload = {};
+  }
+  const title = payload.title ?? "Morchitask";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: payload.body ?? "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: payload.url ?? "/today" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data?.url as string | undefined) ?? "/today";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});

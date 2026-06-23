@@ -17,6 +17,36 @@ function mmss(total: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+/** A short chime + a system notification when a focus block ends (best-effort). */
+function notifyFocusDone() {
+  try {
+    const Ctx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (Ctx) {
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.6);
+    }
+  } catch {
+    // audio not available — ignore
+  }
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    new Notification("¡Bloque de foco completado! 🍅", {
+      body: "Tomate un respiro de 5 minutos.",
+    });
+  }
+}
+
 export function FocusTimer() {
   const qc = useQueryClient();
   const today = todayISO();
@@ -43,6 +73,7 @@ export function FocusTimer() {
     setRunning(false);
     if (mode === "focus") {
       setCompleted((c) => c + 1);
+      notifyFocusDone();
     }
     if (mode === "focus" && taskId) {
       const task = tasks.find((t) => t.id === taskId);
@@ -57,6 +88,13 @@ export function FocusTimer() {
     }
   }, [secondsLeft, running, mode, taskId, tasks, qc, today]);
 
+  function toggleRun() {
+    // Ask once, when the user first starts a block, so the end chime can notify.
+    if (!running && typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+    setRunning((r) => !r);
+  }
   function switchMode(m: Mode) {
     setMode(m);
     setSecondsLeft(DURATION[m]);
@@ -141,7 +179,7 @@ export function FocusTimer() {
 
       <div className="flex items-center gap-3">
         <button
-          onClick={() => setRunning((r) => !r)}
+          onClick={toggleRun}
           className="inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-on-primary shadow-card transition-colors hover:bg-primary-hover"
           aria-label={running ? "Pausar" : "Empezar"}
         >

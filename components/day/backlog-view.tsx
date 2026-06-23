@@ -63,8 +63,9 @@ export function BacklogView() {
         channelsById={channelsById}
         profilesById={profilesById}
         onReorder={handleReorder}
-        emptyTitle="Backlog vacío"
-        emptyHint="Guardá acá lo que no tiene día asignado."
+        emptyTitle="Backlog despejado"
+        emptyHint="Guardá acá ideas y pendientes que todavía no tienen día."
+        emptyIcon={Inbox}
       />
     </div>
   );

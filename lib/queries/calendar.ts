@@ -15,6 +15,20 @@ export type CalendarEvent = {
 
 const TZ = DEFAULT_TIMEZONE;
 
+/**
+ * Push a task's time-block to Google Calendar (2-way sync, via the write edge
+ * function). Fire-and-forget from the UI — callers catch errors so a calendar
+ * hiccup never blocks the snappy optimistic update. No-op for users who haven't
+ * connected (the function returns `not_connected`).
+ */
+export async function syncTaskCalendar(
+  payload: { action: "upsert"; taskId: string } | { action: "delete"; eventId: string },
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.functions.invoke("google-calendar-write", { body: payload });
+  if (error) throw error;
+}
+
 /** Google Calendar events for `date` (read-only, via the edge function). */
 export function useCalendarEvents(date: string, enabled: boolean) {
   return useQuery({

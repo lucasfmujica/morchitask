@@ -62,6 +62,7 @@ export type Database = {
           mood: number | null;
           note_date: string;
           owner_id: string;
+          plan_completed_at: string | null;
           reflection: string | null;
           shutdown_completed_at: string | null;
           updated_at: string;
@@ -75,6 +76,7 @@ export type Database = {
           mood?: number | null;
           note_date: string;
           owner_id?: string;
+          plan_completed_at?: string | null;
           reflection?: string | null;
           shutdown_completed_at?: string | null;
           updated_at?: string;
@@ -88,6 +90,7 @@ export type Database = {
           mood?: number | null;
           note_date?: string;
           owner_id?: string;
+          plan_completed_at?: string | null;
           reflection?: string | null;
           shutdown_completed_at?: string | null;
           updated_at?: string;
@@ -165,35 +168,101 @@ export type Database = {
         };
         Relationships: [];
       };
+      objectives: {
+        Row: {
+          created_at: string;
+          end_date: string;
+          household_id: string;
+          id: string;
+          owner_id: string;
+          period: string;
+          sort_order: number;
+          start_date: string;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          end_date: string;
+          household_id?: string;
+          id?: string;
+          owner_id?: string;
+          period?: string;
+          sort_order?: number;
+          start_date: string;
+          status?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          end_date?: string;
+          household_id?: string;
+          id?: string;
+          owner_id?: string;
+          period?: string;
+          sort_order?: number;
+          start_date?: string;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "objectives_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "objectives_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
+          capacity_target_min: number | null;
           color: string;
           created_at: string;
           display_name: string;
+          gcal_target_calendar_id: string | null;
           google_calendar_connected: boolean;
           household_id: string;
           id: string;
+          notification_prefs: Json;
           updated_at: string;
         };
         Insert: {
           avatar_url?: string | null;
+          capacity_target_min?: number | null;
           color?: string;
           created_at?: string;
           display_name?: string;
+          gcal_target_calendar_id?: string | null;
           google_calendar_connected?: boolean;
           household_id: string;
           id: string;
+          notification_prefs?: Json;
           updated_at?: string;
         };
         Update: {
           avatar_url?: string | null;
+          capacity_target_min?: number | null;
           color?: string;
           created_at?: string;
           display_name?: string;
+          gcal_target_calendar_id?: string | null;
           google_calendar_connected?: boolean;
           household_id?: string;
           id?: string;
+          notification_prefs?: Json;
           updated_at?: string;
         };
         Relationships: [
@@ -202,6 +271,41 @@ export type Database = {
             columns: ["household_id"];
             isOneToOne: false;
             referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      push_subscriptions: {
+        Row: {
+          auth_key: string;
+          created_at: string;
+          endpoint: string;
+          id: string;
+          p256dh: string;
+          profile_id: string;
+        };
+        Insert: {
+          auth_key: string;
+          created_at?: string;
+          endpoint: string;
+          id?: string;
+          p256dh: string;
+          profile_id?: string;
+        };
+        Update: {
+          auth_key?: string;
+          created_at?: string;
+          endpoint?: string;
+          id?: string;
+          p256dh?: string;
+          profile_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -336,9 +440,12 @@ export type Database = {
           completed_at: string | null;
           created_at: string;
           created_by: string | null;
+          gcal_event_id: string | null;
+          gcal_synced_at: string | null;
           household_id: string;
           id: string;
           notes: string | null;
+          objective_id: string | null;
           owner_id: string;
           planned_date: string | null;
           rollover_count: number;
@@ -360,9 +467,12 @@ export type Database = {
           completed_at?: string | null;
           created_at?: string;
           created_by?: string | null;
+          gcal_event_id?: string | null;
+          gcal_synced_at?: string | null;
           household_id?: string;
           id?: string;
           notes?: string | null;
+          objective_id?: string | null;
           owner_id?: string;
           planned_date?: string | null;
           rollover_count?: number;
@@ -384,9 +494,12 @@ export type Database = {
           completed_at?: string | null;
           created_at?: string;
           created_by?: string | null;
+          gcal_event_id?: string | null;
+          gcal_synced_at?: string | null;
           household_id?: string;
           id?: string;
           notes?: string | null;
+          objective_id?: string | null;
           owner_id?: string;
           planned_date?: string | null;
           rollover_count?: number;
@@ -420,6 +533,13 @@ export type Database = {
             columns: ["household_id"];
             isOneToOne: false;
             referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tasks_objective_id_fkey";
+            columns: ["objective_id"];
+            isOneToOne: false;
+            referencedRelation: "objectives";
             referencedColumns: ["id"];
           },
           {

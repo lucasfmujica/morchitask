@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Moon } from "lucide-react";
+import { Moon, Sparkles, Sun } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChannels } from "@/lib/queries/channels";
-import { useProfiles } from "@/lib/queries/profiles";
+import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
@@ -15,7 +15,9 @@ import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
+import { Confetti } from "@/components/ui/confetti";
 import { AgendaView } from "./agenda-view";
+import { CapacityBar, DEFAULT_CAPACITY_MIN } from "./capacity-bar";
 import { DaySummary } from "./day-summary";
 
 type Mode = "list" | "agenda";
@@ -35,10 +37,30 @@ export function DayView({ date }: { date: string }) {
   const channelsQ = useChannels();
   const profilesQ = useProfiles();
   const subtasksQ = useSubtasksForDate(date);
+  const me = useMe().data;
   const create = useCreateTask();
   const reorder = useReorderTask();
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
+  const myTasks = useMemo(() => tasks.filter((t) => t.owner_id === me?.id), [tasks, me?.id]);
+  const myPlannedMin = useMemo(
+    () => myTasks.reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0),
+    [myTasks],
+  );
+
+  // Celebrate the moment you finish everything for the day (once per completion).
+  const allMineDone = myTasks.length > 0 && myTasks.every((t) => t.status === "done");
+  const [celebrate, setCelebrate] = useState(false);
+  const celebratedRef = useRef(false);
+  useEffect(() => {
+    if (allMineDone && !celebratedRef.current) {
+      celebratedRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCelebrate(true);
+    } else if (!allMineDone) {
+      celebratedRef.current = false;
+    }
+  }, [allMineDone]);
   const channelsById = useMemo(
     () => new Map((channelsQ.data ?? []).map((c) => [c.id, c])),
     [channelsQ.data],
@@ -65,19 +87,37 @@ export function DayView({ date }: { date: string }) {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 py-5 lg:max-w-5xl">
+      {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <DateNavigator date={date} />
         </div>
-        <Link
-          href={`/shutdown/${date}`}
-          className="mt-1 inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-        >
-          <Moon className="h-4 w-4" aria-hidden />
-          <span className="hidden sm:inline">Cerrar día</span>
-        </Link>
+        <div className="mt-1 flex shrink-0 items-center gap-0.5">
+          <Link
+            href={`/plan/${date}`}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          >
+            <Sun className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Planificar</span>
+          </Link>
+          <Link
+            href={`/shutdown/${date}`}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          >
+            <Moon className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Cerrar día</span>
+          </Link>
+        </div>
       </div>
-      <DaySummary tasks={tasks} />
+      <div className="flex flex-col gap-3">
+        <DaySummary tasks={tasks} />
+        {myPlannedMin > 0 && (
+          <CapacityBar
+            plannedMin={myPlannedMin}
+            targetMin={me?.capacity_target_min ?? DEFAULT_CAPACITY_MIN}
+          />
+        )}
+      </div>
       <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
 
       {/* Mobile: tabs switch Lista/Agenda. Desktop: both side by side. */}
@@ -94,8 +134,9 @@ export function DayView({ date }: { date: string }) {
             profilesById={profilesById}
             subtasksByTaskId={subtasksByTaskId}
             onReorder={handleReorder}
-            emptyTitle="Sin tareas todavía"
-            emptyHint="Agregá tu primera tarea del día arriba."
+            emptyTitle="Tu día está en blanco"
+            emptyHint="Elegí unas pocas cosas para hoy y planificá con calma."
+            emptyIcon={Sparkles}
           />
         </div>
         <div className={cn("lg:block", mode === "agenda" ? "block" : "hidden")}>
