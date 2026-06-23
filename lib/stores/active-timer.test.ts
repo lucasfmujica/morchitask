@@ -1,15 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { elapsedMinutes } from "./active-timer";
+import { elapsedSeconds } from "./active-timer";
 
-describe("elapsedMinutes", () => {
-  it("rounds to the nearest minute", () => {
-    expect(elapsedMinutes(0, 90_000)).toBe(2); // 1m30s → 2m
-    expect(elapsedMinutes(0, 89_000)).toBe(1); // 1m29s → 1m
+describe("elapsedSeconds", () => {
+  it("floors to whole seconds", () => {
+    expect(elapsedSeconds(0, 90_000)).toBe(90); // 1m30s
+    expect(elapsedSeconds(0, 89_900)).toBe(89); // 1m29.9s → 89s
   });
   it("never returns negative", () => {
-    expect(elapsedMinutes(100_000, 0)).toBe(0);
+    expect(elapsedSeconds(100_000, 0)).toBe(0);
   });
-  it("is zero for sub-30s runs", () => {
-    expect(elapsedMinutes(0, 20_000)).toBe(0);
+  it("keeps sub-minute runs (no longer lost)", () => {
+    expect(elapsedSeconds(0, 5_000)).toBe(5);
+    expect(elapsedSeconds(0, 1_000)).toBe(1);
   });
 });

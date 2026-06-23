@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatMinutes, formatClock } from "./format";
+import { formatMinutes, formatClock, formatDuration } from "./format";
 
 describe("formatMinutes", () => {
   it("formats minutes under an hour", () => {
@@ -13,6 +13,25 @@ describe("formatMinutes", () => {
   });
   it("guards zero/negative", () => {
     expect(formatMinutes(0)).toBe("0m");
+  });
+});
+
+describe("formatDuration", () => {
+  it("shows seconds under a minute", () => {
+    expect(formatDuration(23)).toBe("23s");
+    expect(formatDuration(5)).toBe("5s");
+  });
+  it("shows minutes and seconds", () => {
+    expect(formatDuration(90)).toBe("1m 30s");
+    expect(formatDuration(2700)).toBe("45m");
+  });
+  it("shows hours and minutes", () => {
+    expect(formatDuration(5400)).toBe("1h 30m");
+    expect(formatDuration(3600)).toBe("1h");
+  });
+  it("rounds and guards negatives", () => {
+    expect(formatDuration(22.998)).toBe("23s");
+    expect(formatDuration(-5)).toBe("0s");
   });
 });
 

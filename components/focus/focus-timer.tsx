@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Check, ChevronDown, Pause, Play, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { taskKeys, useTasksForDate } from "@/lib/queries/tasks";
+import { useChannels } from "@/lib/queries/channels";
+import type { Channel, Task } from "@/lib/queries/types";
+import { formatMinutes } from "@/lib/format";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +56,7 @@ export function FocusTimer() {
   const today = todayISO();
   const tasksQ = useTasksForDate(today);
   const tasks = (tasksQ.data ?? []).filter((t) => t.status === "todo");
+  const channels = useChannels().data ?? [];
 
   const [mode, setMode] = useState<Mode>("focus");
   const [secondsLeft, setSecondsLeft] = useState(DURATION.focus);
@@ -162,19 +167,7 @@ export function FocusTimer() {
       </div>
 
       {mode === "focus" && (
-        <select
-          value={taskId}
-          onChange={(e) => setTaskId(e.target.value)}
-          aria-label="Tarea en la que te concentrás"
-          className="w-full max-w-xs cursor-pointer rounded-xl border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          <option value="">¿En qué te concentrás? (opcional)</option>
-          {tasks.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.title}
-            </option>
-          ))}
-        </select>
+        <TaskPicker tasks={tasks} channels={channels} value={taskId} onChange={setTaskId} />
       )}
 
       <div className="flex items-center gap-3">
@@ -204,6 +197,155 @@ export function FocusTimer() {
           {completed === 1 ? "bloque" : "bloques"} de foco
         </p>
       )}
+    </div>
+  );
+}
+
+/** A soft, custom dropdown to pick the task you're focusing on — with the
+ *  category's color dot, time estimate and a check on the active one. */
+function TaskPicker({
+  tasks,
+  channels,
+  value,
+  onChange,
+}: {
+  tasks: Task[];
+  channels: Channel[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const selected = tasks.find((t) => t.id === value);
+  const colorFor = (channelId: string | null) =>
+    channels.find((c) => c.id === channelId)?.color ?? "var(--color-subtle)";
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-full max-w-xs">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Tarea en la que te concentrás"
+        className={cn(
+          "flex w-full cursor-pointer items-center gap-2.5 rounded-xl border bg-surface px-3.5 py-2.5 text-left text-sm shadow-soft transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          open ? "border-primary" : "border-border hover:bg-surface-2",
+        )}
+      >
+        {selected ? (
+          <>
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: colorFor(selected.channel_id) }}
+              aria-hidden
+            />
+            <span className="min-w-0 flex-1 truncate text-fg">{selected.title}</span>
+            {selected.time_estimate_min && (
+              <span className="shrink-0 text-xs font-medium text-subtle">
+                {formatMinutes(selected.time_estimate_min)}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-muted">¿En qué te concentrás?</span>
+        )}
+        <ChevronDown
+          className={cn("h-4 w-4 shrink-0 text-muted transition-transform", open && "rotate-180")}
+          aria-hidden
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            role="listbox"
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute left-0 right-0 z-20 mt-2 max-h-64 origin-top overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-card"
+          >
+            <li role="option" aria-selected={!value}>
+              <button
+                onClick={() => {
+                  onChange("");
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                  !value ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface-2",
+                )}
+              >
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full border border-border"
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1 truncate">Sin tarea</span>
+                {!value && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
+              </button>
+            </li>
+
+            {tasks.length === 0 && (
+              <li className="px-2.5 py-2 text-sm text-subtle">No tenés tareas para hoy.</li>
+            )}
+
+            {tasks.map((t) => {
+              const active = t.id === value;
+              return (
+                <li key={t.id} role="option" aria-selected={active}>
+                  <button
+                    onClick={() => {
+                      onChange(t.id);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                      active ? "bg-primary-soft" : "hover:bg-surface-2",
+                    )}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: colorFor(t.channel_id) }}
+                      aria-hidden
+                    />
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 truncate",
+                        active ? "font-medium text-primary" : "text-fg",
+                      )}
+                    >
+                      {t.title}
+                    </span>
+                    {t.time_estimate_min && (
+                      <span className="shrink-0 text-xs font-medium text-subtle">
+                        {formatMinutes(t.time_estimate_min)}
+                      </span>
+                    )}
+                    {active && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
+                  </button>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

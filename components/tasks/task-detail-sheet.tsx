@@ -21,7 +21,7 @@ import {
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
-import { formatClock, formatMinutes } from "@/lib/format";
+import { formatClock, formatMinutes, formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
 import { TaskCheckbox } from "./task-checkbox";
@@ -305,7 +305,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                 {timer.running
                   ? formatClock(timer.liveSeconds)
                   : task.actual_time_min
-                    ? formatMinutes(task.actual_time_min)
+                    ? formatDuration(task.actual_time_min * 60)
                     : "—"}
               </span>
             </div>

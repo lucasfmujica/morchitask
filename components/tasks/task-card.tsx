@@ -7,7 +7,7 @@ import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
-import { formatClock, formatMinutes } from "@/lib/format";
+import { formatClock, formatMinutes, formatDuration } from "@/lib/format";
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
 import { ObjectiveBadge } from "@/components/objectives/objective-badge";
 import { OwnerAvatar } from "./owner-avatar";
@@ -115,7 +115,7 @@ export function TaskCard({
               )}
             >
               <Play className="h-3 w-3" aria-hidden />
-              {task.actual_time_min ? formatMinutes(task.actual_time_min) : null}
+              {task.actual_time_min ? formatDuration(task.actual_time_min * 60) : null}
             </button>
           )}
           <button

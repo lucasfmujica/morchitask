@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSetActualTime } from "@/lib/queries/tasks";
-import { elapsedMinutes, useActiveTimer } from "@/lib/stores/active-timer";
+import { elapsedSeconds, useActiveTimer } from "@/lib/stores/active-timer";
 import type { Task } from "@/lib/queries/types";
 
 /** True only after first client render — avoids SSR/hydration mismatches when a
@@ -35,12 +35,13 @@ function useStopActive() {
   const setActual = useSetActualTime();
   return () => {
     if (!active) return;
-    const mins = elapsedMinutes(active.startedAt, Date.now());
-    if (mins > 0) {
+    const secs = elapsedSeconds(active.startedAt, Date.now());
+    if (secs > 0) {
+      // Store time in minutes, but fractional — so even a few seconds are kept.
       setActual.mutate({
         taskId: active.taskId,
         plannedDate: active.plannedDate,
-        actualMin: active.baseActualMin + mins,
+        actualMin: active.baseActualMin + secs / 60,
       });
     }
     clear();
@@ -60,8 +61,8 @@ export function useTaskTimer(task: Task) {
 
   const elapsedSec =
     active && running && now ? Math.max(0, Math.floor((now - active.startedAt) / 1000)) : 0;
-  // Total time on the task = already-logged minutes + this live run.
-  const liveSeconds = (task.actual_time_min ?? 0) * 60 + elapsedSec;
+  // Total time on the task = already-logged time (minutes, fractional) + this live run.
+  const liveSeconds = Math.round((task.actual_time_min ?? 0) * 60) + elapsedSec;
 
   function startTimer() {
     stopActive(); // only one task is timed at a time

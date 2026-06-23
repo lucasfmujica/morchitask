@@ -32,7 +32,7 @@ export const useActiveTimer = create<State>()(
   ),
 );
 
-/** Whole minutes elapsed between a start instant and now (rounded). Pure → tested. */
-export function elapsedMinutes(startedAtMs: number, nowMs: number): number {
-  return Math.max(0, Math.round((nowMs - startedAtMs) / 60_000));
+/** Whole seconds elapsed between a start instant and now (floored). Pure → tested. */
+export function elapsedSeconds(startedAtMs: number, nowMs: number): number {
+  return Math.max(0, Math.floor((nowMs - startedAtMs) / 1000));
 }
