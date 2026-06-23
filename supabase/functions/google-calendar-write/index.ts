@@ -59,8 +59,11 @@ Deno.serve(async (req) => {
       }),
     });
     const tokenJson = await tokenRes.json();
-    if (!tokenJson.access_token)
+    if (!tokenJson.access_token) {
+      console.error("[gcal-write] token_refresh_failed", JSON.stringify(tokenJson));
       return json({ error: "token_refresh_failed", detail: tokenJson }, 502);
+    }
+    console.log("[gcal-write] granted scopes:", tokenJson.scope ?? "(none returned)");
     const accessToken = tokenJson.access_token;
     const auth = { Authorization: `Bearer ${accessToken}` };
 
@@ -107,7 +110,9 @@ Deno.serve(async (req) => {
       summary: task.title,
       start: { dateTime: task.block_start, timeZone: TZ },
       end: { dateTime: task.block_end, timeZone: TZ },
-      source: { title: "Morchitask" },
+      // Google requires source.url to be a valid http/https URL; sending just a
+      // title makes events.insert/patch fail (was the cause of the 502s).
+      source: { title: "Morchitask", url: "https://productivity-app-three-pink.vercel.app/today" },
     };
 
     let eventId: string | null = task.gcal_event_id;
@@ -128,7 +133,10 @@ Deno.serve(async (req) => {
       });
     }
     const evJson = await res!.json();
-    if (!evJson.id) return json({ error: "gcal_write_failed", detail: evJson }, 502);
+    if (!evJson.id) {
+      console.error("[gcal-write] gcal_write_failed", res!.status, JSON.stringify(evJson));
+      return json({ error: "gcal_write_failed", detail: evJson }, 502);
+    }
 
     await admin
       .from("tasks")

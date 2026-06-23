@@ -35,12 +35,17 @@ export function SortableTaskList({
   profilesById,
   subtasksByTaskId,
   onReorder,
+  hosted = false,
 }: {
   tasks: Task[];
   channelsById: Map<string, Channel>;
   profilesById: Map<string, Profile>;
   subtasksByTaskId?: Map<string, Subtask[]>;
   onReorder: (task: Task, sortOrder: number) => void;
+  /** When true, a parent owns the DndContext (the day view shares one context
+   *  with the agenda so tasks can be dragged onto the calendar). Reordering is
+   *  then handled by the parent's onDragEnd. */
+  hosted?: boolean;
 }) {
   // dnd-kit generates non-deterministic accessibility IDs that mismatch between
   // server and client. Render a plain (non-draggable) list for SSR + first paint,
@@ -72,6 +77,36 @@ export function SortableTaskList({
     );
   }
 
+  const list = (
+    <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <ul className="flex flex-col gap-2">
+        {/* motion.li handles enter/exit (opacity); the inner dnd node owns the
+            drag transform — separate nodes so the two never fight over transform. */}
+        <AnimatePresence initial={false}>
+          {tasks.map((t) => (
+            <motion.li
+              key={t.id}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: EASE_OUT }}
+            >
+              <SortableRow
+                task={t}
+                channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
+                owner={profilesById.get(t.owner_id)}
+                subtasks={subtasksByTaskId?.get(t.id) ?? NO_SUBTASKS}
+              />
+            </motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
+    </SortableContext>
+  );
+
+  // Hosted: the parent DndContext drives both reorder and drag-to-calendar.
+  if (hosted) return list;
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -88,30 +123,7 @@ export function SortableTaskList({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <ul className="flex flex-col gap-2">
-          {/* motion.li handles enter/exit (opacity); the inner dnd node owns the
-              drag transform — separate nodes so the two never fight over transform. */}
-          <AnimatePresence initial={false}>
-            {tasks.map((t) => (
-              <motion.li
-                key={t.id}
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18, ease: EASE_OUT }}
-              >
-                <SortableRow
-                  task={t}
-                  channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-                  owner={profilesById.get(t.owner_id)}
-                  subtasks={subtasksByTaskId?.get(t.id) ?? NO_SUBTASKS}
-                />
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </ul>
-      </SortableContext>
+      {list}
     </DndContext>
   );
 }
@@ -129,6 +141,7 @@ function SortableRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
+    data: { task },
   });
   const toggle = useToggleTask();
   const done = task.status === "done";
@@ -143,7 +156,7 @@ function SortableRow({
         <button
           {...attributes}
           {...listeners}
-          aria-label="Reordenar tarea"
+          aria-label="Reordenar o arrastrar al calendario"
           className="flex w-5 shrink-0 cursor-grab touch-none items-center justify-center text-subtle/60 transition-colors hover:text-muted active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4" aria-hidden />

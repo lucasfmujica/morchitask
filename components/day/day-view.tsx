@@ -4,13 +4,27 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Moon, Sparkles, Sun } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import type { Task } from "@/lib/queries/types";
-import { orderForAppend } from "@/lib/ordering";
+import { orderBetween, orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
@@ -19,8 +33,18 @@ import { Confetti } from "@/components/ui/confetti";
 import { AgendaView } from "./agenda-view";
 import { CapacityBar, DEFAULT_CAPACITY_MIN } from "./capacity-bar";
 import { DaySummary } from "./day-summary";
+import { useAgendaScheduling } from "./use-agenda-scheduling";
 
 type Mode = "list" | "agenda";
+
+// Prefer an agenda drop-slot when the pointer is over one; otherwise fall back to
+// closestCenter so the list keeps its smooth reorder behaviour.
+const dayCollision: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  const slot = hits.find((h) => String(h.id).startsWith("slot-"));
+  if (slot) return [slot];
+  return closestCenter(args);
+};
 
 export function DayView({ date }: { date: string }) {
   const [mode, setMode] = useState<Mode>("list");
@@ -41,6 +65,7 @@ export function DayView({ date }: { date: string }) {
   const me = useMe().data;
   const create = useCreateTask();
   const reorder = useReorderTask();
+  const { scheduleAt } = useAgendaScheduling(date);
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
   const myTasks = useMemo(() => tasks.filter((t) => t.owner_id === me?.id), [tasks, me?.id]);
@@ -71,6 +96,20 @@ export function DayView({ date }: { date: string }) {
   );
   const subtasksByTaskId = useMemo(() => subtasksQ.data ?? new Map(), [subtasksQ.data]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  // Agenda draggables (ids like `task-…`) use the DragOverlay; list rows keep
+  // their own transform-based drag, so we only render the overlay for the agenda
+  // to avoid a double image when dragging a list card onto the calendar.
+  const [overlayActive, setOverlayActive] = useState(false);
+
+  function resolveTask(id: string, data?: Record<string, unknown>): Task | null {
+    return (data?.task as Task) ?? tasks.find((t) => t.id === id) ?? null;
+  }
+
   function handleAdd(input: ComposerSubmit) {
     create.mutate({
       title: input.title,
@@ -83,6 +122,38 @@ export function DayView({ date }: { date: string }) {
 
   function handleReorder(task: Task, sortOrder: number) {
     reorder.mutate({ task, sortOrder });
+  }
+
+  function onDragStart(e: DragStartEvent) {
+    const id = String(e.active.id);
+    setActiveTask(resolveTask(id, e.active.data.current));
+    setOverlayActive(id.startsWith("task-")); // agenda-originated drag
+  }
+
+  function onDragEnd(e: DragEndEvent) {
+    setActiveTask(null);
+    setOverlayActive(false);
+    const { active, over } = e;
+    if (!over) return;
+    const overId = String(over.id);
+    const task = resolveTask(String(active.id), active.data.current);
+    if (!task) return;
+
+    // Dropped on a calendar slot → schedule (covers list → calendar and moves).
+    if (overId.startsWith("slot-")) {
+      scheduleAt(task, Number(overId.slice(5)));
+      return;
+    }
+
+    // Otherwise it's a reorder within the list.
+    if (active.id === over.id) return;
+    const oldIndex = tasks.findIndex((t) => t.id === active.id);
+    const newIndex = tasks.findIndex((t) => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(tasks, oldIndex, newIndex);
+    const before = reordered[newIndex - 1]?.sort_order ?? null;
+    const after = reordered[newIndex + 1]?.sort_order ?? null;
+    handleReorder(tasks[oldIndex], orderBetween(before, after));
   }
 
   return (
@@ -125,27 +196,52 @@ export function DayView({ date }: { date: string }) {
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
-        <div className={cn("lg:block", mode === "list" ? "block" : "hidden")}>
-          <TaskListSection
-            tasks={tasks}
-            isLoading={tasksQ.isLoading}
-            channelsById={channelsById}
-            profilesById={profilesById}
-            subtasksByTaskId={subtasksByTaskId}
-            onReorder={handleReorder}
-            emptyTitle="Tu día está en blanco"
-            emptyHint="Elegí unas pocas cosas para hoy y planificá con calma."
-            emptyIcon={Sparkles}
-          />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={dayCollision}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => {
+          setActiveTask(null);
+          setOverlayActive(false);
+        }}
+      >
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
+          <div className={cn("lg:block", mode === "list" ? "block" : "hidden")}>
+            <TaskListSection
+              tasks={tasks}
+              isLoading={tasksQ.isLoading}
+              channelsById={channelsById}
+              profilesById={profilesById}
+              subtasksByTaskId={subtasksByTaskId}
+              onReorder={handleReorder}
+              emptyTitle="Tu día está en blanco"
+              emptyHint="Elegí unas pocas cosas para hoy y planificá con calma."
+              emptyIcon={Sparkles}
+              hosted
+            />
+          </div>
+          <div className={cn("lg:block", mode === "agenda" ? "block" : "hidden")}>
+            <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-subtle lg:block">
+              Agenda · arrastrá una tarea a una hora
+            </p>
+            <AgendaView
+              date={date}
+              tasks={tasks}
+              channelsById={channelsById}
+              activeTask={activeTask}
+            />
+          </div>
         </div>
-        <div className={cn("lg:block", mode === "agenda" ? "block" : "hidden")}>
-          <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-subtle lg:block">
-            Agenda
-          </p>
-          <AgendaView date={date} tasks={tasks} channelsById={channelsById} />
-        </div>
-      </div>
+
+        <DragOverlay dropAnimation={null}>
+          {activeTask && overlayActive && (
+            <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
+              {activeTask.title}
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }

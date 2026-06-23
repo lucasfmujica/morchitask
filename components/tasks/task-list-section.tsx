@@ -14,6 +14,7 @@ export function TaskListSection({
   emptyTitle,
   emptyHint,
   emptyIcon,
+  hosted = false,
 }: {
   tasks: Task[];
   isLoading: boolean;
@@ -24,6 +25,8 @@ export function TaskListSection({
   emptyTitle: string;
   emptyHint: string;
   emptyIcon?: LucideIcon;
+  /** Share a parent DndContext (day view) so tasks can be dragged to the calendar. */
+  hosted?: boolean;
 }) {
   if (isLoading) return <SkeletonList />;
   if (tasks.length === 0)
@@ -36,6 +39,7 @@ export function TaskListSection({
       profilesById={profilesById}
       subtasksByTaskId={subtasksByTaskId}
       onReorder={onReorder}
+      hosted={hosted}
     />
   );
 }
