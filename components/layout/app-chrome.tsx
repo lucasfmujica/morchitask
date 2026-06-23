@@ -151,53 +151,60 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-surface/50 md:flex">
-      <div className="flex h-16 items-center gap-2.5 px-5">
+      <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon.svg" alt="" className="h-8 w-8 rounded-xl shadow-soft" />
         <span className="text-[15px] font-extrabold tracking-tight text-fg">Morchitask</span>
       </div>
 
-      <nav className="flex flex-col gap-0.5 px-3">
-        {PLAN_NAV.map((item) => (
-          <SidebarLink key={item.href} item={item} pathname={pathname} />
-        ))}
-        <div className="my-2 border-t border-border/70" />
-        <SidebarRituals pathname={pathname} />
-        <div className="my-2 border-t border-border/70" />
-        {TOOL_NAV.map((item) => (
-          <SidebarLink key={item.href} item={item} pathname={pathname} />
-        ))}
-      </nav>
+      {/* Scrollable middle — keeps the bottom (Ajustes + perfil) reachable when
+          the Week mini-calendar is shown and/or the category list is long. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <nav className="flex flex-col gap-0.5 px-3">
+          {PLAN_NAV.map((item) => (
+            <SidebarLink key={item.href} item={item} pathname={pathname} />
+          ))}
+          <div className="my-2 border-t border-border/70" />
+          <SidebarRituals pathname={pathname} />
+          <div className="my-2 border-t border-border/70" />
+          {TOOL_NAV.map((item) => (
+            <SidebarLink key={item.href} item={item} pathname={pathname} />
+          ))}
+        </nav>
 
-      {/* Mini month-calendar lives in the sidebar (Sunsama-style) on the Week
-          view — picking a day jumps the columns to that week. */}
-      {onWeek && (
-        <div className="mt-3 px-3">
-          <WeekCalendarRail date={pathname.split("/")[2] || todayISO()} />
-        </div>
-      )}
+        {/* Mini month-calendar lives in the sidebar (Sunsama-style) on the Week
+            view — picking a day jumps the columns to that week. */}
+        {onWeek && (
+          <div className="mt-3 px-3">
+            <WeekCalendarRail date={pathname.split("/")[2] || todayISO()} />
+          </div>
+        )}
 
-      <ChannelsSection channels={channelsQ.data ?? []} filterable={onWeek} />
-
-      <div className="px-3 pb-1">
-        <SidebarLink
-          item={{
-            href: "/settings",
-            label: "Ajustes",
-            icon: Settings,
-            match: (p) => p.startsWith("/settings"),
-          }}
-          pathname={pathname}
-        />
+        <ChannelsSection channels={channelsQ.data ?? []} filterable={onWeek} />
       </div>
 
-      <div className="mt-auto flex items-center gap-2.5 border-t border-border px-4 py-3.5">
-        <OwnerAvatar profile={me ?? undefined} size={32} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-fg">{me?.display_name ?? "…"}</p>
-          <p className="truncate text-xs text-subtle">Tu espacio</p>
+      {/* Pinned bottom — Ajustes + perfil, siempre visibles. */}
+      <div className="shrink-0">
+        <div className="px-3 pb-1">
+          <SidebarLink
+            item={{
+              href: "/settings",
+              label: "Ajustes",
+              icon: Settings,
+              match: (p) => p.startsWith("/settings"),
+            }}
+            pathname={pathname}
+          />
         </div>
-        <SignOutButton />
+
+        <div className="flex items-center gap-2.5 border-t border-border px-4 py-3.5">
+          <OwnerAvatar profile={me ?? undefined} size={32} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-fg">{me?.display_name ?? "…"}</p>
+            <p className="truncate text-xs text-subtle">Tu espacio</p>
+          </div>
+          <SignOutButton />
+        </div>
       </div>
     </aside>
   );
@@ -227,7 +234,7 @@ function ChannelsSection({
   const filtering = filterable && selected.size > 0;
 
   return (
-    <div className="mt-5 flex min-h-0 flex-1 flex-col px-3">
+    <div className="mt-5 flex flex-col px-3 pb-2">
       <div className="flex items-center justify-between px-2 pb-1">
         <span className="text-xs font-semibold uppercase tracking-wide text-subtle">
           Categorías
@@ -241,7 +248,7 @@ function ChannelsSection({
         </button>
       </div>
 
-      <ul className="flex flex-col gap-0.5 overflow-y-auto">
+      <ul className="flex flex-col gap-0.5">
         {filtering && (
           <li>
             <button
