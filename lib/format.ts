@@ -6,3 +6,12 @@ export function formatMinutes(min: number): string {
   const m = min % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
+
+/** Seconds as a stopwatch clock: 1429 → "0:23:49", 3661 → "1:01:01". */
+export function formatClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}

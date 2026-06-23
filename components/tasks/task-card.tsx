@@ -1,17 +1,18 @@
 "use client";
 
-import { Clock, Trash2, Users } from "lucide-react";
+import { Clock, Pause, Play, Trash2, Users } from "lucide-react";
 import { useDeleteTask, useToggleTask, useUpdateTask } from "@/lib/queries/tasks";
 import { useToggleSubtaskByDate } from "@/lib/queries/subtasks";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
-import { formatMinutes } from "@/lib/format";
+import { formatClock, formatMinutes } from "@/lib/format";
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
 import { ObjectiveBadge } from "@/components/objectives/objective-badge";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskCheckbox } from "./task-checkbox";
+import { useTaskTimer } from "./use-task-timer";
 
 const ESTIMATES = [15, 30, 45, 60, 90];
 const TZ = DEFAULT_TIMEZONE;
@@ -34,6 +35,7 @@ export function TaskCard({
   const update = useUpdateTask();
   const toggleSub = useToggleSubtaskByDate(task.planned_date ?? "");
   const openDetail = useTaskDetail((s) => s.open);
+  const timer = useTaskTimer(task);
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const done = task.status === "done";
@@ -61,7 +63,7 @@ export function TaskCard({
         done && "opacity-65",
       )}
     >
-      {/* Top: scheduled-time pill (left) + duration chip (right) */}
+      {/* Top: scheduled-time pill (left) + timer + duration chip (right) */}
       <div className="flex items-center gap-2">
         {task.block_start && (
           <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">
@@ -69,24 +71,57 @@ export function TaskCard({
             {timeInTimeZone(task.block_start, TZ)}
           </span>
         )}
-        <button
-          onClick={cycleEstimate}
-          aria-label="Estimación de tiempo"
-          className={cn(
-            "ml-auto cursor-pointer rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
-            task.time_estimate_min
-              ? "bg-surface-2 text-muted hover:bg-border"
-              : "text-subtle opacity-0 hover:text-muted group-hover:opacity-100 touch:opacity-100",
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Stopwatch: running pill, or a play button (+ logged time if any) */}
+          {timer.running ? (
+            <button
+              onClick={timer.toggle}
+              aria-label="Detener cronómetro"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-primary-soft px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-primary"
+            >
+              <Pause className="h-3 w-3" aria-hidden />
+              {formatClock(timer.liveSeconds)}
+            </button>
+          ) : (
+            <button
+              onClick={timer.toggle}
+              aria-label="Iniciar cronómetro"
+              className={cn(
+                "inline-flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
+                task.actual_time_min
+                  ? "bg-surface-2 text-muted hover:text-primary"
+                  : "text-subtle opacity-0 hover:text-primary group-hover:opacity-100 touch:opacity-100",
+              )}
+            >
+              <Play className="h-3 w-3" aria-hidden />
+              {task.actual_time_min ? formatMinutes(task.actual_time_min) : null}
+            </button>
           )}
-        >
-          {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "+ tiempo"}
-        </button>
+          <button
+            onClick={cycleEstimate}
+            aria-label="Estimación de tiempo"
+            className={cn(
+              "cursor-pointer rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
+              task.time_estimate_min
+                ? "bg-surface-2 text-muted hover:bg-border"
+                : "text-subtle opacity-0 hover:text-muted group-hover:opacity-100 touch:opacity-100",
+            )}
+          >
+            {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "+ tiempo"}
+          </button>
+        </div>
       </div>
 
       {/* Title row */}
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5">
-          <TaskCheckbox checked={done} onToggle={() => toggle.mutate(task)} />
+          <TaskCheckbox
+            checked={done}
+            onToggle={() => {
+              if (timer.running) timer.stopTimer();
+              toggle.mutate(task);
+            }}
+          />
         </span>
         <button
           onClick={() => openDetail(task)}
@@ -163,7 +198,10 @@ export function TaskCard({
         <div className="ml-auto flex items-center gap-1.5">
           <OwnerAvatar profile={owner} />
           <button
-            onClick={() => remove.mutate(task)}
+            onClick={() => {
+              timer.cancel();
+              remove.mutate(task);
+            }}
             aria-label="Eliminar tarea"
             className="cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 touch:opacity-100"
           >

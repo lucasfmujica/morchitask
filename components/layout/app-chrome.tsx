@@ -23,6 +23,7 @@ import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import { CommandPalette } from "./command-palette";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { SignOutButton } from "./sign-out-button";
+import { TimerBar } from "./timer-bar";
 
 type NavItem = {
   href: string;
@@ -128,6 +129,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       </div>
 
       <TaskDetailSheet />
+      <TimerBar />
       <KeyboardShortcuts />
       <CommandPalette />
     </div>

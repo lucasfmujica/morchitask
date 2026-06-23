@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Trash2, X } from "lucide-react";
+import { Pause, Play, Plus, Trash2, X } from "lucide-react";
 import { useChannels } from "@/lib/queries/channels";
 import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
@@ -21,11 +21,12 @@ import {
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
-import { formatMinutes } from "@/lib/format";
+import { formatClock, formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
+import { useTaskTimer } from "./use-task-timer";
 
 const ESTIMATES = [15, 30, 45, 60, 90, 120];
 
@@ -95,6 +96,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const createSub = useCreateSubtask(task.id);
   const toggleSub = useToggleSubtask(task.id);
   const deleteSub = useDeleteSubtask(task.id);
+  const timer = useTaskTimer(task);
 
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes ?? "");
@@ -228,6 +230,59 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         </div>
       </Field>
 
+      {/* Time tracking */}
+      <Field label="Tiempo">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3.5 py-3">
+          <div className="flex items-baseline gap-6">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
+                Real
+              </span>
+              <span
+                className={cn(
+                  "text-lg font-bold tabular-nums",
+                  timer.running ? "text-primary" : "text-fg",
+                )}
+              >
+                {timer.running
+                  ? formatClock(timer.liveSeconds)
+                  : task.actual_time_min
+                    ? formatMinutes(task.actual_time_min)
+                    : "—"}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
+                Estimado
+              </span>
+              <span className="text-lg font-bold tabular-nums text-muted">
+                {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "—"}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={timer.toggle}
+            aria-pressed={timer.running}
+            className={cn(
+              "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-4 py-2 text-sm font-semibold transition-colors",
+              timer.running
+                ? "bg-danger/10 text-danger hover:bg-danger/15"
+                : "bg-primary text-on-primary hover:bg-primary-hover",
+            )}
+          >
+            {timer.running ? (
+              <>
+                <Pause className="h-4 w-4" aria-hidden /> Detener
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" aria-hidden /> Empezar
+              </>
+            )}
+          </button>
+        </div>
+      </Field>
+
       {/* Objective */}
       {(objectivesQ.data ?? []).length > 0 && (
         <Field label="Meta">
@@ -316,6 +371,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
       <button
         onClick={() => {
+          timer.cancel();
           remove.mutate(task);
           onClose();
         }}

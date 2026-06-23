@@ -24,9 +24,13 @@ import { useProfiles } from "@/lib/queries/profiles";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
+import { filterTasksByChannels } from "@/lib/week-filter";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
+import { WeekCalendarRail } from "./week-calendar-rail";
+import { CategoryFilter } from "./category-filter";
+import { DayProgressBar } from "./day-progress-bar";
 
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
@@ -59,6 +63,8 @@ export function WeekView({ date }: { date: string }) {
   const profilesById = new Map((profilesQ.data ?? []).map((p) => [p.id, p]));
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  // Category filter, scoped to this view. Empty set = "Todas" (show everything).
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function onDragStart(e: DragStartEvent) {
@@ -111,47 +117,68 @@ export function WeekView({ date }: { date: string }) {
         </div>
       </header>
 
-      {/* Wide day columns, horizontally swipeable (Sunsama-style). */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={pointerWithin}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onDragCancel={() => setActiveTask(null)}
-      >
-        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:scroll-pl-8 md:px-8 [&::-webkit-scrollbar]:hidden">
-          {week.map((d, i) => (
-            <DayColumn
-              key={d}
-              date={d}
-              today={today}
-              tasks={(results[i].data ?? []) as Task[]}
-              subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
-              channelsById={channelsById}
-              profilesById={profilesById}
-              columnRef={d === today ? todayRef : undefined}
-              dragging={!!activeTask}
-              onAdd={(title, tasks) =>
-                create.mutate({
-                  title,
-                  plannedDate: d,
-                  channelId: null,
-                  timeEstimateMin: null,
-                  sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
-                })
-              }
-            />
-          ))}
-        </div>
+      <div className="flex gap-6">
+        {/* Left rail: mini month-calendar + category filter (desktop only). */}
+        <aside className="hidden shrink-0 flex-col gap-5 lg:flex lg:w-60">
+          <WeekCalendarRail date={date} />
+          <CategoryFilter
+            channels={channelsQ.data ?? []}
+            selected={selected}
+            onChange={setSelected}
+          />
+        </aside>
 
-        <DragOverlay dropAnimation={null}>
-          {activeTask && (
-            <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
-              {activeTask.title}
+        {/* Right pane: day columns. `min-w-0` lets the strip scroll inside the
+            pane instead of pushing the layout wider. */}
+        <div className="min-w-0 flex-1">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={pointerWithin}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragCancel={() => setActiveTask(null)}
+          >
+            {/* Mobile: edge-to-edge swipe of wide columns. lg: framed scroll inside the pane. */}
+            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:scroll-pl-8 md:px-8 lg:mx-0 lg:scroll-pl-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+              {week.map((d, i) => {
+                const all = (results[i].data ?? []) as Task[];
+                return (
+                  <DayColumn
+                    key={d}
+                    date={d}
+                    today={today}
+                    tasks={filterTasksByChannels(all, selected)}
+                    subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
+                    channelsById={channelsById}
+                    profilesById={profilesById}
+                    columnRef={d === today ? todayRef : undefined}
+                    dragging={!!activeTask}
+                    onAdd={(title) =>
+                      create.mutate({
+                        title,
+                        plannedDate: d,
+                        channelId: null,
+                        timeEstimateMin: null,
+                        // Order against the full (unfiltered) day so a hidden
+                        // filter never corrupts sort positions.
+                        sortOrder: orderForAppend(all.map((t) => t.sort_order)),
+                      })
+                    }
+                  />
+                );
+              })}
             </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+
+            <DragOverlay dropAnimation={null}>
+              {activeTask && (
+                <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
+                  {activeTask.title}
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+        </div>
+      </div>
     </div>
   );
 }
@@ -175,7 +202,7 @@ function DayColumn({
   profilesById: Map<string, Profile>;
   columnRef?: React.RefObject<HTMLElement | null>;
   dragging: boolean;
-  onAdd: (title: string, tasks: Task[]) => void;
+  onAdd: (title: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${date}` });
   const isToday = date === today;
@@ -185,9 +212,9 @@ function DayColumn({
   return (
     <section
       ref={columnRef}
-      className="flex w-[86vw] shrink-0 snap-start flex-col gap-2 sm:w-[320px]"
+      className="flex w-[86vw] shrink-0 snap-start flex-col gap-2 sm:w-[320px] lg:w-[260px]"
     >
-      <Link href={isToday ? "/today" : `/day/${date}`} className="group mb-1 block">
+      <Link href={isToday ? "/today" : `/day/${date}`} className="group block">
         <div className="flex items-baseline justify-between gap-2">
           <span
             className={cn(
@@ -205,6 +232,9 @@ function DayColumn({
           )}
         </div>
       </Link>
+
+      {/* Completion bar — fills as the day's tasks get checked off. */}
+      <DayProgressBar done={done} total={tasks.length} />
 
       <div
         ref={setNodeRef}
@@ -225,7 +255,7 @@ function DayColumn({
         ))}
       </div>
 
-      <QuickAdd onAdd={(title) => onAdd(title, tasks)} />
+      <QuickAdd onAdd={onAdd} />
     </section>
   );
 }

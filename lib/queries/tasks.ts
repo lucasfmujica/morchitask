@@ -276,6 +276,42 @@ export function useUpdateTask() {
   });
 }
 
+/** Set a task's actual (tracked) time. Used when a stopwatch is stopped. */
+export function useSetActualTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      taskId,
+      actualMin,
+    }: {
+      taskId: string;
+      plannedDate: string | null;
+      actualMin: number;
+    }): Promise<void> => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ actual_time_min: actualMin })
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onMutate: async ({ taskId, plannedDate, actualMin }) => {
+      const key = listKey(plannedDate);
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Task[]>(key);
+      qc.setQueryData<Task[]>(key, (old = []) =>
+        old.map((t) => (t.id === taskId ? { ...t, actual_time_min: actualMin } : t)),
+      );
+      return { key, prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx) qc.setQueryData(ctx.key, ctx.prev);
+    },
+    onSettled: (_d, _e, { plannedDate }) =>
+      qc.invalidateQueries({ queryKey: listKey(plannedDate) }),
+  });
+}
+
 export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
