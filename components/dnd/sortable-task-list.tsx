@@ -20,8 +20,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { AnimatePresence, motion } from "framer-motion";
 import { GripVertical } from "lucide-react";
 import { useHydrated } from "@/lib/use-hydrated";
+import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 import { orderBetween } from "@/lib/ordering";
 import { EASE_OUT } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { useToggleTask } from "@/lib/queries/tasks";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { TaskCard } from "@/components/tasks/task-card";
@@ -143,29 +145,38 @@ function SortableRow({
     id: task.id,
     data: { task },
   });
+  const coarse = useCoarsePointer();
   const toggle = useToggleTask();
   const done = task.status === "done";
+  const handle = { ...attributes, ...listeners };
 
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? "relative z-10 opacity-80" : undefined}
+      className={cn(
+        "flex items-stretch gap-1",
+        isDragging && "relative z-10 opacity-80",
+        // Desktop: the whole card is the drag handle (no swipe to conflict, and
+        // the title is a button so a plain click still opens the detail). A 6px
+        // threshold keeps clicks working. Touch: only the grip drags so
+        // swipe-to-complete on the card body stays usable.
+        !coarse && "cursor-grab active:cursor-grabbing",
+      )}
+      {...(coarse ? {} : handle)}
     >
-      <div className="flex items-stretch gap-1">
-        <button
-          {...attributes}
-          {...listeners}
-          aria-label="Reordenar o arrastrar al calendario"
-          className="flex w-5 shrink-0 cursor-grab touch-none items-center justify-center text-subtle/60 transition-colors hover:text-muted active:cursor-grabbing"
-        >
-          <GripVertical className="h-4 w-4" aria-hidden />
-        </button>
-        <div className="flex-1">
-          <SwipeToComplete disabled={done} onComplete={() => toggle.mutate(task)}>
-            <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
-          </SwipeToComplete>
-        </div>
+      <button
+        {...(coarse ? handle : {})}
+        aria-label="Reordenar o arrastrar al calendario"
+        tabIndex={coarse ? 0 : -1}
+        className="flex w-5 shrink-0 cursor-grab touch-none items-center justify-center text-subtle/60 transition-colors hover:text-muted active:cursor-grabbing"
+      >
+        <GripVertical className="h-4 w-4" aria-hidden />
+      </button>
+      <div className="min-w-0 flex-1">
+        <SwipeToComplete disabled={done} onComplete={() => toggle.mutate(task)}>
+          <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
+        </SwipeToComplete>
       </div>
     </div>
   );
