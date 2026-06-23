@@ -27,9 +27,9 @@ export function SettingsView() {
     await createClient().auth.signInWithOAuth({
       provider: "google",
       options: {
-        // readonly = ver todos tus calendarios; events = crear/editar (2 vías).
-        scopes:
-          "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
+        // Full calendar access (read + write) in a single scope — covers listing
+        // calendars, reading events, and creating/editing our time-block events.
+        scopes: "https://www.googleapis.com/auth/calendar",
         queryParams: { access_type: "offline", prompt: "consent" },
         redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
       },
