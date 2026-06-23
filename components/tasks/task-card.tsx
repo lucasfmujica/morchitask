@@ -76,7 +76,7 @@ export function TaskCard({
             "ml-auto cursor-pointer rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
             task.time_estimate_min
               ? "bg-surface-2 text-muted hover:bg-border"
-              : "text-subtle opacity-0 hover:text-muted group-hover:opacity-100",
+              : "text-subtle opacity-0 hover:text-muted group-hover:opacity-100 touch:opacity-100",
           )}
         >
           {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "+ tiempo"}
@@ -165,7 +165,7 @@ export function TaskCard({
           <button
             onClick={() => remove.mutate(task)}
             aria-label="Eliminar tarea"
-            className="cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+            className="cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 touch:opacity-100"
           >
             <Trash2 className="h-4 w-4" aria-hidden />
           </button>

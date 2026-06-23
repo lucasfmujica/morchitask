@@ -81,18 +81,20 @@ export function SettingsView() {
 
       {/* Integrations */}
       <Section title="Integraciones">
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-            <CalendarClock className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-fg">Google Calendar</p>
-            <p className="text-xs text-muted">
-              Ver tus eventos y mandar tus bloques de tarea al calendario (2 vías).
-            </p>
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              <CalendarClock className="h-5 w-5" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-fg">Google Calendar</p>
+              <p className="text-xs text-muted">
+                Ver tus eventos y mandar tus bloques de tarea al calendario (2 vías).
+              </p>
+            </div>
           </div>
           {connected ? (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 pl-12 sm:shrink-0 sm:pl-0">
               <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
                 <Check className="h-3 w-3" aria-hidden /> Conectado
               </span>
@@ -113,7 +115,7 @@ export function SettingsView() {
           ) : (
             <button
               onClick={connectCalendar}
-              className="shrink-0 cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
+              className="ml-12 w-fit cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover sm:ml-0 sm:shrink-0"
             >
               Conectar
             </button>

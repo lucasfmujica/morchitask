@@ -92,8 +92,10 @@ export function useMonthCounts(startDate: string, endDate: string) {
   });
 }
 
-export function useBacklogTasks() {
-  return useQuery({
+/** Query options for the backlog list. Shared by the Backlog view and the task
+ *  detail sheet (which reads the same cache to stay live as the task is edited). */
+export function backlogQueryOptions() {
+  return {
     queryKey: taskKeys.backlog,
     queryFn: async (): Promise<Task[]> => {
       const supabase = createClient();
@@ -104,7 +106,11 @@ export function useBacklogTasks() {
       if (error) throw error;
       return data;
     },
-  });
+  };
+}
+
+export function useBacklogTasks() {
+  return useQuery(backlogQueryOptions());
 }
 
 // ------------------------------------------------------------ mutations

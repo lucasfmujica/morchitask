@@ -6,15 +6,25 @@ export const channelKeys = {
   all: ["channels"] as const,
 };
 
+// Ordered as a soft rainbow so the picker reads naturally. Includes celeste
+// (sky), amarillo (yellow) and more hues so each category can feel distinct.
 export const CHANNEL_COLORS = [
-  "#0d9488",
-  "#ea580c",
-  "#7c3aed",
-  "#db2777",
-  "#2563eb",
-  "#16a34a",
-  "#d97706",
-  "#dc2626",
+  "#0d9488", // verde azulado (teal)
+  "#06b6d4", // cian
+  "#0ea5e9", // celeste
+  "#2563eb", // azul
+  "#6366f1", // índigo
+  "#7c3aed", // violeta
+  "#c026d3", // fucsia
+  "#db2777", // rosa
+  "#e11d48", // frambuesa
+  "#dc2626", // rojo
+  "#ea580c", // naranja
+  "#d97706", // ámbar
+  "#eab308", // amarillo
+  "#84cc16", // lima
+  "#16a34a", // verde
+  "#059669", // esmeralda
 ];
 
 /** Active channels in the household, ordered. */

@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Trash2, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { useChannels } from "@/lib/queries/channels";
 import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
-import { useDeleteTask, useUpdateTask } from "@/lib/queries/tasks";
+import {
+  backlogQueryOptions,
+  tasksForDateQueryOptions,
+  useDeleteTask,
+  useUpdateTask,
+} from "@/lib/queries/tasks";
 import {
   useCreateSubtask,
   useDeleteSubtask,
@@ -21,7 +27,27 @@ import type { Task } from "@/lib/queries/types";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
 
-const ESTIMATES = [15, 30, 45, 60, 90];
+const ESTIMATES = [15, 30, 45, 60, 90, 120];
+
+/**
+ * The sheet is opened with a snapshot of the task, but edits go to the React
+ * Query cache. Read the live row from that cache (same key the list view uses)
+ * so toggling category/share/estimate reflects instantly. Falls back to the
+ * snapshot when the list isn't cached.
+ */
+function useLiveTask(snapshot: Task): Task {
+  const options = snapshot.planned_date
+    ? tasksForDateQueryOptions(snapshot.planned_date)
+    : backlogQueryOptions();
+  const { data } = useQuery<Task[]>({
+    // The two option sets have differently-shaped tuple keys; widen so the union
+    // is accepted (the actual key value is still correct per branch).
+    queryKey: options.queryKey as readonly unknown[],
+    queryFn: options.queryFn,
+    enabled: false,
+  });
+  return data?.find((t) => t.id === snapshot.id) ?? snapshot;
+}
 
 export function TaskDetailSheet() {
   const openTask = useTaskDetail((s) => s.openTask);
@@ -55,7 +81,9 @@ export function TaskDetailSheet() {
   );
 }
 
-function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void }) {
+function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: () => void }) {
+  // Live row from the cache so chips/toggles reflect edits instantly.
+  const task = useLiveTask(snapshot);
   const update = useUpdateTask();
   const remove = useDeleteTask();
   const channelsQ = useChannels();
@@ -119,9 +147,9 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                 onClick={() => update.mutate({ task, patch: { owner_id: p.id } })}
                 aria-pressed={task.owner_id === p.id}
                 className={cn(
-                  "inline-flex cursor-pointer items-center gap-1.5 rounded-pill border px-2 py-1 text-xs font-medium transition-colors",
+                  "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
                   task.owner_id === p.id
-                    ? "border-transparent bg-primary-soft text-primary"
+                    ? "border-primary bg-primary-soft text-primary"
                     : "border-border text-muted hover:bg-surface-2",
                 )}
               >
@@ -235,15 +263,20 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
 
       {/* Checklist */}
       <Field
-        label={`Checklist${subtasks.length ? ` (${subtasks.filter((s) => s.done).length}/${subtasks.length})` : ""}`}
+        label={`Checklist${subtasks.length ? ` · ${subtasks.filter((s) => s.done).length}/${subtasks.length}` : ""}`}
       >
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0.5">
           {subtasks.map((s) => (
-            <div key={s.id} className="group flex items-center gap-2">
-              <TaskCheckbox checked={s.done} onToggle={() => toggleSub.mutate(s)} size="sm" />
+            <div
+              key={s.id}
+              className="group flex items-start gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-2"
+            >
+              <span className="mt-0.5">
+                <TaskCheckbox checked={s.done} onToggle={() => toggleSub.mutate(s)} size="sm" />
+              </span>
               <span
                 className={cn(
-                  "min-w-0 flex-1 truncate text-sm",
+                  "min-w-0 flex-1 break-words text-sm leading-snug",
                   s.done ? "text-subtle line-through" : "text-fg",
                 )}
               >
@@ -251,26 +284,32 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
               </span>
               <button
                 onClick={() => deleteSub.mutate(s.id)}
-                aria-label="Eliminar subtarea"
-                className="cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                aria-label="Eliminar ítem"
+                className="-m-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-danger/10 hover:text-danger group-hover:opacity-100 touch:opacity-100"
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
               </button>
             </div>
           ))}
-          <div className="mt-1 flex items-center gap-2">
-            <span
-              className="h-4 w-4 shrink-0 rounded border-2 border-dashed border-gray-300"
-              aria-hidden
-            />
+
+          {/* Add item — clearly visible field with its own add button */}
+          <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-focus">
             <input
               value={newSub}
               onChange={(e) => setNewSub(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addSub()}
               placeholder="Agregar un ítem…"
-              aria-label="Nueva subtarea"
-              className="h-6 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
+              aria-label="Nuevo ítem del checklist"
+              className="min-w-0 flex-1 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
             />
+            <button
+              onClick={addSub}
+              disabled={!newSub.trim()}
+              aria-label="Agregar ítem"
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-primary text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            </button>
           </div>
         </div>
       </Field>
@@ -314,9 +353,9 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1.5 rounded-pill border px-2.5 py-1 text-xs font-medium transition-colors",
+        "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
         active
-          ? "border-transparent bg-primary-soft text-primary"
+          ? "border-primary bg-primary-soft text-primary"
           : "border-border text-muted hover:bg-surface-2",
       )}
     >

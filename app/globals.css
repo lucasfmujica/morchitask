@@ -4,6 +4,11 @@
    no class follows the system preference (see media query below). */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Touch devices can't hover, so controls that reveal on hover (delete, drag
+   handles, etc.) would be invisible. `touch:` targets pointers without hover so
+   we can keep them always visible there. */
+@custom-variant touch (@media (hover: none));
+
 /* ============================================================
    LAYER 1 — PRIMITIVES (raw palette, never used directly in JSX)
    ============================================================ */

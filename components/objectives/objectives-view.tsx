@@ -208,7 +208,7 @@ function ObjectiveRow({
       <button
         onClick={() => remove.mutate(objective.id)}
         aria-label="Eliminar meta"
-        className="shrink-0 cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+        className="shrink-0 cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 touch:opacity-100"
       >
         <Trash2 className="h-4 w-4" aria-hidden />
       </button>

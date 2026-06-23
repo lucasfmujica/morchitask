@@ -251,7 +251,7 @@ function WeekCard({
         {...attributes}
         {...listeners}
         aria-label="Mover a otro día"
-        className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 active:cursor-grabbing"
+        className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 touch:opacity-100 active:cursor-grabbing"
       >
         <GripVertical className="h-3.5 w-3.5" aria-hidden />
       </button>
