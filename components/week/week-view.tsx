@@ -37,20 +37,66 @@ const arrow =
 
 const NO_SUBTASKS = new Map<string, Subtask[]>();
 
+/** Horizontal distance between two day panels (panel width + gap), measured
+ *  from the live DOM so it works at every breakpoint. Guards against 0. */
+function dayStep(el: HTMLDivElement) {
+  const kids = el.children;
+  if (kids.length < 2) return el.clientWidth || 1;
+  return (kids[1] as HTMLElement).offsetLeft - (kids[0] as HTMLElement).offsetLeft || 1;
+}
+
 export function WeekView({ date }: { date: string }) {
   const router = useRouter();
   const today = todayISO();
   const week = weekRange(date, 1);
   const thisWeek = week.includes(today);
 
-  // On phones the week is a horizontal swipe; land on "today" instead of Monday.
-  const todayRef = useRef<HTMLElement>(null);
+  // Mobile day carousel: one day per screen, swipeable. `focusIdx` is the day
+  // in the URL — we land on it (today for /week) and the dots/arrows under the
+  // header step between days, rolling into the next/prev week at the ends.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const ticking = useRef(false);
+  const focusIdx = Math.max(0, week.indexOf(date));
+  const [active, setActive] = useState(focusIdx);
+
+  // Snap the active day back to the URL's day when it changes (render-time
+  // adjustment — no effect needed; swiping then updates it via onDaysScroll).
+  const [syncedFocus, setSyncedFocus] = useState(focusIdx);
+  if (syncedFocus !== focusIdx) {
+    setSyncedFocus(focusIdx);
+    setActive(focusIdx);
+  }
+
+  // Land the carousel on the focused day on mount / when it changes.
   useEffect(() => {
-    if (!thisWeek) return;
-    const el = todayRef.current;
+    const el = scrollRef.current;
     if (!el) return;
-    requestAnimationFrame(() => el.scrollIntoView({ inline: "start", block: "nearest" }));
-  }, [thisWeek, date]);
+    const id = requestAnimationFrame(() => {
+      el.scrollTo({ left: focusIdx * dayStep(el), behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [focusIdx]);
+
+  function scrollToDay(idx: number) {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ left: idx * dayStep(el), behavior: "smooth" });
+  }
+  function onDaysScroll() {
+    if (ticking.current) return;
+    ticking.current = true;
+    requestAnimationFrame(() => {
+      ticking.current = false;
+      const el = scrollRef.current;
+      if (!el) return;
+      setActive(Math.max(0, Math.min(week.length - 1, Math.round(el.scrollLeft / dayStep(el)))));
+    });
+  }
+  // Step a day; at the week's edges roll into the adjacent week (lands on that day).
+  function stepDay(delta: number) {
+    const next = active + delta;
+    if (next >= 0 && next < week.length) scrollToDay(next);
+    else router.push(`/week/${addDays(week[active], delta)}`);
+  }
 
   const results = useQueries({ queries: week.map((d) => tasksForDateQueryOptions(d)) });
   const subResults = useQueries({ queries: week.map((d) => subtasksForDateQueryOptions(d)) });
@@ -117,9 +163,38 @@ export function WeekView({ date }: { date: string }) {
         </div>
       </header>
 
+      {/* Mobile day pager: shows which day you're on and steps between days. */}
+      <div className="flex items-center justify-between gap-2 md:hidden">
+        <button onClick={() => stepDay(-1)} aria-label="Día anterior" className={arrow}>
+          <ChevronLeft className="h-5 w-5" aria-hidden />
+        </button>
+        <div className="flex items-center gap-1.5">
+          {week.map((d, i) => (
+            <button
+              key={d}
+              onClick={() => scrollToDay(i)}
+              aria-label={weekDayHeading(d, today)}
+              aria-current={i === active ? "true" : undefined}
+              className={cn(
+                "h-1.5 rounded-full transition-all",
+                i === active
+                  ? "w-6 bg-primary"
+                  : d === today
+                    ? "w-1.5 bg-primary/40"
+                    : "w-1.5 bg-border",
+              )}
+            />
+          ))}
+        </div>
+        <button onClick={() => stepDay(1)} aria-label="Día siguiente" className={arrow}>
+          <ChevronRight className="h-5 w-5" aria-hidden />
+        </button>
+      </div>
+
       <div className="flex gap-6">
-        {/* Left rail: mini month-calendar + category filter (desktop only). */}
-        <aside className="hidden shrink-0 flex-col gap-5 lg:flex lg:w-60">
+        {/* Left rail: mini month-calendar + category filter (desktop only).
+            Sticky so it stays put while the day columns scroll vertically. */}
+        <aside className="hidden shrink-0 flex-col gap-5 lg:flex lg:w-60 lg:sticky lg:top-5 lg:self-start">
           <WeekCalendarRail date={date} />
           <CategoryFilter
             channels={channelsQ.data ?? []}
@@ -138,8 +213,13 @@ export function WeekView({ date }: { date: string }) {
             onDragEnd={onDragEnd}
             onDragCancel={() => setActiveTask(null)}
           >
-            {/* Mobile: edge-to-edge swipe of wide columns. lg: framed scroll inside the pane. */}
-            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:scroll-pl-8 md:px-8 lg:mx-0 lg:scroll-pl-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+            {/* Mobile: one day per screen, swipeable (mandatory snap).
+                lg: fixed 5-column grid (Mon–Fri), no horizontal scroll. */}
+            <div
+              ref={scrollRef}
+              onScroll={onDaysScroll}
+              className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:snap-proximity md:scroll-pl-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
+            >
               {week.map((d, i) => {
                 const all = (results[i].data ?? []) as Task[];
                 return (
@@ -147,11 +227,11 @@ export function WeekView({ date }: { date: string }) {
                     key={d}
                     date={d}
                     today={today}
+                    weekend={i >= 5}
                     tasks={filterTasksByChannels(all, selected)}
                     subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
                     channelsById={channelsById}
                     profilesById={profilesById}
-                    columnRef={d === today ? todayRef : undefined}
                     dragging={!!activeTask}
                     onAdd={(title) =>
                       create.mutate({
@@ -186,21 +266,21 @@ export function WeekView({ date }: { date: string }) {
 function DayColumn({
   date,
   today,
+  weekend,
   tasks,
   subsMap,
   channelsById,
   profilesById,
-  columnRef,
   dragging,
   onAdd,
 }: {
   date: string;
   today: string;
+  weekend: boolean;
   tasks: Task[];
   subsMap: Map<string, Subtask[]>;
   channelsById: Map<string, Channel>;
   profilesById: Map<string, Profile>;
-  columnRef?: React.RefObject<HTMLElement | null>;
   dragging: boolean;
   onAdd: (title: string) => void;
 }) {
@@ -211,8 +291,11 @@ function DayColumn({
 
   return (
     <section
-      ref={columnRef}
-      className="flex w-[86vw] shrink-0 snap-start flex-col gap-2 sm:w-[320px] lg:w-[260px]"
+      className={cn(
+        "flex w-full shrink-0 snap-start flex-col gap-2 md:w-[320px] lg:w-auto lg:min-w-0 lg:shrink",
+        // Weekend columns only exist in the mobile swipe; the desktop grid is Mon–Fri.
+        weekend && "lg:hidden",
+      )}
     >
       <Link href={isToday ? "/today" : `/day/${date}`} className="group block">
         <div className="flex items-baseline justify-between gap-2">
