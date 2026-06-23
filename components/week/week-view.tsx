@@ -19,7 +19,7 @@ import {
 import { ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
 import { tasksForDateQueryOptions, useCreateTask, useMoveTaskToDate } from "@/lib/queries/tasks";
 import { subtasksForDateQueryOptions } from "@/lib/queries/subtasks";
-import { useChannels } from "@/lib/queries/channels";
+import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useProfiles } from "@/lib/queries/profiles";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
@@ -99,12 +99,13 @@ export function WeekView({ date }: { date: string }) {
 
   const results = useQueries({ queries: week.map((d) => tasksForDateQueryOptions(d)) });
   const subResults = useQueries({ queries: week.map((d) => subtasksForDateQueryOptions(d)) });
-  const channelsQ = useChannels();
+  const channelLookupQ = useChannelLookup();
   const profilesQ = useProfiles();
   const create = useCreateTask();
   const move = useMoveTaskToDate();
 
-  const channelsById = new Map((channelsQ.data ?? []).map((c) => [c.id, c]));
+  // Chips resolve against all household categories (incl. a partner's shared task).
+  const channelsById = channelLookupQ.data ?? EMPTY_CHANNEL_MAP;
   const profilesById = new Map((profilesQ.data ?? []).map((p) => [p.id, p]));
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);

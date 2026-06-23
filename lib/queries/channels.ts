@@ -4,7 +4,16 @@ import type { Channel } from "./types";
 
 export const channelKeys = {
   all: ["channels"] as const,
+  household: ["channels", "household"] as const,
 };
+
+async function currentUserId() {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
 
 // Ordered as a soft rainbow so the picker reads naturally. Includes celeste
 // (sky), amarillo (yellow) and more hues so each category can feel distinct.
@@ -27,19 +36,42 @@ export const CHANNEL_COLORS = [
   "#059669", // esmeralda
 ];
 
-/** Active channels in the household, ordered. */
+/**
+ * My own active categories, ordered. These are what the picker/manager show:
+ * categories are now per-user, so you only see (and can edit/delete) your own.
+ */
 export function useChannels() {
   return useQuery({
     queryKey: channelKeys.all,
     queryFn: async (): Promise<Channel[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from("channels")
-        .select("*")
-        .is("archived_at", null)
-        .order("sort_order", { ascending: true });
+      const uid = await currentUserId();
+      let q = supabase.from("channels").select("*").is("archived_at", null);
+      if (uid) q = q.eq("owner_id", uid);
+      const { data, error } = await q.order("sort_order", { ascending: true });
       if (error) throw error;
       return data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Stable empty map for the loading state, so callers don't re-create one. */
+export const EMPTY_CHANNEL_MAP: Map<string, Channel> = new Map();
+
+/**
+ * Every household member's active categories as an id → Channel map. Used only
+ * to render the category chip on tasks (including a partner's shared task, whose
+ * category belongs to them) — never for the picker, which stays personal.
+ */
+export function useChannelLookup() {
+  return useQuery({
+    queryKey: channelKeys.household,
+    queryFn: async (): Promise<Map<string, Channel>> => {
+      const supabase = createClient();
+      const { data, error } = await supabase.from("channels").select("*").is("archived_at", null);
+      if (error) throw error;
+      return new Map(data.map((c) => [c.id, c]));
     },
     staleTime: 5 * 60_000,
   });

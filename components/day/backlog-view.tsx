@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Inbox } from "lucide-react";
-import { useChannels } from "@/lib/queries/channels";
+import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useProfiles } from "@/lib/queries/profiles";
 import { useBacklogTasks, useCreateTask, useReorderTask } from "@/lib/queries/tasks";
 import type { Task } from "@/lib/queries/types";
@@ -13,15 +13,14 @@ import { TaskListSection } from "@/components/tasks/task-list-section";
 export function BacklogView() {
   const tasksQ = useBacklogTasks();
   const channelsQ = useChannels();
+  const channelLookupQ = useChannelLookup();
   const profilesQ = useProfiles();
   const create = useCreateTask();
   const reorder = useReorderTask();
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
-  const channelsById = useMemo(
-    () => new Map((channelsQ.data ?? []).map((c) => [c.id, c])),
-    [channelsQ.data],
-  );
+  // Chips resolve against all household categories; composer uses only mine.
+  const channelsById = channelLookupQ.data ?? EMPTY_CHANNEL_MAP;
   const profilesById = useMemo(
     () => new Map((profilesQ.data ?? []).map((p) => [p.id, p])),
     [profilesQ.data],

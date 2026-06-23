@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Moon, Sparkles, Sun } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useChannels } from "@/lib/queries/channels";
+import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
@@ -35,6 +35,7 @@ export function DayView({ date }: { date: string }) {
 
   const tasksQ = useTasksForDate(date);
   const channelsQ = useChannels();
+  const channelLookupQ = useChannelLookup();
   const profilesQ = useProfiles();
   const subtasksQ = useSubtasksForDate(date);
   const me = useMe().data;
@@ -61,10 +62,9 @@ export function DayView({ date }: { date: string }) {
       celebratedRef.current = false;
     }
   }, [allMineDone]);
-  const channelsById = useMemo(
-    () => new Map((channelsQ.data ?? []).map((c) => [c.id, c])),
-    [channelsQ.data],
-  );
+  // Display chips resolve against ALL household categories (so a partner's shared
+  // task shows its category); the composer below uses only my own categories.
+  const channelsById = channelLookupQ.data ?? EMPTY_CHANNEL_MAP;
   const profilesById = useMemo(
     () => new Map((profilesQ.data ?? []).map((p) => [p.id, p])),
     [profilesQ.data],
