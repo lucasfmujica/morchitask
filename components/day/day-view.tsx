@@ -31,6 +31,7 @@ import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-compo
 import { TaskListSection } from "@/components/tasks/task-list-section";
 import { Confetti } from "@/components/ui/confetti";
 import { AgendaView } from "./agenda-view";
+import { CalendarEventsSection } from "./calendar-events-section";
 import { CapacityBar, DEFAULT_CAPACITY_MIN } from "./capacity-bar";
 import { DaySummary } from "./day-summary";
 import { useAgendaScheduling } from "./use-agenda-scheduling";
@@ -207,7 +208,8 @@ export function DayView({ date }: { date: string }) {
         }}
       >
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
-          <div className={cn("lg:block", mode === "list" ? "block" : "hidden")}>
+          <div className={cn("space-y-3 lg:block", mode === "list" ? "block" : "hidden")}>
+            <CalendarEventsSection date={date} tasks={tasks} />
             <TaskListSection
               tasks={tasks}
               isLoading={tasksQ.isLoading}
