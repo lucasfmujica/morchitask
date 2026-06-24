@@ -32,8 +32,10 @@ import type { Task, TaskBlock } from "@/lib/queries/types";
 import { nextBlockDurationMin } from "@/lib/scheduling";
 import { orderBetween, orderForAppend } from "@/lib/ordering";
 import { resolveCapacity } from "@/lib/capacity";
+import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
+import { CarryoverPrompt } from "./carryover-prompt";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
 import { Confetti } from "@/components/ui/confetti";
@@ -218,6 +220,8 @@ export function DayView({ date }: { date: string }) {
           </Link>
         </div>
       </div>
+      {date === todayISO() && <CarryoverPrompt date={date} />}
+
       <div className="flex flex-col gap-3">
         <DaySummary tasks={tasks} />
         {myTasks.length > 0 && (
