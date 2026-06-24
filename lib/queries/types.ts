@@ -10,6 +10,7 @@ export type DailyNote = Tables<"daily_notes">;
 export type Objective = Tables<"objectives">;
 export type TaskComment = Tables<"task_comments">;
 export type TaskReaction = Tables<"task_reactions">;
+export type TaskBlock = Tables<"task_blocks">;
 
 export type TaskStatus = "todo" | "done" | "cancelled";
 export type ObjectivePeriod = "week" | "month";

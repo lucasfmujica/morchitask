@@ -12,13 +12,20 @@ import { GripVertical, Wand2, X } from "lucide-react";
 import { useMe } from "@/lib/queries/profiles";
 import { useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { useCalendarEvents } from "@/lib/queries/calendar";
-import type { Channel, Task } from "@/lib/queries/types";
+import type { Channel, Task, TaskBlock } from "@/lib/queries/types";
 import { DEFAULT_TIMEZONE, minutesFromMidnight, timeInTimeZone, todayISO } from "@/lib/date";
+import { formatMinutes } from "@/lib/format";
+import { nextBlockDurationMin, remainingMin, showInUnscheduled } from "@/lib/scheduling";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { CompactTaskRow } from "@/components/tasks/compact-task-row";
 import { TimePicker } from "@/components/ui/time-picker";
-import { minutesToHHMM, useAgendaScheduling } from "./use-agenda-scheduling";
+import {
+  blockEndMin,
+  blockStartMin,
+  minutesToHHMM,
+  useAgendaScheduling,
+} from "./use-agenda-scheduling";
 
 const DEFAULT_TARGET_MIN = 18 * 60; // 18:00
 
@@ -31,31 +38,38 @@ const MIN_BLOCK_MIN = 15;
 const TZ = DEFAULT_TIMEZONE;
 
 /**
- * The day's calendar. Time-blocks are drawn as draggable/resizable cards; the
- * drop slots and dragged tasks are wired through a DndContext owned by the
- * parent day view, so tasks can be dragged straight from the list on the left.
+ * The day's calendar. Each time-block is drawn as a draggable/resizable card; a
+ * task can have several. Dragging a task from the list creates a new block;
+ * dragging a block moves it. The drop slots and dragged items are wired through
+ * a DndContext owned by the parent day view.
  */
 export function AgendaView({
   date,
   tasks,
+  blocksByTask,
   channelsById,
   activeTask,
+  activeBlockId,
 }: {
   date: string;
   tasks: Task[];
+  blocksByTask: Map<string, TaskBlock[]>;
   channelsById: Map<string, Channel>;
-  /** The task currently being dragged in the parent context (null when idle). */
+  /** The task/block currently being dragged in the parent context (null when idle). */
   activeTask: Task | null;
+  activeBlockId: string | null;
 }) {
   const me = useMe().data;
-  const { setBlock, unschedule, connected } = useAgendaScheduling(date);
+  const { scheduleNewBlock, resizeBlock, removeBlock, connected } = useAgendaScheduling(date);
   const calendarQ = useCalendarEvents(date, connected);
-  // Hide events we created from our own time-blocks — they're already drawn as
-  // planned blocks, so this avoids showing each synced task twice.
-  const ownEventIds = useMemo(
-    () => new Set(tasks.map((t) => t.gcal_event_id).filter((id): id is string => !!id)),
-    [tasks],
-  );
+  // Hide events we created from our own blocks — they're already drawn as
+  // planned blocks, so this avoids showing each synced session twice.
+  const ownEventIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const arr of blocksByTask.values())
+      for (const b of arr) if (b.gcal_event_id) s.add(b.gcal_event_id);
+    return s;
+  }, [blocksByTask]);
   const events = useMemo(
     () => (calendarQ.data ?? []).filter((e) => !ownEventIds.has(e.id)),
     [calendarQ.data, ownEventIds],
@@ -64,17 +78,21 @@ export function AgendaView({
   const upsertNote = useUpsertDailyNote(date);
   const targetMin = noteQ.data?.end_target_min ?? DEFAULT_TARGET_MIN;
 
-  const scheduled = useMemo(
-    () =>
-      tasks
-        .filter((t) => t.block_start)
-        .sort(
-          (a, b) =>
-            minutesFromMidnight(a.block_start!, TZ) - minutesFromMidnight(b.block_start!, TZ),
-        ),
-    [tasks],
+  // Every block of every task, flattened and sorted by start, for the grid.
+  const scheduled = useMemo(() => {
+    const items: { task: Task; block: TaskBlock }[] = [];
+    for (const task of tasks) {
+      for (const block of blocksByTask.get(task.id) ?? []) items.push({ task, block });
+    }
+    return items.sort((a, b) => blockStartMin(a.block) - blockStartMin(b.block));
+  }, [tasks, blocksByTask]);
+
+  // Tasks with time still to place (keep showing until blocks cover the estimate).
+  const unscheduled = useMemo(
+    () => tasks.filter((t) => showInUnscheduled(t.time_estimate_min, blocksByTask.get(t.id) ?? [])),
+    [tasks, blocksByTask],
   );
-  const unscheduled = useMemo(() => tasks.filter((t) => !t.block_start), [tasks]);
+
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   const slots = Array.from(
     { length: ((END_HOUR - START_HOUR) * 60) / SLOT_MIN },
@@ -97,28 +115,25 @@ export function AgendaView({
 
   function schedule(task: Task, time: string) {
     const [h, m] = time.split(":").map(Number);
-    const start = h * 60 + m;
-    const dur =
-      task.block_start && task.block_end
-        ? minutesFromMidnight(task.block_end, TZ) - minutesFromMidnight(task.block_start, TZ)
-        : (task.time_estimate_min ?? 30);
-    setBlock(task, start, start + dur);
-  }
-
-  // Pack my unscheduled tasks back-to-back so the last one ends at the target time.
-  function autoSchedule() {
-    const mine = unscheduled.filter((t) => t.owner_id === me?.id && t.status === "todo");
-    if (mine.length === 0) return;
-    const total = mine.reduce((sum, t) => sum + (t.time_estimate_min ?? 30), 0);
-    let cursor = targetMin - total;
-    for (const t of mine) {
-      const dur = t.time_estimate_min ?? 30;
-      setBlock(t, cursor, cursor + dur);
-      cursor += dur;
-    }
+    const dur = nextBlockDurationMin(task.time_estimate_min, blocksByTask.get(task.id) ?? []);
+    scheduleNewBlock(task, h * 60 + m, dur);
   }
 
   const myUnscheduled = unscheduled.filter((t) => t.owner_id === me?.id && t.status === "todo");
+
+  // Pack my still-unscheduled time back-to-back so the last block ends at target.
+  function autoSchedule() {
+    if (myUnscheduled.length === 0) return;
+    const durations = myUnscheduled.map((t) =>
+      nextBlockDurationMin(t.time_estimate_min, blocksByTask.get(t.id) ?? []),
+    );
+    const total = durations.reduce((sum, d) => sum + d, 0);
+    let cursor = targetMin - total;
+    myUnscheduled.forEach((t, i) => {
+      scheduleNewBlock(t, cursor, durations[i]);
+      cursor += durations[i];
+    });
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -146,26 +161,35 @@ export function AgendaView({
       {unscheduled.length > 0 && (
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-3 shadow-soft lg:hidden">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">
-            Sin horario · arrastrá al calendario
+            Sin agendar · arrastrá al calendario
           </p>
-          {unscheduled.map((t) => (
-            <div key={t.id} className="flex items-center gap-2">
-              <DragHandle task={t} />
-              <div className="min-w-0 flex-1">
-                <CompactTaskRow
-                  task={t}
-                  channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
+          {unscheduled.map((t) => {
+            const rem = remainingMin(t.time_estimate_min, blocksByTask.get(t.id) ?? []);
+            const hasBlocks = (blocksByTask.get(t.id) ?? []).length > 0;
+            return (
+              <div key={t.id} className="flex items-center gap-2">
+                <DragHandle task={t} />
+                <div className="min-w-0 flex-1">
+                  <CompactTaskRow
+                    task={t}
+                    channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
+                  />
+                </div>
+                {hasBlocks && rem != null && (
+                  <span className="shrink-0 text-[11px] font-medium text-accent">
+                    {formatMinutes(rem)} rest.
+                  </span>
+                )}
+                <TimePicker
+                  value={null}
+                  placeholder="Agendar"
+                  align="right"
+                  onChange={(v) => schedule(t, v)}
+                  className="shrink-0"
                 />
               </div>
-              <TimePicker
-                value={null}
-                placeholder="Agendar"
-                align="right"
-                onChange={(v) => schedule(t, v)}
-                className="shrink-0"
-              />
-            </div>
-          ))}
+            );
+          })}
         </section>
       )}
 
@@ -204,12 +228,12 @@ export function AgendaView({
             </div>
           ))}
 
-          {/* Drop slots (every 30 min) — receive dragged tasks. */}
+          {/* Drop slots (every 30 min) — receive dragged tasks/blocks. */}
           {slots.map((min) => (
             <DropSlot key={min} min={min} dragging={!!activeTask} />
           ))}
 
-          {/* Google Calendar events (read-only) — under the planned time-blocks. */}
+          {/* Google Calendar events (read-only) — under the planned blocks. */}
           {events
             .filter((e) => !e.allDay && e.start)
             .map((e) => {
@@ -242,14 +266,15 @@ export function AgendaView({
               );
             })}
 
-          {scheduled.map((t) => (
+          {scheduled.map(({ task, block }) => (
             <ScheduledBlock
-              key={t.id}
-              task={t}
-              channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-              onUnschedule={() => unschedule(t)}
-              onResize={(endMin) => setBlock(t, minutesFromMidnight(t.block_start!, TZ), endMin)}
-              dragging={activeTask?.id === t.id}
+              key={block.id}
+              task={task}
+              block={block}
+              channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
+              onUnschedule={() => removeBlock(block)}
+              onResize={(endMin) => resizeBlock(block, endMin)}
+              dragging={activeBlockId === block.id}
             />
           ))}
 
@@ -309,23 +334,25 @@ function DropSlot({ min, dragging }: { min: number; dragging: boolean }) {
 
 function ScheduledBlock({
   task,
+  block,
   channel,
   onUnschedule,
   onResize,
   dragging,
 }: {
   task: Task;
+  block: TaskBlock;
   channel?: Channel;
   onUnschedule: () => void;
   onResize: (endMin: number) => void;
   dragging: boolean;
 }) {
   const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `task-${task.id}`,
-    data: { task },
+    id: `block-${block.id}`,
+    data: { block, task },
   });
-  const startMin = minutesFromMidnight(task.block_start!, TZ);
-  const endMin = task.block_end ? minutesFromMidnight(task.block_end!, TZ) : startMin + 30;
+  const startMin = blockStartMin(block);
+  const endMin = blockEndMin(block);
   const done = task.status === "done";
   const tc = channel?.color ?? "var(--color-primary)";
 
@@ -392,7 +419,7 @@ function ScheduledBlock({
         <button
           onClick={onUnschedule}
           onPointerDown={(e) => e.stopPropagation()}
-          aria-label="Quitar horario"
+          aria-label="Quitar este bloque"
           className="shrink-0 cursor-pointer text-muted hover:text-danger"
         >
           <X className="h-3 w-3" aria-hidden />

@@ -23,11 +23,13 @@ import { useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
+import { useBlocksForDate } from "@/lib/queries/task-blocks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { filterTasksByChannels } from "@/lib/week-filter";
-import type { Task } from "@/lib/queries/types";
+import type { Task, TaskBlock } from "@/lib/queries/types";
+import { nextBlockDurationMin } from "@/lib/scheduling";
 import { orderBetween, orderForAppend } from "@/lib/ordering";
 import { resolveCapacity } from "@/lib/capacity";
 import { cn } from "@/lib/utils";
@@ -64,6 +66,7 @@ export function DayView({ date }: { date: string }) {
   }, [date, qc]);
 
   const tasksQ = useTasksForDate(date);
+  const blocksQ = useBlocksForDate(date);
   const channelsQ = useChannels();
   const channelLookupQ = useChannelLookup();
   const profilesQ = useProfiles();
@@ -75,9 +78,13 @@ export function DayView({ date }: { date: string }) {
   const reorder = useReorderTask();
   const openDetail = useTaskDetail((s) => s.open);
   const { selected } = useChannelFilter();
-  const { scheduleAt } = useAgendaScheduling(date);
+  const { scheduleNewBlock, moveBlock } = useAgendaScheduling(date);
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
+  const blocksByTask = useMemo(
+    () => blocksQ.data ?? new Map<string, TaskBlock[]>(),
+    [blocksQ.data],
+  );
   // The list (and its reorder) honours the sidebar category filter; the day's
   // stats, capacity and agenda stay computed from the full set.
   const filtering = selected.size > 0;
@@ -116,9 +123,10 @@ export function DayView({ date }: { date: string }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  // Agenda draggables (ids like `task-…`) use the DragOverlay; list rows keep
-  // their own transform-based drag, so we only render the overlay for the agenda
-  // to avoid a double image when dragging a list card onto the calendar.
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  // Agenda draggables (ids like `task-…`/`block-…`) use the DragOverlay; list
+  // rows keep their own transform-based drag, so we only render the overlay for
+  // the agenda to avoid a double image when dragging a list card onto the grid.
   const [overlayActive, setOverlayActive] = useState(false);
 
   function resolveTask(id: string, data?: Record<string, unknown>): Task | null {
@@ -146,22 +154,32 @@ export function DayView({ date }: { date: string }) {
 
   function onDragStart(e: DragStartEvent) {
     const id = String(e.active.id);
-    setActiveTask(resolveTask(id, e.active.data.current));
-    setOverlayActive(id.startsWith("task-")); // agenda-originated drag
+    const data = e.active.data.current as { task?: Task; block?: TaskBlock } | undefined;
+    setActiveTask(resolveTask(id, data));
+    setActiveBlockId(data?.block?.id ?? null);
+    setOverlayActive(id.startsWith("task-") || id.startsWith("block-")); // agenda-originated
   }
 
   function onDragEnd(e: DragEndEvent) {
     setActiveTask(null);
+    setActiveBlockId(null);
     setOverlayActive(false);
     const { active, over } = e;
     if (!over) return;
     const overId = String(over.id);
-    const task = resolveTask(String(active.id), active.data.current);
+    const data = active.data.current as { task?: Task; block?: TaskBlock } | undefined;
+    const task = resolveTask(String(active.id), data);
     if (!task) return;
 
-    // Dropped on a calendar slot → schedule (covers list → calendar and moves).
+    // Dropped on a calendar slot → move that block, or create a new one.
     if (overId.startsWith("slot-")) {
-      scheduleAt(task, Number(overId.slice(5)));
+      const slotMin = Number(overId.slice(5));
+      if (data?.block) {
+        moveBlock(data.block, slotMin);
+      } else {
+        const dur = nextBlockDurationMin(task.time_estimate_min, blocksByTask.get(task.id) ?? []);
+        scheduleNewBlock(task, slotMin, dur);
+      }
       return;
     }
 
@@ -224,6 +242,7 @@ export function DayView({ date }: { date: string }) {
         onDragEnd={onDragEnd}
         onDragCancel={() => {
           setActiveTask(null);
+          setActiveBlockId(null);
           setOverlayActive(false);
         }}
       >
@@ -254,8 +273,10 @@ export function DayView({ date }: { date: string }) {
             <AgendaView
               date={date}
               tasks={tasks}
+              blocksByTask={blocksByTask}
               channelsById={channelsById}
               activeTask={activeTask}
+              activeBlockId={activeBlockId}
             />
           </div>
         </div>

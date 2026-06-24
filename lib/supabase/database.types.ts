@@ -444,6 +444,54 @@ export type Database = {
           },
         ];
       };
+      task_blocks: {
+        Row: {
+          created_at: string;
+          end_at: string;
+          gcal_event_id: string | null;
+          gcal_synced_at: string | null;
+          household_id: string;
+          id: string;
+          start_at: string;
+          task_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          end_at: string;
+          gcal_event_id?: string | null;
+          gcal_synced_at?: string | null;
+          household_id?: string;
+          id?: string;
+          start_at: string;
+          task_id: string;
+        };
+        Update: {
+          created_at?: string;
+          end_at?: string;
+          gcal_event_id?: string | null;
+          gcal_synced_at?: string | null;
+          household_id?: string;
+          id?: string;
+          start_at?: string;
+          task_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "task_blocks_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_blocks_task_id_fkey";
+            columns: ["task_id"];
+            isOneToOne: false;
+            referencedRelation: "tasks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       task_comments: {
         Row: {
           author_id: string;

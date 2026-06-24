@@ -1,10 +1,11 @@
 "use client";
 
 import { useMe } from "@/lib/queries/profiles";
-import { useUpdateTask } from "@/lib/queries/tasks";
-import { syncTaskCalendar } from "@/lib/queries/calendar";
+import { useCreateBlock, useDeleteBlock, useUpdateBlock } from "@/lib/queries/task-blocks";
+import { syncBlockCalendar } from "@/lib/queries/calendar";
+import { blockDurationMin } from "@/lib/scheduling";
 import { DEFAULT_TIMEZONE, blockInstant, minutesFromMidnight } from "@/lib/date";
-import type { Task } from "@/lib/queries/types";
+import type { Task, TaskBlock } from "@/lib/queries/types";
 
 const TZ = DEFAULT_TIMEZONE;
 
@@ -15,56 +16,78 @@ export function minutesToHHMM(min: number) {
 }
 
 /**
- * Scheduling actions shared by the day's task list (drag a task onto the
- * calendar) and the agenda itself (time pickers, drag-move, resize, auto-pack).
- * Every write mirrors the change to Google Calendar when connected — failures
- * are swallowed so a calendar hiccup never blocks the optimistic update.
+ * Scheduling actions over a task's time-blocks. A task can have several blocks
+ * (split a long task into sessions): dragging from the list creates a new
+ * block; dragging/resizing a block edits that one; the X removes that session.
+ * Each block mirrors to Google Calendar as its own event when connected —
+ * failures are swallowed so a calendar hiccup never blocks the optimistic UI.
  */
 export function useAgendaScheduling(date: string) {
-  const update = useUpdateTask();
+  const create = useCreateBlock(date);
+  const update = useUpdateBlock(date);
+  const remove = useDeleteBlock(date);
   const connected = !!useMe().data?.google_calendar_connected;
 
-  function syncUpsert(taskId: string) {
-    if (connected) syncTaskCalendar({ action: "upsert", taskId }).catch(() => {});
+  function syncUpsert(blockId: string) {
+    if (connected) syncBlockCalendar({ action: "upsert", blockId }).catch(() => {});
   }
 
-  function durationOf(task: Task) {
-    if (task.block_start && task.block_end) {
-      return minutesFromMidnight(task.block_end, TZ) - minutesFromMidnight(task.block_start, TZ);
-    }
-    return task.time_estimate_min ?? 30;
-  }
-
-  /** Set an explicit start/end block (used by drag-move and resize). */
-  function setBlock(task: Task, startMin: number, endMin: number) {
-    update.mutate(
+  /** Create a new block for a task spanning [startMin, startMin+durMin). */
+  function scheduleNewBlock(task: Task, startMin: number, durMin: number) {
+    create.mutate(
       {
-        task,
-        patch: {
-          block_start: blockInstant(date, minutesToHHMM(startMin), TZ),
-          block_end: blockInstant(date, minutesToHHMM(endMin), TZ),
-        },
+        taskId: task.id,
+        startISO: blockInstant(date, minutesToHHMM(startMin), TZ),
+        endISO: blockInstant(date, minutesToHHMM(startMin + durMin), TZ),
       },
-      { onSuccess: () => syncUpsert(task.id) },
+      { onSuccess: (block) => syncUpsert(block.id) },
     );
   }
 
-  /** Place a task starting at `startMin`, keeping its current duration. */
-  function scheduleAt(task: Task, startMin: number) {
-    setBlock(task, startMin, startMin + durationOf(task));
-  }
-
-  function unschedule(task: Task) {
-    const eventId = task.gcal_event_id;
+  /** Move a block to a new start, keeping its duration. */
+  function moveBlock(block: TaskBlock, startMin: number) {
+    const dur = blockDurationMin(block);
     update.mutate(
-      { task, patch: { block_start: null, block_end: null, gcal_event_id: null } },
       {
-        onSuccess: () => {
-          if (connected && eventId) syncTaskCalendar({ action: "delete", eventId }).catch(() => {});
-        },
+        block,
+        startISO: blockInstant(date, minutesToHHMM(startMin), TZ),
+        endISO: blockInstant(date, minutesToHHMM(startMin + dur), TZ),
       },
+      { onSuccess: (b) => syncUpsert(b.id) },
     );
   }
 
-  return { scheduleAt, setBlock, unschedule, durationOf, connected };
+  /** Resize a block: keep its start, set a new end. */
+  function resizeBlock(block: TaskBlock, endMin: number) {
+    update.mutate(
+      {
+        block,
+        startISO: block.start_at,
+        endISO: blockInstant(date, minutesToHHMM(endMin), TZ),
+      },
+      { onSuccess: (b) => syncUpsert(b.id) },
+    );
+  }
+
+  /** Remove one block (and its calendar event). */
+  function removeBlock(block: TaskBlock) {
+    const eventId = block.gcal_event_id;
+    remove.mutate(block, {
+      onSuccess: () => {
+        if (connected && eventId) syncBlockCalendar({ action: "delete", eventId }).catch(() => {});
+      },
+    });
+  }
+
+  return { scheduleNewBlock, moveBlock, resizeBlock, removeBlock, connected };
+}
+
+/** Minutes-from-midnight of a block's start, in the household timezone. */
+export function blockStartMin(block: TaskBlock): number {
+  return minutesFromMidnight(block.start_at, TZ);
+}
+
+/** Minutes-from-midnight of a block's end, in the household timezone. */
+export function blockEndMin(block: TaskBlock): number {
+  return minutesFromMidnight(block.end_at, TZ);
 }

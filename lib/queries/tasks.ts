@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { profileKeys } from "./profiles";
-import { syncTaskCalendar } from "./calendar";
+import { syncBlockCalendar } from "./calendar";
 import type { Profile, Task } from "./types";
 
 export const taskKeys = {
@@ -367,11 +367,18 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: async (task: Task): Promise<void> => {
       const supabase = createClient();
+      // Grab the blocks' calendar event ids before the cascade removes them.
+      const { data: blocks } = await supabase
+        .from("task_blocks")
+        .select("gcal_event_id")
+        .eq("task_id", task.id);
       const { error } = await supabase.from("tasks").delete().eq("id", task.id);
       if (error) throw error;
-      // Remove its Google Calendar event too (only if it was ever synced).
-      if (task.gcal_event_id) {
-        syncTaskCalendar({ action: "delete", eventId: task.gcal_event_id }).catch(() => {});
+      // Remove each block's Google Calendar event too.
+      for (const b of blocks ?? []) {
+        if (b.gcal_event_id) {
+          syncBlockCalendar({ action: "delete", eventId: b.gcal_event_id }).catch(() => {});
+        }
       }
     },
     onMutate: async (task) => {
@@ -384,11 +391,17 @@ export function useDeleteTask() {
     onError: (_e, _v, ctx) => {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
-    onSettled: (_d, _e, task) => qc.invalidateQueries({ queryKey: listKey(task.planned_date) }),
+    onSettled: (_d, _e, task) => {
+      qc.invalidateQueries({ queryKey: listKey(task.planned_date) });
+      if (task.planned_date) {
+        qc.invalidateQueries({ queryKey: ["blocks", "date", task.planned_date] });
+      }
+    },
   });
 }
 
-/** Move a task to a different day (Week drag-and-drop). Clears any time-block. */
+/** Move a task to a different day (Week drag-and-drop). Drops its time-blocks
+ *  (they belonged to the old day); the DB trigger clears block_start/end. */
 export function useMoveTaskToDate() {
   const qc = useQueryClient();
   return useMutation({
@@ -402,9 +415,22 @@ export function useMoveTaskToDate() {
       sortOrder: number;
     }): Promise<void> => {
       const supabase = createClient();
+      // Remove the task's blocks (and their calendar events) from the old day.
+      const { data: blocks } = await supabase
+        .from("task_blocks")
+        .select("gcal_event_id")
+        .eq("task_id", task.id);
+      if (blocks && blocks.length > 0) {
+        await supabase.from("task_blocks").delete().eq("task_id", task.id);
+        for (const b of blocks) {
+          if (b.gcal_event_id) {
+            syncBlockCalendar({ action: "delete", eventId: b.gcal_event_id }).catch(() => {});
+          }
+        }
+      }
       const { error } = await supabase
         .from("tasks")
-        .update({ planned_date: toDate, sort_order: sortOrder, block_start: null, block_end: null })
+        .update({ planned_date: toDate, sort_order: sortOrder })
         .eq("id", task.id);
       if (error) throw error;
     },
@@ -439,6 +465,9 @@ export function useMoveTaskToDate() {
     onSettled: (_d, _e, { task, toDate }) => {
       qc.invalidateQueries({ queryKey: listKey(task.planned_date) });
       qc.invalidateQueries({ queryKey: listKey(toDate) });
+      if (task.planned_date) {
+        qc.invalidateQueries({ queryKey: ["blocks", "date", task.planned_date] });
+      }
     },
   });
 }

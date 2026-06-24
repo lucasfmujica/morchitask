@@ -209,3 +209,63 @@ select cron.schedule(
 1. **Recordatorios:** en una tarea con horario, **Detalle → Recordatorio → 5 min antes**. Activá **Ajustes → Notificaciones → Recordatorios de tareas**. Avisame y disparo `send-reminders` a mano con una tarea de `remind_at` pasado.
 2. **Colaboración:** abrí una tarea **compartida** → escribí un comentario y reaccioná; Sofi debería verlo. Completá una tarea compartida → aparecen los kudos en la card.
 3. **Presencia:** arrancá el cronómetro de una tarea compartida; en el dispositivo de Sofi debería aparecer la barra "Lucas está en: …".
+
+---
+
+# Fase 7 — Agendar una tarea en varios bloques
+
+Ahora una tarea puede ir **varias veces** en la agenda (ej. 2h partidas en 2 sesiones de 1h). La tarea queda en "sin agendar" mostrando el **tiempo restante** hasta cubrir su estimación; la arrastrás de nuevo para poner otro bloque.
+
+Por debajo: nueva tabla `task_blocks` (fuente de verdad), un trigger que mantiene `tasks.block_start/end` en el bloque más temprano (para tarjeta/recordatorios/semana), y **un evento de Google Calendar por bloque**.
+
+## A) Migración (`add_task_blocks`)
+
+```sql
+create table public.task_blocks (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null default app_private.current_household_id() references public.households(id) on delete cascade,
+  task_id uuid not null references public.tasks(id) on delete cascade,
+  start_at timestamptz not null,
+  end_at timestamptz not null,
+  gcal_event_id text,
+  gcal_synced_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table public.task_blocks enable row level security;
+create policy task_blocks_all on public.task_blocks for all
+  using (household_id = app_private.current_household_id())
+  with check (household_id = app_private.current_household_id());
+create index task_blocks_task_idx on public.task_blocks (task_id);
+create index task_blocks_start_idx on public.task_blocks (start_at);
+
+create or replace function app_private.sync_task_primary_block()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_task_id uuid := coalesce(new.task_id, old.task_id);
+  v_start timestamptz; v_end timestamptz;
+begin
+  select b.start_at, b.end_at into v_start, v_end
+  from public.task_blocks b where b.task_id = v_task_id
+  order by b.start_at asc limit 1;
+  update public.tasks set block_start = v_start, block_end = v_end where id = v_task_id;
+  return null;
+end; $$;
+create trigger task_blocks_sync_primary
+  after insert or update or delete on public.task_blocks
+  for each row execute function app_private.sync_task_primary_block();
+
+-- backfill one block per currently-scheduled task; move gcal to the block
+insert into public.task_blocks (household_id, task_id, start_at, end_at, gcal_event_id, gcal_synced_at)
+select household_id, id, block_start, block_end, gcal_event_id, gcal_synced_at
+from public.tasks where block_start is not null and block_end is not null;
+update public.tasks set gcal_event_id = null, gcal_synced_at = null where gcal_event_id is not null;
+```
+
+## B) Deploy
+
+- Redeploy de la edge function `google-calendar-write` (ahora hace upsert por `blockId`, un evento por bloque).
+- Push del front (Vercel) — conviene deployar la función **después** de que el front nuevo esté arriba (la versión vieja del front sincronizaba por `taskId`).
+
+## C) Probar
+
+En **Hoy → Agenda**: arrastrá una tarea de 2h al calendario (queda 1 bloque), fijate que sigue en la lista con "1h rest.", y arrastrala de nuevo a otra hora → segundo bloque. La X en un bloque borra solo ese bloque. En Google Calendar deberían aparecer **dos eventos**.

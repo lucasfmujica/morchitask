@@ -1,5 +1,6 @@
-// Writes a task's time-block to the caller's PRIMARY Google Calendar (2-way sync).
-// upsert: create/update the event for a task and store its id back on the task.
+// Writes a single time-BLOCK to the caller's PRIMARY Google Calendar (2-way sync).
+// A task can have several blocks, each its own event.
+// upsert: create/update the event for a block and store its id back on the block.
 // delete: remove an event by id. Shared tasks invite the household partner.
 // Security: the refresh token is read with the service role (client never sees it).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -85,28 +86,18 @@ Deno.serve(async (req) => {
 
     if (action !== "upsert") return json({ error: "bad_action" }, 400);
 
-    const taskId = body.taskId as string;
-    const { data: task } = await userClient
-      .from("tasks")
-      .select("id, title, block_start, block_end, gcal_event_id, shared, household_id")
-      .eq("id", taskId)
+    const blockId = body.blockId as string;
+    const { data: block } = await userClient
+      .from("task_blocks")
+      .select("id, start_at, end_at, gcal_event_id, tasks!inner(title, shared, household_id)")
+      .eq("id", blockId)
       .maybeSingle();
-    if (!task) return json({ error: "task_not_found" }, 404);
-
-    // No block anymore → make sure any existing event is removed.
-    if (!task.block_start || !task.block_end) {
-      if (task.gcal_event_id) {
-        await fetch(`${EVENTS}/${encodeURIComponent(task.gcal_event_id)}?${NOTIFY}`, {
-          method: "DELETE",
-          headers: auth,
-        });
-        await admin
-          .from("tasks")
-          .update({ gcal_event_id: null, gcal_synced_at: new Date().toISOString() })
-          .eq("id", task.id);
-      }
-      return json({ ok: true });
-    }
+    if (!block) return json({ error: "block_not_found" }, 404);
+    const task = block.tasks as unknown as {
+      title: string;
+      shared: boolean;
+      household_id: string | null;
+    };
 
     // Shared task → invite the other household member (read email via service role).
     let attendees: { email: string }[] = [];
@@ -126,14 +117,14 @@ Deno.serve(async (req) => {
 
     const eventBody = {
       summary: task.title,
-      start: { dateTime: task.block_start, timeZone: TZ },
-      end: { dateTime: task.block_end, timeZone: TZ },
+      start: { dateTime: block.start_at, timeZone: TZ },
+      end: { dateTime: block.end_at, timeZone: TZ },
       // Always set attendees explicitly so un-sharing later clears the guest.
       attendees,
       source: { title: "Morchitask", url: APP_URL },
     };
 
-    let eventId: string | null = task.gcal_event_id;
+    let eventId: string | null = block.gcal_event_id;
     let res: Response;
     if (eventId) {
       res = await fetch(`${EVENTS}/${encodeURIComponent(eventId)}?${NOTIFY}`, {
@@ -157,9 +148,9 @@ Deno.serve(async (req) => {
     }
 
     await admin
-      .from("tasks")
+      .from("task_blocks")
       .update({ gcal_event_id: evJson.id, gcal_synced_at: new Date().toISOString() })
-      .eq("id", task.id);
+      .eq("id", block.id);
     return json({ ok: true, eventId: evJson.id });
   } catch (e) {
     return json({ error: String(e) }, 500);
