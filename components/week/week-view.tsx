@@ -25,7 +25,7 @@ import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
-import { filterTasksByChannels } from "@/lib/week-filter";
+import { filterTasksByChannels, sortDoneLast } from "@/lib/week-filter";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -219,7 +219,7 @@ export function WeekView({ date }: { date: string }) {
                   date={d}
                   today={today}
                   weekend={i >= 5}
-                  tasks={filterTasksByChannels(all, selected)}
+                  tasks={sortDoneLast(filterTasksByChannels(all, selected))}
                   subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
                   channelsById={channelsById}
                   profilesById={profilesById}

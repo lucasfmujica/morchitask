@@ -1,10 +1,15 @@
 import { describe, it, expect } from "vitest";
 import type { Task } from "@/lib/queries/types";
-import { completionPct, filterTasksByChannels } from "./week-filter";
+import { completionPct, filterTasksByChannels, sortDoneLast } from "./week-filter";
 
 /** Minimal task factory — only the field the filter reads. */
 function task(channel_id: string | null): Task {
   return { id: channel_id ?? "none", channel_id } as Task;
+}
+
+/** Minimal task with an id + status, for the done-last ordering. */
+function statusTask(id: string, status: "todo" | "done"): Task {
+  return { id, status } as Task;
 }
 
 describe("filterTasksByChannels", () => {
@@ -31,6 +36,25 @@ describe("filterTasksByChannels", () => {
 
   it("includes uncategorized tasks only when the set is empty", () => {
     expect(filterTasksByChannels(tasks, new Set())).toContain(none);
+  });
+});
+
+describe("sortDoneLast", () => {
+  it("moves done tasks to the bottom, keeping each group's order", () => {
+    const a = statusTask("a", "todo");
+    const b = statusTask("b", "done");
+    const c = statusTask("c", "todo");
+    const d = statusTask("d", "done");
+    expect(sortDoneLast([a, b, c, d])).toEqual([a, c, b, d]);
+  });
+  it("returns the list unchanged when all share a status", () => {
+    const a = statusTask("a", "todo");
+    const b = statusTask("b", "todo");
+    const all = [a, b];
+    expect(sortDoneLast(all)).toBe(all); // same reference, no needless copy
+  });
+  it("handles an empty list", () => {
+    expect(sortDoneLast([])).toEqual([]);
   });
 });
 

@@ -27,7 +27,7 @@ import { useBlocksForDate } from "@/lib/queries/task-blocks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useChannelFilter } from "@/lib/channel-filter";
-import { filterTasksByChannels } from "@/lib/week-filter";
+import { filterTasksByChannels, sortDoneLast } from "@/lib/week-filter";
 import type { Task, TaskBlock } from "@/lib/queries/types";
 import { nextBlockDurationMin } from "@/lib/scheduling";
 import { orderBetween, orderForAppend } from "@/lib/ordering";
@@ -90,7 +90,11 @@ export function DayView({ date }: { date: string }) {
   // The list (and its reorder) honours the sidebar category filter; the day's
   // stats, capacity and agenda stay computed from the full set.
   const filtering = selected.size > 0;
-  const visibleTasks = useMemo(() => filterTasksByChannels(tasks, selected), [tasks, selected]);
+  // Filter by category, then sink completed tasks to the bottom (display-only).
+  const visibleTasks = useMemo(
+    () => sortDoneLast(filterTasksByChannels(tasks, selected)),
+    [tasks, selected],
+  );
   const myTasks = useMemo(() => tasks.filter((t) => t.owner_id === me?.id), [tasks, me?.id]);
   const myPlannedMin = useMemo(
     () => myTasks.reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0),

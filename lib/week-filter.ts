@@ -18,3 +18,15 @@ export function completionPct(done: number, total: number): number {
   if (total <= 0) return 0;
   return Math.round((done / total) * 100);
 }
+
+/**
+ * Move completed tasks to the bottom, keeping each group's existing order.
+ * Display-only (doesn't touch sort_order) so finishing a task sinks it to the
+ * end and un-checking it pops it back to where it was. Stable partition.
+ */
+export function sortDoneLast(tasks: Task[]): Task[] {
+  const open: Task[] = [];
+  const done: Task[] = [];
+  for (const t of tasks) (t.status === "done" ? done : open).push(t);
+  return open.length === 0 || done.length === 0 ? tasks : [...open, ...done];
+}
