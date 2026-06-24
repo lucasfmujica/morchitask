@@ -12,16 +12,19 @@ type ChannelFilter = {
 
 const ChannelFilterContext = createContext<ChannelFilter | null>(null);
 
-/** First path segment, e.g. "week" for /week/2026-06-23 or "today" for /today. */
+/** First path segment, e.g. "week" for /week/2026-06-23 or "today" for /today.
+ *  The Day area lives at both /today and /day/<date>, so treat them as one
+ *  section — paging between days keeps the category filter instead of resetting. */
 function sectionOf(pathname: string) {
-  return pathname.split("/")[1] ?? "";
+  const seg = pathname.split("/")[1] ?? "";
+  return seg === "day" ? "today" : seg;
 }
 
 /**
  * Shares the category filter between the sidebar (where you pick categories) and
- * the views that consume it (currently the Week view). The filter is scoped to a
- * section: it persists while you page between weeks but resets when you switch to
- * a different area (Hoy, Backlog…), so a hidden filter never lingers unseen.
+ * the views that consume it (Día, Semana, Backlog). The filter is scoped to a
+ * section: it persists while you page within an area but resets when you switch
+ * to a different one, so a hidden filter never lingers unseen.
  */
 export function ChannelFilterProvider({ children }: { children: ReactNode }) {
   const section = sectionOf(usePathname());

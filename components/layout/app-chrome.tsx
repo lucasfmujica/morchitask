@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,16 +9,14 @@ import {
   CalendarDays,
   CalendarRange,
   Inbox,
-  Plus,
   Repeat,
   Settings,
   Target,
   Timer,
-  X,
 } from "lucide-react";
-import { CHANNEL_COLORS, useChannels, useCreateChannel } from "@/lib/queries/channels";
+import { useChannels } from "@/lib/queries/channels";
 import { useMe } from "@/lib/queries/profiles";
-import { ChannelFilterProvider, useChannelFilter } from "@/lib/channel-filter";
+import { ChannelFilterProvider } from "@/lib/channel-filter";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
@@ -27,6 +25,7 @@ import { WeekCalendarRail } from "@/components/week/week-calendar-rail";
 import { CommandPalette } from "./command-palette";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { MobileRitualIcons, SidebarRituals } from "./ritual-nav";
+import { SidebarChannels } from "./sidebar-channels";
 import { SignOutButton } from "./sign-out-button";
 import { TimerBar } from "./timer-bar";
 
@@ -148,6 +147,12 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
   const channelsQ = useChannels();
   const me = useMe().data;
   const onWeek = pathname.startsWith("/week");
+  // Views where clicking a category filters the task list.
+  const filterable =
+    pathname.startsWith("/today") ||
+    pathname.startsWith("/day") ||
+    onWeek ||
+    pathname.startsWith("/backlog");
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-surface/50 md:flex">
@@ -180,7 +185,7 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
           </div>
         )}
 
-        <ChannelsSection channels={channelsQ.data ?? []} filterable={onWeek} />
+        <SidebarChannels channels={channelsQ.data ?? []} filterable={filterable} />
       </div>
 
       {/* Pinned bottom — Ajustes + perfil, siempre visibles. */}
@@ -207,130 +212,6 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
         </div>
       </div>
     </aside>
-  );
-}
-
-function ChannelsSection({
-  channels,
-  filterable,
-}: {
-  channels: { id: string; name: string; color: string }[];
-  /** On views that filter by category (Week), rows become toggle filters. */
-  filterable: boolean;
-}) {
-  const create = useCreateChannel();
-  const { selected, toggle, clear } = useChannelFilter();
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
-
-  function add() {
-    const n = name.trim();
-    if (!n) return;
-    create.mutate({ name: n, color: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length] });
-    setName("");
-    setAdding(false);
-  }
-
-  const filtering = filterable && selected.size > 0;
-
-  return (
-    <div className="mt-5 flex flex-col px-3 pb-2">
-      <div className="flex items-center justify-between px-2 pb-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-subtle">
-          Categorías
-        </span>
-        <button
-          onClick={() => setAdding((a) => !a)}
-          aria-label="Agregar categoría"
-          className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-fg"
-        >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      </div>
-
-      <ul className="flex flex-col gap-0.5">
-        {filtering && (
-          <li>
-            <button
-              onClick={clear}
-              className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm font-medium text-primary transition-colors hover:bg-surface-2"
-            >
-              <X className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span className="truncate">Mostrar todas</span>
-            </button>
-          </li>
-        )}
-        {channels.map((c) => {
-          if (!filterable) {
-            return (
-              <li
-                key={c.id}
-                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-muted"
-              >
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: c.color }}
-                  aria-hidden
-                />
-                <span className="truncate">{c.name}</span>
-              </li>
-            );
-          }
-          const on = selected.has(c.id);
-          return (
-            <li key={c.id}>
-              <button
-                onClick={() => toggle(c.id)}
-                aria-pressed={on}
-                className={cn(
-                  "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm transition-colors",
-                  on
-                    ? "bg-surface-2 font-semibold text-fg"
-                    : "text-muted hover:bg-surface-2 hover:text-fg",
-                )}
-              >
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full transition-all"
-                  style={{
-                    backgroundColor: c.color,
-                    ...(on
-                      ? { boxShadow: `0 0 0 2px var(--surface), 0 0 0 3.5px ${c.color}` }
-                      : {}),
-                  }}
-                  aria-hidden
-                />
-                <span className="truncate">{c.name}</span>
-              </button>
-            </li>
-          );
-        })}
-        {adding && (
-          <li className="flex items-center gap-2.5 rounded-lg px-2 py-1">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length] }}
-              aria-hidden
-            />
-            <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={add}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") add();
-                if (e.key === "Escape") {
-                  setName("");
-                  setAdding(false);
-                }
-              }}
-              placeholder="Nombre de la categoría…"
-              aria-label="Nueva categoría"
-              className="w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
-            />
-          </li>
-        )}
-      </ul>
-    </div>
   );
 }
 

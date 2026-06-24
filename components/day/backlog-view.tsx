@@ -6,6 +6,8 @@ import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/
 import { useProfiles } from "@/lib/queries/profiles";
 import { useBacklogTasks, useCreateTask, useReorderTask } from "@/lib/queries/tasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
+import { useChannelFilter } from "@/lib/channel-filter";
+import { filterTasksByChannels } from "@/lib/week-filter";
 import type { Task } from "@/lib/queries/types";
 import { orderForAppend } from "@/lib/ordering";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
@@ -19,8 +21,11 @@ export function BacklogView() {
   const create = useCreateTask();
   const reorder = useReorderTask();
   const openDetail = useTaskDetail((s) => s.open);
+  const { selected } = useChannelFilter();
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
+  const filtering = selected.size > 0;
+  const visibleTasks = useMemo(() => filterTasksByChannels(tasks, selected), [tasks, selected]);
   // Chips resolve against all household categories; composer uses only mine.
   const channelsById = channelLookupQ.data ?? EMPTY_CHANNEL_MAP;
   const profilesById = useMemo(
@@ -64,13 +69,17 @@ export function BacklogView() {
       </header>
       <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
       <TaskListSection
-        tasks={tasks}
+        tasks={visibleTasks}
         isLoading={tasksQ.isLoading}
         channelsById={channelsById}
         profilesById={profilesById}
         onReorder={handleReorder}
-        emptyTitle="Backlog despejado"
-        emptyHint="Guardá acá ideas y pendientes que todavía no tienen día."
+        emptyTitle={filtering ? "Nada en esta categoría" : "Backlog despejado"}
+        emptyHint={
+          filtering
+            ? "No hay pendientes de las categorías elegidas."
+            : "Guardá acá ideas y pendientes que todavía no tienen día."
+        }
         emptyIcon={Inbox}
       />
     </div>

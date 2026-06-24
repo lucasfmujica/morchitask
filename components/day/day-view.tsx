@@ -24,6 +24,8 @@ import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import { useTaskDetail } from "@/lib/stores/task-detail";
+import { useChannelFilter } from "@/lib/channel-filter";
+import { filterTasksByChannels } from "@/lib/week-filter";
 import type { Task } from "@/lib/queries/types";
 import { orderBetween, orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
@@ -68,9 +70,14 @@ export function DayView({ date }: { date: string }) {
   const create = useCreateTask();
   const reorder = useReorderTask();
   const openDetail = useTaskDetail((s) => s.open);
+  const { selected } = useChannelFilter();
   const { scheduleAt } = useAgendaScheduling(date);
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
+  // The list (and its reorder) honours the sidebar category filter; the day's
+  // stats, capacity and agenda stay computed from the full set.
+  const filtering = selected.size > 0;
+  const visibleTasks = useMemo(() => filterTasksByChannels(tasks, selected), [tasks, selected]);
   const myTasks = useMemo(() => tasks.filter((t) => t.owner_id === me?.id), [tasks, me?.id]);
   const myPlannedMin = useMemo(
     () => myTasks.reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0),
@@ -153,15 +160,15 @@ export function DayView({ date }: { date: string }) {
       return;
     }
 
-    // Otherwise it's a reorder within the list.
+    // Otherwise it's a reorder within the (possibly filtered) visible list.
     if (active.id === over.id) return;
-    const oldIndex = tasks.findIndex((t) => t.id === active.id);
-    const newIndex = tasks.findIndex((t) => t.id === over.id);
+    const oldIndex = visibleTasks.findIndex((t) => t.id === active.id);
+    const newIndex = visibleTasks.findIndex((t) => t.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
-    const reordered = arrayMove(tasks, oldIndex, newIndex);
+    const reordered = arrayMove(visibleTasks, oldIndex, newIndex);
     const before = reordered[newIndex - 1]?.sort_order ?? null;
     const after = reordered[newIndex + 1]?.sort_order ?? null;
-    handleReorder(tasks[oldIndex], orderBetween(before, after));
+    handleReorder(visibleTasks[oldIndex], orderBetween(before, after));
   }
 
   return (
@@ -218,14 +225,18 @@ export function DayView({ date }: { date: string }) {
           <div className={cn("space-y-3 lg:block", mode === "list" ? "block" : "hidden")}>
             <CalendarEventsSection date={date} tasks={tasks} />
             <TaskListSection
-              tasks={tasks}
+              tasks={visibleTasks}
               isLoading={tasksQ.isLoading}
               channelsById={channelsById}
               profilesById={profilesById}
               subtasksByTaskId={subtasksByTaskId}
               onReorder={handleReorder}
-              emptyTitle="Tu día está en blanco"
-              emptyHint="Elegí unas pocas cosas para hoy y planificá con calma."
+              emptyTitle={filtering ? "Nada en esta categoría" : "Tu día está en blanco"}
+              emptyHint={
+                filtering
+                  ? "No hay tareas de las categorías elegidas para hoy."
+                  : "Elegí unas pocas cosas para hoy y planificá con calma."
+              }
               emptyIcon={Sparkles}
               hosted
             />

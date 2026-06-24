@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { orderForAppend } from "@/lib/ordering";
 import type { Channel } from "./types";
 
 export const channelKeys = {
@@ -89,10 +90,14 @@ export function useCreateChannel() {
   return useMutation({
     mutationFn: async (input: { name: string; color: string; icon?: string }) => {
       const supabase = createClient();
+      // Append after my current categories with a spaced sort_order, so the new
+      // one lands at the end and drag-reordering keeps room between neighbours.
+      const existing = qc.getQueryData<Channel[]>(channelKeys.all) ?? [];
+      const sort_order = orderForAppend(existing.map((c) => c.sort_order));
       // household_id defaults to the caller's household (DB default + RLS).
       const { data, error } = await supabase
         .from("channels")
-        .insert({ name: input.name, color: input.color, icon: input.icon })
+        .insert({ name: input.name, color: input.color, icon: input.icon, sort_order })
         .select()
         .single();
       if (error) throw error;
@@ -111,6 +116,50 @@ export function useUpdateChannel() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: channelKeys.all }),
+  });
+}
+
+/**
+ * Persist a new category order after a drag. Takes the full ordered list of ids
+ * and renumbers them to evenly spaced values (1000, 2000, …). Renumbering the
+ * whole (short) list — rather than writing one fractional value — keeps ordering
+ * well-defined even when older rows shared a sort_order. Optimistic so the
+ * sidebar reorders instantly.
+ */
+export function useReorderChannels() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      const supabase = createClient();
+      const results = await Promise.all(
+        orderedIds.map((id, i) =>
+          supabase
+            .from("channels")
+            .update({ sort_order: (i + 1) * 1000 })
+            .eq("id", id),
+        ),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+    },
+    onMutate: async (orderedIds) => {
+      await qc.cancelQueries({ queryKey: channelKeys.all });
+      const prev = qc.getQueryData<Channel[]>(channelKeys.all);
+      qc.setQueryData<Channel[]>(channelKeys.all, (old = []) => {
+        const byId = new Map(old.map((c) => [c.id, c]));
+        return orderedIds
+          .map((id, i) => {
+            const c = byId.get(id);
+            return c ? { ...c, sort_order: (i + 1) * 1000 } : null;
+          })
+          .filter((c): c is Channel => c !== null);
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(channelKeys.all, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: channelKeys.all }),
   });
 }
 
