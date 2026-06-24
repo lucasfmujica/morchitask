@@ -23,20 +23,18 @@ export async function GET(request: Request) {
       // primary-key clash that silently drops the whole connection.
       let credError: string | null = null;
       if (refreshToken) {
-        const { error: credErr } = await supabase
-          .from("google_credentials")
-          .upsert(
-            { owner_id: data.user.id, refresh_token: refreshToken },
-            { onConflict: "owner_id" },
-          );
+        // Store via a SECURITY DEFINER RPC: right after the OAuth exchange the
+        // request's auth.uid() isn't populated, so a direct RLS-checked insert
+        // is rejected. The RPC stores the token + flips the connected flag, and
+        // still blocks a normal client from writing another user's row.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: credErr } = await (supabase as any).rpc("connect_google_calendar", {
+          p_owner_id: data.user.id,
+          p_refresh_token: refreshToken,
+        });
         credError = credErr?.message ?? null;
         if (credErr) {
-          console.error("[auth/callback] google_credentials upsert failed:", credErr.message);
-        } else {
-          await supabase
-            .from("profiles")
-            .update({ google_calendar_connected: true })
-            .eq("id", data.user.id);
+          console.error("[auth/callback] connect_google_calendar failed:", credErr.message);
         }
       } else {
         console.warn("[auth/callback] no provider_refresh_token returned (calendar not stored)");
