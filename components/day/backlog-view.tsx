@@ -5,6 +5,7 @@ import { Inbox } from "lucide-react";
 import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useProfiles } from "@/lib/queries/profiles";
 import { useBacklogTasks, useCreateTask, useReorderTask } from "@/lib/queries/tasks";
+import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Task } from "@/lib/queries/types";
 import { orderForAppend } from "@/lib/ordering";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
@@ -17,6 +18,7 @@ export function BacklogView() {
   const profilesQ = useProfiles();
   const create = useCreateTask();
   const reorder = useReorderTask();
+  const openDetail = useTaskDetail((s) => s.open);
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
   // Chips resolve against all household categories; composer uses only mine.
@@ -27,13 +29,18 @@ export function BacklogView() {
   );
 
   function handleAdd(input: ComposerSubmit) {
-    create.mutate({
-      title: input.title,
-      plannedDate: null,
-      channelId: input.channelId,
-      timeEstimateMin: input.timeEstimateMin,
-      sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
-    });
+    create.mutate(
+      {
+        title: input.title,
+        plannedDate: null,
+        channelId: input.channelId,
+        timeEstimateMin: input.timeEstimateMin,
+        sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
+      },
+      // Open the new task's detail right away so you can flesh it out or
+      // complete it without a separate click.
+      { onSuccess: (task) => openDetail(task) },
+    );
   }
 
   function handleReorder(task: Task, sortOrder: number) {

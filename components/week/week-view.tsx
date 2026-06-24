@@ -21,6 +21,7 @@ import { tasksForDateQueryOptions, useCreateTask, useMoveTaskToDate } from "@/li
 import { subtasksForDateQueryOptions } from "@/lib/queries/subtasks";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useProfiles } from "@/lib/queries/profiles";
+import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
@@ -102,6 +103,7 @@ export function WeekView({ date }: { date: string }) {
   const channelLookupQ = useChannelLookup();
   const profilesQ = useProfiles();
   const create = useCreateTask();
+  const openDetail = useTaskDetail((s) => s.open);
   const move = useMoveTaskToDate();
 
   // Chips resolve against all household categories (incl. a partner's shared task).
@@ -223,15 +225,20 @@ export function WeekView({ date }: { date: string }) {
                   profilesById={profilesById}
                   dragging={!!activeTask}
                   onAdd={(title) =>
-                    create.mutate({
-                      title,
-                      plannedDate: d,
-                      channelId: null,
-                      timeEstimateMin: null,
-                      // Order against the full (unfiltered) day so a hidden
-                      // filter never corrupts sort positions.
-                      sortOrder: orderForAppend(all.map((t) => t.sort_order)),
-                    })
+                    create.mutate(
+                      {
+                        title,
+                        plannedDate: d,
+                        channelId: null,
+                        timeEstimateMin: null,
+                        // Order against the full (unfiltered) day so a hidden
+                        // filter never corrupts sort positions.
+                        sortOrder: orderForAppend(all.map((t) => t.sort_order)),
+                      },
+                      // Open the new task so you can flesh it out or complete it
+                      // straight away, same as the Day list.
+                      { onSuccess: (task) => openDetail(task) },
+                    )
                   }
                 />
               );

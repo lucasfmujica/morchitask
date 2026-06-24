@@ -23,6 +23,7 @@ import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
+import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Task } from "@/lib/queries/types";
 import { orderBetween, orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ export function DayView({ date }: { date: string }) {
   const me = useMe().data;
   const create = useCreateTask();
   const reorder = useReorderTask();
+  const openDetail = useTaskDetail((s) => s.open);
   const { scheduleAt } = useAgendaScheduling(date);
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
@@ -112,13 +114,18 @@ export function DayView({ date }: { date: string }) {
   }
 
   function handleAdd(input: ComposerSubmit) {
-    create.mutate({
-      title: input.title,
-      plannedDate: date,
-      channelId: input.channelId,
-      timeEstimateMin: input.timeEstimateMin,
-      sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
-    });
+    create.mutate(
+      {
+        title: input.title,
+        plannedDate: date,
+        channelId: input.channelId,
+        timeEstimateMin: input.timeEstimateMin,
+        sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
+      },
+      // Open the new task's detail right away so you can add notes, subtasks,
+      // an estimate, or complete it without hunting for the card and clicking.
+      { onSuccess: (task) => openDetail(task) },
+    );
   }
 
   function handleReorder(task: Task, sortOrder: number) {

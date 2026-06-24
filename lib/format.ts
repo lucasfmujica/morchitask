@@ -1,3 +1,10 @@
+/**
+ * Canonical time-estimate options (in minutes) for the duration picker.
+ * Covers quick tasks (15m) up to long, half-day blocks (8h) so longer work
+ * has an option too. Shared by the detail sheet picker and the card's cycle.
+ */
+export const TIME_ESTIMATES = [15, 30, 45, 60, 90, 120, 180, 240, 360, 480];
+
 /** Minutes as a compact human label: 45 → "45m", 90 → "1h 30m", 120 → "2h". */
 export function formatMinutes(min: number): string {
   if (min <= 0) return "0m";

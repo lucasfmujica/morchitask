@@ -21,14 +21,12 @@ import {
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
-import { formatClock, formatMinutes, formatDuration } from "@/lib/format";
+import { formatClock, formatMinutes, formatDuration, TIME_ESTIMATES } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
 import { useTaskTimer } from "./use-task-timer";
-
-const ESTIMATES = [15, 30, 45, 60, 90, 120];
 
 /**
  * The sheet is opened with a snapshot of the task, but edits go to the React
@@ -277,7 +275,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             label="Ninguna"
             onClick={() => update.mutate({ task, patch: { time_estimate_min: null } })}
           />
-          {ESTIMATES.map((m) => (
+          {TIME_ESTIMATES.map((m) => (
             <Chip
               key={m}
               active={task.time_estimate_min === m}

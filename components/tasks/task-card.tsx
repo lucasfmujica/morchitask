@@ -7,14 +7,13 @@ import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
-import { formatClock, formatMinutes, formatDuration } from "@/lib/format";
+import { formatClock, formatMinutes, formatDuration, TIME_ESTIMATES } from "@/lib/format";
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
 import { ObjectiveBadge } from "@/components/objectives/objective-badge";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskCheckbox } from "./task-checkbox";
 import { useTaskTimer } from "./use-task-timer";
 
-const ESTIMATES = [15, 30, 45, 60, 90];
 const TZ = DEFAULT_TIMEZONE;
 
 /** Rich, Sunsama-style task card: scheduled-time pill, duration chip, inline
@@ -48,9 +47,13 @@ export function TaskCard({
 
   function cycleEstimate() {
     const cur = task.time_estimate_min;
-    const idx = cur ? ESTIMATES.indexOf(cur) : -1;
+    const idx = cur ? TIME_ESTIMATES.indexOf(cur) : -1;
     const next =
-      idx === -1 ? ESTIMATES[0] : idx >= ESTIMATES.length - 1 ? null : ESTIMATES[idx + 1];
+      idx === -1
+        ? TIME_ESTIMATES[0]
+        : idx >= TIME_ESTIMATES.length - 1
+          ? null
+          : TIME_ESTIMATES[idx + 1];
     update.mutate({ task, patch: { time_estimate_min: next } });
   }
 
