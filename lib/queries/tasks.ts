@@ -113,6 +113,37 @@ export function useBacklogTasks() {
   return useQuery(backlogQueryOptions());
 }
 
+/** Lightweight task shape for analytics (one query over a date range). */
+export type AnalyticsTask = Pick<
+  Task,
+  "planned_date" | "status" | "time_estimate_min" | "actual_time_min" | "channel_id" | "owner_id"
+>;
+
+/**
+ * All tasks planned within [start, end] (inclusive ISO days) in ONE query —
+ * for the historical analytics in Resumen. Fetches only the columns the
+ * aggregations need so a month's range stays light.
+ */
+export function tasksInRangeQueryOptions(start: string, end: string) {
+  return {
+    queryKey: ["tasks", "range", start, end] as const,
+    queryFn: async (): Promise<AnalyticsTask[]> => {
+      const supabase = createClient();
+      const uid = await currentUserId();
+      let q = supabase
+        .from("tasks")
+        .select("planned_date, status, time_estimate_min, actual_time_min, channel_id, owner_id")
+        .gte("planned_date", start)
+        .lte("planned_date", end);
+      if (uid) q = q.or(mineOrShared(uid));
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 30_000,
+  };
+}
+
 // ------------------------------------------------------------ mutations
 
 export type NewTask = {
@@ -238,6 +269,7 @@ type TaskPatch = Pick<
   | "notes"
   | "channel_id"
   | "time_estimate_min"
+  | "actual_time_min"
   | "block_start"
   | "block_end"
   | "owner_id"

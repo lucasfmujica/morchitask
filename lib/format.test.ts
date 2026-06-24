@@ -1,5 +1,35 @@
 import { describe, it, expect } from "vitest";
-import { formatMinutes, formatClock, formatDuration } from "./format";
+import { formatMinutes, formatClock, formatDuration, parseDuration } from "./format";
+
+describe("parseDuration", () => {
+  it("reads a plain number as minutes", () => {
+    expect(parseDuration("90")).toBe(90);
+    expect(parseDuration("45")).toBe(45);
+  });
+  it("reads unit tokens in any combination", () => {
+    expect(parseDuration("90m")).toBe(90);
+    expect(parseDuration("45min")).toBe(45);
+    expect(parseDuration("1h")).toBe(60);
+    expect(parseDuration("1.5h")).toBe(90);
+    expect(parseDuration("1h 30m")).toBe(90);
+    expect(parseDuration("2h15m")).toBe(135);
+  });
+  it("reads the '1h30' shorthand and clock form", () => {
+    expect(parseDuration("1h30")).toBe(90);
+    expect(parseDuration("0:45")).toBe(45);
+    expect(parseDuration("2:05")).toBe(125);
+  });
+  it("keeps fractional minutes from seconds", () => {
+    expect(parseDuration("1m 30s")).toBe(1.5);
+    expect(parseDuration("30s")).toBe(0.5);
+  });
+  it("returns null for empty, zero, or garbage, and caps at 24h", () => {
+    expect(parseDuration("")).toBeNull();
+    expect(parseDuration("0")).toBeNull();
+    expect(parseDuration("hola")).toBeNull();
+    expect(parseDuration("100h")).toBe(1440);
+  });
+});
 
 describe("formatMinutes", () => {
   it("formats minutes under an hour", () => {

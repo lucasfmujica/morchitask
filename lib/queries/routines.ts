@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { addDays, todayISO, type DayISO } from "@/lib/date";
 import type { TablesInsert, TablesUpdate } from "@/lib/supabase/database.types";
 import type { RecurringTemplate } from "./types";
 
-const routineKeys = { all: ["routines"] as const };
+const routineKeys = {
+  all: ["routines"] as const,
+  streaks: ["routines", "streaks"] as const,
+};
+
+/** Completed routine-instance dates, keyed by `template_id`, for streaks. */
+export type RoutineCompletions = Map<string, Set<DayISO>>;
 
 export function useRoutines() {
   return useQuery({
@@ -66,6 +73,39 @@ export function useDeleteRoutine() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: routineKeys.all }),
+  });
+}
+
+/**
+ * Completed instances of every routine over the last ~90 days, grouped by
+ * `template_id`. One query (no N+1) — streaks are computed client-side from
+ * this via `lib/streaks.ts`. RLS scopes rows to the current user's tasks.
+ */
+export function useRoutineStreaks() {
+  return useQuery({
+    queryKey: routineKeys.streaks,
+    queryFn: async (): Promise<RoutineCompletions> => {
+      const supabase = createClient();
+      const since = addDays(todayISO(), -90);
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("template_id, template_date, status")
+        .not("template_id", "is", null)
+        .gte("template_date", since);
+      if (error) throw error;
+
+      const map: RoutineCompletions = new Map();
+      for (const row of data ?? []) {
+        if (row.status !== "done" || !row.template_id || !row.template_date) continue;
+        let set = map.get(row.template_id);
+        if (!set) {
+          set = new Set();
+          map.set(row.template_id, set);
+        }
+        set.add(row.template_date);
+      }
+      return map;
+    },
   });
 }
 

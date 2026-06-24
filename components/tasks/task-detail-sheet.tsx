@@ -21,7 +21,13 @@ import {
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
-import { formatClock, formatMinutes, formatDuration, TIME_ESTIMATES } from "@/lib/format";
+import {
+  formatClock,
+  formatMinutes,
+  formatDuration,
+  parseDuration,
+  TIME_ESTIMATES,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
 import { TaskCheckbox } from "./task-checkbox";
@@ -102,6 +108,8 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const [newSub, setNewSub] = useState("");
   const [addingChannel, setAddingChannel] = useState(false);
   const [newChannel, setNewChannel] = useState("");
+  const [editingReal, setEditingReal] = useState(false);
+  const [realInput, setRealInput] = useState("");
 
   const subtasks = subtasksQ.data ?? [];
   const channels = channelsQ.data ?? [];
@@ -136,6 +144,16 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
     if (!t) return;
     createSub.mutate({ title: t, sortOrder: orderForAppend(subtasks.map((s) => s.sort_order)) });
     setNewSub("");
+  }
+  function startEditReal() {
+    setRealInput(task.actual_time_min ? formatDuration(task.actual_time_min * 60) : "");
+    setEditingReal(true);
+  }
+  function saveReal() {
+    setEditingReal(false);
+    const next = parseDuration(realInput); // minutes, or null to clear
+    const cur = task.actual_time_min ?? null;
+    if (next !== cur) update.mutate({ task, patch: { actual_time_min: next } });
   }
 
   return (
@@ -294,18 +312,33 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
                 Real
               </span>
-              <span
-                className={cn(
-                  "text-lg font-bold tabular-nums",
-                  timer.running ? "text-primary" : "text-fg",
-                )}
-              >
-                {timer.running
-                  ? formatClock(timer.liveSeconds)
-                  : task.actual_time_min
-                    ? formatDuration(task.actual_time_min * 60)
-                    : "—"}
-              </span>
+              {timer.running ? (
+                <span className="text-lg font-bold tabular-nums text-primary">
+                  {formatClock(timer.liveSeconds)}
+                </span>
+              ) : editingReal ? (
+                <input
+                  autoFocus
+                  value={realInput}
+                  onChange={(e) => setRealInput(e.target.value)}
+                  onBlur={saveReal}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") setEditingReal(false);
+                  }}
+                  placeholder="ej. 1h 30m"
+                  aria-label="Tiempo real"
+                  className="w-24 border-b border-primary bg-transparent text-lg font-bold tabular-nums text-fg outline-none placeholder:text-base placeholder:font-normal placeholder:text-subtle"
+                />
+              ) : (
+                <button
+                  onClick={startEditReal}
+                  title="Cargar el tiempo a mano"
+                  className="cursor-pointer text-left text-lg font-bold tabular-nums text-fg underline decoration-dotted decoration-from-font underline-offset-4 transition-colors hover:text-primary"
+                >
+                  {task.actual_time_min ? formatDuration(task.actual_time_min * 60) : "—"}
+                </button>
+              )}
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle">

@@ -6,10 +6,13 @@ import {
   useCreateRoutine,
   useDeleteRoutine,
   useRoutines,
+  useRoutineStreaks,
   useUpdateRoutine,
 } from "@/lib/queries/routines";
 import { useChannels } from "@/lib/queries/channels";
 import { formatMinutes } from "@/lib/format";
+import { todayISO } from "@/lib/date";
+import { currentStreak, recentOccurrences } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
 import type { Channel, RecurringTemplate } from "@/lib/queries/types";
 
@@ -27,6 +30,7 @@ const ESTIMATES = [15, 30, 45, 60, 90];
 export function RoutinesView() {
   const routinesQ = useRoutines();
   const channelsQ = useChannels();
+  const streaksQ = useRoutineStreaks();
   const create = useCreateRoutine();
   const [title, setTitle] = useState("");
 
@@ -79,7 +83,12 @@ export function RoutinesView() {
       ) : (
         <ul className="flex flex-col gap-3">
           {routines.map((r) => (
-            <RoutineRow key={r.id} routine={r} channels={channelsQ.data ?? []} />
+            <RoutineRow
+              key={r.id}
+              routine={r}
+              channels={channelsQ.data ?? []}
+              completed={streaksQ.data?.get(r.id)}
+            />
           ))}
         </ul>
       )}
@@ -87,7 +96,15 @@ export function RoutinesView() {
   );
 }
 
-function RoutineRow({ routine, channels }: { routine: RecurringTemplate; channels: Channel[] }) {
+function RoutineRow({
+  routine,
+  channels,
+  completed,
+}: {
+  routine: RecurringTemplate;
+  channels: Channel[];
+  completed?: Set<string>;
+}) {
   const update = useUpdateRoutine();
   const remove = useDeleteRoutine();
   const patch = (p: Parameters<typeof update.mutate>[0]["patch"]) =>
@@ -95,6 +112,11 @@ function RoutineRow({ routine, channels }: { routine: RecurringTemplate; channel
 
   const weekly = routine.freq === "weekly";
   const days = routine.weekdays ?? [];
+
+  const done = completed ?? new Set<string>();
+  const today = todayISO();
+  const streak = currentStreak(routine.freq, routine.weekdays, done, today);
+  const history = recentOccurrences(routine.freq, routine.weekdays, done, today, 14);
 
   function toggleDay(n: number) {
     const next = days.includes(n) ? days.filter((d) => d !== n) : [...days, n].sort();
@@ -126,6 +148,14 @@ function RoutineRow({ routine, channels }: { routine: RecurringTemplate; channel
           className="min-w-0 flex-1 bg-transparent text-[15px] font-medium text-fg outline-none"
           aria-label="Título de la rutina"
         />
+        {streak > 0 && (
+          <span
+            title={`${streak} ${streak === 1 ? "día" : "días"} seguidos`}
+            className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 tabular-nums"
+          >
+            🔥 {streak}
+          </span>
+        )}
         <button
           onClick={cycleEstimate}
           className={cn(
@@ -183,6 +213,25 @@ function RoutineRow({ routine, channels }: { routine: RecurringTemplate; channel
           {routine.paused ? "Reanudar" : "Pausar"}
         </button>
       </div>
+
+      {completed !== undefined && history.length > 0 && (
+        <div
+          className="flex flex-wrap gap-1"
+          role="img"
+          aria-label={`Últimas ${history.length} veces: ${history.filter((c) => c.done).length} completadas`}
+        >
+          {history.map((c) => (
+            <span
+              key={c.date}
+              title={c.date}
+              className={cn(
+                "h-3.5 w-3.5 rounded-[4px]",
+                c.done ? "bg-emerald-500" : "bg-surface-2 ring-1 ring-inset ring-border",
+              )}
+            />
+          ))}
+        </div>
+      )}
 
       {channels.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
