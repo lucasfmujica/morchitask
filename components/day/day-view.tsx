@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
+import { useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
@@ -28,6 +29,7 @@ import { useChannelFilter } from "@/lib/channel-filter";
 import { filterTasksByChannels } from "@/lib/week-filter";
 import type { Task } from "@/lib/queries/types";
 import { orderBetween, orderForAppend } from "@/lib/ordering";
+import { resolveCapacity } from "@/lib/capacity";
 import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
@@ -35,7 +37,7 @@ import { TaskListSection } from "@/components/tasks/task-list-section";
 import { Confetti } from "@/components/ui/confetti";
 import { AgendaView } from "./agenda-view";
 import { CalendarEventsSection } from "./calendar-events-section";
-import { CapacityBar, DEFAULT_CAPACITY_MIN } from "./capacity-bar";
+import { CapacityBar } from "./capacity-bar";
 import { DaySummary } from "./day-summary";
 import { useAgendaScheduling } from "./use-agenda-scheduling";
 
@@ -66,6 +68,8 @@ export function DayView({ date }: { date: string }) {
   const channelLookupQ = useChannelLookup();
   const profilesQ = useProfiles();
   const subtasksQ = useSubtasksForDate(date);
+  const noteQ = useDailyNote(date);
+  const upsertNote = useUpsertDailyNote(date);
   const me = useMe().data;
   const create = useCreateTask();
   const reorder = useReorderTask();
@@ -83,6 +87,7 @@ export function DayView({ date }: { date: string }) {
     () => myTasks.reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0),
     [myTasks],
   );
+  const capacityTarget = resolveCapacity(noteQ.data?.capacity_min, me?.capacity_target_min);
 
   // Celebrate the moment you finish everything for the day (once per completion).
   const allMineDone = myTasks.length > 0 && myTasks.every((t) => t.status === "done");
@@ -197,10 +202,11 @@ export function DayView({ date }: { date: string }) {
       </div>
       <div className="flex flex-col gap-3">
         <DaySummary tasks={tasks} />
-        {myPlannedMin > 0 && (
+        {myTasks.length > 0 && (
           <CapacityBar
             plannedMin={myPlannedMin}
-            targetMin={me?.capacity_target_min ?? DEFAULT_CAPACITY_MIN}
+            targetMin={capacityTarget}
+            onTargetChange={(capacity_min) => upsertNote.mutate({ capacity_min })}
           />
         )}
       </div>

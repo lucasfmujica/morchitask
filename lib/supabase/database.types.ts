@@ -64,6 +64,7 @@ export type Database = {
       };
       daily_notes: {
         Row: {
+          capacity_min: number | null;
           created_at: string;
           end_target_min: number | null;
           household_id: string;
@@ -78,6 +79,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          capacity_min?: number | null;
           created_at?: string;
           end_target_min?: number | null;
           household_id?: string;
@@ -92,6 +94,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          capacity_min?: number | null;
           created_at?: string;
           end_target_min?: number | null;
           household_id?: string;

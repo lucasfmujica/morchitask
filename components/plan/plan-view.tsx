@@ -20,7 +20,8 @@ import { addDays, fullDayLabel } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
-import { CapacityBar, DEFAULT_CAPACITY_MIN } from "@/components/day/capacity-bar";
+import { resolveCapacity } from "@/lib/capacity";
+import { CapacityBar } from "@/components/day/capacity-bar";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
 
 const ESTIMATES = [15, 30, 45, 60, 90];
@@ -64,7 +65,7 @@ export function PlanView({ date }: { date: string }) {
       yesterdayPending={yesterdayPending}
       backlog={backlog}
       note={noteQ.data ?? null}
-      capacityTarget={me.capacity_target_min ?? DEFAULT_CAPACITY_MIN}
+      capacityTarget={resolveCapacity(noteQ.data?.capacity_min, me.capacity_target_min)}
     />
   );
 }
@@ -129,7 +130,11 @@ function PlanForm({
 
       {/* Capacity */}
       <section className="rounded-card border border-border bg-surface p-4 shadow-soft">
-        <CapacityBar plannedMin={plannedMin} targetMin={capacityTarget} />
+        <CapacityBar
+          plannedMin={plannedMin}
+          targetMin={capacityTarget}
+          onTargetChange={(capacity_min) => upsert.mutate({ capacity_min })}
+        />
       </section>
 
       {/* Intention */}
