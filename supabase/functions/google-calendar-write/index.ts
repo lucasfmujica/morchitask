@@ -1,11 +1,12 @@
 // Writes a task's time-block to the caller's PRIMARY Google Calendar (2-way sync).
 // upsert: create/update the event for a task and store its id back on the task.
-// delete: remove an event by id. Security: the refresh token is read with the
-// service role (the client never sees it). Reuses GOOGLE_CLIENT_ID / _SECRET.
+// delete: remove an event by id. Shared tasks invite the household partner.
+// Security: the refresh token is read with the service role (client never sees it).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TZ = "America/Argentina/Buenos_Aires";
+const APP_URL = "https://productivity-app-three-pink.vercel.app/today";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,8 @@ function json(body: unknown, status = 200) {
 }
 
 const EVENTS = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+// sendUpdates=all so invited guests get the invite / cancellation notification.
+const NOTIFY = "sendUpdates=all";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -63,7 +66,6 @@ Deno.serve(async (req) => {
       console.error("[gcal-write] token_refresh_failed", JSON.stringify(tokenJson));
       return json({ error: "token_refresh_failed", detail: tokenJson }, 502);
     }
-    console.log("[gcal-write] granted scopes:", tokenJson.scope ?? "(none returned)");
     const accessToken = tokenJson.access_token;
     const auth = { Authorization: `Bearer ${accessToken}` };
 
@@ -73,7 +75,7 @@ Deno.serve(async (req) => {
     if (action === "delete") {
       const eventId = body.eventId as string | undefined;
       if (eventId) {
-        await fetch(`${EVENTS}/${encodeURIComponent(eventId)}`, {
+        await fetch(`${EVENTS}/${encodeURIComponent(eventId)}?${NOTIFY}`, {
           method: "DELETE",
           headers: auth,
         });
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
     const taskId = body.taskId as string;
     const { data: task } = await userClient
       .from("tasks")
-      .select("id, title, block_start, block_end, gcal_event_id")
+      .select("id, title, block_start, block_end, gcal_event_id, shared, household_id")
       .eq("id", taskId)
       .maybeSingle();
     if (!task) return json({ error: "task_not_found" }, 404);
@@ -94,7 +96,7 @@ Deno.serve(async (req) => {
     // No block anymore → make sure any existing event is removed.
     if (!task.block_start || !task.block_end) {
       if (task.gcal_event_id) {
-        await fetch(`${EVENTS}/${encodeURIComponent(task.gcal_event_id)}`, {
+        await fetch(`${EVENTS}/${encodeURIComponent(task.gcal_event_id)}?${NOTIFY}`, {
           method: "DELETE",
           headers: auth,
         });
@@ -106,19 +108,35 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // Shared task → invite the other household member (read email via service role).
+    let attendees: { email: string }[] = [];
+    if (task.shared && task.household_id) {
+      const { data: members } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("household_id", task.household_id)
+        .neq("id", user.id);
+      const partnerId = members?.[0]?.id as string | undefined;
+      if (partnerId) {
+        const { data: partner } = await admin.auth.admin.getUserById(partnerId);
+        const email = partner?.user?.email;
+        if (email) attendees = [{ email }];
+      }
+    }
+
     const eventBody = {
       summary: task.title,
       start: { dateTime: task.block_start, timeZone: TZ },
       end: { dateTime: task.block_end, timeZone: TZ },
-      // Google requires source.url to be a valid http/https URL; sending just a
-      // title makes events.insert/patch fail (was the cause of the 502s).
-      source: { title: "Morchitask", url: "https://productivity-app-three-pink.vercel.app/today" },
+      // Always set attendees explicitly so un-sharing later clears the guest.
+      attendees,
+      source: { title: "Morchitask", url: APP_URL },
     };
 
     let eventId: string | null = task.gcal_event_id;
     let res: Response;
     if (eventId) {
-      res = await fetch(`${EVENTS}/${encodeURIComponent(eventId)}`, {
+      res = await fetch(`${EVENTS}/${encodeURIComponent(eventId)}?${NOTIFY}`, {
         method: "PATCH",
         headers: { ...auth, "Content-Type": "application/json" },
         body: JSON.stringify(eventBody),
@@ -126,7 +144,7 @@ Deno.serve(async (req) => {
       if (res.status === 404) eventId = null; // event was deleted in Google — recreate
     }
     if (!eventId) {
-      res = await fetch(EVENTS, {
+      res = await fetch(`${EVENTS}?${NOTIFY}`, {
         method: "POST",
         headers: { ...auth, "Content-Type": "application/json" },
         body: JSON.stringify(eventBody),
