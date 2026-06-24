@@ -179,6 +179,9 @@ function buildOptimisticTask(input: NewTask, ownerId: string, householdId: strin
     objective_id: null,
     gcal_event_id: null,
     gcal_synced_at: null,
+    remind_at: null,
+    reminder_sent_at: null,
+    active_since: null,
     created_by: ownerId,
     created_at: now,
     updated_at: now,
@@ -276,6 +279,8 @@ type TaskPatch = Pick<
   | "shared"
   | "objective_id"
   | "gcal_event_id"
+  | "remind_at"
+  | "reminder_sent_at"
 >;
 
 export function useUpdateTask() {
@@ -342,6 +347,19 @@ export function useSetActualTime() {
     onSettled: (_d, _e, { plannedDate }) =>
       qc.invalidateQueries({ queryKey: listKey(plannedDate) }),
   });
+}
+
+/**
+ * Mark/unmark a task as currently being worked on, so a partner can see "X is
+ * on this now". Fire-and-forget — presence reads its own query, so no cache
+ * juggling here. Only meaningful for shared tasks (RLS hides the rest).
+ */
+export async function setTaskActiveSince(taskId: string, active: boolean): Promise<void> {
+  const supabase = createClient();
+  await supabase
+    .from("tasks")
+    .update({ active_since: active ? new Date().toISOString() : null })
+    .eq("id", taskId);
 }
 
 export function useDeleteTask() {

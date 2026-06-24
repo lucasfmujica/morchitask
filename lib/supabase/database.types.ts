@@ -444,8 +444,107 @@ export type Database = {
           },
         ];
       };
+      task_comments: {
+        Row: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          household_id: string;
+          id: string;
+          task_id: string;
+        };
+        Insert: {
+          author_id?: string;
+          body: string;
+          created_at?: string;
+          household_id?: string;
+          id?: string;
+          task_id: string;
+        };
+        Update: {
+          author_id?: string;
+          body?: string;
+          created_at?: string;
+          household_id?: string;
+          id?: string;
+          task_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_comments_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_comments_task_id_fkey";
+            columns: ["task_id"];
+            isOneToOne: false;
+            referencedRelation: "tasks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      task_reactions: {
+        Row: {
+          author_id: string;
+          created_at: string;
+          emoji: string;
+          household_id: string;
+          id: string;
+          task_id: string;
+        };
+        Insert: {
+          author_id?: string;
+          created_at?: string;
+          emoji: string;
+          household_id?: string;
+          id?: string;
+          task_id: string;
+        };
+        Update: {
+          author_id?: string;
+          created_at?: string;
+          emoji?: string;
+          household_id?: string;
+          id?: string;
+          task_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "task_reactions_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_reactions_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_reactions_task_id_fkey";
+            columns: ["task_id"];
+            isOneToOne: false;
+            referencedRelation: "tasks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tasks: {
         Row: {
+          active_since: string | null;
           actual_time_min: number | null;
           block_end: string | null;
           block_start: string | null;
@@ -461,6 +560,8 @@ export type Database = {
           objective_id: string | null;
           owner_id: string;
           planned_date: string | null;
+          remind_at: string | null;
+          reminder_sent_at: string | null;
           rollover_count: number;
           rollover_origin_date: string | null;
           shared: boolean;
@@ -473,6 +574,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          active_since?: string | null;
           actual_time_min?: number | null;
           block_end?: string | null;
           block_start?: string | null;
@@ -488,6 +590,8 @@ export type Database = {
           objective_id?: string | null;
           owner_id?: string;
           planned_date?: string | null;
+          remind_at?: string | null;
+          reminder_sent_at?: string | null;
           rollover_count?: number;
           rollover_origin_date?: string | null;
           shared?: boolean;
@@ -500,6 +604,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          active_since?: string | null;
           actual_time_min?: number | null;
           block_end?: string | null;
           block_start?: string | null;
@@ -515,6 +620,8 @@ export type Database = {
           objective_id?: string | null;
           owner_id?: string;
           planned_date?: string | null;
+          remind_at?: string | null;
+          reminder_sent_at?: string | null;
           rollover_count?: number;
           rollover_origin_date?: string | null;
           shared?: boolean;

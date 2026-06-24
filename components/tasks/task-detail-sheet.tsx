@@ -21,6 +21,14 @@ import {
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
+import { DEFAULT_TIMEZONE, blockInstant, timeInTimeZone } from "@/lib/date";
+import {
+  REMINDER_OFFSETS,
+  offsetFromRemindAt,
+  remindAtFromBlock,
+  reminderOffsetLabel,
+} from "@/lib/reminders";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   formatClock,
   formatMinutes,
@@ -32,6 +40,8 @@ import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
+import { TaskReactions } from "./task-reactions";
+import { TaskComments } from "./task-comments";
 import { useTaskTimer } from "./use-task-timer";
 
 /**
@@ -304,6 +314,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         </div>
       </Field>
 
+      {/* Reminder */}
+      <Field label="Recordatorio">
+        <ReminderControl task={task} update={update} />
+      </Field>
+
       {/* Time tracking */}
       <Field label="Tiempo">
         <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3.5 py-3">
@@ -458,6 +473,20 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         </div>
       </Field>
 
+      {/* Kudos — celebrate a finished shared task */}
+      {partner && task.shared && task.status === "done" && (
+        <Field label="Reacciones">
+          <TaskReactions taskId={task.id} />
+        </Field>
+      )}
+
+      {/* Comments — discussion on a shared task */}
+      {partner && task.shared && (
+        <Field label="Comentarios">
+          <TaskComments taskId={task.id} />
+        </Field>
+      )}
+
       <button
         onClick={() => {
           timer.cancel();
@@ -469,6 +498,67 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         <Trash2 className="h-4 w-4" aria-hidden />
         Eliminar tarea
       </button>
+    </div>
+  );
+}
+
+const TZ = DEFAULT_TIMEZONE;
+
+function ReminderControl({
+  task,
+  update,
+}: {
+  task: Task;
+  update: ReturnType<typeof useUpdateTask>;
+}) {
+  const hasBlock = !!task.block_start;
+  const currentOffset = offsetFromRemindAt(task.block_start, task.remind_at);
+  const customTime =
+    task.remind_at && currentOffset === null ? timeInTimeZone(task.remind_at, TZ) : null;
+
+  function setOffset(o: number) {
+    if (!task.block_start) return;
+    update.mutate({
+      task,
+      patch: { remind_at: remindAtFromBlock(task.block_start, o), reminder_sent_at: null },
+    });
+  }
+  function clear() {
+    update.mutate({ task, patch: { remind_at: null, reminder_sent_at: null } });
+  }
+  function setCustom(time: string) {
+    if (!task.planned_date) return;
+    update.mutate({
+      task,
+      patch: { remind_at: blockInstant(task.planned_date, time, TZ), reminder_sent_at: null },
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1.5">
+        <Chip active={!task.remind_at} label="Sin recordatorio" onClick={clear} />
+        {REMINDER_OFFSETS.map((o) => (
+          <Chip
+            key={o}
+            active={task.remind_at != null && currentOffset === o}
+            label={reminderOffsetLabel(o)}
+            disabled={!hasBlock}
+            onClick={() => setOffset(o)}
+          />
+        ))}
+      </div>
+      {!hasBlock && (
+        <p className="text-xs text-subtle">
+          Programá un horario en la agenda para avisarte antes de empezar.
+        </p>
+      )}
+      {task.planned_date && (
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span>o a una hora:</span>
+          <TimePicker value={customTime} onChange={setCustom} placeholder="Elegir" />
+        </div>
+      )}
     </div>
   );
 }
@@ -486,22 +576,27 @@ function Chip({
   active,
   label,
   color,
+  disabled,
   onClick,
 }: {
   active: boolean;
   label: string;
   color?: string;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
-        active
-          ? "border-primary bg-primary-soft text-primary"
-          : "border-border text-muted hover:bg-surface-2",
+        "inline-flex min-h-8 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
+        disabled ? "cursor-not-allowed border-border text-subtle opacity-50" : "cursor-pointer",
+        !disabled &&
+          (active
+            ? "border-primary bg-primary-soft text-primary"
+            : "border-border text-muted hover:bg-surface-2"),
       )}
     >
       {color && (

@@ -114,3 +114,98 @@ https://supabase.com/dashboard/project/bodkrhcmzdvbeqipsqzx/settings/functions
 1. Instalá la app en el iPhone (**Compartir → Agregar a inicio**) y abrila desde el ícono.
 2. **Ajustes → Notificaciones → Recordatorio diario** → activar → aceptá el permiso.
 3. Avisame y disparo la función `send-push` a mano para que te llegue una de prueba (sin esperar a las 8).
+
+---
+
+# Fase 6 — 4 features nuevas (recordatorios por tarea, colaboración, rachas, analítica)
+
+Las 4 features están en el código (typecheck + 91 tests + lint OK). **Rachas** y **Analítica** no necesitan nada de infra: ya funcionan apenas se despliega el front. Lo que falta es producción para **recordatorios por tarea** y **colaboración**.
+
+## A) Migraciones (Supabase → proyecto `bodkrhcmzdvbeqipsqzx`)
+
+Se aplican con el MCP `apply_migration` (o desde el SQL editor). Dos migraciones:
+
+**1. `add_task_reminders`**
+
+```sql
+alter table public.tasks
+  add column if not exists remind_at timestamptz,
+  add column if not exists reminder_sent_at timestamptz;
+create index if not exists tasks_remind_at_pending_idx
+  on public.tasks (remind_at)
+  where remind_at is not null and reminder_sent_at is null;
+```
+
+**2. `add_collaboration`** (comentarios + reacciones + presencia + realtime)
+
+```sql
+-- presence: which shared task each person is timing right now
+alter table public.tasks add column if not exists active_since timestamptz;
+
+create table public.task_comments (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null default app_private.current_household_id() references public.households(id) on delete cascade,
+  task_id uuid not null references public.tasks(id) on delete cascade,
+  author_id uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.task_comments enable row level security;
+create policy task_comments_select on public.task_comments for select
+  using (household_id = app_private.current_household_id());
+create policy task_comments_insert on public.task_comments for insert
+  with check (household_id = app_private.current_household_id() and author_id = auth.uid());
+create policy task_comments_delete on public.task_comments for delete
+  using (author_id = auth.uid());
+create index task_comments_task_idx on public.task_comments (task_id, created_at);
+
+create table public.task_reactions (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null default app_private.current_household_id() references public.households(id) on delete cascade,
+  task_id uuid not null references public.tasks(id) on delete cascade,
+  author_id uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  emoji text not null,
+  created_at timestamptz not null default now(),
+  unique (task_id, author_id, emoji)
+);
+alter table public.task_reactions enable row level security;
+create policy task_reactions_select on public.task_reactions for select
+  using (household_id = app_private.current_household_id());
+create policy task_reactions_insert on public.task_reactions for insert
+  with check (household_id = app_private.current_household_id() and author_id = auth.uid());
+create policy task_reactions_delete on public.task_reactions for delete
+  using (author_id = auth.uid());
+create index task_reactions_task_idx on public.task_reactions (task_id);
+
+-- realtime for the presence banner (instant "Sofi está en…")
+alter publication supabase_realtime add table public.tasks;
+```
+
+## B) Edge function + cron (recordatorios por tarea)
+
+1. Desplegar `supabase/functions/send-reminders` (reusa los mismos secrets VAPID + `CRON_SECRET` de la Fase 5; no hace falta ninguno nuevo).
+2. Crear el cron `morchitask-task-reminders` que corre cada 5 min y POSTea a `send-reminders` con `x-cron-secret` (mismo patrón que `morchitask-daily-plan`):
+
+```sql
+select cron.schedule(
+  'morchitask-task-reminders',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://bodkrhcmzdvbeqipsqzx.supabase.co/functions/v1/send-reminders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer <ANON_KEY>',
+      'x-cron-secret', '<CRON_SECRET>'
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+## C) Probar
+
+1. **Recordatorios:** en una tarea con horario, **Detalle → Recordatorio → 5 min antes**. Activá **Ajustes → Notificaciones → Recordatorios de tareas**. Avisame y disparo `send-reminders` a mano con una tarea de `remind_at` pasado.
+2. **Colaboración:** abrí una tarea **compartida** → escribí un comentario y reaccioná; Sofi debería verlo. Completá una tarea compartida → aparecen los kudos en la card.
+3. **Presencia:** arrancá el cronómetro de una tarea compartida; en el dispositivo de Sofi debería aparecer la barra "Lucas está en: …".

@@ -24,6 +24,7 @@ import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import { WeekCalendarRail } from "@/components/week/week-calendar-rail";
 import { CommandPalette } from "./command-palette";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
+import { PresenceBanner } from "./presence-banner";
 import { MobileRitualIcons, SidebarRituals } from "./ritual-nav";
 import { SidebarChannels } from "./sidebar-channels";
 import { SignOutButton } from "./sign-out-button";
@@ -107,6 +108,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
               </div>
             </div>
           </header>
+
+          <PresenceBanner />
 
           <main className="flex-1 px-safe py-5 md:px-8 md:py-6">{children}</main>
 

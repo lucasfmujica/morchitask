@@ -12,6 +12,7 @@ import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
 import { ObjectiveBadge } from "@/components/objectives/objective-badge";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskCheckbox } from "./task-checkbox";
+import { TaskReactions } from "./task-reactions";
 import { useTaskTimer } from "./use-task-timer";
 
 const TZ = DEFAULT_TIMEZONE;
@@ -216,6 +217,13 @@ export function TaskCard({
           </button>
         </div>
       </div>
+
+      {/* Kudos on a finished shared task */}
+      {task.shared && done && (
+        <div className="pl-[30px]">
+          <TaskReactions taskId={task.id} size="sm" />
+        </div>
+      )}
     </div>
   );
 }

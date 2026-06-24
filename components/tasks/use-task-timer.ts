@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSetActualTime } from "@/lib/queries/tasks";
+import { setTaskActiveSince, useSetActualTime } from "@/lib/queries/tasks";
 import { elapsedSeconds, useActiveTimer } from "@/lib/stores/active-timer";
 import type { Task } from "@/lib/queries/types";
 
@@ -44,6 +44,7 @@ function useStopActive() {
         actualMin: active.baseActualMin + secs / 60,
       });
     }
+    void setTaskActiveSince(active.taskId, false); // clear presence
     clear();
   };
 }
@@ -73,6 +74,7 @@ export function useTaskTimer(task: Task) {
       baseActualMin: task.actual_time_min ?? 0,
       startedAt: Date.now(),
     });
+    if (task.shared) void setTaskActiveSince(task.id, true); // let my partner see it
   }
   function stopTimer() {
     if (running) stopActive();
@@ -83,7 +85,10 @@ export function useTaskTimer(task: Task) {
   }
   /** Drop the timer without logging (e.g. the task is being deleted). */
   function cancel() {
-    if (running) clear();
+    if (running) {
+      void setTaskActiveSince(task.id, false);
+      clear();
+    }
   }
 
   return { running, elapsedSec, liveSeconds, toggle, startTimer, stopTimer, cancel };
