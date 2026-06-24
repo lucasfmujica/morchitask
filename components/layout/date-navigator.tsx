@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
-import { cn } from "@/lib/utils";
 
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
@@ -11,6 +10,7 @@ const arrow =
 export function DateNavigator({ date }: { date: string }) {
   const router = useRouter();
   const today = todayISO();
+  const isToday = date === today;
   const go = (d: string) => router.push(d === today ? "/today" : `/day/${d}`);
 
   return (
@@ -25,16 +25,18 @@ export function DateNavigator({ date }: { date: string }) {
         <button onClick={() => go(addDays(date, -1))} aria-label="Día anterior" className={arrow}>
           <ChevronLeft className="h-5 w-5" aria-hidden />
         </button>
-        <button
-          onClick={() => go(today)}
-          disabled={date === today}
-          className={cn(
-            "h-9 cursor-pointer rounded-lg px-3 text-sm font-medium transition-colors",
-            date === today ? "cursor-default text-subtle" : "text-primary hover:bg-primary-soft",
-          )}
-        >
-          Hoy
-        </button>
+        {/* "Volver a hoy" — only when you're away from today (otherwise it just
+            duplicates the title and reads like a label, which is confusing). */}
+        {!isToday && (
+          <button
+            onClick={() => go(today)}
+            title="Volver a hoy"
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-primary-soft px-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
+          >
+            <CalendarCheck className="h-4 w-4" aria-hidden />
+            Hoy
+          </button>
+        )}
         <button onClick={() => go(addDays(date, 1))} aria-label="Día siguiente" className={arrow}>
           <ChevronRight className="h-5 w-5" aria-hidden />
         </button>
