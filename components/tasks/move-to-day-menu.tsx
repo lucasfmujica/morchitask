@@ -56,7 +56,15 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
   ];
 
   return (
-    <div ref={ref} className="relative">
+    // Stop pointer events from bubbling to the card: on desktop the whole card
+    // is the drag handle, and its sensor would otherwise swallow clicks here and
+    // block the native date picker from opening.
+    <div
+      ref={ref}
+      className="relative"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
