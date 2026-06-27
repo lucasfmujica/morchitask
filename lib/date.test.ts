@@ -11,6 +11,8 @@ import {
   blockInstant,
   timeInTimeZone,
   minutesFromMidnight,
+  dueTone,
+  dueLabel,
 } from "./date";
 
 const BA = "America/Argentina/Buenos_Aires"; // UTC-3
@@ -32,6 +34,34 @@ describe("addDays", () => {
   it("crosses month and year boundaries", () => {
     expect(addDays("2026-06-30", 1)).toBe("2026-07-01");
     expect(addDays("2026-01-01", -1)).toBe("2025-12-31");
+  });
+});
+
+describe("dueTone", () => {
+  const today = "2026-06-26";
+  it("flags past dates as overdue", () => {
+    expect(dueTone("2026-06-25", today)).toBe("overdue");
+    expect(dueTone("2026-01-01", today)).toBe("overdue");
+  });
+  it("flags today and tomorrow as soon", () => {
+    expect(dueTone(today, today)).toBe("soon");
+    expect(dueTone("2026-06-27", today)).toBe("soon");
+  });
+  it("flags anything further out as later", () => {
+    expect(dueTone("2026-06-28", today)).toBe("later");
+    expect(dueTone("2026-12-31", today)).toBe("later");
+  });
+});
+
+describe("dueLabel", () => {
+  const today = "2026-06-26";
+  it("uses relative words for adjacent days", () => {
+    expect(dueLabel(today, today)).toBe("Hoy");
+    expect(dueLabel("2026-06-27", today)).toBe("Mañana");
+    expect(dueLabel("2026-06-25", today)).toBe("Ayer");
+  });
+  it("falls back to a compact day + month label", () => {
+    expect(dueLabel("2026-07-05", today)).toBe("5 jul");
   });
 });
 

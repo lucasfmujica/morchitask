@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pause, Play, Plus, Trash2, X } from "lucide-react";
+import { CalendarClock, Pause, Play, Plus, Trash2, X } from "lucide-react";
 import { CHANNEL_COLORS, useChannels, useCreateChannel } from "@/lib/queries/channels";
 import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import {
   backlogQueryOptions,
+  taskKeys,
   tasksForDateQueryOptions,
   useDeleteTask,
+  useMoveTaskToDate,
   useUpdateTask,
 } from "@/lib/queries/tasks";
 import {
@@ -21,7 +23,14 @@ import {
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
-import { DEFAULT_TIMEZONE, blockInstant, timeInTimeZone } from "@/lib/date";
+import {
+  DEFAULT_TIMEZONE,
+  addDays,
+  blockInstant,
+  dueLabel,
+  timeInTimeZone,
+  todayISO,
+} from "@/lib/date";
 import {
   REMINDER_OFFSETS,
   offsetFromRemindAt,
@@ -101,6 +110,9 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const task = useLiveTask(snapshot);
   const update = useUpdateTask();
   const remove = useDeleteTask();
+  const move = useMoveTaskToDate();
+  const qc = useQueryClient();
+  const reopen = useTaskDetail((s) => s.open);
   const channelsQ = useChannels();
   const createChannel = useCreateChannel();
   const objectivesQ = useObjectives();
@@ -139,6 +151,19 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
     update.mutate({ task, patch: { channel_id: created.id } });
     setNewChannel("");
     setAddingChannel(false);
+  }
+
+  const today = todayISO();
+  const tomorrow = addDays(today, 1);
+
+  /** Reschedule the task to another day (clears its time-blocks, like a drag).
+   *  Refreshes the open snapshot so the sheet keeps editing the right day. */
+  function reschedule(toDate: string) {
+    if (toDate === task.planned_date) return;
+    const list = qc.getQueryData<Task[]>(taskKeys.date(toDate)) ?? [];
+    const sortOrder = orderForAppend(list.filter((t) => t.id !== task.id).map((t) => t.sort_order));
+    move.mutate({ task, toDate, sortOrder });
+    reopen({ ...task, planned_date: toDate, block_start: null, block_end: null });
   }
 
   function saveTitle() {
@@ -237,6 +262,65 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           </button>
         </Field>
       )}
+
+      {/* Scheduled day — move the task to another day without dragging */}
+      <Field label="Programada para">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Chip
+            active={task.planned_date === today}
+            label="Hoy"
+            onClick={() => reschedule(today)}
+          />
+          <Chip
+            active={task.planned_date === tomorrow}
+            label="Mañana"
+            onClick={() => reschedule(tomorrow)}
+          />
+          <DateChip
+            label={
+              task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
+                ? dueLabel(task.planned_date, today)
+                : "Otro día"
+            }
+            active={
+              !!task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
+            }
+            value={task.planned_date ?? today}
+            onChange={reschedule}
+          />
+        </div>
+      </Field>
+
+      {/* Due date — a deadline, independent of the day it's planned for */}
+      <Field label="Vence">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Chip
+            active={!task.due_date}
+            label="Sin fecha"
+            onClick={() => update.mutate({ task, patch: { due_date: null } })}
+          />
+          <Chip
+            active={task.due_date === today}
+            label="Hoy"
+            onClick={() => update.mutate({ task, patch: { due_date: today } })}
+          />
+          <Chip
+            active={task.due_date === tomorrow}
+            label="Mañana"
+            onClick={() => update.mutate({ task, patch: { due_date: tomorrow } })}
+          />
+          <DateChip
+            label={
+              task.due_date && task.due_date !== today && task.due_date !== tomorrow
+                ? dueLabel(task.due_date, today)
+                : "Otra fecha"
+            }
+            active={!!task.due_date && task.due_date !== today && task.due_date !== tomorrow}
+            value={task.due_date ?? today}
+            onChange={(d) => update.mutate({ task, patch: { due_date: d } })}
+          />
+        </div>
+      </Field>
 
       {/* Channel */}
       <Field label="Categoría">
@@ -560,6 +644,41 @@ function ReminderControl({
         </div>
       )}
     </div>
+  );
+}
+
+/** A chip that opens the native date picker. Styled like {@link Chip} so it
+ *  sits inline with the quick "Hoy / Mañana" options. */
+function DateChip({
+  label,
+  value,
+  active,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+  onChange: (date: string) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "relative inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
+        active
+          ? "border-primary bg-primary-soft text-primary"
+          : "border-border text-muted hover:bg-surface-2",
+      )}
+    >
+      <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+      {label}
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => e.target.value && onChange(e.target.value)}
+        className="absolute inset-0 cursor-pointer opacity-0"
+        aria-label="Elegir fecha"
+      />
+    </label>
   );
 }
 

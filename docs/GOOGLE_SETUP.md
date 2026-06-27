@@ -269,3 +269,33 @@ update public.tasks set gcal_event_id = null, gcal_synced_at = null where gcal_e
 ## C) Probar
 
 En **Hoy → Agenda**: arrastrá una tarea de 2h al calendario (queda 1 bloque), fijate que sigue en la lista con "1h rest.", y arrastrala de nuevo a otra hora → segundo bloque. La X en un bloque borra solo ese bloque. En Google Calendar deberían aparecer **dos eventos**.
+
+---
+
+# Fase 8 — Fecha de vencimiento ("Vence") en las tareas
+
+La app ya tiene el botón **"Mover a otro día"** en cada tarjeta (reusa lógica que ya existía) y el campo **"Vence"** en el detalle, con un **badge de colores** en la tarjeta (rojo vencida / ámbar vence hoy-mañana / gris falta). Para que "Vence" funcione falta **una sola** cosa en la base: agregar la columna `due_date`.
+
+## A) Migración (`add_due_date_to_tasks`)
+
+En Supabase → proyecto `bodkrhcmzdvbeqipsqzx` → **SQL Editor**, pegá y corré:
+
+```sql
+-- Fecha límite de una tarea, independiente de planned_date (el día en que la planeás).
+-- Opcional; sin vencimiento por defecto.
+alter table public.tasks add column if not exists due_date date;
+
+comment on column public.tasks.due_date is
+  'Optional deadline for the task, independent of planned_date (the day it is scheduled to be worked on).';
+
+-- Mantiene baratas las búsquedas de "vencidas / por vencer" a medida que crecen las tareas.
+create index if not exists tasks_due_date_idx
+  on public.tasks (due_date)
+  where due_date is not null;
+```
+
+No hace falta tocar RLS: la columna vive en `tasks`, que ya tiene su seguridad por hogar.
+
+## B) Probar
+
+Abrí una tarea → **Vence → "Mañana"** (o "Otra fecha"): en la tarjeta tiene que aparecer el badge ámbar. Poné una fecha pasada y debería verse **rojo**. El botón 📅 de la tarjeta (o **"Programada para"** en el detalle) mueve la tarea de día sin arrastrar.

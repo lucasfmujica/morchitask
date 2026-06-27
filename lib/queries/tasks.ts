@@ -164,6 +164,7 @@ function buildOptimisticTask(input: NewTask, ownerId: string, householdId: strin
     title: input.title,
     notes: null,
     planned_date: input.plannedDate,
+    due_date: null,
     sort_order: input.sortOrder,
     status: "todo",
     completed_at: null,
@@ -281,6 +282,7 @@ type TaskPatch = Pick<
   | "gcal_event_id"
   | "remind_at"
   | "reminder_sent_at"
+  | "due_date"
 >;
 
 export function useUpdateTask() {

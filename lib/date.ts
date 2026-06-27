@@ -96,6 +96,27 @@ export function monthGrid(day: DayISO, weekStartsOn: 0 | 1 = 1): DayISO[][] {
   return Array.from({ length: 6 }, (_, i) => days.slice(i * 7, i * 7 + 7));
 }
 
+// ------------------------------------------------------------ due dates
+
+/** Urgency of a due date relative to `today` — drives the badge colour. */
+export type DueTone = "overdue" | "soon" | "later";
+
+/** Classify a due date: past = overdue, today/tomorrow = soon, else later.
+ *  Safe to compare lexicographically since both are "YYYY-MM-DD". */
+export function dueTone(due: DayISO, today: DayISO): DueTone {
+  if (due < today) return "overdue";
+  if (due === today || due === addDays(today, 1)) return "soon";
+  return "later";
+}
+
+/** Compact label for a due-date badge: "Hoy" / "Mañana" / "Ayer" or "5 jul". */
+export function dueLabel(due: DayISO, today: DayISO): string {
+  if (due === today) return "Hoy";
+  if (due === addDays(today, 1)) return "Mañana";
+  if (due === addDays(today, -1)) return "Ayer";
+  return format(parseISO(due), "d MMM", { locale: es });
+}
+
 // ------------------------------------------------------------ time-blocking
 
 /** UTC instant (ISO) for a local "HH:mm" on `day` in the household timezone. */

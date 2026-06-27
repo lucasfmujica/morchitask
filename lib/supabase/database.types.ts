@@ -600,6 +600,7 @@ export type Database = {
           completed_at: string | null;
           created_at: string;
           created_by: string | null;
+          due_date: string | null;
           gcal_event_id: string | null;
           gcal_synced_at: string | null;
           household_id: string;
@@ -630,6 +631,7 @@ export type Database = {
           completed_at?: string | null;
           created_at?: string;
           created_by?: string | null;
+          due_date?: string | null;
           gcal_event_id?: string | null;
           gcal_synced_at?: string | null;
           household_id?: string;
@@ -660,6 +662,7 @@ export type Database = {
           completed_at?: string | null;
           created_at?: string;
           created_by?: string | null;
+          due_date?: string | null;
           gcal_event_id?: string | null;
           gcal_synced_at?: string | null;
           household_id?: string;

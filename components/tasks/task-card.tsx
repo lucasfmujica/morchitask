@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { formatClock, formatMinutes, formatDuration, TIME_ESTIMATES } from "@/lib/format";
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
 import { ObjectiveBadge } from "@/components/objectives/objective-badge";
+import { DueDateBadge } from "./due-date-badge";
+import { MoveToDayMenu } from "./move-to-day-menu";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskCheckbox } from "./task-checkbox";
 import { TaskReactions } from "./task-reactions";
@@ -183,6 +185,7 @@ export function TaskCard({
             {doneSubs}/{subtasks.length}
           </span>
         )}
+        {task.due_date && !done && <DueDateBadge dueDate={task.due_date} />}
         {task.objective_id && <ObjectiveBadge objectiveId={task.objective_id} />}
         {task.notes && <span className="text-[11px] text-subtle">· nota</span>}
         {task.shared && (
@@ -204,6 +207,7 @@ export function TaskCard({
         )}
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <MoveToDayMenu task={task} />
           <OwnerAvatar profile={owner} />
           <button
             onClick={() => {
