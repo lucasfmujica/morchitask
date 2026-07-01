@@ -35,6 +35,7 @@ import { resolveCapacity } from "@/lib/capacity";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
+import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { CarryoverPrompt } from "./carryover-prompt";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
@@ -225,6 +226,9 @@ export function DayView({ date }: { date: string }) {
         </div>
       </div>
       {date === todayISO() && <CarryoverPrompt date={date} />}
+
+      {/* Category filter at the top (mirrors the sidebar list, shared state). */}
+      <ChannelFilterBar />
 
       <div className="flex flex-col gap-3">
         <DaySummary tasks={tasks} />

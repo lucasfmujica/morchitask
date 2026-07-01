@@ -8,29 +8,42 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  pointerWithin,
-  useDraggable,
+  closestCorners,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
-import { tasksForDateQueryOptions, useCreateTask, useMoveTaskToDate } from "@/lib/queries/tasks";
+import {
+  tasksForDateQueryOptions,
+  useCreateTask,
+  useMoveTaskToDate,
+  useReorderTask,
+} from "@/lib/queries/tasks";
 import { subtasksForDateQueryOptions } from "@/lib/queries/subtasks";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
-import { orderForAppend } from "@/lib/ordering";
+import { orderBetween, orderForAppend } from "@/lib/ordering";
 import { filterTasksByChannels, sortDoneLast } from "@/lib/week-filter";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
+import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
+import { CarryoverPrompt } from "@/components/day/carryover-prompt";
 import { DayProgressBar } from "./day-progress-bar";
 
 const arrow =
@@ -106,14 +119,21 @@ export function WeekView({ date }: { date: string }) {
   const create = useCreateTask();
   const openDetail = useTaskDetail((s) => s.open);
   const move = useMoveTaskToDate();
+  const reorder = useReorderTask();
 
   // Chips resolve against all household categories (incl. a partner's shared task).
   const channelsById = channelLookupQ.data ?? EMPTY_CHANNEL_MAP;
   const profilesById = new Map((profilesQ.data ?? []).map((p) => [p.id, p]));
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  // Category filter lives in the sidebar (shared via context). Empty = "Todas".
+  // Category filter — shared via context with the sidebar and the top filter
+  // bar. Empty = "Todas".
   const { selected } = useChannelFilter();
+  // The list shown in each column (category-filtered, completed sunk to the
+  // bottom). Reused for rendering AND for computing drag positions.
+  const columns = week.map((d, i) =>
+    sortDoneLast(filterTasksByChannels((results[i].data ?? []) as Task[], selected)),
+  );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function onDragStart(e: DragStartEvent) {
@@ -121,14 +141,45 @@ export function WeekView({ date }: { date: string }) {
   }
   function onDragEnd(e: DragEndEvent) {
     setActiveTask(null);
-    const task = e.active.data.current?.task as Task | undefined;
-    const overId = e.over?.id;
-    if (!task || typeof overId !== "string" || !overId.startsWith("day-")) return;
-    const toDate = overId.slice(4);
-    if (toDate === task.planned_date) return;
-    const idx = week.indexOf(toDate);
-    const targetTasks = (results[idx]?.data ?? []) as Task[];
-    move.mutate({ task, toDate, sortOrder: orderForAppend(targetTasks.map((t) => t.sort_order)) });
+    const { active, over } = e;
+    if (!over) return;
+    const task = active.data.current?.task as Task | undefined;
+    if (!task) return;
+
+    // Resolve the target day: dropping onto a card adopts that card's day;
+    // dropping onto a column's empty space uses the column id (`day-<date>`).
+    const overId = String(over.id);
+    const overTask = over.data.current?.task as Task | undefined;
+    const toDate = overId.startsWith("day-") ? overId.slice(4) : (overTask?.planned_date ?? null);
+    if (!toDate) return;
+    const toIdx = week.indexOf(toDate);
+    if (toIdx === -1) return;
+    const targetList = columns[toIdx] ?? [];
+
+    if (toDate === task.planned_date) {
+      // Reorder within the same day (drop onto another card in that column).
+      if (!overTask || overTask.id === task.id) return;
+      const oldIndex = targetList.findIndex((t) => t.id === task.id);
+      const newIndex = targetList.findIndex((t) => t.id === overTask.id);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+      const reordered = arrayMove(targetList, oldIndex, newIndex);
+      const before = reordered[newIndex - 1]?.sort_order ?? null;
+      const after = reordered[newIndex + 1]?.sort_order ?? null;
+      reorder.mutate({ task, sortOrder: orderBetween(before, after) });
+      return;
+    }
+
+    // Move to another day, inserting before the hovered card (or at the end
+    // when dropped on the column's empty space). targetList excludes the task.
+    const insertAt = overTask
+      ? Math.max(
+          0,
+          targetList.findIndex((t) => t.id === overTask.id),
+        )
+      : targetList.length;
+    const before = targetList[insertAt - 1]?.sort_order ?? null;
+    const after = targetList[insertAt]?.sort_order ?? null;
+    move.mutate({ task, toDate, sortOrder: orderBetween(before, after) });
   }
 
   return (
@@ -166,6 +217,13 @@ export function WeekView({ date }: { date: string }) {
         </div>
       </header>
 
+      {/* Category filter at the top (mirrors the sidebar list, shared state). */}
+      <ChannelFilterBar />
+
+      {/* When you're looking at the current week, offer to pull yesterday's
+          unfinished tasks into today right from here. */}
+      {thisWeek && <CarryoverPrompt date={today} />}
+
       {/* Mobile day pager: shows which day you're on and steps between days. */}
       <div className="flex items-center justify-between gap-2 md:hidden">
         <button onClick={() => stepDay(-1)} aria-label="Día anterior" className={arrow}>
@@ -200,7 +258,7 @@ export function WeekView({ date }: { date: string }) {
       <div className="min-w-0">
         <DndContext
           sensors={sensors}
-          collisionDetection={pointerWithin}
+          collisionDetection={closestCorners}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveTask(null)}
@@ -220,7 +278,7 @@ export function WeekView({ date }: { date: string }) {
                   date={d}
                   today={today}
                   weekend={i >= 5}
-                  tasks={sortDoneLast(filterTasksByChannels(all, selected))}
+                  tasks={columns[i]}
                   subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
                   channelsById={channelsById}
                   profilesById={profilesById}
@@ -315,6 +373,9 @@ function DayColumn({
       {/* Completion bar — fills as the day's tasks get checked off. */}
       <DayProgressBar done={done} total={tasks.length} />
 
+      {/* Add task at the top of each day. */}
+      <QuickAdd onAdd={onAdd} />
+
       <div
         ref={setNodeRef}
         className={cn(
@@ -323,18 +384,18 @@ function DayColumn({
           isOver && "bg-primary-soft/50 outline-primary",
         )}
       >
-        {tasks.map((t) => (
-          <WeekCard
-            key={t.id}
-            task={t}
-            channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-            owner={profilesById.get(t.owner_id)}
-            subtasks={subsMap.get(t.id) ?? []}
-          />
-        ))}
+        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          {tasks.map((t) => (
+            <WeekCard
+              key={t.id}
+              task={t}
+              channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
+              owner={profilesById.get(t.owner_id)}
+              subtasks={subsMap.get(t.id) ?? []}
+            />
+          ))}
+        </SortableContext>
       </div>
-
-      <QuickAdd onAdd={onAdd} />
     </section>
   );
 }
@@ -350,8 +411,8 @@ function WeekCard({
   owner?: Profile;
   subtasks: Subtask[];
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `wk-${task.id}`,
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
     data: { task },
   });
   const coarse = useCoarsePointer();
@@ -359,9 +420,10 @@ function WeekCard({
   return (
     <div
       ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "group/wk relative",
-        isDragging && "opacity-40",
+        isDragging && "z-10 opacity-40",
         // Desktop: the whole card is the drag handle — a plain click still opens
         // the detail (the title is a button) thanks to the 6px activation
         // threshold. Touch: only the grip drags so the card body keeps scrolling.
