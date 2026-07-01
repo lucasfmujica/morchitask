@@ -27,6 +27,7 @@ import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/
 import { orderForAppend } from "@/lib/ordering";
 import { filterTasksByChannels, sortDoneLast } from "@/lib/week-filter";
 import { useChannelFilter } from "@/lib/channel-filter";
+import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
@@ -353,16 +354,30 @@ function WeekCard({
     id: `wk-${task.id}`,
     data: { task },
   });
+  const coarse = useCoarsePointer();
+  const handle = { ...attributes, ...listeners };
   return (
-    <div ref={setNodeRef} className={cn("group/wk relative", isDragging && "opacity-40")}>
-      <button
-        {...attributes}
-        {...listeners}
-        aria-label="Mover a otro día"
-        className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 touch:opacity-100 active:cursor-grabbing"
-      >
-        <GripVertical className="h-3.5 w-3.5" aria-hidden />
-      </button>
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "group/wk relative",
+        isDragging && "opacity-40",
+        // Desktop: the whole card is the drag handle — a plain click still opens
+        // the detail (the title is a button) thanks to the 6px activation
+        // threshold. Touch: only the grip drags so the card body keeps scrolling.
+        !coarse && "cursor-grab active:cursor-grabbing",
+      )}
+      {...(coarse ? {} : handle)}
+    >
+      {coarse && (
+        <button
+          {...handle}
+          aria-label="Mover a otro día"
+          className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 touch:opacity-100 active:cursor-grabbing"
+        >
+          <GripVertical className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      )}
       <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
     </div>
   );
