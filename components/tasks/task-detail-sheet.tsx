@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarClock, Pause, Play, Plus, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, Pause, Play, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { CHANNEL_COLORS, useChannels, useCreateChannel } from "@/lib/queries/channels";
 import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
@@ -20,6 +20,7 @@ import {
   useDeleteSubtask,
   useSubtasks,
   useToggleSubtask,
+  useUpdateSubtask,
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
@@ -46,7 +47,7 @@ import {
   TIME_ESTIMATES,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Task } from "@/lib/queries/types";
+import type { Profile, Subtask, Task } from "@/lib/queries/types";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskReactions } from "./task-reactions";
@@ -123,6 +124,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const createSub = useCreateSubtask(task.id);
   const toggleSub = useToggleSubtask(task.id);
   const deleteSub = useDeleteSubtask(task.id);
+  const updateSub = useUpdateSubtask(task.id);
   const timer = useTaskTimer(task);
 
   const [title, setTitle] = useState(task.title);
@@ -510,29 +512,16 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
       >
         <div className="flex flex-col gap-0.5">
           {subtasks.map((s) => (
-            <div
+            <ChecklistItemRow
               key={s.id}
-              className="group flex items-start gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-2"
-            >
-              <span className="mt-0.5">
-                <TaskCheckbox checked={s.done} onToggle={() => toggleSub.mutate(s)} size="sm" />
-              </span>
-              <span
-                className={cn(
-                  "min-w-0 flex-1 break-words text-sm leading-snug",
-                  s.done ? "text-subtle line-through" : "text-fg",
-                )}
-              >
-                {s.title}
-              </span>
-              <button
-                onClick={() => deleteSub.mutate(s.id)}
-                aria-label="Eliminar ítem"
-                className="-m-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-danger/10 hover:text-danger group-hover:opacity-100 touch:opacity-100"
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </div>
+              sub={s}
+              profiles={profiles}
+              meId={me?.id}
+              onToggle={() => toggleSub.mutate(s)}
+              onRename={(title) => updateSub.mutate({ id: s.id, title })}
+              onAssign={(assignee_id) => updateSub.mutate({ id: s.id, assignee_id })}
+              onDelete={() => deleteSub.mutate(s.id)}
+            />
           ))}
 
           {/* Add item — clearly visible field with its own add button */}
@@ -679,6 +668,160 @@ function DateChip({
         aria-label="Elegir fecha"
       />
     </label>
+  );
+}
+
+/**
+ * One checklist item: toggle done, rename inline (click the text), (re)assign to
+ * a person via a small avatar menu, and delete. Rename/assign are optimistic in
+ * the parent's mutation, so the row updates instantly.
+ */
+function ChecklistItemRow({
+  sub,
+  profiles,
+  meId,
+  onToggle,
+  onRename,
+  onAssign,
+  onDelete,
+}: {
+  sub: Subtask;
+  profiles: Profile[];
+  meId?: string;
+  onToggle: () => void;
+  onRename: (title: string) => void;
+  onAssign: (assigneeId: string | null) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(sub.title);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const assignee = profiles.find((p) => p.id === sub.assignee_id);
+  const canAssign = profiles.length > 1;
+
+  function commit() {
+    const t = draft.trim();
+    if (t && t !== sub.title) onRename(t);
+    else setDraft(sub.title);
+    setEditing(false);
+  }
+
+  return (
+    <div className="group flex items-start gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-2">
+      <span className="mt-0.5">
+        <TaskCheckbox checked={sub.done} onToggle={onToggle} size="sm" />
+      </span>
+
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") {
+              setDraft(sub.title);
+              setEditing(false);
+            }
+          }}
+          aria-label="Editar ítem"
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        />
+      ) : (
+        <button
+          onClick={() => {
+            setDraft(sub.title);
+            setEditing(true);
+          }}
+          title="Tocá para editar"
+          className={cn(
+            "min-w-0 flex-1 cursor-text break-words text-left text-sm leading-snug",
+            sub.done ? "text-subtle line-through" : "text-fg",
+          )}
+        >
+          {sub.title}
+        </button>
+      )}
+
+      {/* Assignee — small avatar that opens a person picker */}
+      {canAssign && (
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={assignee ? `Asignado a ${assignee.display_name}` : "Asignar a alguien"}
+            title={assignee ? `Asignado a ${assignee.display_name}` : "Asignar a alguien"}
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-full transition-opacity",
+              assignee
+                ? "cursor-pointer"
+                : "cursor-pointer text-subtle opacity-0 hover:text-muted group-hover:opacity-100 touch:opacity-100",
+            )}
+          >
+            {assignee ? (
+              <OwnerAvatar profile={assignee} size={20} />
+            ) : (
+              <UserPlus className="h-4 w-4" aria-hidden />
+            )}
+          </button>
+
+          {menuOpen && (
+            <>
+              <button
+                className="fixed inset-0 z-40 cursor-default"
+                aria-hidden
+                tabIndex={-1}
+                onClick={() => setMenuOpen(false)}
+              />
+              <div className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-card">
+                {profiles.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      onAssign(p.id);
+                      setMenuOpen(false);
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-fg hover:bg-surface-2"
+                  >
+                    <OwnerAvatar profile={p} size={18} />
+                    <span className="min-w-0 flex-1 truncate">
+                      {p.id === meId ? "Vos" : p.display_name}
+                    </span>
+                    {sub.assignee_id === p.id && (
+                      <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                    )}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    onAssign(null);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-surface-2"
+                >
+                  <span
+                    className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-dashed border-border"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1 truncate">Sin asignar</span>
+                  {!sub.assignee_id && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={onDelete}
+        aria-label="Eliminar ítem"
+        className="-m-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-danger/10 hover:text-danger group-hover:opacity-100 touch:opacity-100"
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+      </button>
+    </div>
   );
 }
 

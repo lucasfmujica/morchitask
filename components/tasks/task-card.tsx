@@ -147,24 +147,30 @@ export function TaskCard({
       {/* Checklist */}
       {subtasks.length > 0 && (
         <ul className="flex flex-col gap-1 pl-[30px]">
-          {subtasks.map((s) => (
-            <li key={s.id} className="flex items-center gap-2">
-              <TaskCheckbox
-                checked={s.done}
-                onToggle={() => toggleSub.mutate(s)}
-                size="sm"
-                label={s.done ? "Marcar pendiente" : "Completar ítem"}
-              />
-              <span
-                className={cn(
-                  "min-w-0 flex-1 truncate text-[13px]",
-                  s.done ? "text-subtle line-through" : "text-muted",
-                )}
-              >
-                {s.title}
-              </span>
-            </li>
-          ))}
+          {subtasks.map((s) => {
+            const assignee = s.assignee_id
+              ? profiles.find((p) => p.id === s.assignee_id)
+              : undefined;
+            return (
+              <li key={s.id} className="flex items-center gap-2">
+                <TaskCheckbox
+                  checked={s.done}
+                  onToggle={() => toggleSub.mutate(s)}
+                  size="sm"
+                  label={s.done ? "Marcar pendiente" : "Completar ítem"}
+                />
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-[13px]",
+                    s.done ? "text-subtle line-through" : "text-muted",
+                  )}
+                >
+                  {s.title}
+                </span>
+                {assignee && <OwnerAvatar profile={assignee} size={16} />}
+              </li>
+            );
+          })}
         </ul>
       )}
 

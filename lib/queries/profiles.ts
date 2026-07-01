@@ -50,6 +50,7 @@ export function useUpdateMyProfile() {
       display_name?: string;
       color?: string;
       capacity_target_min?: number | null;
+      avatar_url?: string | null;
     }) => {
       const supabase = createClient();
       const {
@@ -58,6 +59,49 @@ export function useUpdateMyProfile() {
       if (!user) throw new Error("No autenticado");
       const { error } = await supabase.from("profiles").update(patch).eq("id", user.id);
       if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: profileKeys.me });
+      qc.invalidateQueries({ queryKey: profileKeys.all });
+    },
+  });
+}
+
+/** Bucket that holds profile photos (public read; write scoped to the owner's folder). */
+const AVATAR_BUCKET = "avatars";
+
+/**
+ * Upload a profile photo to Storage and point the profile at its public URL.
+ * The file lives under `${userId}/…` so the storage policy can scope writes to
+ * the owner. Each upload gets a fresh name so the CDN never serves a stale image.
+ */
+export function useUploadMyAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<string> => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("No autenticado");
+
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: true });
+      if (upErr) throw upErr;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+
+      const { error: updErr } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+      if (updErr) throw updErr;
+      return publicUrl;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: profileKeys.me });

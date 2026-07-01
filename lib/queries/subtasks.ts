@@ -60,6 +60,61 @@ export function useCreateSubtask(taskId: string) {
   });
 }
 
+/**
+ * Edit a checklist item: rename it and/or (re)assign it to a person.
+ * Optimistic on the per-task cache (detail sheet) and the per-day cache (cards),
+ * so both the open sheet and any visible card update instantly.
+ */
+export function useUpdateSubtask(taskId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      title?: string;
+      assignee_id?: string | null;
+    }): Promise<void> => {
+      const patch: Partial<Pick<Subtask, "title" | "assignee_id">> = {};
+      if (input.title !== undefined) patch.title = input.title;
+      if (input.assignee_id !== undefined) patch.assignee_id = input.assignee_id;
+      const supabase = createClient();
+      const { error } = await supabase.from("subtasks").update(patch).eq("id", input.id);
+      if (error) throw error;
+    },
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: subtaskKeys.task(taskId) });
+      const prev = qc.getQueryData<Subtask[]>(subtaskKeys.task(taskId));
+      const apply = (s: Subtask): Subtask =>
+        s.id === input.id
+          ? {
+              ...s,
+              ...(input.title !== undefined ? { title: input.title } : {}),
+              ...(input.assignee_id !== undefined ? { assignee_id: input.assignee_id } : {}),
+            }
+          : s;
+      qc.setQueryData<Subtask[]>(subtaskKeys.task(taskId), (old = []) => old.map(apply));
+      // Keep any per-day caches (cards) in sync too.
+      const prevByDate = qc.getQueriesData<Map<string, Subtask[]>>({
+        queryKey: subtaskKeys.dateAll,
+      });
+      for (const [key, map] of prevByDate) {
+        if (!map) continue;
+        const next = new Map(map);
+        for (const [tid, arr] of next) next.set(tid, arr.map(apply));
+        qc.setQueryData(key, next);
+      }
+      return { prev, prevByDate };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(subtaskKeys.task(taskId), ctx.prev);
+      for (const [key, data] of ctx?.prevByDate ?? []) qc.setQueryData(key, data);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: subtaskKeys.task(taskId) });
+      qc.invalidateQueries({ queryKey: subtaskKeys.dateAll });
+    },
+  });
+}
+
 export function useToggleSubtask(taskId: string) {
   const qc = useQueryClient();
   return useMutation({

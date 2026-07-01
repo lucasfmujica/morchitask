@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarClock, Check, LogOut } from "lucide-react";
+import { useRef, useState } from "react";
+import { CalendarClock, Camera, Check, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { profileKeys, useMe, useUpdateMyProfile } from "@/lib/queries/profiles";
+import { profileKeys, useMe, useUpdateMyProfile, useUploadMyAvatar } from "@/lib/queries/profiles";
 import { createClient } from "@/lib/supabase/client";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { ThemeSelector } from "./theme-selector";
@@ -15,7 +16,30 @@ export function SettingsView() {
   const qc = useQueryClient();
   const me = useMe().data;
   const updateProfile = useUpdateMyProfile();
+  const uploadAvatar = useUploadMyAvatar();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const connected = me?.google_calendar_connected ?? false;
+
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+
+  function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // let the same file be re-picked later
+    if (!file) return;
+    setAvatarError(null);
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Elegí un archivo de imagen (foto).");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError("La imagen es muy pesada (máx. 5 MB).");
+      return;
+    }
+    uploadAvatar.mutate(file, {
+      onError: () => setAvatarError("No se pudo subir la foto. Probá de nuevo."),
+    });
+  }
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -54,7 +78,32 @@ export function SettingsView() {
       {/* Profile */}
       <Section title="Tu perfil">
         <div className="flex items-center gap-3">
-          <OwnerAvatar profile={me ?? undefined} size={44} />
+          {/* Avatar with a camera badge to upload a photo */}
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={uploadAvatar.isPending}
+            aria-label="Cambiar tu foto"
+            title="Cambiar tu foto"
+            className="group relative shrink-0 cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
+          >
+            <OwnerAvatar profile={me ?? undefined} size={44} />
+            <span className="absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-surface bg-primary text-on-primary shadow-soft">
+              <Camera className="h-3 w-3" aria-hidden />
+            </span>
+            {uploadAvatar.isPending && (
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-900/40 text-[10px] font-semibold text-white">
+                …
+              </span>
+            )}
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            onChange={onPickAvatar}
+            className="hidden"
+          />
           <input
             key={me?.id}
             defaultValue={me?.display_name ?? ""}
@@ -66,6 +115,18 @@ export function SettingsView() {
             aria-label="Tu nombre"
             className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
           />
+        </div>
+        <div className="flex items-center gap-3 pl-[56px]">
+          {me?.avatar_url && (
+            <button
+              type="button"
+              onClick={() => updateProfile.mutate({ avatar_url: null })}
+              className="cursor-pointer text-xs font-medium text-muted transition-colors hover:text-danger"
+            >
+              Quitar foto
+            </button>
+          )}
+          {avatarError && <span className="text-xs text-danger">{avatarError}</span>}
         </div>
       </Section>
 

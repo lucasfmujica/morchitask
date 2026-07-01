@@ -398,6 +398,7 @@ export type Database = {
       };
       subtasks: {
         Row: {
+          assignee_id: string | null;
           created_at: string;
           done: boolean;
           household_id: string;
@@ -408,6 +409,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          assignee_id?: string | null;
           created_at?: string;
           done?: boolean;
           household_id?: string;
@@ -418,6 +420,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          assignee_id?: string | null;
           created_at?: string;
           done?: boolean;
           household_id?: string;
@@ -428,6 +431,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "subtasks_assignee_id_fkey";
+            columns: ["assignee_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "subtasks_household_id_fkey";
             columns: ["household_id"];
