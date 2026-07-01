@@ -9,19 +9,25 @@ import {
   Music,
   Pause,
   Play,
+  Search,
   SkipBack,
   SkipForward,
   Volume2,
+  X,
 } from "lucide-react";
 import {
   connectSpotify,
   useSpotifyConnected,
   useSpotifyPlaylists,
+  useSpotifyPlaylistTracks,
+  useSpotifySearch,
   type SpotifyPlaylist,
+  type SpotifyTrack,
 } from "@/lib/queries/spotify";
 import {
   initSpotifyPlayer,
   playSpotifyContext,
+  playSpotifyUris,
   setSpotifyVolume,
   spotifyNext,
   spotifyPrevious,
@@ -43,7 +49,20 @@ export function SpotifyPlayer() {
     deviceId: null,
   });
   const [volume, setVol] = useState(0.6);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<SpotifyPlaylist | null>(null);
+
+  // Debounced search box.
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+  const searching = debounced.trim().length >= 2;
+
   const playlistsQ = useSpotifyPlaylists(connected);
+  const playlistTracksQ = useSpotifyPlaylistTracks(selectedPlaylist?.id ?? null);
+  const searchQ = useSpotifySearch(debounced);
 
   useEffect(() => {
     if (!connected) return;
@@ -51,6 +70,13 @@ export function SpotifyPlayer() {
     void initSpotifyPlayer();
     return unsub;
   }, [connected]);
+
+  // Take over audio from the built-in soundscapes and start something.
+  function claimAndPlay(fn: () => Promise<void>) {
+    setSource("spotify");
+    setAudioPlaying(false);
+    void fn();
+  }
 
   if (!connected) {
     return (
@@ -119,7 +145,7 @@ export function SpotifyPlayer() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-fg">
-            {snap.track?.name ?? (snap.status === "loading" ? "Conectando…" : "Elegí una playlist")}
+            {snap.track?.name ?? (snap.status === "loading" ? "Conectando…" : "Elegí una canción")}
           </p>
           <p className="truncate text-xs text-muted">{snap.track?.artists ?? ""}</p>
         </div>
@@ -175,15 +201,60 @@ export function SpotifyPlayer() {
         />
       </div>
 
-      <PlaylistPicker
-        playlists={playlistsQ.data ?? []}
-        loading={playlistsQ.isLoading}
-        onPick={(pl) => {
-          setSource("spotify");
-          setAudioPlaying(false);
-          void playSpotifyContext(pl.uri);
-        }}
-      />
+      {/* Search box */}
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+          aria-hidden
+        />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar canción o artista…"
+          aria-label="Buscar canción o artista"
+          className="h-10 w-full rounded-xl border border-border bg-surface pl-9 pr-9 text-sm text-fg shadow-soft outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-focus"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        )}
+      </div>
+
+      {searching ? (
+        <TrackList
+          tracks={searchQ.data ?? []}
+          loading={searchQ.isLoading}
+          empty="No encontramos canciones."
+          currentName={snap.track?.name}
+          onPick={(t) => claimAndPlay(() => playSpotifyUris([t.uri]))}
+        />
+      ) : (
+        <>
+          <PlaylistPicker
+            playlists={playlistsQ.data ?? []}
+            loading={playlistsQ.isLoading}
+            selectedId={selectedPlaylist?.id ?? null}
+            onPick={(pl) => {
+              setSelectedPlaylist(pl);
+              claimAndPlay(() => playSpotifyContext(pl.uri));
+            }}
+          />
+          {selectedPlaylist && (
+            <TrackList
+              tracks={playlistTracksQ.data ?? []}
+              loading={playlistTracksQ.isLoading}
+              empty="Esta playlist no tiene canciones."
+              currentName={snap.track?.name}
+              onPick={(t) => claimAndPlay(() => playSpotifyContext(selectedPlaylist.uri, t.uri))}
+            />
+          )}
+        </>
+      )}
     </PlayerShell>
   );
 }
@@ -196,21 +267,93 @@ function PlayerShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** A scrollable list of tracks (playlist contents or search results). */
+function TrackList({
+  tracks,
+  loading,
+  empty,
+  currentName,
+  onPick,
+}: {
+  tracks: SpotifyTrack[];
+  loading: boolean;
+  empty: string;
+  currentName?: string;
+  onPick: (t: SpotifyTrack) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-3 text-sm text-subtle">
+        Cargando canciones…
+      </div>
+    );
+  }
+  if (tracks.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-3 text-sm text-subtle">
+        {empty}
+      </div>
+    );
+  }
+  return (
+    <ul className="max-h-60 overflow-y-auto rounded-xl border border-border bg-surface p-1">
+      {tracks.map((t) => {
+        const active = !!currentName && t.name === currentName;
+        return (
+          <li key={t.id}>
+            <button
+              onClick={() => onPick(t)}
+              className={cn(
+                "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors",
+                active ? "bg-primary-soft" : "hover:bg-surface-2",
+              )}
+            >
+              <span className="h-9 w-9 shrink-0 overflow-hidden rounded bg-surface-2">
+                {t.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={t.image} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-muted">
+                    <Music className="h-4 w-4" aria-hidden />
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className={cn(
+                    "block truncate text-sm",
+                    active ? "font-medium text-primary" : "text-fg",
+                  )}
+                >
+                  {t.name}
+                </span>
+                <span className="block truncate text-xs text-muted">{t.artists}</span>
+              </span>
+              {active && <Play className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** Playlist dropdown — same visual language as the other Focus pickers. */
 function PlaylistPicker({
   playlists,
   loading,
+  selectedId,
   onPick,
 }: {
   playlists: SpotifyPlaylist[];
   loading: boolean;
+  selectedId: string | null;
   onPick: (pl: SpotifyPlaylist) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [pickedId, setPickedId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
-  const picked = playlists.find((p) => p.id === pickedId);
+  const picked = playlists.find((p) => p.id === selectedId);
 
   useEffect(() => {
     if (!open) return;
@@ -264,12 +407,11 @@ function PlaylistPicker({
               <li className="px-2.5 py-2 text-sm text-subtle">No encontramos playlists.</li>
             )}
             {playlists.map((pl) => {
-              const active = pl.id === pickedId;
+              const active = pl.id === selectedId;
               return (
                 <li key={pl.id} role="option" aria-selected={active}>
                   <button
                     onClick={() => {
-                      setPickedId(pl.id);
                       onPick(pl);
                       setOpen(false);
                     }}

@@ -60,6 +60,79 @@ export type SpotifyPlaylist = {
   tracks?: { total: number };
 };
 
+export type SpotifyTrack = {
+  id: string;
+  uri: string;
+  name: string;
+  artists: string;
+  image: string | null;
+};
+
+type RawTrack = {
+  id: string | null;
+  uri?: string;
+  name: string;
+  artists?: { name: string }[];
+  album?: { images?: { url: string }[] };
+};
+
+/** Normalize a raw API track; returns null for unplayable ones (local files, no uri). */
+function toTrack(raw: RawTrack | null | undefined): SpotifyTrack | null {
+  if (!raw?.uri || raw.uri.startsWith("spotify:local")) return null;
+  return {
+    id: raw.id ?? raw.uri,
+    uri: raw.uri,
+    name: raw.name,
+    artists: (raw.artists ?? []).map((a) => a.name).join(", "),
+    image: raw.album?.images?.[0]?.url ?? null,
+  };
+}
+
+/** Tracks inside a playlist (enabled once a playlist is selected). */
+export function useSpotifyPlaylistTracks(playlistId: string | null) {
+  return useQuery({
+    queryKey: ["spotify", "playlist-tracks", playlistId],
+    enabled: !!playlistId,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<SpotifyTrack[]> => {
+      const token = await getSpotifyAccessToken();
+      if (!token || !playlistId) return [];
+      const res = await fetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) throw new Error("spotify_tracks_failed");
+      const json = await res.json();
+      return ((json.items ?? []) as { track: RawTrack | null }[])
+        .map((it) => toTrack(it.track))
+        .filter((t): t is SpotifyTrack => t != null);
+    },
+  });
+}
+
+/** Search the Spotify catalog for tracks (enabled once the query has ≥2 chars). */
+export function useSpotifySearch(query: string) {
+  const q = query.trim();
+  return useQuery({
+    queryKey: ["spotify", "search", q],
+    enabled: q.length >= 2,
+    staleTime: 60_000,
+    queryFn: async (): Promise<SpotifyTrack[]> => {
+      const token = await getSpotifyAccessToken();
+      if (!token) return [];
+      const res = await fetch(
+        `https://api.spotify.com/v1/search?type=track&limit=20&q=${encodeURIComponent(q)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) throw new Error("spotify_search_failed");
+      const json = await res.json();
+      return ((json.tracks?.items ?? []) as RawTrack[])
+        .map(toTrack)
+        .filter((t): t is SpotifyTrack => t != null);
+    },
+  });
+}
+
 /** The user's playlists (Web API), enabled only when connected. */
 export function useSpotifyPlaylists(enabled: boolean) {
   return useQuery({

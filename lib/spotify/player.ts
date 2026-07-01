@@ -180,15 +180,32 @@ export async function setSpotifyVolume(v: number) {
   await player?.setVolume(Math.max(0, Math.min(1, v)));
 }
 
-/** Start a playlist (or any context uri) on our device. */
-export async function playSpotifyContext(contextUri: string) {
+async function startPlayback(body: Record<string, unknown>) {
   const token = await getSpotifyAccessToken();
   if (!token || !deviceId) return;
   await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ context_uri: contextUri }),
+    body: JSON.stringify(body),
   }).catch(() => {});
+}
+
+/**
+ * Start a playlist (or any context uri). Pass `offsetUri` to begin at a specific
+ * track within it while keeping the rest of the playlist queued for next/prev.
+ */
+export async function playSpotifyContext(contextUri: string, offsetUri?: string) {
+  await startPlayback(
+    offsetUri
+      ? { context_uri: contextUri, offset: { uri: offsetUri } }
+      : { context_uri: contextUri },
+  );
+}
+
+/** Play one or more specific tracks (used for search results, no playlist context). */
+export async function playSpotifyUris(uris: string[]) {
+  if (uris.length === 0) return;
+  await startPlayback({ uris });
 }
 
 export function disconnectSpotifyPlayer() {
