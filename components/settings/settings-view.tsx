@@ -5,6 +5,7 @@ import { CalendarClock, Camera, Check, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { profileKeys, useMe, useUpdateMyProfile, useUploadMyAvatar } from "@/lib/queries/profiles";
+import { useHousehold, useUpdateHouseholdName } from "@/lib/queries/households";
 import { createClient } from "@/lib/supabase/client";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { ThemeSelector } from "./theme-selector";
@@ -17,6 +18,8 @@ export function SettingsView() {
   const me = useMe().data;
   const updateProfile = useUpdateMyProfile();
   const uploadAvatar = useUploadMyAvatar();
+  const household = useHousehold().data;
+  const updateHouseholdName = useUpdateHouseholdName();
   const fileInput = useRef<HTMLInputElement>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const connected = me?.google_calendar_connected ?? false;
@@ -128,6 +131,24 @@ export function SettingsView() {
           )}
           {avatarError && <span className="text-xs text-danger">{avatarError}</span>}
         </div>
+      </Section>
+
+      {/* Shared space */}
+      <Section title="Tu espacio">
+        <input
+          key={household?.id}
+          defaultValue={household?.name ?? ""}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            if (v && v !== household?.name) updateHouseholdName.mutate(v);
+          }}
+          placeholder="Nombre de tu espacio"
+          aria-label="Nombre de tu espacio"
+          className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        />
+        <p className="text-xs text-muted">
+          Es el nombre del espacio que compartís con tu pareja (aparece en la barra lateral).
+        </p>
       </Section>
 
       {/* Theme */}

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useChannels } from "@/lib/queries/channels";
 import { useMe } from "@/lib/queries/profiles";
+import { useHousehold } from "@/lib/queries/households";
 import { ChannelFilterProvider } from "@/lib/channel-filter";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -149,7 +150,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
 function DesktopSidebar({ pathname }: { pathname: string }) {
   const channelsQ = useChannels();
   const me = useMe().data;
+  const household = useHousehold().data;
   const onWeek = pathname.startsWith("/week");
+  const onSettings = pathname.startsWith("/settings");
   // Views where clicking a category filters the task list.
   const filterable =
     pathname.startsWith("/today") ||
@@ -191,28 +194,29 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
         <SidebarChannels channels={channelsQ.data ?? []} filterable={filterable} />
       </div>
 
-      {/* Pinned bottom — Ajustes + perfil, siempre visibles. */}
-      <div className="shrink-0">
-        <div className="px-3 pb-1">
-          <SidebarLink
-            item={{
-              href: "/settings",
-              label: "Ajustes",
-              icon: Settings,
-              match: (p) => p.startsWith("/settings"),
-            }}
-            pathname={pathname}
-          />
-        </div>
-
-        <div className="flex items-center gap-2.5 border-t border-border px-4 py-3.5">
+      {/* Pinned bottom — el bloque del perfil es el acceso a Ajustes; el botón de
+          salir queda al lado (no anidado en el link). */}
+      <div className="flex shrink-0 items-center gap-1 border-t border-border px-2 py-2">
+        <Link
+          href="/settings"
+          aria-current={onSettings ? "page" : undefined}
+          title="Ajustes"
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors",
+            onSettings ? "bg-primary-soft" : "hover:bg-surface-2",
+          )}
+        >
           <OwnerAvatar profile={me ?? undefined} size={32} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-fg">{me?.display_name ?? "…"}</p>
-            <p className="truncate text-xs text-subtle">Tu espacio</p>
+            <p className="truncate text-xs text-subtle">{household?.name || "Tu espacio"}</p>
           </div>
-          <SignOutButton />
-        </div>
+          <Settings
+            className={cn("h-4 w-4 shrink-0", onSettings ? "text-primary" : "text-subtle")}
+            aria-hidden
+          />
+        </Link>
+        <SignOutButton />
       </div>
     </aside>
   );
