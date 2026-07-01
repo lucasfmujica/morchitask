@@ -279,7 +279,7 @@ function PlaylistPicker({
                     )}
                   >
                     <span className="min-w-0 flex-1 truncate">{pl.name}</span>
-                    <span className="shrink-0 text-xs text-subtle">{pl.tracks.total}</span>
+                    <span className="shrink-0 text-xs text-subtle">{pl.tracks?.total ?? 0}</span>
                     {active && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
                   </button>
                 </li>

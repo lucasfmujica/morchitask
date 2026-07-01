@@ -56,8 +56,8 @@ export type SpotifyPlaylist = {
   id: string;
   name: string;
   uri: string;
-  images: { url: string }[];
-  tracks: { total: number };
+  images?: { url: string }[];
+  tracks?: { total: number };
 };
 
 /** The user's playlists (Web API), enabled only when connected. */
@@ -74,7 +74,10 @@ export function useSpotifyPlaylists(enabled: boolean) {
       });
       if (!res.ok) throw new Error("spotify_playlists_failed");
       const json = await res.json();
-      return (json.items ?? []) as SpotifyPlaylist[];
+      // Spotify occasionally returns null items in the playlists list — drop them.
+      return ((json.items ?? []) as (SpotifyPlaylist | null)[]).filter(
+        (pl): pl is SpotifyPlaylist => pl != null && typeof pl.id === "string",
+      );
     },
   });
 }
