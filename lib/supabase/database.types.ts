@@ -154,6 +154,38 @@ export type Database = {
           },
         ];
       };
+      spotify_credentials: {
+        Row: {
+          created_at: string;
+          owner_id: string;
+          refresh_token: string;
+          scope: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          owner_id: string;
+          refresh_token: string;
+          scope?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          owner_id?: string;
+          refresh_token?: string;
+          scope?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "spotify_credentials_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       households: {
         Row: {
           created_at: string;
@@ -250,6 +282,7 @@ export type Database = {
           household_id: string;
           id: string;
           notification_prefs: Json;
+          spotify_connected: boolean;
           updated_at: string;
         };
         Insert: {
@@ -263,6 +296,7 @@ export type Database = {
           household_id: string;
           id: string;
           notification_prefs?: Json;
+          spotify_connected?: boolean;
           updated_at?: string;
         };
         Update: {
@@ -276,6 +310,7 @@ export type Database = {
           household_id?: string;
           id?: string;
           notification_prefs?: Json;
+          spotify_connected?: boolean;
           updated_at?: string;
         };
         Relationships: [
@@ -744,6 +779,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      connect_spotify: {
+        Args: { p_owner_id: string; p_refresh_token: string; p_scope: string };
+        Returns: undefined;
+      };
       ensure_day_materialized: {
         Args: { target_date: string };
         Returns: undefined;

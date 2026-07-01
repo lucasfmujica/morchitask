@@ -1,10 +1,16 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CalendarClock, Camera, Check, LogOut } from "lucide-react";
+import { CalendarClock, Camera, Check, LogOut, Music } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { profileKeys, useMe, useUpdateMyProfile, useUploadMyAvatar } from "@/lib/queries/profiles";
+import {
+  clearSpotifyTokenCache,
+  connectSpotify,
+  useDisconnectSpotify,
+  useSpotifyConnected,
+} from "@/lib/queries/spotify";
 import { useHousehold, useUpdateHouseholdName } from "@/lib/queries/households";
 import { createClient } from "@/lib/supabase/client";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
@@ -23,6 +29,8 @@ export function SettingsView() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const connected = me?.google_calendar_connected ?? false;
+  const spotifyConnected = useSpotifyConnected();
+  const disconnectSpotify = useDisconnectSpotify();
 
   const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -197,6 +205,42 @@ export function SettingsView() {
           ) : (
             <button
               onClick={connectCalendar}
+              className="ml-12 w-fit cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover sm:ml-0 sm:shrink-0"
+            >
+              Conectar
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              <Music className="h-5 w-5" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-fg">Spotify</p>
+              <p className="text-xs text-muted">
+                Reproducí tus playlists en la pantalla de Foco. Requiere Spotify Premium.
+              </p>
+            </div>
+          </div>
+          {spotifyConnected ? (
+            <div className="flex flex-wrap items-center gap-2 pl-12 sm:shrink-0 sm:pl-0">
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
+                <Check className="h-3 w-3" aria-hidden /> Conectado
+              </span>
+              <button
+                onClick={() =>
+                  disconnectSpotify.mutate(undefined, { onSuccess: clearSpotifyTokenCache })
+                }
+                className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-danger"
+              >
+                Desconectar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={connectSpotify}
               className="ml-12 w-fit cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover sm:ml-0 sm:shrink-0"
             >
               Conectar

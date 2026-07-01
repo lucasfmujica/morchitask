@@ -7,6 +7,7 @@ import { Check, ChevronDown, Pause, Play, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { taskKeys, useTasksForDate } from "@/lib/queries/tasks";
 import { useChannels } from "@/lib/queries/channels";
+import { useAudio } from "@/lib/stores/audio";
 import type { Channel, Task } from "@/lib/queries/types";
 import { formatMinutes } from "@/lib/format";
 import { todayISO } from "@/lib/date";
@@ -64,6 +65,13 @@ export function FocusTimer() {
   const [taskId, setTaskId] = useState<string>("");
   const [completed, setCompleted] = useState(0);
 
+  // Optional: let the focus timer nudge the background-sound player.
+  const audioAutoStart = useAudio((s) => s.autoStartWithFocus);
+  const audioSource = useAudio((s) => s.source);
+  const soundscapeId = useAudio((s) => s.soundscapeId);
+  const setAudioPlaying = useAudio((s) => s.setPlaying);
+  const setAudioSource = useAudio((s) => s.setSource);
+
   // Tick
   useEffect(() => {
     if (!running) return;
@@ -79,6 +87,8 @@ export function FocusTimer() {
     if (mode === "focus") {
       setCompleted((c) => c + 1);
       notifyFocusDone();
+      // Stop the background sound alongside the end chime.
+      if (audioAutoStart && audioSource === "soundscape") setAudioPlaying(false);
     }
     if (mode === "focus" && taskId) {
       const task = tasks.find((t) => t.id === taskId);
@@ -91,23 +101,46 @@ export function FocusTimer() {
           .then(() => qc.invalidateQueries({ queryKey: taskKeys.date(today) }));
       }
     }
-  }, [secondsLeft, running, mode, taskId, tasks, qc, today]);
+  }, [
+    secondsLeft,
+    running,
+    mode,
+    taskId,
+    tasks,
+    qc,
+    today,
+    audioAutoStart,
+    audioSource,
+    setAudioPlaying,
+  ]);
 
   function toggleRun() {
     // Ask once, when the user first starts a block, so the end chime can notify.
     if (!running && typeof Notification !== "undefined" && Notification.permission === "default") {
       Notification.requestPermission().catch(() => {});
     }
-    setRunning((r) => !r);
+    const willRun = !running;
+    // Auto-start the background sound when a focus block begins; pause on pause.
+    if (audioAutoStart && soundscapeId) {
+      if (willRun && mode === "focus") {
+        if (audioSource !== "spotify") setAudioSource("soundscape");
+        setAudioPlaying(true);
+      } else {
+        setAudioPlaying(false);
+      }
+    }
+    setRunning(willRun);
   }
   function switchMode(m: Mode) {
     setMode(m);
     setSecondsLeft(DURATION[m]);
     setRunning(false);
+    if (audioAutoStart && audioSource === "soundscape") setAudioPlaying(false);
   }
   function reset() {
     setSecondsLeft(DURATION[mode]);
     setRunning(false);
+    if (audioAutoStart && audioSource === "soundscape") setAudioPlaying(false);
   }
 
   const total = DURATION[mode];
