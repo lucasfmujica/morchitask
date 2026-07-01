@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarClock, Check, Pause, Play, Plus, Trash2, UserPlus, X } from "lucide-react";
@@ -637,7 +637,12 @@ function ReminderControl({
 }
 
 /** A chip that opens the native date picker. Styled like {@link Chip} so it
- *  sits inline with the quick "Hoy / Mañana" options. */
+ *  sits inline with the quick "Hoy / Mañana" options.
+ *
+ *  We open the picker with `showPicker()` on click instead of relying on the
+ *  browser to open it when a stretched, transparent date input is clicked — on
+ *  desktop that only focuses the field (the calendar opens from the hidden
+ *  native icon), so "Otro día" appeared to do nothing. */
 function DateChip({
   label,
   value,
@@ -649,8 +654,25 @@ function DateChip({
   active: boolean;
   onChange: (date: string) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function openPicker() {
+    const el = inputRef.current;
+    if (!el) return;
+    // showPicker() must be called from a user gesture; fall back to focus if the
+    // browser rejects it (e.g. Safari before the ISO date is committed).
+    try {
+      el.showPicker();
+    } catch {
+      el.focus();
+    }
+  }
+
   return (
-    <label
+    <button
+      type="button"
+      onClick={openPicker}
+      aria-label="Elegir fecha"
       className={cn(
         "relative inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
         active
@@ -661,13 +683,15 @@ function DateChip({
       <CalendarClock className="h-3.5 w-3.5" aria-hidden />
       {label}
       <input
+        ref={inputRef}
         type="date"
         value={value}
         onChange={(e) => e.target.value && onChange(e.target.value)}
-        className="absolute inset-0 cursor-pointer opacity-0"
-        aria-label="Elegir fecha"
+        tabIndex={-1}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
       />
-    </label>
+    </button>
   );
 }
 

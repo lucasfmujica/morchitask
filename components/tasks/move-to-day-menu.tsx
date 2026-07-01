@@ -25,6 +25,7 @@ function useAppendOrder() {
 export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const dateInputId = useId();
   const move = useMoveTaskToDate();
   const appendOrder = useAppendOrder();
@@ -118,21 +119,36 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
               );
             })}
 
-            {/* Free date picker — native, so it works everywhere incl. mobile. */}
-            <label
-              htmlFor={dateInputId}
-              className="relative mt-0.5 flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm text-fg transition-colors hover:bg-surface-2"
+            {/* Free date picker — native, so it works everywhere incl. mobile.
+                We open it with showPicker() on click: on desktop a transparent
+                stretched date input only focuses (the calendar lives on the
+                hidden native icon), so the row appeared to do nothing. */}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const el = dateInputRef.current;
+                if (!el) return;
+                try {
+                  el.showPicker();
+                } catch {
+                  el.focus();
+                }
+              }}
+              className="relative mt-0.5 flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg transition-colors hover:bg-surface-2"
             >
               <span>Otra fecha…</span>
               <input
+                ref={dateInputRef}
                 id={dateInputId}
                 type="date"
                 defaultValue={task.planned_date ?? today}
                 onChange={(e) => e.target.value && moveTo(e.target.value)}
-                className="absolute inset-0 cursor-pointer opacity-0"
-                aria-label="Elegir fecha"
+                tabIndex={-1}
+                aria-hidden
+                className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
               />
-            </label>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
