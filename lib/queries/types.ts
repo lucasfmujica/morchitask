@@ -1,17 +1,74 @@
-import type { Tables } from "@/lib/supabase/database.types";
+import type {
+  channels,
+  dailyNotes,
+  households,
+  objectives,
+  profiles,
+  recurringTemplates,
+  subtasks,
+  taskBlocks,
+  taskComments,
+  taskReactions,
+  tasks,
+} from "@/lib/db/schema";
 
-export type Task = Tables<"tasks">;
-export type Channel = Tables<"channels">;
-export type Profile = Tables<"profiles">;
-export type Household = Tables<"households">;
-export type Subtask = Tables<"subtasks">;
-export type RecurringTemplate = Tables<"recurring_templates">;
-export type DailyNote = Tables<"daily_notes">;
-export type Objective = Tables<"objectives">;
-export type TaskComment = Tables<"task_comments">;
-export type TaskReaction = Tables<"task_reactions">;
-export type TaskBlock = Tables<"task_blocks">;
+export type Task = typeof tasks.$inferSelect;
+export type Channel = typeof channels.$inferSelect;
+export type Profile = typeof profiles.$inferSelect;
+export type Household = typeof households.$inferSelect;
+export type Subtask = typeof subtasks.$inferSelect;
+export type RecurringTemplate = typeof recurringTemplates.$inferSelect;
+export type DailyNote = typeof dailyNotes.$inferSelect;
+export type Objective = typeof objectives.$inferSelect;
+export type TaskComment = typeof taskComments.$inferSelect;
+export type TaskReaction = typeof taskReactions.$inferSelect;
+export type TaskBlock = typeof taskBlocks.$inferSelect;
 
 export type TaskStatus = "todo" | "done" | "cancelled";
 export type ObjectivePeriod = "week" | "month";
 export type ObjectiveStatus = "active" | "done" | "archived";
+
+// Shared input shapes between client hooks (lib/queries) and the server
+// data-access layer (lib/db/queries) / Server Actions (lib/actions).
+
+export type NewTask = {
+  title: string;
+  plannedDate: string | null;
+  channelId?: string | null;
+  timeEstimateMin?: number | null;
+  sortOrder: number;
+};
+
+export type TaskPatch = Partial<
+  Pick<
+    Task,
+    | "title"
+    | "notes"
+    | "channel_id"
+    | "time_estimate_min"
+    | "actual_time_min"
+    | "block_start"
+    | "block_end"
+    | "owner_id"
+    | "shared"
+    | "objective_id"
+    | "gcal_event_id"
+    | "remind_at"
+    | "reminder_sent_at"
+    | "due_date"
+  >
+>;
+
+/** Notification preferences stored on `profiles.notification_prefs` (jsonb). */
+export type NotificationPrefs = {
+  dailyPlan?: boolean;
+  dailyPlanTime?: string;
+  taskReminders?: boolean;
+};
+
+export type ProfilePatch = Partial<
+  Pick<
+    Profile,
+    "display_name" | "color" | "capacity_target_min" | "avatar_url" | "notification_prefs"
+  >
+>;

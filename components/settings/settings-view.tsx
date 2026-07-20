@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 import { CalendarClock, Camera, Check, LogOut, Music } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { signIn, signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { disconnectCalendar as disconnectCalendarAction } from "@/lib/actions/google";
 import { profileKeys, useMe, useUpdateMyProfile, useUploadMyAvatar } from "@/lib/queries/profiles";
 import {
   clearSpotifyTokenCache,
@@ -12,14 +13,12 @@ import {
   useSpotifyConnected,
 } from "@/lib/queries/spotify";
 import { useHousehold, useUpdateHouseholdName } from "@/lib/queries/households";
-import { createClient } from "@/lib/supabase/client";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { ThemeSelector } from "./theme-selector";
 import { ChannelsManager } from "./channels-manager";
 import { NotificationsCard } from "./notifications-card";
 
 export function SettingsView() {
-  const router = useRouter();
   const qc = useQueryClient();
   const me = useMe().data;
   const updateProfile = useUpdateMyProfile();
@@ -52,33 +51,18 @@ export function SettingsView() {
     });
   }
 
-  async function signOut() {
-    await createClient().auth.signOut();
-    router.push("/login");
-    router.refresh();
+  async function handleSignOut() {
+    await signOut({ redirectTo: "/login" });
   }
 
+  /** Re-consent to Google — the provider already requests Calendar scopes on
+   * every sign-in (see lib/auth.ts), so this just re-runs that same flow. */
   async function connectCalendar() {
-    await createClient().auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        // Full calendar access (read + write) in a single scope — covers listing
-        // calendars, reading events, and creating/editing our time-block events.
-        scopes: "https://www.googleapis.com/auth/calendar",
-        queryParams: { access_type: "offline", prompt: "consent" },
-        redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
-      },
-    });
+    await signIn("google", { redirectTo: "/settings" });
   }
 
   async function disconnectCalendar() {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("google_credentials").delete().eq("owner_id", user.id);
-    await supabase.from("profiles").update({ google_calendar_connected: false }).eq("id", user.id);
+    await disconnectCalendarAction();
     qc.invalidateQueries({ queryKey: profileKeys.me });
   }
 
@@ -255,7 +239,7 @@ export function SettingsView() {
       </Section>
 
       <button
-        onClick={signOut}
+        onClick={handleSignOut}
         className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
       >
         <LogOut className="h-4 w-4" aria-hidden />

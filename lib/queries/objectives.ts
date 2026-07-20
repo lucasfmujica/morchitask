@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
-import type { TablesInsert, TablesUpdate } from "@/lib/supabase/database.types";
+import {
+  createObjective as createObjectiveAction,
+  deleteObjective as deleteObjectiveAction,
+  getObjectiveTaskCounts,
+  getObjectives,
+  updateObjective as updateObjectiveAction,
+} from "@/lib/actions/objectives";
 import type { Objective } from "./types";
 
 export const objectiveKeys = {
@@ -12,17 +17,7 @@ export const objectiveKeys = {
 export function useObjectives() {
   return useQuery({
     queryKey: objectiveKeys.all,
-    queryFn: async (): Promise<Objective[]> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("objectives")
-        .select("*")
-        .neq("status", "archived")
-        .order("end_date", { ascending: true })
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: (): Promise<Objective[]> => getObjectives(),
     staleTime: 5 * 60_000,
   });
 }
@@ -37,15 +32,9 @@ export function useObjectiveProgress() {
   return useQuery({
     queryKey: objectiveKeys.progress,
     queryFn: async (): Promise<Map<string, ObjectiveProgress>> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("objective_id, status")
-        .not("objective_id", "is", null);
-      if (error) throw error;
-
+      const rows = await getObjectiveTaskCounts();
       const counts = new Map<string, ObjectiveProgress>();
-      for (const row of data) {
+      for (const row of rows) {
         if (!row.objective_id) continue;
         const entry = counts.get(row.objective_id) ?? { done: 0, total: 0 };
         entry.total += 1;
@@ -61,29 +50,19 @@ export function useObjectiveProgress() {
 export function useCreateObjective() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (
-      input: Pick<TablesInsert<"objectives">, "title" | "period" | "start_date" | "end_date">,
-    ) => {
-      const supabase = createClient();
-      // household_id / owner_id default to the caller's (DB default + RLS).
-      const { data, error } = await supabase.from("objectives").insert(input).select().single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (input: { title: string; period: string; start_date: string; end_date: string }) =>
+      createObjectiveAction(input),
     onSuccess: () => qc.invalidateQueries({ queryKey: objectiveKeys.all }),
   });
 }
 
-type ObjectivePatch = Pick<TablesUpdate<"objectives">, "title" | "status" | "sort_order">;
+type ObjectivePatch = { title?: string; status?: string; sort_order?: number };
 
 export function useUpdateObjective() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: ObjectivePatch }) => {
-      const supabase = createClient();
-      const { error } = await supabase.from("objectives").update(patch).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, patch }: { id: string; patch: ObjectivePatch }) =>
+      updateObjectiveAction(id, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: objectiveKeys.all }),
   });
 }
@@ -91,11 +70,7 @@ export function useUpdateObjective() {
 export function useDeleteObjective() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const supabase = createClient();
-      const { error } = await supabase.from("objectives").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => deleteObjectiveAction(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: objectiveKeys.all });
       qc.invalidateQueries({ queryKey: objectiveKeys.progress });

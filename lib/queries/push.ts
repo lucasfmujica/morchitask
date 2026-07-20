@@ -1,16 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import {
+  getMyNotificationPrefs,
+  saveMyNotificationPrefs,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "@/lib/actions/push";
+import type { NotificationPrefs } from "./types";
+
+export type { NotificationPrefs };
 
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-
-/** Notification preferences stored on `profiles.notification_prefs` (jsonb). */
-export type NotificationPrefs = {
-  dailyPlan?: boolean;
-  dailyPlanTime?: string;
-  taskReminders?: boolean;
-};
 
 /** VAPID public key (base64url) → Uint8Array for pushManager.subscribe. */
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -52,34 +53,14 @@ export function usePushNotifications() {
       .catch(() => {});
 
     // Load current prefs so toggles merge instead of overwrite.
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase
-        .from("profiles")
-        .select("notification_prefs")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          if (data?.notification_prefs) setPrefs(data.notification_prefs as NotificationPrefs);
-        });
-    });
+    getMyNotificationPrefs().then(setPrefs);
   }, []);
 
   /** Merge a prefs patch into the DB row and local state. */
-  const savePrefs = useCallback(
-    async (patch: NotificationPrefs) => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const next = { ...prefs, ...patch };
-      await supabase.from("profiles").update({ notification_prefs: next }).eq("id", user.id);
-      setPrefs(next);
-    },
-    [prefs],
-  );
+  const savePrefs = useCallback(async (patch: NotificationPrefs) => {
+    const next = await saveMyNotificationPrefs(patch);
+    setPrefs(next);
+  }, []);
 
   /** Subscribe this device to push (needed before any reminder can arrive). */
   async function subscribe(): Promise<boolean> {
@@ -91,13 +72,11 @@ export function usePushNotifications() {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC) as BufferSource,
     });
     const json = sub.toJSON();
-    const supabase = createClient();
-    await supabase
-      .from("push_subscriptions")
-      .upsert(
-        { endpoint: json.endpoint!, p256dh: json.keys!.p256dh, auth_key: json.keys!.auth },
-        { onConflict: "endpoint" },
-      );
+    await subscribeToPush({
+      endpoint: json.endpoint!,
+      p256dh: json.keys!.p256dh,
+      authKey: json.keys!.auth,
+    });
     setEnabled(true);
     return true;
   }
@@ -119,9 +98,8 @@ export function usePushNotifications() {
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      const supabase = createClient();
       if (sub) {
-        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        await unsubscribeFromPush(sub.endpoint);
         await sub.unsubscribe();
       }
       // Turning off the device subscription turns off every push it carries.

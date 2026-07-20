@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 /**
  * Start the Spotify connect flow. This is a SECONDARY connection (not a login),
- * so we run our own Authorization Code flow instead of Supabase auth — the app's
- * Supabase session must stay intact. We stash a random `state` in an httpOnly
+ * so we run our own Authorization Code flow instead of Auth.js — the app's
+ * session must stay intact. We stash a random `state` in an httpOnly
  * cookie for CSRF and send the user to Spotify's consent screen.
  */
 const SCOPES = [

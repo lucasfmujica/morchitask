@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import {
+  createSubtask as createSubtaskAction,
+  deleteSubtask as deleteSubtaskAction,
+  getSubtasksForDate,
+  getSubtasksForTask,
+  toggleSubtask as toggleSubtaskAction,
+  updateSubtask as updateSubtaskAction,
+} from "@/lib/actions/subtasks";
 import type { Subtask } from "./types";
 
 export const subtaskKeys = {
@@ -27,32 +34,15 @@ export function groupSubtasksByTask(subtasks: Subtask[]): Map<string, Subtask[]>
 export function useSubtasks(taskId: string) {
   return useQuery({
     queryKey: subtaskKeys.task(taskId),
-    queryFn: async (): Promise<Subtask[]> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("subtasks")
-        .select("*")
-        .eq("task_id", taskId)
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: (): Promise<Subtask[]> => getSubtasksForTask(taskId),
   });
 }
 
 export function useCreateSubtask(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { title: string; sortOrder: number }): Promise<Subtask> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("subtasks")
-        .insert({ task_id: taskId, title: input.title, sort_order: input.sortOrder })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (input: { title: string; sortOrder: number }): Promise<Subtask> =>
+      createSubtaskAction(taskId, input),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: subtaskKeys.task(taskId) });
       qc.invalidateQueries({ queryKey: subtaskKeys.dateAll });
@@ -76,9 +66,7 @@ export function useUpdateSubtask(taskId: string) {
       const patch: Partial<Pick<Subtask, "title" | "assignee_id">> = {};
       if (input.title !== undefined) patch.title = input.title;
       if (input.assignee_id !== undefined) patch.assignee_id = input.assignee_id;
-      const supabase = createClient();
-      const { error } = await supabase.from("subtasks").update(patch).eq("id", input.id);
-      if (error) throw error;
+      await updateSubtaskAction(input.id, patch);
     },
     onMutate: async (input) => {
       await qc.cancelQueries({ queryKey: subtaskKeys.task(taskId) });
@@ -118,14 +106,7 @@ export function useUpdateSubtask(taskId: string) {
 export function useToggleSubtask(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (sub: Subtask): Promise<void> => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("subtasks")
-        .update({ done: !sub.done })
-        .eq("id", sub.id);
-      if (error) throw error;
-    },
+    mutationFn: (sub: Subtask): Promise<void> => toggleSubtaskAction(sub.id, !sub.done),
     onMutate: async (sub) => {
       await qc.cancelQueries({ queryKey: subtaskKeys.task(taskId) });
       const prev = qc.getQueryData<Subtask[]>(subtaskKeys.task(taskId));
@@ -147,11 +128,7 @@ export function useToggleSubtask(taskId: string) {
 export function useDeleteSubtask(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      const supabase = createClient();
-      const { error } = await supabase.from("subtasks").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string): Promise<void> => deleteSubtaskAction(id),
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: subtaskKeys.task(taskId) });
       const prev = qc.getQueryData<Subtask[]>(subtaskKeys.task(taskId));
@@ -175,26 +152,13 @@ export function useDeleteSubtask(taskId: string) {
 /**
  * One query per day that returns every checklist item for that day's tasks,
  * grouped by task id. Avoids an N+1 of per-task fetches when many cards are
- * shown (Day list, Week columns). Shares the join-by-planned_date with the
- * tasks-by-date query so both stay scoped to the same day.
+ * shown (Day list, Week columns).
  */
 export function subtasksForDateQueryOptions(date: string) {
   return {
     queryKey: subtaskKeys.date(date),
     queryFn: async (): Promise<Map<string, Subtask[]>> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("subtasks")
-        .select("*, tasks!inner(planned_date)")
-        .eq("tasks.planned_date", date)
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      // Drop the embedded `tasks` relation; keep the plain Subtask shape.
-      const rows: Subtask[] = (data ?? []).map((row) => {
-        const rest = { ...(row as Record<string, unknown>) };
-        delete rest.tasks;
-        return rest as unknown as Subtask;
-      });
+      const rows = await getSubtasksForDate(date);
       return groupSubtasksByTask(rows);
     },
   };
@@ -208,14 +172,7 @@ export function useSubtasksForDate(date: string) {
 export function useToggleSubtaskByDate(date: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (sub: Subtask): Promise<void> => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("subtasks")
-        .update({ done: !sub.done })
-        .eq("id", sub.id);
-      if (error) throw error;
-    },
+    mutationFn: (sub: Subtask): Promise<void> => toggleSubtaskAction(sub.id, !sub.done),
     onMutate: async (sub) => {
       const dKey = subtaskKeys.date(date);
       await qc.cancelQueries({ queryKey: dKey });
