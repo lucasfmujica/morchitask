@@ -1,20 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
-import { orderForAppend } from "@/lib/ordering";
+import {
+  createChannel as createChannelAction,
+  deleteChannel as deleteChannelAction,
+  getHouseholdChannels,
+  getMyChannels,
+  reorderChannels as reorderChannelsAction,
+  updateChannel as updateChannelAction,
+} from "@/lib/actions/channels";
 import type { Channel } from "./types";
 
 export const channelKeys = {
   all: ["channels"] as const,
   household: ["channels", "household"] as const,
 };
-
-async function currentUserId() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
 
 // Ordered as a soft rainbow so the picker reads naturally. Includes celeste
 // (sky), amarillo (yellow) and more hues so each category can feel distinct.
@@ -44,22 +42,7 @@ export const CHANNEL_COLORS = [
 export function useChannels() {
   return useQuery({
     queryKey: channelKeys.all,
-    queryFn: async (): Promise<Channel[]> => {
-      const supabase = createClient();
-      const uid = await currentUserId();
-      // If we don't know who's signed in yet, show nothing rather than widening
-      // to every household member's categories — that briefly leaked a partner's
-      // categories (e.g. Sofi's "Medicos") into the picker during auth load.
-      if (!uid) return [];
-      const { data, error } = await supabase
-        .from("channels")
-        .select("*")
-        .is("archived_at", null)
-        .eq("owner_id", uid)
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: (): Promise<Channel[]> => getMyChannels(),
     staleTime: 5 * 60_000,
   });
 }
@@ -76,9 +59,7 @@ export function useChannelLookup() {
   return useQuery({
     queryKey: channelKeys.household,
     queryFn: async (): Promise<Map<string, Channel>> => {
-      const supabase = createClient();
-      const { data, error } = await supabase.from("channels").select("*").is("archived_at", null);
-      if (error) throw error;
+      const data = await getHouseholdChannels();
       return new Map(data.map((c) => [c.id, c]));
     },
     staleTime: 5 * 60_000,
@@ -88,21 +69,8 @@ export function useChannelLookup() {
 export function useCreateChannel() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; color: string; icon?: string }) => {
-      const supabase = createClient();
-      // Append after my current categories with a spaced sort_order, so the new
-      // one lands at the end and drag-reordering keeps room between neighbours.
-      const existing = qc.getQueryData<Channel[]>(channelKeys.all) ?? [];
-      const sort_order = orderForAppend(existing.map((c) => c.sort_order));
-      // household_id defaults to the caller's household (DB default + RLS).
-      const { data, error } = await supabase
-        .from("channels")
-        .insert({ name: input.name, color: input.color, icon: input.icon, sort_order })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (input: { name: string; color: string; icon?: string }) =>
+      createChannelAction(input),
     onSuccess: () => qc.invalidateQueries({ queryKey: channelKeys.all }),
   });
 }
@@ -110,11 +78,8 @@ export function useCreateChannel() {
 export function useUpdateChannel() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: { name?: string; color?: string } }) => {
-      const supabase = createClient();
-      const { error } = await supabase.from("channels").update(patch).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, patch }: { id: string; patch: { name?: string; color?: string } }) =>
+      updateChannelAction(id, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: channelKeys.all }),
   });
 }
@@ -129,19 +94,7 @@ export function useUpdateChannel() {
 export function useReorderChannels() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (orderedIds: string[]) => {
-      const supabase = createClient();
-      const results = await Promise.all(
-        orderedIds.map((id, i) =>
-          supabase
-            .from("channels")
-            .update({ sort_order: (i + 1) * 1000 })
-            .eq("id", id),
-        ),
-      );
-      const failed = results.find((r) => r.error);
-      if (failed?.error) throw failed.error;
-    },
+    mutationFn: (orderedIds: string[]) => reorderChannelsAction(orderedIds),
     onMutate: async (orderedIds) => {
       await qc.cancelQueries({ queryKey: channelKeys.all });
       const prev = qc.getQueryData<Channel[]>(channelKeys.all);
@@ -166,11 +119,7 @@ export function useReorderChannels() {
 export function useDeleteChannel() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const supabase = createClient();
-      const { error } = await supabase.from("channels").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => deleteChannelAction(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: channelKeys.all });
       qc.invalidateQueries({ queryKey: ["tasks"] });

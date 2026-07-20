@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui";
 
 function GoogleIcon() {
@@ -22,18 +22,13 @@ export function LoginForm() {
   async function signInWithGoogle() {
     setError(null);
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
+    try {
+      await signIn("google", { redirectTo: "/today" });
+      // On success the browser is redirected to Google, so no further UI needed.
+    } catch {
       setError("No pudimos iniciar sesión. Intentá de nuevo.");
       setLoading(false);
     }
-    // On success the browser is redirected to Google, so no further UI needed.
   }
 
   return (

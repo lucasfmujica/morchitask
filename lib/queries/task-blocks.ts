@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import {
+  createBlock as createBlockAction,
+  deleteBlock as deleteBlockAction,
+  getBlocksForDate,
+  updateBlock as updateBlockAction,
+} from "@/lib/actions/task-blocks";
 import { taskKeys } from "./tasks";
 import type { TaskBlock } from "./types";
 
@@ -28,18 +33,7 @@ export function blocksForDateQueryOptions(date: string) {
   return {
     queryKey: blockKeys.date(date),
     queryFn: async (): Promise<Map<string, TaskBlock[]>> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("task_blocks")
-        .select("*, tasks!inner(planned_date)")
-        .eq("tasks.planned_date", date)
-        .order("start_at", { ascending: true });
-      if (error) throw error;
-      const rows: TaskBlock[] = (data ?? []).map((row) => {
-        const rest = { ...(row as Record<string, unknown>) };
-        delete rest.tasks;
-        return rest as unknown as TaskBlock;
-      });
+      const rows = await getBlocksForDate(date);
       return groupBlocksByTask(rows);
     },
   };
@@ -71,20 +65,8 @@ function settleKeys(qc: ReturnType<typeof useQueryClient>, date: string) {
 export function useCreateBlock(date: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      taskId: string;
-      startISO: string;
-      endISO: string;
-    }): Promise<TaskBlock> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("task_blocks")
-        .insert({ task_id: input.taskId, start_at: input.startISO, end_at: input.endISO })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (input: { taskId: string; startISO: string; endISO: string }): Promise<TaskBlock> =>
+      createBlockAction(input.taskId, input.startISO, input.endISO),
     onMutate: async (input) => {
       await qc.cancelQueries({ queryKey: blockKeys.date(date) });
       const prev = qc.getQueryData<BlockCache>(blockKeys.date(date));
@@ -115,21 +97,11 @@ export function useCreateBlock(date: string) {
 export function useUpdateBlock(date: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
+    mutationFn: (input: {
       block: TaskBlock;
       startISO: string;
       endISO: string;
-    }): Promise<TaskBlock> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("task_blocks")
-        .update({ start_at: input.startISO, end_at: input.endISO })
-        .eq("id", input.block.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    }): Promise<TaskBlock> => updateBlockAction(input.block.id, input.startISO, input.endISO),
     onMutate: async (input) => {
       await qc.cancelQueries({ queryKey: blockKeys.date(date) });
       const prev = qc.getQueryData<BlockCache>(blockKeys.date(date));
@@ -160,11 +132,7 @@ export function useUpdateBlock(date: string) {
 export function useDeleteBlock(date: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (block: TaskBlock): Promise<void> => {
-      const supabase = createClient();
-      const { error } = await supabase.from("task_blocks").delete().eq("id", block.id);
-      if (error) throw error;
-    },
+    mutationFn: (block: TaskBlock): Promise<void> => deleteBlockAction(block.id),
     onMutate: async (block) => {
       await qc.cancelQueries({ queryKey: blockKeys.date(date) });
       const prev = qc.getQueryData<BlockCache>(blockKeys.date(date));

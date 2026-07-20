@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { DEFAULT_TIMEZONE, addDays, blockInstant } from "@/lib/date";
 
 export type CalendarEvent = {
@@ -25,26 +24,31 @@ const TZ = DEFAULT_TIMEZONE;
 export async function syncBlockCalendar(
   payload: { action: "upsert"; blockId: string } | { action: "delete"; eventId: string },
 ): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.functions.invoke("google-calendar-write", { body: payload });
-  if (error) throw error;
+  const res = await fetch("/api/calendar/blocks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`calendar sync failed: ${res.status}`);
 }
 
-/** Google Calendar events for `date` (read-only, via the edge function). */
+/** Google Calendar events for `date` (read-only). */
 export function useCalendarEvents(date: string, enabled: boolean) {
   return useQuery({
     queryKey: ["calendar", date],
     enabled,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<CalendarEvent[]> => {
-      const supabase = createClient();
-      const { data, error } = await supabase.functions.invoke("google-calendar", {
-        body: {
+      const res = await fetch("/api/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           timeMin: blockInstant(date, "00:00", TZ),
           timeMax: blockInstant(addDays(date, 1), "00:00", TZ),
-        },
+        }),
       });
-      if (error) throw error;
+      if (!res.ok) throw new Error(`calendar fetch failed: ${res.status}`);
+      const data = await res.json();
       return (data?.events ?? []) as CalendarEvent[];
     },
   });

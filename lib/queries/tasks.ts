@@ -1,15 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
-import type { TablesUpdate } from "@/lib/supabase/database.types";
+import {
+  createTask as createTaskAction,
+  deleteTask as deleteTaskAction,
+  moveTaskToDate as moveTaskToDateAction,
+  reorderTask as reorderTaskAction,
+  setActualTime as setActualTimeAction,
+  setTaskActiveSince as setTaskActiveSinceAction,
+  toggleTask as toggleTaskAction,
+  updateTask as updateTaskAction,
+} from "@/lib/actions/tasks";
 import { profileKeys } from "./profiles";
 import { syncBlockCalendar } from "./calendar";
-import type { Profile, Task } from "./types";
+import type { NewTask, Profile, Task, TaskPatch } from "./types";
 
 export const taskKeys = {
   all: ["tasks"] as const,
   date: (d: string) => ["tasks", "date", d] as const,
   backlog: ["tasks", "backlog"] as const,
 };
+
+export type { NewTask, TaskPatch };
 
 /** Which cached list a task belongs to (a day, or the backlog). */
 function listKey(plannedDate: string | null) {
@@ -18,17 +28,10 @@ function listKey(plannedDate: string | null) {
 
 const bySortOrder = (a: Task, b: Task) => a.sort_order - b.sort_order;
 
-/** PostgREST filter: tasks I own OR tasks shared with me. */
-function mineOrShared(userId: string) {
-  return `owner_id.eq.${userId},shared.eq.true`;
-}
-
-async function currentUserId() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`request to ${url} failed: ${res.status}`);
+  return res.json();
 }
 
 // ------------------------------------------------------------ queries
@@ -41,15 +44,7 @@ async function currentUserId() {
 export function tasksForDateQueryOptions(date: string) {
   return {
     queryKey: taskKeys.date(date),
-    queryFn: async (): Promise<Task[]> => {
-      const supabase = createClient();
-      const uid = await currentUserId();
-      let q = supabase.from("tasks").select("*").eq("planned_date", date);
-      if (uid) q = q.or(mineOrShared(uid));
-      const { data, error } = await q.order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchJson<Task[]>(`/api/tasks?date=${date}`),
   };
 }
 
@@ -67,19 +62,11 @@ export function useMonthCounts(startDate: string, endDate: string) {
   return useQuery({
     queryKey: ["tasks", "counts", startDate, endDate],
     queryFn: async (): Promise<Map<string, DayCount>> => {
-      const supabase = createClient();
-      const uid = await currentUserId();
-      let q = supabase
-        .from("tasks")
-        .select("planned_date, status")
-        .gte("planned_date", startDate)
-        .lte("planned_date", endDate);
-      if (uid) q = q.or(mineOrShared(uid));
-      const { data, error } = await q;
-      if (error) throw error;
-
+      const rows = await fetchJson<Pick<Task, "planned_date" | "status">[]>(
+        `/api/tasks/counts?start=${startDate}&end=${endDate}`,
+      );
       const counts = new Map<string, DayCount>();
-      for (const row of data) {
+      for (const row of rows) {
         if (!row.planned_date) continue;
         const entry = counts.get(row.planned_date) ?? { total: 0, done: 0 };
         entry.total += 1;
@@ -97,15 +84,7 @@ export function useMonthCounts(startDate: string, endDate: string) {
 export function backlogQueryOptions() {
   return {
     queryKey: taskKeys.backlog,
-    queryFn: async (): Promise<Task[]> => {
-      const supabase = createClient();
-      const uid = await currentUserId();
-      let q = supabase.from("tasks").select("*").is("planned_date", null);
-      if (uid) q = q.or(mineOrShared(uid));
-      const { data, error } = await q.order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchJson<Task[]>("/api/tasks?backlog=1"),
   };
 }
 
@@ -127,32 +106,12 @@ export type AnalyticsTask = Pick<
 export function tasksInRangeQueryOptions(start: string, end: string) {
   return {
     queryKey: ["tasks", "range", start, end] as const,
-    queryFn: async (): Promise<AnalyticsTask[]> => {
-      const supabase = createClient();
-      const uid = await currentUserId();
-      let q = supabase
-        .from("tasks")
-        .select("planned_date, status, time_estimate_min, actual_time_min, channel_id, owner_id")
-        .gte("planned_date", start)
-        .lte("planned_date", end);
-      if (uid) q = q.or(mineOrShared(uid));
-      const { data, error } = await q;
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchJson<AnalyticsTask[]>(`/api/tasks/range?start=${start}&end=${end}`),
     staleTime: 30_000,
   };
 }
 
 // ------------------------------------------------------------ mutations
-
-export type NewTask = {
-  title: string;
-  plannedDate: string | null;
-  channelId?: string | null;
-  timeEstimateMin?: number | null;
-  sortOrder: number;
-};
 
 function buildOptimisticTask(input: NewTask, ownerId: string, householdId: string): Task {
   const now = new Date().toISOString();
@@ -192,22 +151,7 @@ function buildOptimisticTask(input: NewTask, ownerId: string, householdId: strin
 export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: NewTask): Promise<Task> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({
-          title: input.title,
-          planned_date: input.plannedDate,
-          channel_id: input.channelId ?? null,
-          time_estimate_min: input.timeEstimateMin ?? null,
-          sort_order: input.sortOrder,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (input: NewTask): Promise<Task> => createTaskAction(input),
     onMutate: async (input) => {
       const key = listKey(input.plannedDate);
       await qc.cancelQueries({ queryKey: key });
@@ -227,21 +171,7 @@ export function useCreateTask() {
 export function useToggleTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (task: Task): Promise<Task> => {
-      const supabase = createClient();
-      const done = task.status !== "done";
-      const { data, error } = await supabase
-        .from("tasks")
-        .update({
-          status: done ? "done" : "todo",
-          completed_at: done ? new Date().toISOString() : null,
-        })
-        .eq("id", task.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (task: Task): Promise<Task> => toggleTaskAction(task.id, task.status !== "done"),
     onMutate: async (task) => {
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
@@ -267,38 +197,11 @@ export function useToggleTask() {
   });
 }
 
-type TaskPatch = Pick<
-  TablesUpdate<"tasks">,
-  | "title"
-  | "notes"
-  | "channel_id"
-  | "time_estimate_min"
-  | "actual_time_min"
-  | "block_start"
-  | "block_end"
-  | "owner_id"
-  | "shared"
-  | "objective_id"
-  | "gcal_event_id"
-  | "remind_at"
-  | "reminder_sent_at"
-  | "due_date"
->;
-
 export function useUpdateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ task, patch }: { task: Task; patch: TaskPatch }): Promise<Task> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("tasks")
-        .update(patch)
-        .eq("id", task.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: ({ task, patch }: { task: Task; patch: TaskPatch }): Promise<Task> =>
+      updateTaskAction(task.id, patch),
     onMutate: async ({ task, patch }) => {
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
@@ -319,21 +222,14 @@ export function useUpdateTask() {
 export function useSetActualTime() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       taskId,
       actualMin,
     }: {
       taskId: string;
       plannedDate: string | null;
       actualMin: number;
-    }): Promise<void> => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("tasks")
-        .update({ actual_time_min: actualMin })
-        .eq("id", taskId);
-      if (error) throw error;
-    },
+    }) => setActualTimeAction(taskId, actualMin),
     onMutate: async ({ taskId, plannedDate, actualMin }) => {
       const key = listKey(plannedDate);
       await qc.cancelQueries({ queryKey: key });
@@ -354,33 +250,20 @@ export function useSetActualTime() {
 /**
  * Mark/unmark a task as currently being worked on, so a partner can see "X is
  * on this now". Fire-and-forget — presence reads its own query, so no cache
- * juggling here. Only meaningful for shared tasks (RLS hides the rest).
+ * juggling here. Only meaningful for shared tasks (household-scoped server
+ * check hides the rest).
  */
 export async function setTaskActiveSince(taskId: string, active: boolean): Promise<void> {
-  const supabase = createClient();
-  await supabase
-    .from("tasks")
-    .update({ active_since: active ? new Date().toISOString() : null })
-    .eq("id", taskId);
+  await setTaskActiveSinceAction(taskId, active);
 }
 
 export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (task: Task): Promise<void> => {
-      const supabase = createClient();
-      // Grab the blocks' calendar event ids before the cascade removes them.
-      const { data: blocks } = await supabase
-        .from("task_blocks")
-        .select("gcal_event_id")
-        .eq("task_id", task.id);
-      const { error } = await supabase.from("tasks").delete().eq("id", task.id);
-      if (error) throw error;
-      // Remove each block's Google Calendar event too.
-      for (const b of blocks ?? []) {
-        if (b.gcal_event_id) {
-          syncBlockCalendar({ action: "delete", eventId: b.gcal_event_id }).catch(() => {});
-        }
+      const { eventIds } = await deleteTaskAction(task.id);
+      for (const eventId of eventIds) {
+        syncBlockCalendar({ action: "delete", eventId }).catch(() => {});
       }
     },
     onMutate: async (task) => {
@@ -416,25 +299,10 @@ export function useMoveTaskToDate() {
       toDate: string;
       sortOrder: number;
     }): Promise<void> => {
-      const supabase = createClient();
-      // Remove the task's blocks (and their calendar events) from the old day.
-      const { data: blocks } = await supabase
-        .from("task_blocks")
-        .select("gcal_event_id")
-        .eq("task_id", task.id);
-      if (blocks && blocks.length > 0) {
-        await supabase.from("task_blocks").delete().eq("task_id", task.id);
-        for (const b of blocks) {
-          if (b.gcal_event_id) {
-            syncBlockCalendar({ action: "delete", eventId: b.gcal_event_id }).catch(() => {});
-          }
-        }
+      const { eventIds } = await moveTaskToDateAction(task.id, toDate, sortOrder);
+      for (const eventId of eventIds) {
+        syncBlockCalendar({ action: "delete", eventId }).catch(() => {});
       }
-      const { error } = await supabase
-        .from("tasks")
-        .update({ planned_date: toDate, sort_order: sortOrder })
-        .eq("id", task.id);
-      if (error) throw error;
     },
     onMutate: async ({ task, toDate, sortOrder }) => {
       const fromKey = listKey(task.planned_date);
@@ -477,14 +345,8 @@ export function useMoveTaskToDate() {
 export function useReorderTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ task, sortOrder }: { task: Task; sortOrder: number }): Promise<void> => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("tasks")
-        .update({ sort_order: sortOrder })
-        .eq("id", task.id);
-      if (error) throw error;
-    },
+    mutationFn: ({ task, sortOrder }: { task: Task; sortOrder: number }) =>
+      reorderTaskAction(task.id, sortOrder),
     onMutate: async ({ task, sortOrder }) => {
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });

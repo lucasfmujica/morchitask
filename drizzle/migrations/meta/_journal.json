@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784580326309,
+      "tag": "0000_rainy_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784580337264,
+      "tag": "0001_functions_and_triggers",
+      "breakpoints": true
+    }
+  ]
+}

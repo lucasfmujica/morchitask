@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { groupSubtasksByTask } from "./subtasks";
+import { describe, it, expect, vi } from "vitest";
 import type { Subtask } from "./types";
+
+// This spec only exercises the pure `groupSubtasksByTask` helper, so the
+// server-only Server Actions module (which pulls in Auth.js/DB clients) is
+// stubbed rather than loaded for real.
+vi.mock("@/lib/actions/subtasks", () => ({}));
+
+const { groupSubtasksByTask } = await import("./subtasks");
 
 function sub(id: string, taskId: string): Subtask {
   return { id, task_id: taskId, title: id, done: false, sort_order: 0 } as unknown as Subtask;

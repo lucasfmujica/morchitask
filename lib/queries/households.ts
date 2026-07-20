@@ -1,24 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { getHousehold, updateHouseholdName } from "@/lib/actions/households";
 import type { Household } from "./types";
 
 export const householdKeys = {
   current: ["household"] as const,
 };
 
-/**
- * The signed-in user's shared space. RLS scopes `households` to the current
- * household, so a plain select returns exactly one row.
- */
+/** The signed-in user's shared space, scoped to their household in the session. */
 export function useHousehold() {
   return useQuery({
     queryKey: householdKeys.current,
-    queryFn: async (): Promise<Household | null> => {
-      const supabase = createClient();
-      const { data, error } = await supabase.from("households").select("*").maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: (): Promise<Household | null> => getHousehold(),
     staleTime: 5 * 60_000,
   });
 }
@@ -27,13 +19,7 @@ export function useHousehold() {
 export function useUpdateHouseholdName() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string): Promise<void> => {
-      const supabase = createClient();
-      const { data: current } = await supabase.from("households").select("id").maybeSingle();
-      if (!current) throw new Error("No se encontró tu espacio");
-      const { error } = await supabase.from("households").update({ name }).eq("id", current.id);
-      if (error) throw error;
-    },
+    mutationFn: (name: string) => updateHouseholdName(name),
     onMutate: async (name) => {
       await qc.cancelQueries({ queryKey: householdKeys.current });
       const prev = qc.getQueryData<Household | null>(householdKeys.current);

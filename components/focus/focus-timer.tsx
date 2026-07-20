@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, ChevronDown, Pause, Play, RotateCcw } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { setActualTime as setActualTimeAction } from "@/lib/actions/tasks";
 import { taskKeys, useTasksForDate } from "@/lib/queries/tasks";
 import { useChannels } from "@/lib/queries/channels";
 import { useAudio } from "@/lib/stores/audio";
@@ -93,12 +93,9 @@ export function FocusTimer() {
     if (mode === "focus" && taskId) {
       const task = tasks.find((t) => t.id === taskId);
       if (task) {
-        const supabase = createClient();
-        supabase
-          .from("tasks")
-          .update({ actual_time_min: (task.actual_time_min ?? 0) + DURATION.focus / 60 })
-          .eq("id", task.id)
-          .then(() => qc.invalidateQueries({ queryKey: taskKeys.date(today) }));
+        setActualTimeAction(task.id, (task.actual_time_min ?? 0) + DURATION.focus / 60).then(() =>
+          qc.invalidateQueries({ queryKey: taskKeys.date(today) }),
+        );
       }
     }
   }, [

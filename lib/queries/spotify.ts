@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { disconnectSpotify as disconnectSpotifyAction } from "@/lib/actions/spotify";
 import { profileKeys, useMe } from "@/lib/queries/profiles";
 
 /** Whether the current user has connected their Spotify account. */
@@ -16,15 +16,7 @@ export function connectSpotify() {
 export function useDisconnectSpotify() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("spotify_credentials").delete().eq("owner_id", user.id);
-      await supabase.from("profiles").update({ spotify_connected: false }).eq("id", user.id);
-    },
+    mutationFn: () => disconnectSpotifyAction(),
     onSuccess: () => qc.invalidateQueries({ queryKey: profileKeys.me }),
   });
 }
@@ -35,11 +27,10 @@ let cachedToken: { token: string; expiresAt: number } | null = null;
 /** Get a valid Spotify access token (from the edge function), cached until ~1 min before expiry. */
 export async function getSpotifyAccessToken(): Promise<string | null> {
   if (cachedToken && cachedToken.expiresAt - 60_000 > Date.now()) return cachedToken.token;
-  const supabase = createClient();
-  const { data, error } = await supabase.functions.invoke("spotify-auth", {
-    body: { action: "token" },
-  });
-  if (error || !data?.access_token) return null;
+  const res = await fetch("/api/spotify/token", { method: "POST" });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data?.access_token) return null;
   cachedToken = {
     token: data.access_token as string,
     expiresAt: Date.now() + ((data.expires_in as number) ?? 3600) * 1000,

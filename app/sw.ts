@@ -17,10 +17,10 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
-    // Never cache authenticated Supabase traffic in the SW — offline data is
+    // Never cache authenticated API traffic in the SW — offline data is
     // owned by the React Query persistence layer, not the service worker.
     {
-      matcher: ({ url }) => url.hostname.endsWith("supabase.co"),
+      matcher: ({ url }) => url.pathname.startsWith("/api/"),
       handler: new NetworkOnly(),
     },
     ...defaultCache,

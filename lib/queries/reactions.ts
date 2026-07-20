@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { addReaction, getReactions, removeReaction } from "@/lib/actions/reactions";
 import type { TaskReaction } from "./types";
 
 /** The kudos palette offered on a completed shared task. */
@@ -13,16 +13,7 @@ export const reactionKeys = {
 export function useReactions(taskId: string) {
   return useQuery({
     queryKey: reactionKeys.task(taskId),
-    queryFn: async (): Promise<TaskReaction[]> => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("task_reactions")
-        .select("*")
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: (): Promise<TaskReaction[]> => getReactions(taskId),
   });
 }
 
@@ -35,13 +26,10 @@ export function useToggleReaction(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ emoji, mine }: { emoji: string; mine?: TaskReaction }): Promise<void> => {
-      const supabase = createClient();
       if (mine) {
-        const { error } = await supabase.from("task_reactions").delete().eq("id", mine.id);
-        if (error) throw error;
+        await removeReaction(mine.id);
       } else {
-        const { error } = await supabase.from("task_reactions").insert({ task_id: taskId, emoji });
-        if (error) throw error;
+        await addReaction(taskId, emoji);
       }
     },
     onSettled: () => qc.invalidateQueries({ queryKey: reactionKeys.task(taskId) }),
