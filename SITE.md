@@ -10,7 +10,7 @@ Inspirada en Sunsama: planificación diaria, time-blocking, vistas día/semana/m
 
 - **Personalidad:** limpia, calma, minimalista, intencional (estilo Sunsama).
 - **Colores:** base **gris/blanco frío y limpio** (fondo `#f7f8fa`, tarjetas blancas), texto casi negro, acento **teal** (`#0d9488`) para foco, **naranja** (`#ea580c`) para acciones; el calendario del día usa **bloques pastel** suaves. Tiene modo claro y oscuro.
-- **Tipografía:** Plus Jakarta Sans (amigable y moderna).
+- **Tipografía:** DM Sans (limpia y moderna).
 - Los colores y estilos viven como "tokens" en `app/globals.css` (ver "Cómo personalizar").
 
 ## Estado actual (Fase 2 — Semana/Mes + horarios)
@@ -68,7 +68,7 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 ## Cómo personalizar
 
 - **Cambiar un color:** en `app/globals.css`, buscá la sección "SEMANTIC TOKENS" y cambiá el valor (ej. `--primary` para el teal). El cambio se aplica en toda la app.
-- **Cambiar la fuente:** en `app/layout.tsx`, donde dice `Plus_Jakarta_Sans`.
+- **Cambiar la fuente:** en `app/layout.tsx`, donde dice `DM_Sans`.
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes

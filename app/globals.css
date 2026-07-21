@@ -161,8 +161,8 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
 
-  --font-sans: var(--font-jakarta);
-  --font-display: var(--font-jakarta);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-dm-sans);
 
   --radius-card: 1rem;
   --radius-pill: 9999px;
@@ -191,7 +191,7 @@
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
