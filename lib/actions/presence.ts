@@ -1,10 +1,10 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { partnerActiveTask } from "@/lib/db/queries/presence";
+import { partnerActiveTasks } from "@/lib/db/queries/presence";
 
-export async function getPartnerActiveTask() {
+export async function getPartnerActiveTasks() {
   const session = await auth();
-  if (!session?.householdId) return null;
-  return partnerActiveTask(session.householdId, session.user.id);
+  if (!session?.householdId) return [];
+  return partnerActiveTasks(session.householdId, session.user.id);
 }

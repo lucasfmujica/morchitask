@@ -1,3 +1,4 @@
+import { sortByPriority } from "@/lib/priority";
 import type { Task } from "@/lib/queries/types";
 
 /**
@@ -29,4 +30,17 @@ export function sortDoneLast(tasks: Task[]): Task[] {
   const done: Task[] = [];
   for (const t of tasks) (t.status === "done" ? done : open).push(t);
   return open.length === 0 || done.length === 0 ? tasks : [...open, ...done];
+}
+
+/**
+ * The list a day actually renders: category filter → completed sunk to the
+ * bottom → regrouped by priority. Shared by Today and Week so the two views
+ * can never drift apart.
+ *
+ * Priority grouping runs LAST on purpose: each group ends up a contiguous run
+ * with its own open-then-done ordering, and that contiguity is the invariant
+ * `resolveTaskDrop` relies on to know when a neighbour belongs to another group.
+ */
+export function orderTasksForDisplay(tasks: Task[], selected: Set<string>): Task[] {
+  return sortByPriority(sortDoneLast(filterTasksByChannels(tasks, selected)));
 }

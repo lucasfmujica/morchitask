@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -15,6 +16,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
+import type { TaskPriority } from "@/lib/priority";
 
 /** Matches the Supabase `set_updated_at()` trigger, applied via Drizzle
  * instead of a DB trigger since every write goes through this ORM. */
@@ -279,6 +281,8 @@ export const tasks = pgTable(
     title: text("title").notNull(),
     notes: text("notes"),
     status: text("status").notNull().default("todo"),
+    /** null = "Sin prioridad" (the default) — sorts after high/medium/low. */
+    priority: text("priority").$type<TaskPriority>(),
     shared: boolean("shared").notNull().default(false),
     sort_order: numeric("sort_order", { mode: "number" }).notNull().default(1000),
     planned_date: date("planned_date", { mode: "string" }),
@@ -322,6 +326,12 @@ export const tasks = pgTable(
     index("tasks_todo_idx")
       .on(t.household_id, t.planned_date)
       .where(sql`${t.status} = 'todo'`),
+    // updateTask writes a client-supplied patch straight into set() — this is
+    // what stops a bogus priority from ever landing in the row.
+    check(
+      "tasks_priority_check",
+      sql`${t.priority} is null or ${t.priority} in ('high','medium','low')`,
+    ),
   ],
 );
 

@@ -6,14 +6,17 @@ import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 
 /**
  * A thin live bar: "Sofi está en: <task>" when the partner has a shared task's
- * timer running. Hidden otherwise. Sits above the page content.
+ * timer running. They can be timing more than one, so the newest is named and
+ * the rest are counted. Hidden when nothing is running. Sits above the page.
  */
 export function PresenceBanner() {
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
-  const { data: task } = usePartnerPresence(me?.id);
+  const { data: active } = usePartnerPresence(me?.id);
 
+  const task = active?.[0];
   if (!task) return null;
+  const others = (active?.length ?? 0) - 1;
   const partner = profiles.find((p) => p.id === task.owner_id);
 
   return (
@@ -24,6 +27,7 @@ export function PresenceBanner() {
       </span>
       <span className="min-w-0 truncate text-fg/80">
         está en <span className="font-medium text-fg">{task.title}</span>
+        {others > 0 && <span className="text-fg/60"> y {others} más</span>}
       </span>
       <span className="ml-auto shrink-0 animate-pulse text-primary" aria-hidden>
         ●

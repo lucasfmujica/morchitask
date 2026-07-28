@@ -1,6 +1,7 @@
-import { and, asc, eq, gte, isNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { taskBlocks, tasks } from "@/lib/db/schema";
+import type { PriorityKey } from "@/lib/priority";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
 
 /** Every read/write below is scoped to `householdId` from the session — this
@@ -81,6 +82,7 @@ export async function insertTask(householdId: string, ownerId: string, input: Ne
       planned_date: input.plannedDate,
       channel_id: input.channelId ?? null,
       time_estimate_min: input.timeEstimateMin ?? null,
+      priority: input.priority ?? null,
       sort_order: input.sortOrder,
     })
     .returning();
@@ -116,6 +118,15 @@ export async function setActualTime(householdId: string, taskId: string, actualM
   await db.update(tasks).set({ actual_time_min: actualMin }).where(scoped(householdId, taskId));
 }
 
+/** Add to the tracked time instead of overwriting it — used when a stopwatch
+ *  stops, so a manual edit (or another device's run) isn't clobbered. */
+export async function addActualTime(householdId: string, taskId: string, deltaMin: number) {
+  await db
+    .update(tasks)
+    .set({ actual_time_min: sql`coalesce(${tasks.actual_time_min}, 0) + ${deltaMin}` })
+    .where(scoped(householdId, taskId));
+}
+
 export async function setActiveSince(householdId: string, taskId: string, active: boolean) {
   await db
     .update(tasks)
@@ -141,18 +152,35 @@ export async function deleteTask(householdId: string, taskId: string) {
   await db.delete(tasks).where(scoped(householdId, taskId));
 }
 
+/** `priority: undefined` leaves the column alone; `null` clears it. Dragging a
+ *  card into another priority group moves and re-prioritizes it in one write. */
 export async function moveTaskToDate(
   householdId: string,
   taskId: string,
   toDate: string,
   sortOrder: number,
+  priority?: PriorityKey,
 ) {
   await db
     .update(tasks)
-    .set({ planned_date: toDate, sort_order: sortOrder, block_start: null, block_end: null })
+    .set({
+      planned_date: toDate,
+      sort_order: sortOrder,
+      block_start: null,
+      block_end: null,
+      ...(priority !== undefined && { priority }),
+    })
     .where(scoped(householdId, taskId));
 }
 
-export async function reorderTask(householdId: string, taskId: string, sortOrder: number) {
-  await db.update(tasks).set({ sort_order: sortOrder }).where(scoped(householdId, taskId));
+export async function reorderTask(
+  householdId: string,
+  taskId: string,
+  sortOrder: number,
+  priority?: PriorityKey,
+) {
+  await db
+    .update(tasks)
+    .set({ sort_order: sortOrder, ...(priority !== undefined && { priority }) })
+    .where(scoped(householdId, taskId));
 }

@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { Task } from "@/lib/queries/types";
-import { completionPct, filterTasksByChannels, sortDoneLast } from "./week-filter";
+import type { PriorityKey } from "./priority";
+import {
+  completionPct,
+  filterTasksByChannels,
+  orderTasksForDisplay,
+  sortDoneLast,
+} from "./week-filter";
 
 /** Minimal task factory — only the field the filter reads. */
 function task(channel_id: string | null): Task {
@@ -55,6 +61,48 @@ describe("sortDoneLast", () => {
   });
   it("handles an empty list", () => {
     expect(sortDoneLast([])).toEqual([]);
+  });
+});
+
+describe("orderTasksForDisplay", () => {
+  /** Task carrying everything the display pipeline reads. */
+  function full(
+    id: string,
+    priority: PriorityKey,
+    status: "todo" | "done",
+    channel_id: string | null = null,
+    sort_order = 1000,
+  ): Task {
+    return { id, priority, status, channel_id, sort_order } as Task;
+  }
+
+  it("groups by priority, with each group's done tasks at its own bottom", () => {
+    const highDone = full("hd", "high", "done");
+    const noneOpen = full("no", null, "todo");
+    const highOpen = full("ho", "high", "todo");
+    const medOpen = full("mo", "medium", "todo");
+    const result = orderTasksForDisplay([highDone, noneOpen, highOpen, medOpen], new Set());
+    expect(result.map((t) => t.id)).toEqual(["ho", "hd", "mo", "no"]);
+  });
+
+  it("keeps the manual sort_order inside a priority group", () => {
+    const second = full("second", "high", "todo", null, 2000);
+    const first = full("first", "high", "todo", null, 1000);
+    // Input arrives already sorted by sort_order (that's what SQL returns).
+    const result = orderTasksForDisplay([first, second], new Set());
+    expect(result.map((t) => t.id)).toEqual(["first", "second"]);
+  });
+
+  it("still applies the channel filter before grouping", () => {
+    const mine = full("mine", null, "todo", "ch-a");
+    const theirs = full("theirs", "high", "todo", "ch-b");
+    const result = orderTasksForDisplay([mine, theirs], new Set(["ch-a"]));
+    expect(result.map((t) => t.id)).toEqual(["mine"]);
+  });
+
+  it("leaves an unprioritized list exactly as it came", () => {
+    const all = [full("a", null, "todo"), full("b", null, "todo")];
+    expect(orderTasksForDisplay(all, new Set())).toBe(all);
   });
 });
 

@@ -3,7 +3,9 @@
 import { useToggleTask } from "@/lib/queries/tasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Task } from "@/lib/queries/types";
+import { priorityLabel } from "@/lib/priority";
 import { cn } from "@/lib/utils";
+import { PRIORITY_RAIL } from "./priority-badge";
 import { TaskCheckbox } from "./task-checkbox";
 
 /** A lightweight task row for dense views (week / agenda). Toggle + read;
@@ -23,6 +25,14 @@ export function CompactTaskRow({
 
   return (
     <div className="flex items-center gap-2 py-1">
+      {/* A pill would crowd this row, so priority shows as a thin colour rail. */}
+      {task.priority && !done && (
+        <span
+          className={cn("h-4 w-0.5 shrink-0 rounded-full", PRIORITY_RAIL[task.priority])}
+          title={`Prioridad ${priorityLabel(task.priority).toLowerCase()}`}
+          aria-hidden
+        />
+      )}
       <TaskCheckbox checked={done} onToggle={() => toggle.mutate(task)} size="sm" />
       {channel && (
         <span

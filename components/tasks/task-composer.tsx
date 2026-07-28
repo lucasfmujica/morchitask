@@ -3,12 +3,20 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { Channel } from "@/lib/queries/types";
+import {
+  NO_PRIORITY_LABEL,
+  PRIORITY_DOT,
+  PRIORITY_LABEL,
+  TASK_PRIORITIES,
+  type PriorityKey,
+} from "@/lib/priority";
 import { cn } from "@/lib/utils";
 
 export type ComposerSubmit = {
   title: string;
   channelId: string | null;
   timeEstimateMin: number | null;
+  priority: PriorityKey;
 };
 
 export function TaskComposer({
@@ -20,12 +28,14 @@ export function TaskComposer({
 }) {
   const [title, setTitle] = useState("");
   const [channelId, setChannelId] = useState<string | null>(null);
+  const [priority, setPriority] = useState<PriorityKey>(null);
 
   function submit() {
     const trimmed = title.trim();
     if (!trimmed) return;
-    onSubmit({ title: trimmed, channelId, timeEstimateMin: null });
+    onSubmit({ title: trimmed, channelId, timeEstimateMin: null, priority });
     setTitle("");
+    setPriority(null); // the next task starts unprioritized, not sticky
   }
 
   return (
@@ -70,6 +80,24 @@ export function TaskComposer({
           ))}
         </div>
       )}
+
+      {/* Priority — set it here and the task lands in the right group straight away. */}
+      <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
+        <ChannelChip
+          label={NO_PRIORITY_LABEL}
+          active={priority === null}
+          onClick={() => setPriority(null)}
+        />
+        {TASK_PRIORITIES.map((p) => (
+          <ChannelChip
+            key={p}
+            label={PRIORITY_LABEL[p]}
+            color={PRIORITY_DOT[p]}
+            active={priority === p}
+            onClick={() => setPriority(p)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

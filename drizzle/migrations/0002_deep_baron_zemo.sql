@@ -1,0 +1,2 @@
+ALTER TABLE "tasks" ADD COLUMN "priority" text;--> statement-breakpoint
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_priority_check" CHECK ("tasks"."priority" is null or "tasks"."priority" in ('high','medium','low'));

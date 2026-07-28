@@ -11,6 +11,7 @@ import type {
   taskReactions,
   tasks,
 } from "@/lib/db/schema";
+import type { PriorityKey } from "@/lib/priority";
 
 export type Task = typeof tasks.$inferSelect;
 export type Channel = typeof channels.$inferSelect;
@@ -36,6 +37,7 @@ export type NewTask = {
   plannedDate: string | null;
   channelId?: string | null;
   timeEstimateMin?: number | null;
+  priority?: PriorityKey;
   sortOrder: number;
 };
 
@@ -56,6 +58,7 @@ export type TaskPatch = Partial<
     | "remind_at"
     | "reminder_sent_at"
     | "due_date"
+    | "priority"
   >
 >;
 

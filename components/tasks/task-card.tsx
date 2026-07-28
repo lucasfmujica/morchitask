@@ -11,6 +11,7 @@ import { formatClock, formatMinutes, formatDuration, TIME_ESTIMATES } from "@/li
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
 import { ObjectiveBadge } from "@/components/objectives/objective-badge";
 import { DueDateBadge } from "./due-date-badge";
+import { PriorityBadge } from "./priority-badge";
 import { MoveToDayMenu } from "./move-to-day-menu";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskCheckbox } from "./task-checkbox";
@@ -191,6 +192,7 @@ export function TaskCard({
             {doneSubs}/{subtasks.length}
           </span>
         )}
+        {!done && <PriorityBadge priority={task.priority} />}
         {task.due_date && !done && <DueDateBadge dueDate={task.due_date} />}
         {task.objective_id && <ObjectiveBadge objectiveId={task.objective_id} />}
         {task.notes && <span className="text-[11px] text-subtle">· nota</span>}

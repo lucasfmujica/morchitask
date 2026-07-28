@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import * as data from "@/lib/db/queries/tasks";
+import { isTaskPriority, type PriorityKey } from "@/lib/priority";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
 
 async function requireSession() {
@@ -10,8 +11,17 @@ async function requireSession() {
   return { householdId: session.householdId, userId: session.user.id };
 }
 
+/** The patch reaches `db.update().set()` verbatim, so reject a bogus priority
+ *  here rather than relying on the CHECK constraint to raise a 500. */
+function assertPriority(priority: PriorityKey | undefined) {
+  if (priority !== undefined && priority !== null && !isTaskPriority(priority)) {
+    throw new Error("invalid priority");
+  }
+}
+
 export async function createTask(input: NewTask) {
   const { householdId, userId } = await requireSession();
+  assertPriority(input.priority);
   return data.insertTask(householdId, userId, input);
 }
 
@@ -22,12 +32,18 @@ export async function toggleTask(taskId: string, done: boolean) {
 
 export async function updateTask(taskId: string, patch: TaskPatch) {
   const { householdId } = await requireSession();
+  assertPriority(patch.priority);
   return data.updateTask(householdId, taskId, patch);
 }
 
 export async function setActualTime(taskId: string, actualMin: number) {
   const { householdId } = await requireSession();
   await data.setActualTime(householdId, taskId, actualMin);
+}
+
+export async function addActualTime(taskId: string, deltaMin: number) {
+  const { householdId } = await requireSession();
+  await data.addActualTime(householdId, taskId, deltaMin);
 }
 
 export async function setTaskActiveSince(taskId: string, active: boolean) {
@@ -45,15 +61,22 @@ export async function deleteTask(taskId: string) {
   return { eventIds };
 }
 
-export async function moveTaskToDate(taskId: string, toDate: string, sortOrder: number) {
+export async function moveTaskToDate(
+  taskId: string,
+  toDate: string,
+  sortOrder: number,
+  priority?: PriorityKey,
+) {
   const { householdId } = await requireSession();
+  assertPriority(priority);
   const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
   await data.deleteTaskBlocks(householdId, taskId);
-  await data.moveTaskToDate(householdId, taskId, toDate, sortOrder);
+  await data.moveTaskToDate(householdId, taskId, toDate, sortOrder, priority);
   return { eventIds };
 }
 
-export async function reorderTask(taskId: string, sortOrder: number) {
+export async function reorderTask(taskId: string, sortOrder: number, priority?: PriorityKey) {
   const { householdId } = await requireSession();
-  await data.reorderTask(householdId, taskId, sortOrder);
+  assertPriority(priority);
+  await data.reorderTask(householdId, taskId, sortOrder, priority);
 }

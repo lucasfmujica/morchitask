@@ -24,6 +24,7 @@ import {
 } from "@/lib/queries/subtasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
+import { NO_PRIORITY_LABEL, PRIORITY_DOT, PRIORITY_LABEL, TASK_PRIORITIES } from "@/lib/priority";
 import {
   DEFAULT_TIMEZONE,
   addDays,
@@ -378,6 +379,26 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               Nueva
             </button>
           )}
+        </div>
+      </Field>
+
+      {/* Priority — drives where the task sits in the Day and Week lists. */}
+      <Field label="Prioridad">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip
+            active={!task.priority}
+            label={NO_PRIORITY_LABEL}
+            onClick={() => update.mutate({ task, patch: { priority: null } })}
+          />
+          {TASK_PRIORITIES.map((p) => (
+            <Chip
+              key={p}
+              active={task.priority === p}
+              label={PRIORITY_LABEL[p]}
+              color={PRIORITY_DOT[p]}
+              onClick={() => update.mutate({ task, patch: { priority: p } })}
+            />
+          ))}
         </div>
       </Field>
 

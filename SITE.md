@@ -26,6 +26,8 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - ✅ Vista **Mes**: calendario con puntos por día; tocás un día y lo planificás
 - ✅ **Agenda / time-blocking**: poné un horario a una tarea y vela en una línea de tiempo
 - ✅ Backlog (tareas sin fecha)
+- ✅ **Prioridades**: marcá una tarea como Alta, Media o Baja y Hoy/Semana se ordenan solos
+- ✅ **Varios cronómetros a la vez**: podés medir más de una tarea al mismo tiempo
 - ✅ Tests automáticos (fechas, orden, horarios con zona horaria)
 - ⏳ Próximo (Fase 3): rutinas que se repiten + traslado de pendientes + cierre del día
 
@@ -40,11 +42,42 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - **/backlog** — tareas sin fecha asignada.
 - **/metas** — tus **objetivos** de la semana y del mes; cada meta muestra una barra de progreso con las tareas que tenés enganchadas.
 
+## Prioridades
+
+Cada tarea puede tener una prioridad: **Alta** (rojo), **Media** (ámbar), **Baja** (teal) o
+**Sin prioridad** (que es lo normal y no muestra ninguna etiqueta).
+
+- **Hoy y Semana se agrupan solos** en ese orden: primero las Altas, después Medias, Bajas y al
+  final las que no tienen. Dentro de cada grupo mandás vos: el orden que dejaste arrastrando se
+  respeta igual que siempre.
+- **Arrastrar una tarjeta al grupo de al lado le cambia la prioridad.** Si soltás una tarea
+  encima de una Alta, pasa a ser Alta. Mientras arrastrás aparecen franjas punteadas ("Soltá acá
+  para Baja") para los grupos que están vacíos.
+- Las separaciones entre grupos **solo aparecen cuando el día mezcla prioridades**. Si todas tus
+  tareas están sin prioridad, la lista se ve exactamente como antes.
+- Se pone desde el **cuadro de agregar tarea** (los chips debajo de las categorías) o desde el
+  **detalle de la tarea** (campo "Prioridad").
+- Las tareas que ya estaban quedaron todas en "Sin prioridad", así que nada se movió de lugar.
+
+## Cronómetros
+
+Podés tener **varios cronómetros corriendo a la vez** — para cuando estás haciendo dos cosas en
+paralelo. Antes, arrancar uno detenía el anterior.
+
+- La **barra flotante** de abajo los muestra **apilados**, cada uno con su reloj y su botón de
+  **Detener**. Si hay más de uno aparece arriba un **"Detener todo (N)"**.
+- Si tenés más de tres corriendo, se muestran tres y un **"+N más"** para desplegar el resto.
+- El tiempo se **suma** al que la tarea ya tenía (no lo pisa), así que podés editar el tiempo
+  "Real" a mano mientras corre sin perder nada.
+- Completar una tarea (con el tilde **o deslizándola**) detiene su cronómetro; borrarla lo saca
+  de la barra.
+- Los cronómetros **sobreviven a recargar la página** y a cerrar la pestaña un rato.
+
 ## Componentes
 
 - **components/ui/** — la "caja de herramientas" visual reusable: `Button`, `Card`, `Input`, `Badge`.
 - **components/layout/** — la barra lateral/superior, navegación inferior, el selector de fecha y los **atajos de rituales** (`ritual-nav.tsx`: Planificar / Cerrar día con indicador de estado).
-- **components/tasks/** — la tarjeta de tarea, el cuadro para agregar, la lista y la fila compacta. Incluye el **menú "Mover a otro día"** (`move-to-day-menu.tsx`) y el **badge de vencimiento** (`due-date-badge.tsx`).
+- **components/tasks/** — la tarjeta de tarea, el cuadro para agregar, la lista y la fila compacta. Incluye el **menú "Mover a otro día"** (`move-to-day-menu.tsx`), el **badge de vencimiento** (`due-date-badge.tsx`), el **badge de prioridad** (`priority-badge.tsx`) y las **separaciones por prioridad** (`priority-group-header.tsx`).
 - **components/day/** — las vistas de Día (Lista + Agenda) y Backlog.
 - **components/week/** y **components/month/** — las vistas de Semana y Mes.
 - **lib/queries/** — cómo la app lee y guarda tareas/canales (rápido y optimista).
@@ -72,6 +105,12 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-07-28: **Prioridades en las tareas + varios cronómetros a la vez.** Dos cosas nuevas:
+
+  1. **Prioridad (Alta / Media / Baja / Sin prioridad).** Ahora podés marcarle una prioridad a cada tarea y **Hoy y la Semana se ordenan solos**: primero las Altas, después Medias, Bajas y al final las que no tienen. Dentro de cada grupo se respeta el orden manual que dejaste arrastrando, así que no perdés control. **Si arrastrás una tarjeta al grupo de al lado, le cambia la prioridad** (soltarla encima de una Alta la vuelve Alta) — y mientras arrastrás aparecen franjas punteadas para los grupos vacíos, así podés promover la última tarea de un grupo. Las separaciones solo se muestran cuando el día mezcla prioridades; si todo está sin prioridad, la lista se ve igual que antes. Se elige desde el cuadro de agregar tarea o desde el detalle. **Las 100 tareas que ya tenías quedaron en "Sin prioridad", así que nada se movió de lugar.** Por detrás: columna nueva `priority` en `tasks` (✅ aplicada en la base el 2026-07-28, con una restricción que sólo acepta `high`/`medium`/`low`/vacío), toda la lógica en un módulo puro con 27 tests (`lib/priority.ts` + `lib/priority.test.ts`) — incluido el caso complicado de que el "orden fraccional" es global del día y no puede tomar como referencia una tarjeta de otro grupo —, y un único punto de entrada compartido por las dos vistas (`orderTasksForDisplay` en `lib/week-filter.ts`) para que Hoy y Semana no se desincronicen.
+
+  2. **Varios cronómetros a la vez.** Antes arrancar un cronómetro **detenía el anterior**; ahora podés medir todas las tareas que quieras en paralelo. La barra flotante de abajo los muestra **apilados** (cada uno con su reloj y su botón de Detener) más un **"Detener todo (N)"**; si hay más de tres, se ven tres y un "+N más". Bonus de robustez: el tiempo ahora se **suma** al que la tarea ya tenía en vez de pisarlo (podés editar el "Real" a mano mientras corre), completar una tarea **deslizándola** también detiene su cronómetro (antes seguía corriendo), y borrar una tarea saca su cronómetro de la barra. Si tenías un cronómetro corriendo cuando esto se publicó, **sigue corriendo** (se migra solo). Por detrás: el store pasó de un único timer a un registro por tarea con migración de `localStorage` versionada (`lib/stores/active-timer.ts`), y los N relojes comparten **un solo** intervalo de 1 segundo en vez de uno cada uno (`components/tasks/use-task-timer.ts`). El banner de presencia ("Sofi está en…") ahora muestra la más reciente + "y N más", e ignora las que quedaron colgadas hace más de 8 horas.
 
 - 2026-07-01: **Arreglo: "Programada para" ahora sí deja elegir otro día.** En el detalle de una tarea, el botón **"Otro día"** de **Programada para** (y el de **Vence**, y el **"Otra fecha…"** del menú de mover una tarjeta) no abría el calendario en computadora: el campo de fecha invisible que estaba estirado por encima solo tomaba el foco, sin abrir el selector. Ahora, al tocar el botón, el calendario se abre siempre (usa `showPicker()` del navegador, con vuelta atrás a enfocar el campo si el navegador lo rechaza). En celular seguía funcionando y sigue igual. Por detrás: `components/tasks/task-detail-sheet.tsx` (`DateChip`) y `components/tasks/move-to-day-menu.tsx`.
 - 2026-07-01: **Cinco mejoras de organización (Semana, sidebar y filtros).** (1) **Ordenar tareas arrastrando en la Semana:** ahora podés subir y bajar tareas dentro de un mismo día, además de pasarlas a otro día — igual que en Hoy (usa el mismo orden fraccional, sin renumerar todo). (2) **"Agregar tarea" quedó arriba de cada día** en la Semana (antes estaba abajo del todo). (3) **La barra lateral se pliega y despliega:** en computadora hay un botón para ocultarla (y las columnas usan todo el ancho) con otro botón flotante para volver a mostrarla; en celular, un botón de menú (☰) abre la barra completa como panel deslizante (con categorías, calendario y perfil). (4) **Pasar lo de ayer a hoy desde la Semana:** si estás en la semana actual y ayer quedaron tareas sin terminar, aparece el mismo aviso que en Hoy para sumarlas con un toque. (5) **Filtro por categoría arriba de todo** en Hoy y en la Semana (además del de la barra lateral; comparten el mismo estado, así que quedan sincronizados). Por detrás: `components/tasks/channel-filter-bar.tsx` (nuevo), `lib/stores/sidebar.ts` (nuevo store con Zustand, recuerda si la dejaste plegada), y la Semana pasó de "soltar en el día" a un `SortableContext` de dnd-kit por columna (reusa `useReorderTask`/`useMoveTaskToDate` con orden fraccional).

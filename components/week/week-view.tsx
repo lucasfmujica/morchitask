@@ -15,12 +15,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
 import {
@@ -35,14 +30,22 @@ import { useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
-import { orderBetween, orderForAppend } from "@/lib/ordering";
-import { filterTasksByChannels, sortDoneLast } from "@/lib/week-filter";
+import { orderForAppend } from "@/lib/ordering";
+import {
+  parsePriorityDropId,
+  priorityRows,
+  resolveTaskDrop,
+  type PriorityDropTarget,
+} from "@/lib/priority";
+import { orderTasksForDisplay } from "@/lib/week-filter";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
+import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
+import { createTaskCollision } from "@/components/dnd/collision";
 import { CarryoverPrompt } from "@/components/day/carryover-prompt";
 import { DayProgressBar } from "./day-progress-bar";
 
@@ -50,6 +53,9 @@ const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
 
 const NO_SUBTASKS = new Map<string, Subtask[]>();
+
+/** Cards win over the thin priority strips; strips are only a fallback. */
+const weekCollision = createTaskCollision({ fallback: closestCorners });
 
 /** Horizontal distance between two day panels (panel width + gap), measured
  *  from the live DOM so it works at every breakpoint. Guards against 0. */
@@ -132,7 +138,7 @@ export function WeekView({ date }: { date: string }) {
   // The list shown in each column (category-filtered, completed sunk to the
   // bottom). Reused for rendering AND for computing drag positions.
   const columns = week.map((d, i) =>
-    sortDoneLast(filterTasksByChannels((results[i].data ?? []) as Task[], selected)),
+    orderTasksForDisplay((results[i].data ?? []) as Task[], selected),
   );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -146,40 +152,37 @@ export function WeekView({ date }: { date: string }) {
     const task = active.data.current?.task as Task | undefined;
     if (!task) return;
 
-    // Resolve the target day: dropping onto a card adopts that card's day;
-    // dropping onto a column's empty space uses the column id (`day-<date>`).
+    // Resolve the target day: dropping onto a card adopts that card's day, onto
+    // a priority strip its own day, and onto a column's empty space the column
+    // id (`day-<date>`).
     const overId = String(over.id);
     const overTask = over.data.current?.task as Task | undefined;
-    const toDate = overId.startsWith("day-") ? overId.slice(4) : (overTask?.planned_date ?? null);
+    const group = parsePriorityDropId(overId);
+    const toDate = group
+      ? group.scope
+      : overId.startsWith("day-")
+        ? overId.slice(4)
+        : (overTask?.planned_date ?? null);
     if (!toDate) return;
     const toIdx = week.indexOf(toDate);
     if (toIdx === -1) return;
     const targetList = columns[toIdx] ?? [];
 
-    if (toDate === task.planned_date) {
-      // Reorder within the same day (drop onto another card in that column).
-      if (!overTask || overTask.id === task.id) return;
-      const oldIndex = targetList.findIndex((t) => t.id === task.id);
-      const newIndex = targetList.findIndex((t) => t.id === overTask.id);
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-      const reordered = arrayMove(targetList, oldIndex, newIndex);
-      const before = reordered[newIndex - 1]?.sort_order ?? null;
-      const after = reordered[newIndex + 1]?.sort_order ?? null;
-      reorder.mutate({ task, sortOrder: orderBetween(before, after) });
-      return;
-    }
+    // A bare column drop keeps the task's own priority; a card or strip drop
+    // adopts the group it landed in.
+    const target: PriorityDropTarget = group
+      ? { kind: "group", priority: group.priority }
+      : overTask
+        ? { kind: "task", task: overTask }
+        : { kind: "list" };
+    const drop = resolveTaskDrop(targetList, task, target);
+    if (!drop) return;
 
-    // Move to another day, inserting before the hovered card (or at the end
-    // when dropped on the column's empty space). targetList excludes the task.
-    const insertAt = overTask
-      ? Math.max(
-          0,
-          targetList.findIndex((t) => t.id === overTask.id),
-        )
-      : targetList.length;
-    const before = targetList[insertAt - 1]?.sort_order ?? null;
-    const after = targetList[insertAt]?.sort_order ?? null;
-    move.mutate({ task, toDate, sortOrder: orderBetween(before, after) });
+    if (toDate === task.planned_date) {
+      reorder.mutate({ task, sortOrder: drop.sortOrder, priority: drop.priority });
+    } else {
+      move.mutate({ task, toDate, sortOrder: drop.sortOrder, priority: drop.priority });
+    }
   }
 
   return (
@@ -258,7 +261,7 @@ export function WeekView({ date }: { date: string }) {
       <div className="min-w-0">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={weekCollision}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveTask(null)}
@@ -385,15 +388,29 @@ function DayColumn({
         )}
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map((t) => (
-            <WeekCard
-              key={t.id}
-              task={t}
-              channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-              owner={profilesById.get(t.owner_id)}
-              subtasks={subsMap.get(t.id) ?? []}
-            />
-          ))}
+          {/* Columns are narrow, so separators stay compact and only appear when
+              the day actually mixes priorities (or while dragging, so an empty
+              group still has somewhere to drop). */}
+          {priorityRows(tasks, { includeEmpty: dragging }).map((row) =>
+            row.kind === "header" ? (
+              <PriorityGroupHeader
+                key={`prio-${row.priority ?? "none"}`}
+                scope={date}
+                priority={row.priority}
+                count={row.empty ? undefined : row.count}
+                empty={row.empty}
+                compact
+              />
+            ) : (
+              <WeekCard
+                key={row.task.id}
+                task={row.task}
+                channel={row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined}
+                owner={profilesById.get(row.task.owner_id)}
+                subtasks={subsMap.get(row.task.id) ?? []}
+              />
+            ),
+          )}
         </SortableContext>
       </div>
     </section>

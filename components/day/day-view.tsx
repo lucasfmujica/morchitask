@@ -10,14 +10,12 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCenter,
-  pointerWithin,
   useSensor,
   useSensors,
-  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
@@ -27,10 +25,11 @@ import { useBlocksForDate } from "@/lib/queries/task-blocks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useChannelFilter } from "@/lib/channel-filter";
-import { filterTasksByChannels, sortDoneLast } from "@/lib/week-filter";
+import { orderTasksForDisplay } from "@/lib/week-filter";
+import { parsePriorityDropId, resolveTaskDrop, type PriorityKey } from "@/lib/priority";
 import type { Task, TaskBlock } from "@/lib/queries/types";
 import { nextBlockDurationMin } from "@/lib/scheduling";
-import { orderBetween, orderForAppend } from "@/lib/ordering";
+import { orderForAppend } from "@/lib/ordering";
 import { resolveCapacity } from "@/lib/capacity";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -39,6 +38,7 @@ import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { CarryoverPrompt } from "./carryover-prompt";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
+import { createTaskCollision } from "@/components/dnd/collision";
 import { Confetti } from "@/components/ui/confetti";
 import { AgendaView } from "./agenda-view";
 import { CalendarEventsSection } from "./calendar-events-section";
@@ -48,14 +48,13 @@ import { useAgendaScheduling } from "./use-agenda-scheduling";
 
 type Mode = "list" | "agenda";
 
-// Prefer an agenda drop-slot when the pointer is over one; otherwise fall back to
-// closestCenter so the list keeps its smooth reorder behaviour.
-const dayCollision: CollisionDetection = (args) => {
-  const hits = pointerWithin(args);
-  const slot = hits.find((h) => String(h.id).startsWith("slot-"));
-  if (slot) return [slot];
-  return closestCenter(args);
-};
+// Prefer an agenda drop-slot when the pointer is over one, then a task card,
+// then a priority group strip; otherwise fall back to closestCenter so the list
+// keeps its smooth reorder behaviour.
+const dayCollision = createTaskCollision({
+  hardPrefixes: ["slot-"],
+  fallback: closestCenter,
+});
 
 export function DayView({ date }: { date: string }) {
   const [mode, setMode] = useState<Mode>("list");
@@ -91,11 +90,8 @@ export function DayView({ date }: { date: string }) {
   // The list (and its reorder) honours the sidebar category filter; the day's
   // stats, capacity and agenda stay computed from the full set.
   const filtering = selected.size > 0;
-  // Filter by category, then sink completed tasks to the bottom (display-only).
-  const visibleTasks = useMemo(
-    () => sortDoneLast(filterTasksByChannels(tasks, selected)),
-    [tasks, selected],
-  );
+  // Filter by category → completed to the bottom → grouped by priority (display-only).
+  const visibleTasks = useMemo(() => orderTasksForDisplay(tasks, selected), [tasks, selected]);
   const myTasks = useMemo(() => tasks.filter((t) => t.owner_id === me?.id), [tasks, me?.id]);
   const myPlannedMin = useMemo(
     () => myTasks.reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0),
@@ -147,6 +143,7 @@ export function DayView({ date }: { date: string }) {
         plannedDate: date,
         channelId: input.channelId,
         timeEstimateMin: input.timeEstimateMin,
+        priority: input.priority,
         sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
       },
       // Open the new task's detail right away so you can add notes, subtasks,
@@ -155,8 +152,8 @@ export function DayView({ date }: { date: string }) {
     );
   }
 
-  function handleReorder(task: Task, sortOrder: number) {
-    reorder.mutate({ task, sortOrder });
+  function handleReorder(task: Task, sortOrder: number, priority?: PriorityKey) {
+    reorder.mutate({ task, sortOrder, priority });
   }
 
   function onDragStart(e: DragStartEvent) {
@@ -190,15 +187,19 @@ export function DayView({ date }: { date: string }) {
       return;
     }
 
-    // Otherwise it's a reorder within the (possibly filtered) visible list.
-    if (active.id === over.id) return;
-    const oldIndex = visibleTasks.findIndex((t) => t.id === active.id);
-    const newIndex = visibleTasks.findIndex((t) => t.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const reordered = arrayMove(visibleTasks, oldIndex, newIndex);
-    const before = reordered[newIndex - 1]?.sort_order ?? null;
-    const after = reordered[newIndex + 1]?.sort_order ?? null;
-    handleReorder(visibleTasks[oldIndex], orderBetween(before, after));
+    // Otherwise it's a drop inside the grouped (possibly filtered) visible list.
+    // Landing on a card of another priority — or on a group strip — adopts that
+    // group, so one drag both reorders and re-prioritizes.
+    const group = parsePriorityDropId(overId);
+    const overTask = group ? undefined : visibleTasks.find((t) => t.id === over.id);
+    if (!group && !overTask) return;
+    const drop = resolveTaskDrop(
+      visibleTasks,
+      task,
+      group ? { kind: "group", priority: group.priority } : { kind: "task", task: overTask! },
+    );
+    if (!drop) return;
+    handleReorder(task, drop.sortOrder, drop.priority);
   }
 
   return (
@@ -268,6 +269,9 @@ export function DayView({ date }: { date: string }) {
               profilesById={profilesById}
               subtasksByTaskId={subtasksByTaskId}
               onReorder={handleReorder}
+              grouped
+              scope={date}
+              dragging={!!activeTask}
               emptyTitle={filtering ? "Nada en esta categoría" : "Tu día está en blanco"}
               emptyHint={
                 filtering

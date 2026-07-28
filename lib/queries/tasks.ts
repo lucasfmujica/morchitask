@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  addActualTime as addActualTimeAction,
   createTask as createTaskAction,
   deleteTask as deleteTaskAction,
   moveTaskToDate as moveTaskToDateAction,
@@ -11,6 +12,8 @@ import {
 } from "@/lib/actions/tasks";
 import { profileKeys } from "./profiles";
 import { syncBlockCalendar } from "./calendar";
+import { useActiveTimers } from "@/lib/stores/active-timer";
+import type { PriorityKey } from "@/lib/priority";
 import type { NewTask, Profile, Task, TaskPatch } from "./types";
 
 export const taskKeys = {
@@ -126,6 +129,7 @@ function buildOptimisticTask(input: NewTask, ownerId: string, householdId: strin
     due_date: null,
     sort_order: input.sortOrder,
     status: "todo",
+    priority: input.priority ?? null,
     completed_at: null,
     time_estimate_min: input.timeEstimateMin ?? null,
     actual_time_min: null,
@@ -247,6 +251,38 @@ export function useSetActualTime() {
   });
 }
 
+/** Add tracked time to a task (a stopwatch run ending). Additive so a manual
+ *  edit of "Real" during the run, or a stop from another device, isn't lost. */
+export function useAddActualTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      deltaMin,
+    }: {
+      taskId: string;
+      plannedDate: string | null;
+      deltaMin: number;
+    }) => addActualTimeAction(taskId, deltaMin),
+    onMutate: async ({ taskId, plannedDate, deltaMin }) => {
+      const key = listKey(plannedDate);
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Task[]>(key);
+      qc.setQueryData<Task[]>(key, (old = []) =>
+        old.map((t) =>
+          t.id === taskId ? { ...t, actual_time_min: (t.actual_time_min ?? 0) + deltaMin } : t,
+        ),
+      );
+      return { key, prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx) qc.setQueryData(ctx.key, ctx.prev);
+    },
+    onSettled: (_d, _e, { plannedDate }) =>
+      qc.invalidateQueries({ queryKey: listKey(plannedDate) }),
+  });
+}
+
 /**
  * Mark/unmark a task as currently being worked on, so a partner can see "X is
  * on this now". Fire-and-forget — presence reads its own query, so no cache
@@ -267,6 +303,9 @@ export function useDeleteTask() {
       }
     },
     onMutate: async (task) => {
+      // A deleted task must not leave an orphan pill in the floating timer bar
+      // with no card left to stop it from.
+      useActiveTimers.getState().stop(task.id);
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Task[]>(key);
@@ -294,17 +333,19 @@ export function useMoveTaskToDate() {
       task,
       toDate,
       sortOrder,
+      priority,
     }: {
       task: Task;
       toDate: string;
       sortOrder: number;
+      priority?: PriorityKey;
     }): Promise<void> => {
-      const { eventIds } = await moveTaskToDateAction(task.id, toDate, sortOrder);
+      const { eventIds } = await moveTaskToDateAction(task.id, toDate, sortOrder, priority);
       for (const eventId of eventIds) {
         syncBlockCalendar({ action: "delete", eventId }).catch(() => {});
       }
     },
-    onMutate: async ({ task, toDate, sortOrder }) => {
+    onMutate: async ({ task, toDate, sortOrder, priority }) => {
       const fromKey = listKey(task.planned_date);
       const toKey = listKey(toDate);
       await Promise.all([
@@ -320,6 +361,7 @@ export function useMoveTaskToDate() {
         sort_order: sortOrder,
         block_start: null,
         block_end: null,
+        ...(priority !== undefined && { priority }),
       };
       qc.setQueryData<Task[]>(toKey, (old = []) =>
         [...old.filter((t) => t.id !== task.id), moved].sort(bySortOrder),
@@ -342,17 +384,32 @@ export function useMoveTaskToDate() {
   });
 }
 
+/** Reposition a task within its day. `priority` comes along when the drop
+ *  landed in a different priority group — one write moves and re-prioritizes. */
 export function useReorderTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ task, sortOrder }: { task: Task; sortOrder: number }) =>
-      reorderTaskAction(task.id, sortOrder),
-    onMutate: async ({ task, sortOrder }) => {
+    mutationFn: ({
+      task,
+      sortOrder,
+      priority,
+    }: {
+      task: Task;
+      sortOrder: number;
+      priority?: PriorityKey;
+    }) => reorderTaskAction(task.id, sortOrder, priority),
+    onMutate: async ({ task, sortOrder, priority }) => {
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Task[]>(key);
       qc.setQueryData<Task[]>(key, (old = []) =>
-        old.map((t) => (t.id === task.id ? { ...t, sort_order: sortOrder } : t)).sort(bySortOrder),
+        old
+          .map((t) =>
+            t.id === task.id
+              ? { ...t, sort_order: sortOrder, ...(priority !== undefined && { priority }) }
+              : t,
+          )
+          .sort(bySortOrder),
       );
       return { key, prev };
     },

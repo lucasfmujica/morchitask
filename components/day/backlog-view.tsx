@@ -40,6 +40,7 @@ export function BacklogView() {
         plannedDate: null,
         channelId: input.channelId,
         timeEstimateMin: input.timeEstimateMin,
+        priority: input.priority,
         sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
       },
       // Open the new task's detail right away so you can flesh it out or
