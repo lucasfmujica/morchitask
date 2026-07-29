@@ -1,37 +1,45 @@
 "use client";
 
-import { Clock, Pause, Play, Plus, Trash2, Users } from "lucide-react";
+import { Clock, Pause, Play, Plus } from "lucide-react";
 import { useDeleteTask, useToggleTask, useUpdateTask } from "@/lib/queries/tasks";
 import { useToggleSubtaskByDate } from "@/lib/queries/subtasks";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
+import { taskMetaVisibility, type Density } from "@/lib/task-meta";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
 import { formatClock, formatMinutes, formatDuration, TIME_ESTIMATES } from "@/lib/format";
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
-import { ObjectiveBadge } from "@/components/objectives/objective-badge";
-import { DueDateBadge } from "./due-date-badge";
-import { PriorityBadge } from "./priority-badge";
-import { MoveToDayMenu } from "./move-to-day-menu";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskCheckbox } from "./task-checkbox";
+import { TaskMetaRow } from "./task-meta-row";
 import { TaskReactions } from "./task-reactions";
 import { useTaskTimer } from "./use-task-timer";
 
 const TZ = DEFAULT_TIMEZONE;
 
-/** Rich, Sunsama-style task card: scheduled-time pill, duration chip, inline
- *  checklist (toggleable) and category tag. Used by the Day list and Week columns. */
+/**
+ * Rich, Sunsama-style task card. Used by the Day list and the Week columns.
+ *
+ * Laid out as a two-column grid — a fixed checkbox gutter and an elastic
+ * content column — so the title, checklist, meta row and reactions all align
+ * automatically. (Each of them used to carry a hand-computed `pl-[30px]`.)
+ *
+ * `density="compact"` is for the 320px week columns; see `lib/task-meta.ts`
+ * for what it drops and why.
+ */
 export function TaskCard({
   task,
   channel,
   owner,
   subtasks = [],
+  density = "comfortable",
 }: {
   task: Task;
   channel?: Channel;
   owner?: Profile;
   subtasks?: Subtask[];
+  density?: Density;
 }) {
   const toggle = useToggleTask();
   const remove = useDeleteTask();
@@ -42,12 +50,21 @@ export function TaskCard({
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const done = task.status === "done";
+  const compact = density === "compact";
 
   // A task that's mine but created by my partner = assigned to me.
   const assignedBy =
     task.owner_id === me?.id && task.created_by && task.created_by !== me?.id
       ? profiles.find((p) => p.id === task.created_by)
       : undefined;
+
+  const vis = taskMetaVisibility({
+    task,
+    subtaskCount: subtasks.length,
+    hasAssignedBy: !!assignedBy,
+    timerRunning: timer.running,
+    density,
+  });
 
   function cycleEstimate() {
     const cur = task.time_estimate_min;
@@ -66,88 +83,96 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        "group relative flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 shadow-soft transition-all duration-200 hover:-translate-y-px hover:shadow-card",
+        "group relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2.5 gap-y-2",
+        "rounded-card border border-border bg-surface p-3 shadow-soft",
+        // Scoped to transform/shadow: `transition-all` also animated colour, so
+        // every theme toggle played a 200ms fade across every card on screen.
+        "transition-[transform,box-shadow] duration-200 hover:-translate-y-px hover:shadow-card",
+        compact && "gap-y-1.5 p-2.5",
         done && "opacity-65",
       )}
     >
-      {/* Title row: checkbox + title, with time controls inline on the right so
-          there's no empty band above the name. */}
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5">
-          <TaskCheckbox
-            checked={done}
-            onToggle={() => {
-              if (timer.running) timer.stopTimer();
-              toggle.mutate(task);
-            }}
-          />
-        </span>
+      <span className="mt-0.5">
+        <TaskCheckbox
+          checked={done}
+          onToggle={() => {
+            if (timer.running) timer.stopTimer();
+            toggle.mutate(task);
+          }}
+        />
+      </span>
+
+      {/* Title row: elastic title, fixed time controls — never wraps. */}
+      <div className="flex min-w-0 items-start gap-2">
         <button
           onClick={() => openDetail(task)}
           className={cn(
-            "min-w-0 flex-1 cursor-pointer text-left text-[15px] leading-snug",
+            "min-w-0 flex-1 cursor-pointer rounded text-left leading-snug focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+            compact ? "text-sm" : "text-base",
             done ? "text-subtle line-through" : "text-fg",
           )}
         >
           {task.title}
         </button>
 
-        {/* Scheduled-time pill + stopwatch + duration chip */}
         <div className="flex shrink-0 items-center gap-1.5">
           {task.block_start && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">
+            <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-1.5 py-0.5 text-2xs font-semibold text-accent">
               <Clock className="h-3 w-3" aria-hidden />
               {timeInTimeZone(task.block_start, TZ)}
             </span>
           )}
           {/* Stopwatch: running pill, or a play button (+ logged time if any) */}
-          {timer.running ? (
+          {vis.stopwatch &&
+            (timer.running ? (
+              <button
+                onClick={timer.toggle}
+                aria-label="Detener cronómetro"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-pill bg-primary-soft px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+              >
+                <Pause className="h-3 w-3" aria-hidden />
+                {formatClock(timer.liveSeconds)}
+              </button>
+            ) : (
+              <button
+                onClick={timer.toggle}
+                aria-label="Iniciar cronómetro"
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-1 rounded-pill px-1.5 py-0.5 text-2xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                  task.actual_time_min
+                    ? "bg-surface-2 text-muted hover:text-primary"
+                    : "text-subtle opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 touch:opacity-100",
+                )}
+              >
+                <Play className="h-3 w-3" aria-hidden />
+                {task.actual_time_min ? formatDuration(task.actual_time_min * 60) : null}
+              </button>
+            ))}
+          {vis.estimate && (
             <button
-              onClick={timer.toggle}
-              aria-label="Detener cronómetro"
-              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-primary-soft px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-primary"
-            >
-              <Pause className="h-3 w-3" aria-hidden />
-              {formatClock(timer.liveSeconds)}
-            </button>
-          ) : (
-            <button
-              onClick={timer.toggle}
-              aria-label="Iniciar cronómetro"
+              onClick={cycleEstimate}
+              aria-label="Estimación de tiempo"
+              title="Estimar tiempo"
               className={cn(
-                "inline-flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
-                task.actual_time_min
-                  ? "bg-surface-2 text-muted hover:text-primary"
-                  : "text-subtle opacity-0 hover:text-primary group-hover:opacity-100 touch:opacity-100",
+                "inline-flex cursor-pointer items-center rounded-pill px-1.5 py-0.5 text-2xs font-semibold transition-all focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                task.time_estimate_min
+                  ? "bg-surface-2 text-muted hover:bg-border"
+                  : "text-subtle opacity-0 hover:text-muted focus-visible:opacity-100 group-hover:opacity-100 touch:opacity-100",
               )}
             >
-              <Play className="h-3 w-3" aria-hidden />
-              {task.actual_time_min ? formatDuration(task.actual_time_min * 60) : null}
+              {task.time_estimate_min ? (
+                formatMinutes(task.time_estimate_min)
+              ) : (
+                <Plus className="h-3 w-3" aria-hidden />
+              )}
             </button>
           )}
-          <button
-            onClick={cycleEstimate}
-            aria-label="Estimación de tiempo"
-            title="Estimar tiempo"
-            className={cn(
-              "inline-flex cursor-pointer items-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition-all",
-              task.time_estimate_min
-                ? "bg-surface-2 text-muted hover:bg-border"
-                : "text-subtle opacity-0 hover:text-muted group-hover:opacity-100 touch:opacity-100",
-            )}
-          >
-            {task.time_estimate_min ? (
-              formatMinutes(task.time_estimate_min)
-            ) : (
-              <Plus className="h-3 w-3" aria-hidden />
-            )}
-          </button>
         </div>
       </div>
 
-      {/* Checklist */}
-      {subtasks.length > 0 && (
-        <ul className="flex flex-col gap-1 pl-[30px]">
+      {/* Checklist — day view only; compact collapses it to the n/m counter. */}
+      {vis.checklist && (
+        <ul className="col-start-2 flex flex-col gap-1">
           {subtasks.map((s) => {
             const assignee = s.assignee_id
               ? profiles.find((p) => p.id === s.assignee_id)
@@ -162,7 +187,7 @@ export function TaskCard({
                 />
                 <span
                   className={cn(
-                    "min-w-0 flex-1 truncate text-[13px]",
+                    "min-w-0 flex-1 truncate text-sm",
                     s.done ? "text-subtle line-through" : "text-muted",
                   )}
                 >
@@ -175,64 +200,24 @@ export function TaskCard({
         </ul>
       )}
 
-      {/* Footer: category + notes/checklist meta (left), owner + delete (right) */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-[30px]">
-        {channel && (
-          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-muted">
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: channel.color }}
-              aria-hidden
-            />
-            <span className="truncate">#{channel.name}</span>
-          </span>
-        )}
-        {subtasks.length > 0 && (
-          <span className="text-[11px] text-subtle">
-            {doneSubs}/{subtasks.length}
-          </span>
-        )}
-        {!done && <PriorityBadge priority={task.priority} />}
-        {task.due_date && !done && <DueDateBadge dueDate={task.due_date} />}
-        {task.objective_id && <ObjectiveBadge objectiveId={task.objective_id} />}
-        {task.notes && <span className="text-[11px] text-subtle">· nota</span>}
-        {task.shared && (
-          <span
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary"
-            title="Compartida"
-          >
-            <Users className="h-3 w-3" aria-hidden />
-            compartida
-          </span>
-        )}
-        {assignedBy && (
-          <span
-            className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-accent"
-            title={`Te la asignó ${assignedBy.display_name}`}
-          >
-            <span className="truncate">de {assignedBy.display_name}</span>
-          </span>
-        )}
-
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <MoveToDayMenu task={task} />
-          <OwnerAvatar profile={owner} />
-          <button
-            onClick={() => {
-              timer.cancel();
-              remove.mutate(task);
-            }}
-            aria-label="Eliminar tarea"
-            className="cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 touch:opacity-100"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      </div>
+      <TaskMetaRow
+        className="col-start-2"
+        task={task}
+        channel={channel}
+        owner={owner}
+        assignedBy={assignedBy}
+        doneSubtasks={doneSubs}
+        totalSubtasks={subtasks.length}
+        visibility={vis}
+        onDelete={() => {
+          timer.cancel();
+          remove.mutate(task);
+        }}
+      />
 
       {/* Kudos on a finished shared task */}
       {task.shared && done && (
-        <div className="pl-[30px]">
+        <div className="col-start-2">
           <TaskReactions taskId={task.id} size="sm" />
         </div>
       )}

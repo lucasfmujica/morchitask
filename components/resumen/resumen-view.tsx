@@ -180,10 +180,8 @@ export function ResumenView() {
                     title={`${w.done}/${w.total}`}
                   />
                 </div>
-                <span className="text-[11px] font-medium text-muted">
-                  {Math.round(w.rate * 100)}%
-                </span>
-                <span className="truncate text-[11px] text-subtle">{w.label}</span>
+                <span className="text-2xs font-medium text-muted">{Math.round(w.rate * 100)}%</span>
+                <span className="truncate text-2xs text-subtle">{w.label}</span>
               </div>
             ))}
           </div>

@@ -74,6 +74,21 @@
   --on-danger: #ffffff;
   --success: var(--green-600);
   --warning: var(--amber-500);
+
+  /* Stronger hairline than --border, for controls that must read as an outline
+     on their own (unchecked checkbox, month grid dividers). */
+  --border-strong: var(--gray-300);
+
+  /* Modal backdrop. A token so it flips with the theme — hardcoded gray-900/40
+     stayed light-mode ink and washed out the dark theme. */
+  --scrim: rgb(17 24 39 / 0.4);
+  --on-scrim: #ffffff;
+
+  /* Shadow ink, as raw channels so alpha can be composed below. Light mode uses
+     a blue-black; dark mode needs pure black at a higher strength or shadows
+     disappear entirely against the dark surfaces. */
+  --shadow-color: 17 24 39;
+  --shadow-strength: 1;
 }
 
 /* Dark theme — desaturated / lighter tonal variants, not inverted.
@@ -102,6 +117,11 @@
     --danger: var(--red-400);
     --on-danger: #1a0707;
     --success: var(--green-500);
+
+    --border-strong: #454b54;
+    --scrim: rgb(0 0 0 / 0.62);
+    --shadow-color: 0 0 0;
+    --shadow-strength: 2.4;
   }
 }
 
@@ -129,6 +149,11 @@
   --danger: var(--red-400);
   --on-danger: #1a0707;
   --success: var(--green-500);
+
+  --border-strong: #454b54;
+  --scrim: rgb(0 0 0 / 0.62);
+  --shadow-color: 0 0 0;
+  --shadow-strength: 2.4;
 }
 
 /* ============================================================
@@ -160,15 +185,77 @@
   --color-on-danger: var(--on-danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-border-strong: var(--border-strong);
+  --color-scrim: var(--scrim);
+  --color-on-scrim: var(--on-scrim);
 
   --font-sans: var(--font-dm-sans);
-  --font-display: var(--font-dm-sans);
 
-  --radius-card: 1rem;
+  /* Radius ramp, retuned one step softer than Tailwind's defaults (6/8/12) so
+     the app reads rounder without renaming 215 call sites. --radius-card is
+     deliberately EQUAL to --radius-xl: the 38 `rounded-xl` and 27 `rounded-card`
+     usages were always meant to be the same shape, so now they are. */
+  --radius-md: 0.5rem; /* 8px  (was 6) — inputs, small buttons */
+  --radius-lg: 0.625rem; /* 10px (was 8) — buttons, nav items */
+  --radius-xl: 0.875rem; /* 14px (was 12) — task cards */
+  --radius-2xl: 1rem; /* 16px — sheets, panels */
+  --radius-card: 0.875rem; /* 14px — same shape as rounded-xl */
   --radius-pill: 9999px;
 
-  --shadow-soft: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 16px rgba(17, 24, 39, 0.06);
-  --shadow-card: 0 1px 3px rgba(17, 24, 39, 0.06), 0 8px 24px rgba(17, 24, 39, 0.08);
+  /* Four elevation steps. The ink comes from --shadow-color/--shadow-strength
+     so the same utility reads correctly in both themes.
+       soft → resting cards      card → hover / raised
+       pop  → overlays, menus    drag → the thing under your cursor */
+  --shadow-soft:
+    0 1px 2px rgb(var(--shadow-color) / calc(0.04 * var(--shadow-strength))),
+    0 4px 16px rgb(var(--shadow-color) / calc(0.06 * var(--shadow-strength)));
+  --shadow-card:
+    0 1px 3px rgb(var(--shadow-color) / calc(0.06 * var(--shadow-strength))),
+    0 8px 24px rgb(var(--shadow-color) / calc(0.08 * var(--shadow-strength)));
+  --shadow-pop:
+    0 4px 8px rgb(var(--shadow-color) / calc(0.06 * var(--shadow-strength))),
+    0 12px 32px rgb(var(--shadow-color) / calc(0.12 * var(--shadow-strength)));
+  --shadow-drag:
+    0 8px 12px rgb(var(--shadow-color) / calc(0.08 * var(--shadow-strength))),
+    0 24px 48px rgb(var(--shadow-color) / calc(0.18 * var(--shadow-strength)));
+}
+
+/* ============================================================
+   LAYER 4 — TYPE SCALE
+   Redefines Tailwind's own named steps onto one ramp, so utilities keep the
+   names they already have (text-xs/sm/base/…) and the whole scale is a single
+   edit. `--text-2xs` is the new step for chips, counters and kbd hints, which
+   were previously ad-hoc text-[10px]/text-[11px].
+   ============================================================ */
+@theme {
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.005em;
+
+  --text-xs: 0.75rem; /* 12px */
+  --text-xs--line-height: 1.125rem;
+
+  /* One step tighter than Tailwind's defaults (14/16/18). This is the density
+     that makes a planner read like a planner rather than a marketing page —
+     revert these three lines to 0.875/1/1.125rem to undo it wholesale. */
+  --text-sm: 0.8125rem; /* 13px (was 14) — secondary body */
+  --text-sm--line-height: 1.25rem;
+
+  --text-base: 0.9375rem; /* 15px (was 16) — card titles, primary body */
+  --text-base--line-height: 1.375rem;
+
+  --text-lg: 1.0625rem; /* 17px (was 18) — section titles */
+  --text-lg--line-height: 1.5rem;
+
+  --text-xl: 1.25rem; /* 20px */
+  --text-xl--line-height: 1.625rem;
+
+  --text-2xl: 1.5rem; /* 24px */
+  --text-2xl--line-height: 1.75rem;
+  --text-2xl--letter-spacing: -0.015em;
+
+  --text-3xl: 1.875rem; /* 30px */
+  --text-3xl--line-height: 2.125rem;
 }
 
 /* ============================================================
@@ -194,6 +281,18 @@ body {
   font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* iOS Safari zooms the whole page when a focused field's font-size is under
+   16px, and there's no maximumScale to stop it (viewportFit is "cover"). The
+   type scale is intentionally tighter than that, so restore 16px on touch
+   devices only — the desktop density is unaffected. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 1rem;
+  }
 }
 
 /* Respect reduced-motion globally */

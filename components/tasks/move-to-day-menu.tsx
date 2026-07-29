@@ -90,11 +90,11 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
             transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
             role="menu"
             className={cn(
-              "absolute z-50 mt-1 w-44 rounded-xl border border-border bg-surface p-1 shadow-card",
+              "absolute z-50 mt-1 w-44 rounded-xl border border-border bg-surface p-1 shadow-pop",
               align === "right" ? "right-0" : "left-0",
             )}
           >
-            <p className="px-2 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-subtle">
+            <p className="px-2 pt-1 pb-0.5 text-2xs font-semibold uppercase tracking-wide text-subtle">
               Mover a
             </p>
             {options.map((o) => {
@@ -112,7 +112,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
                 >
                   <span className="flex min-w-0 flex-col">
                     <span>{o.label}</span>
-                    <span className="text-[11px] text-subtle">{fullDayLabel(o.date)}</span>
+                    <span className="text-2xs text-subtle">{fullDayLabel(o.date)}</span>
                   </span>
                   {active && <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />}
                 </button>

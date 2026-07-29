@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import {
   addActualTime as addActualTimeAction,
   createTask as createTaskAction,
@@ -20,7 +27,11 @@ export const taskKeys = {
   all: ["tasks"] as const,
   date: (d: string) => ["tasks", "date", d] as const,
   backlog: ["tasks", "backlog"] as const,
+  search: (q: string) => ["tasks", "search", q] as const,
 };
+
+/** Below this, every query matches everything — see app/api/tasks/search. */
+export const MIN_SEARCH_LENGTH = 2;
 
 export type { NewTask, TaskPatch };
 
@@ -30,6 +41,29 @@ function listKey(plannedDate: string | null) {
 }
 
 const bySortOrder = (a: Task, b: Task) => a.sort_order - b.sort_order;
+
+/**
+ * Apply an optimistic patch to a cached task list, and return what was there
+ * before so onError can roll back.
+ *
+ * No-op when the list isn't cached. Writing into a day we've never fetched
+ * would seed a phantom list — `(old = [])` used to turn "not cached" into an
+ * empty array, so the day rendered as empty until the refetch landed. Reachable
+ * whenever you act on a task from outside its own day: "mover a otro día", and
+ * every edit made from a ⌘K search result.
+ *
+ * Exported for tests — the "never seed an uncached key" contract is what keeps
+ * those flows from flashing an empty day.
+ */
+export function patchList(
+  qc: QueryClient,
+  key: QueryKey,
+  patch: (tasks: Task[]) => Task[],
+): Task[] | undefined {
+  const prev = qc.getQueryData<Task[]>(key);
+  if (prev) qc.setQueryData<Task[]>(key, patch(prev));
+  return prev;
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -114,6 +148,27 @@ export function tasksInRangeQueryOptions(start: string, end: string) {
   };
 }
 
+/**
+ * Free-text task search for the ⌘K palette.
+ *
+ * Server-backed rather than reading the TanStack cache: no persister is wired,
+ * so on a cold load only today's tasks are in memory — which is exactly the
+ * case search exists for. Returns full rows so selecting a result can open the
+ * detail sheet without a second fetch.
+ */
+export function useTaskSearch(query: string) {
+  const q = query.trim();
+  return useQuery({
+    queryKey: taskKeys.search(q),
+    queryFn: () => fetchJson<Task[]>(`/api/tasks/search?q=${encodeURIComponent(q)}`),
+    enabled: q.length >= MIN_SEARCH_LENGTH,
+    staleTime: 10_000,
+    // Keep the previous results on screen while the next query flies, so the
+    // list doesn't blank out between keystrokes.
+    placeholderData: keepPreviousData,
+  });
+}
+
 // ------------------------------------------------------------ mutations
 
 function buildOptimisticTask(input: NewTask, ownerId: string, householdId: string): Task {
@@ -159,10 +214,9 @@ export function useCreateTask() {
     onMutate: async (input) => {
       const key = listKey(input.plannedDate);
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Task[]>(key);
       const me = qc.getQueryData<Profile | null>(profileKeys.me);
       const temp = buildOptimisticTask(input, me?.id ?? "", me?.household_id ?? "");
-      qc.setQueryData<Task[]>(key, (old = []) => [...old, temp].sort(bySortOrder));
+      const prev = patchList(qc, key, (tasks) => [...tasks, temp].sort(bySortOrder));
       return { key, prev };
     },
     onError: (_e, _v, ctx) => {
@@ -179,10 +233,9 @@ export function useToggleTask() {
     onMutate: async (task) => {
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Task[]>(key);
       const done = task.status !== "done";
-      qc.setQueryData<Task[]>(key, (old = []) =>
-        old.map((t) =>
+      const prev = patchList(qc, key, (tasks) =>
+        tasks.map((t) =>
           t.id === task.id
             ? {
                 ...t,
@@ -209,9 +262,8 @@ export function useUpdateTask() {
     onMutate: async ({ task, patch }) => {
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Task[]>(key);
-      qc.setQueryData<Task[]>(key, (old = []) =>
-        old.map((t) => (t.id === task.id ? { ...t, ...patch } : t)),
+      const prev = patchList(qc, key, (tasks) =>
+        tasks.map((t) => (t.id === task.id ? { ...t, ...patch } : t)),
       );
       return { key, prev };
     },
@@ -237,9 +289,8 @@ export function useSetActualTime() {
     onMutate: async ({ taskId, plannedDate, actualMin }) => {
       const key = listKey(plannedDate);
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Task[]>(key);
-      qc.setQueryData<Task[]>(key, (old = []) =>
-        old.map((t) => (t.id === taskId ? { ...t, actual_time_min: actualMin } : t)),
+      const prev = patchList(qc, key, (tasks) =>
+        tasks.map((t) => (t.id === taskId ? { ...t, actual_time_min: actualMin } : t)),
       );
       return { key, prev };
     },
@@ -267,9 +318,8 @@ export function useAddActualTime() {
     onMutate: async ({ taskId, plannedDate, deltaMin }) => {
       const key = listKey(plannedDate);
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Task[]>(key);
-      qc.setQueryData<Task[]>(key, (old = []) =>
-        old.map((t) =>
+      const prev = patchList(qc, key, (tasks) =>
+        tasks.map((t) =>
           t.id === taskId ? { ...t, actual_time_min: (t.actual_time_min ?? 0) + deltaMin } : t,
         ),
       );
@@ -308,8 +358,7 @@ export function useDeleteTask() {
       useActiveTimers.getState().stop(task.id);
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Task[]>(key);
-      qc.setQueryData<Task[]>(key, (old = []) => old.filter((t) => t.id !== task.id));
+      const prev = patchList(qc, key, (tasks) => tasks.filter((t) => t.id !== task.id));
       return { key, prev };
     },
     onError: (_e, _v, ctx) => {
@@ -352,9 +401,6 @@ export function useMoveTaskToDate() {
         qc.cancelQueries({ queryKey: fromKey }),
         qc.cancelQueries({ queryKey: toKey }),
       ]);
-      const prevFrom = qc.getQueryData<Task[]>(fromKey);
-      const prevTo = qc.getQueryData<Task[]>(toKey);
-      qc.setQueryData<Task[]>(fromKey, (old = []) => old.filter((t) => t.id !== task.id));
       const moved = {
         ...task,
         planned_date: toDate,
@@ -363,8 +409,11 @@ export function useMoveTaskToDate() {
         block_end: null,
         ...(priority !== undefined && { priority }),
       };
-      qc.setQueryData<Task[]>(toKey, (old = []) =>
-        [...old.filter((t) => t.id !== task.id), moved].sort(bySortOrder),
+      const prevFrom = patchList(qc, fromKey, (tasks) => tasks.filter((t) => t.id !== task.id));
+      // Moving to a day nobody is looking at (MoveToDayMenu → "Próx. lunes")
+      // leaves toKey uncached — patchList skips it and the refetch fills it in.
+      const prevTo = patchList(qc, toKey, (tasks) =>
+        [...tasks.filter((t) => t.id !== task.id), moved].sort(bySortOrder),
       );
       return { fromKey, toKey, prevFrom, prevTo };
     },
@@ -401,9 +450,8 @@ export function useReorderTask() {
     onMutate: async ({ task, sortOrder, priority }) => {
       const key = listKey(task.planned_date);
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Task[]>(key);
-      qc.setQueryData<Task[]>(key, (old = []) =>
-        old
+      const prev = patchList(qc, key, (tasks) =>
+        tasks
           .map((t) =>
             t.id === task.id
               ? { ...t, sort_order: sortOrder, ...(priority !== undefined && { priority }) }

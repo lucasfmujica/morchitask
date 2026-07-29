@@ -39,6 +39,8 @@ import { CarryoverPrompt } from "./carryover-prompt";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
 import { createTaskCollision } from "@/components/dnd/collision";
+import { TaskDragPreview } from "@/components/dnd/task-drag-preview";
+import { DROP_ANIMATION } from "@/lib/motion";
 import { Confetti } from "@/components/ui/confetti";
 import { AgendaView } from "./agenda-view";
 import { CalendarEventsSection } from "./calendar-events-section";
@@ -127,10 +129,11 @@ export function DayView({ date }: { date: string }) {
   );
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
-  // Agenda draggables (ids like `task-…`/`block-…`) use the DragOverlay; list
-  // rows keep their own transform-based drag, so we only render the overlay for
-  // the agenda to avoid a double image when dragging a list card onto the grid.
-  const [overlayActive, setOverlayActive] = useState(false);
+  // Where the drag started decides WHICH preview to show. Agenda draggables
+  // (ids like `task-…`/`block-…`) can be ~28px tall, so a card preview would be
+  // crushed — they get a pill. List rows get a real card preview, and the
+  // source row goes invisible (see SortableRow) so there's no double image.
+  const [dragSource, setDragSource] = useState<"list" | "agenda">("list");
 
   function resolveTask(id: string, data?: Record<string, unknown>): Task | null {
     return (data?.task as Task) ?? tasks.find((t) => t.id === id) ?? null;
@@ -161,13 +164,13 @@ export function DayView({ date }: { date: string }) {
     const data = e.active.data.current as { task?: Task; block?: TaskBlock } | undefined;
     setActiveTask(resolveTask(id, data));
     setActiveBlockId(data?.block?.id ?? null);
-    setOverlayActive(id.startsWith("task-") || id.startsWith("block-")); // agenda-originated
+    const fromAgenda = id.startsWith("task-") || id.startsWith("block-");
+    setDragSource(fromAgenda ? "agenda" : "list");
   }
 
   function onDragEnd(e: DragEndEvent) {
     setActiveTask(null);
     setActiveBlockId(null);
-    setOverlayActive(false);
     const { active, over } = e;
     if (!over) return;
     const overId = String(over.id);
@@ -256,7 +259,6 @@ export function DayView({ date }: { date: string }) {
         onDragCancel={() => {
           setActiveTask(null);
           setActiveBlockId(null);
-          setOverlayActive(false);
         }}
       >
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
@@ -297,11 +299,14 @@ export function DayView({ date }: { date: string }) {
           </div>
         </div>
 
-        <DragOverlay dropAnimation={null}>
-          {activeTask && overlayActive && (
-            <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
-              {activeTask.title}
-            </div>
+        <DragOverlay dropAnimation={DROP_ANIMATION}>
+          {activeTask && (
+            <TaskDragPreview
+              task={activeTask}
+              channel={activeTask.channel_id ? channelsById.get(activeTask.channel_id) : undefined}
+              owner={profilesById.get(activeTask.owner_id)}
+              variant={dragSource === "agenda" ? "pill" : "card"}
+            />
           )}
         </DragOverlay>
       </DndContext>

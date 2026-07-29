@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { addDays, addMonths, todayISO } from "@/lib/date";
+import { EASE_OUT_EXPO } from "@/lib/motion";
 import { useCommandPalette } from "@/lib/stores/command-palette";
+import { Kbd } from "@/components/ui";
 
 const DATE_RE = /(\d{4}-\d{2}-\d{2})/;
 
 const SHORTCUTS: { keys: string[]; label: string }[] = [
-  { keys: ["⌘", "K"], label: "Buscar / acción rápida" },
+  { keys: ["⌘", "K"], label: "Buscar tareas / ir a una vista" },
   { keys: ["N"], label: "Nueva tarea" },
   { keys: ["←", "→"], label: "Día / semana / mes anterior y siguiente" },
   { keys: ["T"], label: "Ir a hoy" },
@@ -88,18 +90,18 @@ export function KeyboardShortcuts() {
     <AnimatePresence>
       {showHelp && (
         <motion.div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => setShowHelp(false)}
         >
           <motion.div
-            className="w-full max-w-sm rounded-card border border-border bg-surface p-5 shadow-card"
+            className="w-full max-w-sm rounded-card border border-border bg-surface p-5 shadow-pop"
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="Atajos de teclado"
@@ -111,12 +113,9 @@ export function KeyboardShortcuts() {
                   <span className="text-sm text-muted">{s.label}</span>
                   <span className="flex shrink-0 gap-1">
                     {s.keys.map((k) => (
-                      <kbd
-                        key={k}
-                        className="min-w-[22px] rounded border border-border bg-surface-2 px-1.5 py-0.5 text-center font-sans text-[11px] font-semibold text-fg"
-                      >
+                      <Kbd key={k} className="text-fg">
                         {k}
-                      </kbd>
+                      </Kbd>
                     ))}
                   </span>
                 </li>

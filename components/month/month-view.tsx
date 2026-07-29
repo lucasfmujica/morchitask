@@ -120,13 +120,13 @@ function Dots({ entry }: { entry?: DayCount }) {
           key={i}
           className={cn(
             "h-1.5 w-1.5 rounded-full",
-            allDone ? "bg-success/60" : i < pending ? "bg-primary" : "bg-gray-300",
+            allDone ? "bg-success/60" : i < pending ? "bg-primary" : "bg-border-strong",
           )}
           aria-hidden
         />
       ))}
       {entry.total > 4 && (
-        <span className="text-[10px] leading-none text-subtle">+{entry.total - 4}</span>
+        <span className="text-2xs leading-none text-subtle">+{entry.total - 4}</span>
       )}
     </span>
   );

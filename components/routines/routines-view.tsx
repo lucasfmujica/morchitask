@@ -15,6 +15,7 @@ import { todayISO } from "@/lib/date";
 import { currentStreak, recentOccurrences } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
 import type { Channel, RecurringTemplate } from "@/lib/queries/types";
+import { EmptyState } from "@/components/ui";
 
 const WEEKDAYS = [
   { n: 1, l: "L" },
@@ -77,9 +78,11 @@ export function RoutinesView() {
       </div>
 
       {routines.length === 0 ? (
-        <p className="rounded-card border border-dashed border-border px-6 py-10 text-center text-sm text-muted">
-          Todavía no tenés rutinas. Agregá una arriba.
-        </p>
+        <EmptyState
+          icon={Repeat}
+          title="Todavía no tenés rutinas"
+          hint="Una rutina genera su tarea sola los días que elijas — ideal para lo que repetís sin pensar."
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {routines.map((r) => (
@@ -145,13 +148,13 @@ function RoutineRow({
             const v = e.target.value.trim();
             if (v && v !== routine.title) patch({ title: v });
           }}
-          className="min-w-0 flex-1 bg-transparent text-[15px] font-medium text-fg outline-none"
+          className="min-w-0 flex-1 bg-transparent text-base font-medium text-fg outline-none"
           aria-label="Título de la rutina"
         />
         {streak > 0 && (
           <span
             title={`${streak} ${streak === 1 ? "día" : "días"} seguidos`}
-            className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 tabular-nums"
+            className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning tabular-nums"
           >
             🔥 {streak}
           </span>
@@ -226,7 +229,7 @@ function RoutineRow({
               title={c.date}
               className={cn(
                 "h-3.5 w-3.5 rounded-[4px]",
-                c.done ? "bg-emerald-500" : "bg-surface-2 ring-1 ring-inset ring-border",
+                c.done ? "bg-success" : "bg-surface-2 ring-1 ring-inset ring-border",
               )}
             />
           ))}

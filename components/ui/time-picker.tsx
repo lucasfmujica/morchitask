@@ -62,7 +62,7 @@ export function TimePicker({
             exit={{ opacity: 0, transition: { duration: 0.1 } }}
             transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              "absolute z-50 mt-1 max-h-56 w-24 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-card",
+              "absolute z-50 mt-1 max-h-56 w-24 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-pop",
               align === "right" ? "right-0" : "left-0",
             )}
             role="listbox"

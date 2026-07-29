@@ -13,6 +13,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Repeat,
+  Search,
   Settings,
   Target,
   Timer,
@@ -23,8 +24,10 @@ import { useMe } from "@/lib/queries/profiles";
 import { useHousehold } from "@/lib/queries/households";
 import { ChannelFilterProvider } from "@/lib/channel-filter";
 import { useSidebar } from "@/lib/stores/sidebar";
+import { useCommandPalette } from "@/lib/stores/command-palette";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { Kbd } from "@/components/ui";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import { WeekCalendarRail } from "@/components/week/week-calendar-rail";
@@ -89,8 +92,17 @@ const TOOL_NAV: NavItem[] = [
 ];
 const BOTTOM_NAV = [...PLAN_NAV, ...TOOL_NAV].filter((n) => n.bottom);
 
+/** Closing the day is a ritual, not a page you browse: the chrome steps back so
+ *  the three steps have the screen. Cheaper and more reversible than moving the
+ *  route into its own group, which would mean re-mounting every singleton this
+ *  shell owns (detail sheet, timer bar, shortcuts, palette, presence). */
+function isRitualRoute(pathname: string) {
+  return pathname.startsWith("/shutdown");
+}
+
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const ritual = isRitualRoute(pathname);
 
   // Any navigation closes the mobile drawer (covers ritual links too).
   const closeMobile = useSidebar((s) => s.closeMobile);
@@ -101,9 +113,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
   return (
     <ChannelFilterProvider>
       <div className="flex min-h-dvh">
-        <DesktopSidebar pathname={pathname} />
+        <DesktopSidebar pathname={pathname} forceCollapsed={ritual} />
 
-        <div className="flex min-h-dvh flex-1 flex-col">
+        {/* min-w-0 is load-bearing: a flex child defaults to `min-width: auto`,
+            so this column refused to shrink below its content's intrinsic width
+            and the whole page rendered ~800px wide on a 430px phone — cards,
+            empty states and the bottom nav all clipped off the right edge. */}
+        <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
           {/* Mobile top bar */}
           <header className="sticky top-0 z-20 border-b border-border bg-bg/80 pt-safe backdrop-blur md:hidden">
             <div className="flex h-14 items-center justify-between px-safe">
@@ -111,11 +127,17 @@ export function AppChrome({ children }: { children: ReactNode }) {
                 <MobileMenuButton />
                 <Link href="/today" className="flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/icon.svg" alt="" className="h-7 w-7 rounded-lg" />
-                  <span className="font-bold tracking-tight text-fg">Morchitask</span>
+                  <img src="/icon.svg" alt="Morchitask" className="h-7 w-7 rounded-lg" />
+                  {/* The wordmark costs ~95px and the icon row now needs it:
+                      with Buscar added, logo + 6 icons overflow a 390px phone.
+                      Shown again as soon as there's room. */}
+                  <span className="hidden font-bold tracking-tight text-fg sm:inline">
+                    Morchitask
+                  </span>
                 </Link>
               </div>
               <div className="flex items-center gap-0.5">
+                <SearchButton />
                 <MobileRitualIcons />
                 <TopBarIcon href="/focus" label="Foco" icon={Timer} />
                 <TopBarIcon href="/resumen" label="Resumen" icon={BarChart3} />
@@ -128,8 +150,14 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
           <main className="flex-1 px-safe py-5 md:px-8 md:py-6">{children}</main>
 
-          {/* Mobile bottom nav */}
-          <nav className="sticky bottom-0 z-20 border-t border-border bg-bg/90 pb-safe backdrop-blur md:hidden">
+          {/* Mobile bottom nav — hidden during a ritual so the step CTA is
+              the only thing at the bottom of the screen. */}
+          <nav
+            className={cn(
+              "sticky bottom-0 z-20 border-t border-border bg-bg/90 pb-safe backdrop-blur md:hidden",
+              ritual && "hidden",
+            )}
+          >
             <div className="flex">
               {BOTTOM_NAV.map(({ href, label, icon: Icon, match }) => {
                 const active = match(pathname);
@@ -175,8 +203,44 @@ function MobileMenuButton() {
   );
 }
 
-function DesktopSidebar({ pathname }: { pathname: string }) {
-  const collapsed = useSidebar((s) => s.collapsed);
+/** Opens the ⌘K palette from the mobile top bar — a phone has no ⌘K. */
+function SearchButton() {
+  const open = useCommandPalette((s) => s.open);
+  return (
+    <button
+      onClick={open}
+      aria-label="Buscar"
+      className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+    >
+      <Search className="h-5 w-5" aria-hidden />
+    </button>
+  );
+}
+
+/** The same palette, discoverable on desktop — nobody finds ⌘K on their own. */
+function SidebarSearchButton() {
+  const open = useCommandPalette((s) => s.open);
+  return (
+    <button
+      onClick={open}
+      aria-label="Buscar"
+      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+    >
+      <Search className="h-[18px] w-[18px] shrink-0" aria-hidden />
+      <span className="flex-1 text-left">Buscar</span>
+      <Kbd>⌘K</Kbd>
+    </button>
+  );
+}
+
+function DesktopSidebar({
+  pathname,
+  forceCollapsed = false,
+}: {
+  pathname: string;
+  forceCollapsed?: boolean;
+}) {
+  const collapsed = useSidebar((s) => s.collapsed) || forceCollapsed;
   const toggleCollapsed = useSidebar((s) => s.toggleCollapsed);
 
   // Collapsed: hide the panel and leave a slim floating button to reopen it, so
@@ -230,7 +294,7 @@ function SidebarBody({
       <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon.svg" alt="" className="h-8 w-8 rounded-xl shadow-soft" />
-        <span className="text-[15px] font-extrabold tracking-tight text-fg">Morchitask</span>
+        <span className="text-base font-extrabold tracking-tight text-fg">Morchitask</span>
         <div className="ml-auto">
           {onToggleCollapsed && (
             <button
@@ -258,6 +322,8 @@ function SidebarBody({
           the Week mini-calendar is shown and/or the category list is long. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <nav className="flex flex-col gap-0.5 px-3">
+          <SidebarSearchButton />
+          <div className="my-2 border-t border-border/70" />
           {PLAN_NAV.map((item) => (
             <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
           ))}
@@ -320,7 +386,7 @@ function MobileSidebarDrawer({ pathname }: { pathname: string }) {
       <button
         aria-label="Cerrar menú"
         onClick={closeMobile}
-        className="absolute inset-0 h-full w-full cursor-default bg-fg/30 backdrop-blur-sm"
+        className="absolute inset-0 h-full w-full cursor-default bg-scrim backdrop-blur-sm"
       />
       <aside className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col border-r border-border bg-surface pt-safe shadow-card">
         <SidebarBody pathname={pathname} onNavigate={closeMobile} />

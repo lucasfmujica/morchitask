@@ -87,7 +87,7 @@ export function SettingsView() {
               <Camera className="h-3 w-3" aria-hidden />
             </span>
             {uploadAvatar.isPending && (
-              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-900/40 text-[10px] font-semibold text-white">
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-scrim text-2xs font-semibold text-on-scrim">
                 …
               </span>
             )}

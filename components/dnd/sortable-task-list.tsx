@@ -27,7 +27,7 @@ import {
   resolveTaskDrop,
   type PriorityKey,
 } from "@/lib/priority";
-import { EASE_OUT } from "@/lib/motion";
+import { EASE_OUT, FADE_IN } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useToggleTask } from "@/lib/queries/tasks";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
@@ -139,13 +139,7 @@ export function SortableTaskList({
                 />
               </motion.li>
             ) : (
-              <motion.li
-                key={row.task.id}
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18, ease: EASE_OUT }}
-              >
+              <motion.li key={row.task.id} {...FADE_IN}>
                 <SortableRow
                   task={row.task}
                   channel={row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined}
@@ -230,7 +224,9 @@ function SortableRow({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "flex items-stretch gap-1",
-        isDragging && "relative z-10 opacity-80",
+        // Fully hidden, not faded: the day view's DragOverlay now renders a
+        // real card preview, so a visible source would be a second copy.
+        isDragging && "relative z-10 opacity-0",
         // Desktop: the whole card is the drag handle (no swipe to conflict, and
         // the title is a button so a plain click still opens the detail). A 6px
         // threshold keeps clicks working. Touch: only the grip drags so

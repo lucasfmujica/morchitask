@@ -18,7 +18,7 @@ export function DueDateBadge({ dueDate, className }: { dueDate: string; classNam
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold",
         TONE_STYLES[tone],
         className,
       )}

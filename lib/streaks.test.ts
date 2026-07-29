@@ -76,3 +76,50 @@ describe("recentOccurrences", () => {
     expect(cells.map((c) => c.date)).toEqual(["2026-06-17", "2026-06-24"]);
   });
 });
+
+/**
+ * The shutdown streak reuses `currentStreak` with freq "daily" — closing the
+ * day is expected every day, so no separate implementation exists. These lock
+ * in the behaviour `useShutdownStreak` depends on.
+ */
+describe("currentStreak as the shutdown streak", () => {
+  const closed = (...days: string[]) => new Set(days);
+
+  it("counts consecutive closed days back from today", () => {
+    expect(
+      currentStreak("daily", null, closed("2026-06-24", "2026-06-23", "2026-06-22"), TODAY),
+    ).toBe(3);
+  });
+
+  it("gives today grace — not having closed it yet does not break the streak", () => {
+    // Today is missing, yesterday and the day before are there.
+    expect(currentStreak("daily", null, closed("2026-06-23", "2026-06-22"), TODAY)).toBe(2);
+  });
+
+  it("stops at the first gap", () => {
+    expect(
+      currentStreak("daily", null, closed("2026-06-24", "2026-06-23", "2026-06-21"), TODAY),
+    ).toBe(2);
+  });
+
+  it("is 0 when nothing was ever closed", () => {
+    expect(currentStreak("daily", null, closed(), TODAY)).toBe(0);
+  });
+
+  it("is 0 when only an old, disconnected run exists", () => {
+    expect(currentStreak("daily", null, closed("2026-06-01", "2026-06-02"), TODAY)).toBe(0);
+  });
+
+  it("counts a streak of exactly one (today only)", () => {
+    expect(currentStreak("daily", null, closed("2026-06-24"), TODAY)).toBe(1);
+  });
+
+  it("does not look past the window it is given", () => {
+    const everyDay = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const d = new Date(Date.UTC(2026, 5, 24) - i * 86_400_000).toISOString().slice(0, 10);
+      everyDay.add(d);
+    }
+    expect(currentStreak("daily", null, everyDay, TODAY, 120)).toBe(120);
+  });
+});

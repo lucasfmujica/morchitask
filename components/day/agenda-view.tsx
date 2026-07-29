@@ -176,7 +176,7 @@ export function AgendaView({
                   />
                 </div>
                 {hasBlocks && rem != null && (
-                  <span className="shrink-0 text-[11px] font-medium text-accent">
+                  <span className="shrink-0 text-2xs font-medium text-accent">
                     {formatMinutes(rem)} rest.
                   </span>
                 )}
@@ -209,7 +209,7 @@ export function AgendaView({
                     aria-hidden
                   />
                   <span className="truncate">{e.title}</span>
-                  <span className="ml-auto shrink-0 text-[10px] text-subtle">todo el día</span>
+                  <span className="ml-auto shrink-0 text-2xs text-subtle">todo el día</span>
                 </div>
               ))}
           </div>
@@ -221,7 +221,7 @@ export function AgendaView({
               className="absolute inset-x-0 flex items-start gap-2"
               style={{ top: i * PX_PER_HOUR }}
             >
-              <span className="-mt-1.5 w-10 shrink-0 text-right text-[11px] text-subtle">
+              <span className="-mt-1.5 w-10 shrink-0 text-right text-2xs text-subtle">
                 {String(h).padStart(2, "0")}:00
               </span>
               <div className="flex-1 border-t border-border" />
@@ -258,7 +258,7 @@ export function AgendaView({
                   }}
                 >
                   <span className="block truncate font-medium text-muted">{e.title}</span>
-                  <span className="text-[10px] text-subtle">
+                  <span className="text-2xs text-subtle">
                     {timeInTimeZone(e.start!, TZ)}
                     {e.end ? `–${timeInTimeZone(e.end, TZ)}` : ""}
                   </span>
@@ -425,7 +425,7 @@ function ScheduledBlock({
           <X className="h-3 w-3" aria-hidden />
         </button>
       </div>
-      <span className="text-[10px] text-muted">
+      <span className="text-2xs text-muted">
         {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
       </span>
 

@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { resolveCapacity } from "@/lib/capacity";
 import { CapacityBar } from "@/components/day/capacity-bar";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
+import { SkeletonList } from "@/components/ui";
 
 const ESTIMATES = [15, 30, 45, 60, 90];
 
@@ -46,7 +47,7 @@ export function PlanView({ date }: { date: string }) {
   if (tasksQ.isLoading || noteQ.isLoading || !me) {
     return (
       <div className="max-w-3xl py-10">
-        <div className="h-40 animate-pulse rounded-card bg-surface-2" />
+        <SkeletonList count={3} />
       </div>
     );
   }
@@ -258,7 +259,7 @@ function PlanTaskRow({ task }: { task: Task }) {
         onClick={cycleEstimate}
         aria-label="Estimación de tiempo"
         className={cn(
-          "shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors",
+          "shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-2xs font-semibold transition-colors",
           task.time_estimate_min
             ? "bg-surface-2 text-muted hover:bg-border"
             : "text-subtle hover:text-muted",

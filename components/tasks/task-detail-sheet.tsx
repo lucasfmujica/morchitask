@@ -84,14 +84,14 @@ export function TaskDetailSheet() {
       {openTask && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-gray-900/40"
+            className="fixed inset-0 z-40 bg-scrim"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={close}
           />
           <motion.aside
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[86vh] overflow-y-auto rounded-t-2xl border border-border bg-surface pb-safe shadow-card md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[440px] md:rounded-none md:border-y-0 md:border-r-0"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[86dvh] overflow-y-auto rounded-t-2xl border border-border bg-surface pb-safe shadow-pop md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[440px] md:rounded-none md:border-y-0 md:border-r-0"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
@@ -431,7 +431,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3.5 py-3">
           <div className="flex items-baseline gap-6">
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
+              <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
                 Real
               </span>
               {timer.running ? (
@@ -463,7 +463,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               )}
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
+              <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
                 Estimado
               </span>
               <span className="text-lg font-bold tabular-nums text-muted">
@@ -818,7 +818,7 @@ function ChecklistItemRow({
                 tabIndex={-1}
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-card">
+              <div className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-pop">
                 {profiles.map((p) => (
                   <button
                     key={p.id}

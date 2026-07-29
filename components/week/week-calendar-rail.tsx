@@ -60,7 +60,7 @@ export function WeekCalendarRail({ date }: { date: string }) {
 
       <div className="mb-1 grid grid-cols-7">
         {WEEKDAYS.map((w, i) => (
-          <div key={i} className="py-1 text-center text-[11px] font-semibold text-subtle">
+          <div key={i} className="py-1 text-center text-2xs font-semibold text-subtle">
             {w}
           </div>
         ))}
@@ -89,7 +89,7 @@ export function WeekCalendarRail({ date }: { date: string }) {
             >
               <span
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-[13px] transition-colors",
+                  "flex h-7 w-7 items-center justify-center rounded-full text-sm transition-colors",
                   isToday
                     ? "bg-primary font-bold text-on-primary"
                     : inWeek

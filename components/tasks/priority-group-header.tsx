@@ -33,7 +33,7 @@ export function PriorityGroupHeader({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex items-center justify-center rounded-lg border border-dashed text-[11px] font-medium transition-colors",
+          "flex items-center justify-center rounded-lg border border-dashed text-2xs font-medium transition-colors",
           compact ? "py-2" : "py-3",
           isOver
             ? "border-primary bg-primary-soft text-primary"
@@ -50,7 +50,7 @@ export function PriorityGroupHeader({
       ref={setNodeRef}
       className={cn(
         "flex items-center gap-1.5 rounded-md transition-colors",
-        compact ? "px-0.5 py-0.5 text-[10px]" : "px-1 py-1 text-[11px]",
+        compact ? "px-0.5 py-0.5 text-2xs" : "px-1 py-1 text-2xs",
         "font-semibold uppercase tracking-wide",
         isOver ? "bg-primary-soft text-primary" : "text-subtle",
       )}

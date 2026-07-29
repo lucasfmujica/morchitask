@@ -16,6 +16,12 @@ export async function getDailyNote(date: string) {
   return data.getDailyNote(session.user.id, date);
 }
 
+export async function getShutdownDays(from: string, to: string) {
+  const session = await auth();
+  if (!session?.user.id) return [];
+  return data.getShutdownDays(session.user.id, from, to);
+}
+
 export async function upsertDailyNote(date: string, patch: DailyNotePatch) {
   const { householdId, userId } = await requireSession();
   return data.upsertDailyNote(householdId, userId, date, patch);

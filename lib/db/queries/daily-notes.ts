@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { dailyNotes } from "@/lib/db/schema";
 
@@ -21,6 +21,25 @@ export async function getDailyNote(ownerId: string, date: string) {
     .from(dailyNotes)
     .where(and(eq(dailyNotes.owner_id, ownerId), eq(dailyNotes.note_date, date)));
   return row ?? null;
+}
+
+/**
+ * The days in [from, to] where this person actually closed the day.
+ * Feeds the shutdown streak — `currentStreak` from lib/streaks.ts does the rest.
+ */
+export async function getShutdownDays(ownerId: string, from: string, to: string) {
+  const rows = await db
+    .select({ note_date: dailyNotes.note_date })
+    .from(dailyNotes)
+    .where(
+      and(
+        eq(dailyNotes.owner_id, ownerId),
+        gte(dailyNotes.note_date, from),
+        lte(dailyNotes.note_date, to),
+        isNotNull(dailyNotes.shutdown_completed_at),
+      ),
+    );
+  return rows.map((r) => r.note_date);
 }
 
 export async function upsertDailyNote(

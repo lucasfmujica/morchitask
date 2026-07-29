@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
@@ -43,6 +43,9 @@ import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
+import { TaskDragPreview } from "@/components/dnd/task-drag-preview";
+import { EmptyHint, SkeletonList } from "@/components/ui";
+import { DROP_ANIMATION } from "@/lib/motion";
 import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { createTaskCollision } from "@/components/dnd/collision";
@@ -57,66 +60,11 @@ const NO_SUBTASKS = new Map<string, Subtask[]>();
 /** Cards win over the thin priority strips; strips are only a fallback. */
 const weekCollision = createTaskCollision({ fallback: closestCorners });
 
-/** Horizontal distance between two day panels (panel width + gap), measured
- *  from the live DOM so it works at every breakpoint. Guards against 0. */
-function dayStep(el: HTMLDivElement) {
-  const kids = el.children;
-  if (kids.length < 2) return el.clientWidth || 1;
-  return (kids[1] as HTMLElement).offsetLeft - (kids[0] as HTMLElement).offsetLeft || 1;
-}
-
 export function WeekView({ date }: { date: string }) {
   const router = useRouter();
   const today = todayISO();
   const week = weekRange(date, 1);
   const thisWeek = week.includes(today);
-
-  // Mobile day carousel: one day per screen, swipeable. `focusIdx` is the day
-  // in the URL — we land on it (today for /week) and the dots/arrows under the
-  // header step between days, rolling into the next/prev week at the ends.
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const ticking = useRef(false);
-  const focusIdx = Math.max(0, week.indexOf(date));
-  const [active, setActive] = useState(focusIdx);
-
-  // Snap the active day back to the URL's day when it changes (render-time
-  // adjustment — no effect needed; swiping then updates it via onDaysScroll).
-  const [syncedFocus, setSyncedFocus] = useState(focusIdx);
-  if (syncedFocus !== focusIdx) {
-    setSyncedFocus(focusIdx);
-    setActive(focusIdx);
-  }
-
-  // Land the carousel on the focused day on mount / when it changes.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const id = requestAnimationFrame(() => {
-      el.scrollTo({ left: focusIdx * dayStep(el), behavior: "auto" });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [focusIdx]);
-
-  function scrollToDay(idx: number) {
-    const el = scrollRef.current;
-    if (el) el.scrollTo({ left: idx * dayStep(el), behavior: "smooth" });
-  }
-  function onDaysScroll() {
-    if (ticking.current) return;
-    ticking.current = true;
-    requestAnimationFrame(() => {
-      ticking.current = false;
-      const el = scrollRef.current;
-      if (!el) return;
-      setActive(Math.max(0, Math.min(week.length - 1, Math.round(el.scrollLeft / dayStep(el)))));
-    });
-  }
-  // Step a day; at the week's edges roll into the adjacent week (lands on that day).
-  function stepDay(delta: number) {
-    const next = active + delta;
-    if (next >= 0 && next < week.length) scrollToDay(next);
-    else router.push(`/week/${addDays(week[active], delta)}`);
-  }
 
   const results = useQueries({ queries: week.map((d) => tasksForDateQueryOptions(d)) });
   const subResults = useQueries({ queries: week.map((d) => subtasksForDateQueryOptions(d)) });
@@ -227,34 +175,6 @@ export function WeekView({ date }: { date: string }) {
           unfinished tasks into today right from here. */}
       {thisWeek && <CarryoverPrompt date={today} />}
 
-      {/* Mobile day pager: shows which day you're on and steps between days. */}
-      <div className="flex items-center justify-between gap-2 md:hidden">
-        <button onClick={() => stepDay(-1)} aria-label="Día anterior" className={arrow}>
-          <ChevronLeft className="h-5 w-5" aria-hidden />
-        </button>
-        <div className="flex items-center gap-1.5">
-          {week.map((d, i) => (
-            <button
-              key={d}
-              onClick={() => scrollToDay(i)}
-              aria-label={weekDayHeading(d, today)}
-              aria-current={i === active ? "true" : undefined}
-              className={cn(
-                "h-1.5 rounded-full transition-all",
-                i === active
-                  ? "w-6 bg-primary"
-                  : d === today
-                    ? "w-1.5 bg-primary/40"
-                    : "w-1.5 bg-border",
-              )}
-            />
-          ))}
-        </div>
-        <button onClick={() => stepDay(1)} aria-label="Día siguiente" className={arrow}>
-          <ChevronRight className="h-5 w-5" aria-hidden />
-        </button>
-      </div>
-
       {/* Day columns now span the full width — the calendar and category filter
           moved into the sidebar. `min-w-0` keeps the day strip scrolling inside
           the pane instead of pushing the layout wider. */}
@@ -266,13 +186,13 @@ export function WeekView({ date }: { date: string }) {
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveTask(null)}
         >
-          {/* Mobile: one day per screen, swipeable (mandatory snap).
-                lg: fixed 5-column grid (Mon–Fri), no horizontal scroll. */}
-          <div
-            ref={scrollRef}
-            onScroll={onDaysScroll}
-            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-pl-4 px-4 pb-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:-mx-8 md:snap-proximity md:scroll-pl-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
-          >
+          {/* Phone: days STACK VERTICALLY and you scroll down the week — the
+                same direction as every other list in the app. It used to be a
+                one-day-per-screen horizontal carousel, which hid the week, cost
+                a swipe per day and fought the page's own scrolling.
+              Tablet: horizontal strip of 320px columns.
+              Desktop: fixed 5-column grid (Mon–Fri), no scrolling. */}
+          <div className="flex flex-col gap-6 md:-mx-8 md:flex-row md:snap-x md:snap-proximity md:gap-3 md:overflow-x-auto md:overscroll-x-contain md:scroll-pl-8 md:px-8 md:pb-4 md:[-webkit-overflow-scrolling:touch] md:[scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 md:[&::-webkit-scrollbar]:hidden">
             {week.map((d, i) => {
               const all = (results[i].data ?? []) as Task[];
               return (
@@ -281,6 +201,7 @@ export function WeekView({ date }: { date: string }) {
                   date={d}
                   today={today}
                   weekend={i >= 5}
+                  loading={results[i].isLoading}
                   tasks={columns[i]}
                   subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
                   channelsById={channelsById}
@@ -307,11 +228,16 @@ export function WeekView({ date }: { date: string }) {
             })}
           </div>
 
-          <DragOverlay dropAnimation={null}>
+          <DragOverlay dropAnimation={DROP_ANIMATION}>
             {activeTask && (
-              <div className="rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-card">
-                {activeTask.title}
-              </div>
+              <TaskDragPreview
+                task={activeTask}
+                channel={
+                  activeTask.channel_id ? channelsById.get(activeTask.channel_id) : undefined
+                }
+                owner={profilesById.get(activeTask.owner_id)}
+                density="compact"
+              />
             )}
           </DragOverlay>
         </DndContext>
@@ -324,6 +250,7 @@ function DayColumn({
   date,
   today,
   weekend,
+  loading,
   tasks,
   subsMap,
   channelsById,
@@ -334,6 +261,7 @@ function DayColumn({
   date: string;
   today: string;
   weekend: boolean;
+  loading: boolean;
   tasks: Task[];
   subsMap: Map<string, Subtask[]>;
   channelsById: Map<string, Channel>;
@@ -349,23 +277,31 @@ function DayColumn({
   return (
     <section
       className={cn(
-        "flex w-full shrink-0 snap-start flex-col gap-2 md:w-[320px] lg:w-auto lg:min-w-0 lg:shrink",
-        // Weekend columns only exist in the mobile swipe; the desktop grid is Mon–Fri.
+        // Phone: a full-width block in a vertical stack — no fixed width, no
+        // snap. Tablet and up: a fixed-width column in the horizontal strip.
+        "flex flex-col gap-2 md:w-[320px] md:shrink-0 md:snap-start lg:w-auto lg:min-w-0 lg:shrink",
+        // Weekends exist on phone and tablet; the desktop grid is Mon–Fri.
         weekend && "lg:hidden",
       )}
     >
-      <Link href={isToday ? "/today" : `/day/${date}`} className="group block">
+      {/* Sticky on phone so you always know which day you're scrolling through
+          in the vertical stack; a plain heading once the days sit side by side.
+          top-14 clears the mobile top bar. */}
+      <Link
+        href={isToday ? "/today" : `/day/${date}`}
+        className="group sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 block bg-bg/95 py-1 backdrop-blur md:static md:bg-transparent md:py-0 md:backdrop-blur-none"
+      >
         <div className="flex items-baseline justify-between gap-2">
           <span
             className={cn(
-              "text-[15px] font-bold tracking-tight transition-colors group-hover:text-primary",
+              "text-lg font-bold tracking-tight transition-colors group-hover:text-primary md:text-base",
               isToday ? "text-primary" : "text-fg",
             )}
           >
             {weekDayHeading(date, today)}
           </span>
           {tasks.length > 0 && (
-            <span className="shrink-0 text-[11px] font-medium text-subtle">
+            <span className="shrink-0 text-2xs font-medium text-subtle">
               {done}/{tasks.length}
               {plannedMin > 0 ? ` · ${formatMinutes(plannedMin)}` : ""}
             </span>
@@ -412,6 +348,18 @@ function DayColumn({
             ),
           )}
         </SortableContext>
+
+        {/* A day that hasn't loaded is NOT an empty day. Without this branch
+            every column announced "Sin tareas" until its query resolved, so
+            opening the week looked like the whole week was blank. */}
+        {loading ? (
+          <SkeletonList count={2} rowClassName="h-16" />
+        ) : (
+          // Narrow region → a single line, not the dashed EmptyState card, which
+          // would dwarf a 320px column. Doubles as the drop hint: the column is
+          // already a droppable, so an empty day still reads as a target.
+          tasks.length === 0 && !dragging && <EmptyHint>Sin tareas</EmptyHint>
+        )}
       </div>
     </section>
   );
@@ -440,7 +388,9 @@ function WeekCard({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "group/wk relative",
-        isDragging && "z-10 opacity-40",
+        // Fully hidden, not faded: the DragOverlay now renders a real card
+        // preview, so a visible source would read as two copies of the task.
+        isDragging && "z-10 opacity-0",
         // Desktop: the whole card is the drag handle — a plain click still opens
         // the detail (the title is a button) thanks to the 6px activation
         // threshold. Touch: only the grip drags so the card body keeps scrolling.
@@ -457,7 +407,9 @@ function WeekCard({
           <GripVertical className="h-3.5 w-3.5" aria-hidden />
         </button>
       )}
-      <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
+      {/* Compact: the column is only ~320px, so the card drops its checklist,
+          move menu and delete button — see lib/task-meta.ts. */}
+      <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} density="compact" />
     </div>
   );
 }
