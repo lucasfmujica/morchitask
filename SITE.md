@@ -73,6 +73,21 @@ paralelo. Antes, arrancar uno detenía el anterior.
   de la barra.
 - Los cronómetros **sobreviven a recargar la página** y a cerrar la pestaña un rato.
 
+### Tiempo por día
+
+Cuando una tarea te lleva varios días, abrí la tarea y debajo de "Real" vas a ver **"Por día"**:
+una fila por cada día que le dedicaste, con una barrita comparativa.
+
+- Dice **Hoy**, **Ayer** o la fecha corta (`27 jul`), del más nuevo al más viejo.
+- Si la tarea es compartida, cada fila muestra **quién puso ese tiempo** (pasá el dedo o el mouse
+  por la foto para ver cuánto puso cada uno).
+- Mientras el cronómetro corre, la fila de hoy **va subiendo sola**.
+- Si arrancás un cronómetro de noche y lo parás después de las 12, el tiempo se **reparte entre
+  los dos días**, no se le carga todo al segundo.
+- **Sin fecha** es el tiempo que no se puede atribuir a un día: lo que cargaste a mano en "Real" y
+  lo que ya estaba medido antes de que existiera este detalle.
+- El bloque **no aparece** si la tarea tiene un solo día — ahí el "Real" de arriba ya lo dice todo.
+
 ## Componentes
 
 - **components/ui/** — la "caja de herramientas" visual reusable: `Button`, `Card`, `Input`, `Badge`.
@@ -105,6 +120,14 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-07-30: **El tiempo de una tarea ahora se ve día por día, no solo el total.** Si arrastrás una tarea de ayer a hoy y seguís el cronómetro, el "Real" seguía sumando todo junto: 4h, sin manera de saber si fueron cuatro horas ayer o dos y dos. Ahora la app **guarda cada corrida del cronómetro con su fecha** y en la ficha de la tarea aparece **"Por día"**, una fila por jornada con barrita, quién puso el tiempo (en las compartidas) y la fila de hoy corriendo en vivo. Detalles:
+
+  - Una corrida que **cruza la medianoche se parte en dos**, y cada día se queda con los minutos que realmente le tocaron.
+  - Lo cargado a mano en "Real" y lo que ya estaba medido de antes aparece como **"Sin fecha"**, así el desglose siempre suma exactamente el total de arriba.
+  - El total de siempre (`Real`, el resumen, el cierre del día) **no cambió**: el desglose se suma al lado, no lo reemplaza.
+
+  Por detrás: tabla nueva `task_time_entries` (una fila por tarea + persona + día, **migración ya aplicada**), la lógica de partir corridas vive en `lib/time-entries.ts` con 13 tests, y el bloque visual es `components/tasks/task-time-breakdown.tsx`.
 
 - 2026-07-28: **Arreglos de celular: la app ya no se corta por el costado, la Semana se lee de arriba a abajo, y volvieron las iniciales en vez de fotos rotas.** Cuatro cosas:
 

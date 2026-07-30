@@ -388,6 +388,49 @@ export const subtasks = pgTable(
   ],
 );
 
+/**
+ * One row per (task, person, calendar day) of tracked time — the day-by-day
+ * breakdown behind `tasks.actual_time_min`.
+ *
+ * A task that rolls over keeps its total on the task row, so everything that
+ * already reads `actual_time_min` (analytics, shutdown, the card) is untouched;
+ * these rows answer the finer question "how much did I put in *today* vs
+ * yesterday". A stopwatch run that crosses local midnight is split into one row
+ * per day before it gets here (see lib/time-entries.ts).
+ */
+export const taskTimeEntries = pgTable(
+  "task_time_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    household_id: uuid("household_id")
+      .notNull()
+      .references(() => households.id),
+    task_id: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id),
+    /** Calendar day in the household timezone, not UTC. */
+    day: date("day", { mode: "string" }).notNull(),
+    minutes: numeric("minutes", { mode: "number" }).notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(touchUpdatedAt),
+  },
+  (t) => [
+    // One row per person per day: the write path is an upsert that adds onto
+    // it, so a day's total can't fragment across many rows.
+    unique("task_time_entries_task_user_day_unique").on(t.task_id, t.user_id, t.day),
+    index("task_time_entries_task_idx").on(t.task_id, t.day),
+    index("task_time_entries_household_day_idx").on(t.household_id, t.day),
+  ],
+);
+
 export const taskComments = pgTable(
   "task_comments",
   {

@@ -12,7 +12,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { taskBlocks, tasks } from "@/lib/db/schema";
+import { taskBlocks, taskTimeEntries, tasks } from "@/lib/db/schema";
 import type { PriorityKey } from "@/lib/priority";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
 
@@ -194,13 +194,61 @@ export async function setActualTime(householdId: string, taskId: string, actualM
   await db.update(tasks).set({ actual_time_min: actualMin }).where(scoped(householdId, taskId));
 }
 
-/** Add to the tracked time instead of overwriting it — used when a stopwatch
- *  stops, so a manual edit (or another device's run) isn't clobbered. */
-export async function addActualTime(householdId: string, taskId: string, deltaMin: number) {
-  await db
-    .update(tasks)
-    .set({ actual_time_min: sql`coalesce(${tasks.actual_time_min}, 0) + ${deltaMin}` })
-    .where(scoped(householdId, taskId));
+/**
+ * Log a finished stopwatch run: one row per calendar day it covered, plus the
+ * same amount added onto the task's total.
+ *
+ * Additive on both sides — a manual edit of "Real" during the run, or a stop
+ * from the other device, must not be clobbered. Sent as a single batch so the
+ * per-day rows and the total can't drift apart if one statement fails.
+ */
+export async function logTaskTime(
+  householdId: string,
+  userId: string,
+  taskId: string,
+  segments: { day: string; minutes: number }[],
+) {
+  const positive = segments.filter((s) => s.minutes > 0);
+  if (positive.length === 0) return;
+  const total = positive.reduce((sum, s) => sum + s.minutes, 0);
+
+  await db.batch([
+    ...positive.map((s) =>
+      db
+        .insert(taskTimeEntries)
+        .values({
+          household_id: householdId,
+          task_id: taskId,
+          user_id: userId,
+          day: s.day,
+          minutes: s.minutes,
+        })
+        // Same person, same day, second run → add onto the existing row.
+        .onConflictDoUpdate({
+          target: [taskTimeEntries.task_id, taskTimeEntries.user_id, taskTimeEntries.day],
+          set: { minutes: sql`${taskTimeEntries.minutes} + ${s.minutes}`, updated_at: sql`now()` },
+        }),
+    ),
+    db
+      .update(tasks)
+      .set({ actual_time_min: sql`coalesce(${tasks.actual_time_min}, 0) + ${total}` })
+      .where(scoped(householdId, taskId)),
+    // batch() wants a non-empty tuple; this array is built from a list, and the
+    // early return above is what guarantees it isn't empty.
+  ] as unknown as Parameters<typeof db.batch>[0]);
+}
+
+/** The day-by-day tracked time of one task, oldest first. */
+export async function timeEntriesForTask(householdId: string, taskId: string) {
+  return db
+    .select({
+      day: taskTimeEntries.day,
+      minutes: taskTimeEntries.minutes,
+      user_id: taskTimeEntries.user_id,
+    })
+    .from(taskTimeEntries)
+    .where(and(eq(taskTimeEntries.task_id, taskId), eq(taskTimeEntries.household_id, householdId)))
+    .orderBy(asc(taskTimeEntries.day));
 }
 
 export async function setActiveSince(householdId: string, taskId: string, active: boolean) {

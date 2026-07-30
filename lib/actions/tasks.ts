@@ -41,9 +41,24 @@ export async function setActualTime(taskId: string, actualMin: number) {
   await data.setActualTime(householdId, taskId, actualMin);
 }
 
-export async function addActualTime(taskId: string, deltaMin: number) {
+/**
+ * Log a stopwatch run, already split into per-day segments by the client (only
+ * the browser knows which calendar days the run touched in the user's own
+ * timezone). Attributed to whoever is signed in, so a shared task shows who put
+ * in what.
+ */
+export async function logTaskTime(taskId: string, segments: { day: string; minutes: number }[]) {
+  const { householdId, userId } = await requireSession();
+  const clean = segments.filter(
+    (s) => /^\d{4}-\d{2}-\d{2}$/.test(s.day) && Number.isFinite(s.minutes) && s.minutes > 0,
+  );
+  await data.logTaskTime(householdId, userId, taskId, clean);
+}
+
+/** The day-by-day breakdown behind a task's total tracked time. */
+export async function getTaskTimeEntries(taskId: string) {
   const { householdId } = await requireSession();
-  await data.addActualTime(householdId, taskId, deltaMin);
+  return data.timeEntriesForTask(householdId, taskId);
 }
 
 export async function setTaskActiveSince(taskId: string, active: boolean) {

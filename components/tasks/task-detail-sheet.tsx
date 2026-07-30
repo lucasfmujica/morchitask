@@ -53,6 +53,7 @@ import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskReactions } from "./task-reactions";
 import { TaskComments } from "./task-comments";
+import { TaskTimeBreakdown } from "./task-time-breakdown";
 import { useTaskTimer } from "./use-task-timer";
 
 /**
@@ -492,6 +493,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             )}
           </button>
         </div>
+        <TaskTimeBreakdown task={task} liveSegments={timer.liveSegments} meId={me?.id} />
       </Field>
 
       {/* Objective */}

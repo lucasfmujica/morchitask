@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { setTaskActiveSince, useAddActualTime } from "@/lib/queries/tasks";
+import { setTaskActiveSince, useLogTaskTime } from "@/lib/queries/tasks";
 import { elapsedSeconds, useActiveTimers, type ActiveTimer } from "@/lib/stores/active-timer";
+import { splitRunByDay } from "@/lib/time-entries";
 import type { Task } from "@/lib/queries/types";
 
 /** True only after first client render — avoids SSR/hydration mismatches when a
@@ -59,22 +60,24 @@ function useNow(on: boolean): number {
 
 /** Stop one timer by id, logging its elapsed time onto the task. */
 function useTimerStopper() {
-  const addActual = useAddActualTime();
+  const logTime = useLogTaskTime();
   return useCallback(
     (taskId: string) => {
       const { timers, stop } = useActiveTimers.getState();
       const t = timers[taskId];
       if (!t) return;
-      const secs = elapsedSeconds(t.startedAt, Date.now());
+      // Split at local midnight, so a run that goes past 00:00 charges each day
+      // what it actually earned instead of dumping it all on the stop day.
+      const segments = splitRunByDay(t.startedAt, Date.now());
       // Added, not overwritten: an absolute write would clobber a manual edit
       // made mid-run, or another device's stop.
-      if (secs > 0) {
-        addActual.mutate({ taskId, plannedDate: t.plannedDate, deltaMin: secs / 60 });
+      if (segments.length > 0) {
+        logTime.mutate({ taskId, plannedDate: t.plannedDate, segments });
       }
       void setTaskActiveSince(taskId, false); // clear presence
       stop(taskId);
     },
-    [addActual],
+    [logTime],
   );
 }
 
@@ -93,6 +96,12 @@ export function useTaskTimer(task: Task) {
   const elapsedSec = timer && running && now ? elapsedSeconds(timer.startedAt, now) : 0;
   // Total time on the task = already-logged time (minutes, fractional) + this live run.
   const liveSeconds = Math.round((task.actual_time_min ?? 0) * 60) + elapsedSec;
+  // How the run in progress would be charged if stopped right now — lets the
+  // day-by-day breakdown tick up live instead of only after Stop.
+  const liveSegments = useMemo(
+    () => (timer && running && now ? splitRunByDay(timer.startedAt, now) : []),
+    [timer, running, now],
+  );
 
   function startTimer() {
     // No stopping of other timers — running several at once is the point.
@@ -119,7 +128,7 @@ export function useTaskTimer(task: Task) {
     useActiveTimers.getState().stop(task.id);
   }
 
-  return { running, elapsedSec, liveSeconds, toggle, startTimer, stopTimer, cancel };
+  return { running, elapsedSec, liveSeconds, liveSegments, toggle, startTimer, stopTimer, cancel };
 }
 
 export type RunningTimer = ActiveTimer & { elapsedSec: number };

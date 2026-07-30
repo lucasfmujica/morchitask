@@ -25,6 +25,9 @@ export type TaskComment = typeof taskComments.$inferSelect;
 export type TaskReaction = typeof taskReactions.$inferSelect;
 export type TaskBlock = typeof taskBlocks.$inferSelect;
 
+/** One person's tracked minutes on a task for one calendar day. */
+export type TaskTimeEntry = { day: string; minutes: number; user_id: string };
+
 export type TaskStatus = "todo" | "done" | "cancelled";
 export type ObjectivePeriod = "week" | "month";
 export type ObjectiveStatus = "active" | "done" | "archived";

@@ -39,6 +39,15 @@ export function relativeLabel(day: DayISO, today: DayISO): string {
   return format(parseISO(day), "EEEE d 'de' MMMM", { locale: es });
 }
 
+/** "Hoy" / "Ayer" / "27 jul" — short enough for a dense list of days, and
+ *  unambiguous across months (unlike a bare weekday). */
+export function compactDayLabel(day: DayISO, today: DayISO): string {
+  if (day === today) return "Hoy";
+  if (day === addDays(today, -1)) return "Ayer";
+  if (day === addDays(today, 1)) return "Mañana";
+  return format(parseISO(day), "d MMM", { locale: es });
+}
+
 /** "Lunes 23 de junio" — capitalized weekday + day + month. */
 export function fullDayLabel(day: DayISO): string {
   const raw = format(parseISO(day), "EEEE d 'de' MMMM", { locale: es });

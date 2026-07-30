@@ -7,9 +7,10 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import {
-  addActualTime as addActualTimeAction,
   createTask as createTaskAction,
   deleteTask as deleteTaskAction,
+  getTaskTimeEntries as getTaskTimeEntriesAction,
+  logTaskTime as logTaskTimeAction,
   moveTaskToDate as moveTaskToDateAction,
   reorderTask as reorderTaskAction,
   setActualTime as setActualTimeAction,
@@ -20,14 +21,20 @@ import {
 import { profileKeys } from "./profiles";
 import { syncBlockCalendar } from "./calendar";
 import { useActiveTimers } from "@/lib/stores/active-timer";
+import { totalMinutes, type TimeSegment } from "@/lib/time-entries";
 import type { PriorityKey } from "@/lib/priority";
-import type { NewTask, Profile, Task, TaskPatch } from "./types";
+import type { NewTask, Profile, Task, TaskPatch, TaskTimeEntry } from "./types";
 
 export const taskKeys = {
   all: ["tasks"] as const,
   date: (d: string) => ["tasks", "date", d] as const,
   backlog: ["tasks", "backlog"] as const,
   search: (q: string) => ["tasks", "search", q] as const,
+};
+
+/** Per-day tracked time, cached per task (the detail sheet is the only reader). */
+export const taskTimeKeys = {
+  task: (taskId: string) => ["task-time", taskId] as const,
 };
 
 /** Below this, every query matches everything — see app/api/tasks/search. */
@@ -302,20 +309,26 @@ export function useSetActualTime() {
   });
 }
 
-/** Add tracked time to a task (a stopwatch run ending). Additive so a manual
- *  edit of "Real" during the run, or a stop from another device, isn't lost. */
-export function useAddActualTime() {
+/**
+ * Log a finished stopwatch run: it lands on the task's total AND as one row per
+ * calendar day it covered, which is what the day-by-day breakdown reads.
+ *
+ * Additive, so a manual edit of "Real" during the run — or a stop from the
+ * other device — isn't lost.
+ */
+export function useLogTaskTime() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
       taskId,
-      deltaMin,
+      segments,
     }: {
       taskId: string;
       plannedDate: string | null;
-      deltaMin: number;
-    }) => addActualTimeAction(taskId, deltaMin),
-    onMutate: async ({ taskId, plannedDate, deltaMin }) => {
+      segments: TimeSegment[];
+    }) => logTaskTimeAction(taskId, segments),
+    onMutate: async ({ taskId, plannedDate, segments }) => {
+      const deltaMin = totalMinutes(segments);
       const key = listKey(plannedDate);
       await qc.cancelQueries({ queryKey: key });
       const prev = patchList(qc, key, (tasks) =>
@@ -328,8 +341,19 @@ export function useAddActualTime() {
     onError: (_e, _v, ctx) => {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
-    onSettled: (_d, _e, { plannedDate }) =>
-      qc.invalidateQueries({ queryKey: listKey(plannedDate) }),
+    onSettled: (_d, _e, { taskId, plannedDate }) => {
+      qc.invalidateQueries({ queryKey: listKey(plannedDate) });
+      qc.invalidateQueries({ queryKey: taskTimeKeys.task(taskId) });
+    },
+  });
+}
+
+/** The per-day tracked time of one task — read by the detail sheet's breakdown. */
+export function useTaskTimeEntries(taskId: string, enabled = true) {
+  return useQuery({
+    queryKey: taskTimeKeys.task(taskId),
+    queryFn: (): Promise<TaskTimeEntry[]> => getTaskTimeEntriesAction(taskId),
+    enabled,
   });
 }
 
