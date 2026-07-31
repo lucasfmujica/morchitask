@@ -15,13 +15,14 @@ import {
   reorderTask as reorderTaskAction,
   setActualTime as setActualTimeAction,
   setTaskActiveSince as setTaskActiveSinceAction,
+  setTaskDayTime as setTaskDayTimeAction,
   toggleTask as toggleTaskAction,
   updateTask as updateTaskAction,
 } from "@/lib/actions/tasks";
 import { profileKeys } from "./profiles";
 import { syncBlockCalendar } from "./calendar";
 import { useActiveTimers } from "@/lib/stores/active-timer";
-import { totalMinutes, type TimeSegment } from "@/lib/time-entries";
+import { applyDayEdit, totalMinutes, type TimeSegment } from "@/lib/time-entries";
 import type { PriorityKey } from "@/lib/priority";
 import type { NewTask, Profile, Task, TaskPatch, TaskTimeEntry } from "./types";
 
@@ -344,6 +345,61 @@ export function useLogTaskTime() {
     onSettled: (_d, _e, { taskId, plannedDate }) => {
       qc.invalidateQueries({ queryKey: listKey(plannedDate) });
       qc.invalidateQueries({ queryKey: taskTimeKeys.task(taskId) });
+    },
+  });
+}
+
+/**
+ * Hand-correct my time on one day of a task.
+ *
+ * Optimistic on both caches at once — the day row and the "Real" total sit two
+ * centimetres apart on screen, so a refetch-shaped delay between them would
+ * read as a bug. `applyDayEdit` is the same function the server uses, so the
+ * optimistic numbers are the real ones, not an approximation.
+ */
+export function useSetTaskDayTime(taskId: string, plannedDate: string | null) {
+  const qc = useQueryClient();
+  const key = taskTimeKeys.task(taskId);
+  return useMutation({
+    mutationFn: ({ day, minutes }: { day: string; minutes: number; userId: string }) =>
+      setTaskDayTimeAction(taskId, day, minutes),
+    onMutate: async ({ day, minutes, userId }) => {
+      await Promise.all([
+        qc.cancelQueries({ queryKey: key }),
+        qc.cancelQueries({ queryKey: listKey(plannedDate) }),
+      ]);
+      const prevEntries = qc.getQueryData<TaskTimeEntry[]>(key);
+      const total =
+        (qc.getQueryData<Task[]>(listKey(plannedDate)) ?? []).find((t) => t.id === taskId)
+          ?.actual_time_min ?? 0;
+
+      const { entryMinutes, nextTotal } = applyDayEdit(
+        prevEntries ?? [],
+        total,
+        userId,
+        day,
+        minutes,
+      );
+
+      if (prevEntries) {
+        const others = prevEntries.filter((e) => !(e.user_id === userId && e.day === day));
+        qc.setQueryData<TaskTimeEntry[]>(
+          key,
+          entryMinutes > 0 ? [...others, { day, minutes: entryMinutes, user_id: userId }] : others,
+        );
+      }
+      const prevList = patchList(qc, listKey(plannedDate), (tasks) =>
+        tasks.map((t) => (t.id === taskId ? { ...t, actual_time_min: nextTotal } : t)),
+      );
+      return { prevEntries, prevList };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prevEntries) qc.setQueryData(key, ctx.prevEntries);
+      if (ctx) qc.setQueryData(listKey(plannedDate), ctx.prevList);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: listKey(plannedDate) });
     },
   });
 }

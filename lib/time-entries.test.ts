@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { fromZonedTime } from "date-fns-tz";
-import { buildTimeBreakdown, splitRunByDay, totalMinutes } from "./time-entries";
+import { applyDayEdit, buildTimeBreakdown, splitRunByDay, totalMinutes } from "./time-entries";
 import { DEFAULT_TIMEZONE } from "./date";
 
 /** Epoch ms for a local wall-clock time in the household timezone. */
@@ -114,5 +114,67 @@ describe("buildTimeBreakdown", () => {
   it("returns an empty breakdown for a task with no tracked time", () => {
     const b = buildTimeBreakdown([], 0);
     expect(b).toEqual({ days: [], trackedMin: 0, untrackedMin: 0, maxDayMin: 0 });
+  });
+});
+
+describe("applyDayEdit", () => {
+  const lucas = "lucas";
+  const sofi = "sofi";
+
+  it("reassigns unaccounted time to a day without inflating the total", () => {
+    // "Real" was edited by hand to 2h, so all 120m sit in "Sin fecha".
+    const r = applyDayEdit([], 120, lucas, "2026-07-29", 120);
+    expect(r).toEqual({ entryMinutes: 120, nextTotal: 120 });
+  });
+
+  it("only grows the total by what 'Sin fecha' can't cover", () => {
+    // 30m unaccounted, claiming 50m for a day → 20m of genuinely new time.
+    const r = applyDayEdit(
+      [{ day: "2026-07-30", minutes: 60, user_id: lucas }],
+      90,
+      lucas,
+      "2026-07-29",
+      50,
+    );
+    expect(r.nextTotal).toBe(110);
+  });
+
+  it("grows the total one-for-one when nothing is unaccounted", () => {
+    const entries = [{ day: "2026-07-30", minutes: 60, user_id: lucas }];
+    expect(applyDayEdit(entries, 60, lucas, "2026-07-29", 25).nextTotal).toBe(85);
+  });
+
+  it("takes a reduction straight off the total", () => {
+    const entries = [{ day: "2026-07-30", minutes: 60, user_id: lucas }];
+    expect(applyDayEdit(entries, 60, lucas, "2026-07-30", 20)).toEqual({
+      entryMinutes: 20,
+      nextTotal: 20,
+    });
+  });
+
+  it("edits only my own share of a day the two of us worked", () => {
+    const entries = [
+      { day: "2026-07-30", minutes: 60, user_id: sofi },
+      { day: "2026-07-30", minutes: 30, user_id: lucas },
+    ];
+    // Lucas corrects his 30m to 45m: +15m, and Sofi's 60m is untouched.
+    expect(applyDayEdit(entries, 90, lucas, "2026-07-30", 45).nextTotal).toBe(105);
+  });
+
+  it("clears a day to zero and never drives the total negative", () => {
+    const entries = [{ day: "2026-07-30", minutes: 60, user_id: lucas }];
+    expect(applyDayEdit(entries, 10, lucas, "2026-07-30", 0)).toEqual({
+      entryMinutes: 0,
+      nextTotal: 0,
+    });
+  });
+
+  it("rejects negative input instead of storing it", () => {
+    expect(applyDayEdit([], 30, lucas, "2026-07-30", -15).entryMinutes).toBe(0);
+  });
+
+  it("rounds to whole seconds so hand-edits don't carry float dust", () => {
+    const r = applyDayEdit([], 0, lucas, "2026-07-30", 10.000004);
+    expect(r.entryMinutes).toBe(10);
   });
 });

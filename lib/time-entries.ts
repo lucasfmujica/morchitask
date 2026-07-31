@@ -45,6 +45,40 @@ export function totalMinutes(segments: TimeSegment[]): number {
   return segments.reduce((sum, s) => sum + s.minutes, 0);
 }
 
+/** Round to whole seconds, so hand-edited values don't carry float dust. */
+function round(min: number): number {
+  return Math.round(min * 60) / 60;
+}
+
+/**
+ * What editing one day's time does to the task's total.
+ *
+ * Adding minutes to a day takes them out of "Sin fecha" first. That's the
+ * whole point of the edit: you added two forgotten hours to "Real", they
+ * landed in "Sin fecha" because nothing said when they happened, and now you
+ * say "that was yesterday". Assigning a day must not double the total — only
+ * what "Sin fecha" can't cover is genuinely new time.
+ *
+ * Lowering a day is the opposite claim ("I didn't actually spend that long"),
+ * so it comes straight off the total.
+ */
+export function applyDayEdit(
+  entries: EntryLike[],
+  totalMin: number,
+  userId: string,
+  day: DayISO,
+  minutes: number,
+): { entryMinutes: number; nextTotal: number } {
+  const entryMinutes = Math.max(0, round(minutes));
+  const current = entries.find((e) => e.user_id === userId && e.day === day)?.minutes ?? 0;
+  const tracked = entries.reduce((sum, e) => sum + e.minutes, 0);
+  const untracked = Math.max(0, totalMin - tracked);
+
+  const delta = entryMinutes - current;
+  const totalDelta = delta > 0 ? Math.max(0, delta - untracked) : delta;
+  return { entryMinutes, nextTotal: Math.max(0, round(totalMin + totalDelta)) };
+}
+
 /** A day's tracked time, optionally broken down by person. */
 export type DayTotal = {
   day: DayISO;

@@ -14,6 +14,7 @@ import {
 import { db } from "@/lib/db/client";
 import { taskBlocks, taskTimeEntries, tasks } from "@/lib/db/schema";
 import type { PriorityKey } from "@/lib/priority";
+import { applyDayEdit } from "@/lib/time-entries";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
 
 /** Every read/write below is scoped to `householdId` from the session — this
@@ -236,6 +237,58 @@ export async function logTaskTime(
     // batch() wants a non-empty tuple; this array is built from a list, and the
     // early return above is what guarantees it isn't empty.
   ] as unknown as Parameters<typeof db.batch>[0]);
+}
+
+/**
+ * Hand-edit how much *this* user spent on one day, keeping the task total in
+ * step (see `applyDayEdit` for why adding to a day eats "Sin fecha" first).
+ *
+ * Read-then-write rather than a single SQL statement: the total depends on how
+ * much of the task's time no day accounts for, which is a sum across rows. The
+ * window between the two is a person hand-typing a number in a two-person app —
+ * and the write is a batch, so entry and total still can't drift apart.
+ */
+export async function setTaskDayTime(
+  householdId: string,
+  userId: string,
+  taskId: string,
+  day: string,
+  minutes: number,
+) {
+  const [entries, [task]] = await Promise.all([
+    timeEntriesForTask(householdId, taskId),
+    db.select({ actual: tasks.actual_time_min }).from(tasks).where(scoped(householdId, taskId)),
+  ]);
+  if (!task) throw new Error("task not found");
+
+  const { entryMinutes, nextTotal } = applyDayEdit(entries, task.actual ?? 0, userId, day, minutes);
+
+  const isMine = and(
+    eq(taskTimeEntries.task_id, taskId),
+    eq(taskTimeEntries.user_id, userId),
+    eq(taskTimeEntries.day, day),
+  );
+
+  await db.batch([
+    entryMinutes > 0
+      ? db
+          .insert(taskTimeEntries)
+          .values({
+            household_id: householdId,
+            task_id: taskId,
+            user_id: userId,
+            day,
+            minutes: entryMinutes,
+          })
+          // Set, not add: this is a correction, not another stopwatch run.
+          .onConflictDoUpdate({
+            target: [taskTimeEntries.task_id, taskTimeEntries.user_id, taskTimeEntries.day],
+            set: { minutes: entryMinutes, updated_at: sql`now()` },
+          })
+      : // Zero means "I didn't work that day" — leave no empty row behind.
+        db.delete(taskTimeEntries).where(isMine),
+    db.update(tasks).set({ actual_time_min: nextTotal }).where(scoped(householdId, taskId)),
+  ]);
 }
 
 /** The day-by-day tracked time of one task, oldest first. */

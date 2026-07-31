@@ -55,6 +55,15 @@ export async function logTaskTime(taskId: string, segments: { day: string; minut
   await data.logTaskTime(householdId, userId, taskId, clean);
 }
 
+/** Correct by hand how long *I* worked on a task on one day. */
+export async function setTaskDayTime(taskId: string, day: string, minutes: number) {
+  const { householdId, userId } = await requireSession();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error("invalid day");
+  // Same 24h ceiling the duration parser uses — a day can't hold more.
+  const clean = Number.isFinite(minutes) ? Math.min(Math.max(minutes, 0), 24 * 60) : 0;
+  await data.setTaskDayTime(householdId, userId, taskId, day, clean);
+}
+
 /** The day-by-day breakdown behind a task's total tracked time. */
 export async function getTaskTimeEntries(taskId: string) {
   const { householdId } = await requireSession();

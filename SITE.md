@@ -87,6 +87,19 @@ un solo día); si nunca lo usaste en esa tarea, el bloque no está.
   los dos días**, no se le carga todo al segundo.
 - **Sin fecha** es el tiempo que no se puede atribuir a un día: lo que cargaste a mano en "Real" y
   lo que ya estaba medido antes de que existiera este detalle.
+
+**Para corregir a mano** (te olvidaste de arrancar el cronómetro, o trabajaste fuera de la app):
+
+- Tocá el número de un día para cambiarlo. Escribí como quieras: `45`, `1h 30m`, `2h`, `0:45`.
+  Vacío o `0` borra ese día.
+- **"+ Otro día"** agrega un día que todavía no tiene fila (el clásico "ayer laburé y no lo medí").
+- Lo que agregues **sale primero de "Sin fecha"**: si cargaste 2h en "Real" y después decís que
+  fueron de ayer, el total sigue siendo 2h, no se duplica. Recién si no hay nada sin fecha, el
+  total sube.
+- En tareas compartidas cada uno edita **solo su propio tiempo**; mientras editás te muestra al
+  lado cuánto puso la otra persona ese día.
+- El día que tiene el cronómetro corriendo no se puede editar hasta que lo pares (el número se
+  está moviendo).
 - El bloque **no aparece** si la tarea tiene un solo día — ahí el "Real" de arriba ya lo dice todo.
 
 ## Componentes
@@ -121,6 +134,8 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-07-31: **Se puede editar el tiempo de cada día a mano.** Antes, si corregías "Real" el tiempo caía en "Sin fecha" y no había forma de decir a qué día pertenecía. Ahora tocás el número de un día y lo cambiás, o agregás un día nuevo con **"+ Otro día"**. Lo importante: **asignarle un día a tiempo que estaba "Sin fecha" no infla el total** — sale de ahí. Bajar un día sí baja el total, porque significa "no trabajé tanto". Cada uno edita solo su parte, y el día que está corriendo el cronómetro queda bloqueado hasta que lo pares. Por detrás: `applyDayEdit` en `lib/time-entries.ts` (8 tests nuevos) es la misma función que usan la pantalla y el servidor, así que el número que ves al instante es el que se guarda.
 
 - 2026-07-30: **El tiempo de una tarea ahora se ve día por día, no solo el total.** Si arrastrás una tarea de ayer a hoy y seguís el cronómetro, el "Real" seguía sumando todo junto: 4h, sin manera de saber si fueron cuatro horas ayer o dos y dos. Ahora la app **guarda cada corrida del cronómetro con su fecha** y en la ficha de la tarea aparece **"Por día"**, una fila por jornada con barrita, quién puso el tiempo (en las compartidas) y la fila de hoy corriendo en vivo. Detalles:
 
