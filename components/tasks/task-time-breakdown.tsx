@@ -50,9 +50,9 @@ export function TaskTimeBreakdown({
 /**
  * The rows themselves — pure props, no data fetching.
  *
- * Renders nothing when there is nothing to break down (a single day with no
- * leftovers): the "Real" figure right above already says it, and repeating it
- * as a one-row chart would just be noise.
+ * Renders nothing only when no day has been tracked at all — with tracked time
+ * there is always something to say, even on day one ("this all happened today"),
+ * and that is what makes the block findable in the first place.
  */
 export function TimeBreakdownList({
   breakdown,
@@ -70,11 +70,16 @@ export function TimeBreakdownList({
   const running = new Set(runningDays);
   const multiPerson = profiles.length > 1;
 
-  const worthShowing = days.length >= 2 || (days.length >= 1 && untrackedMin > 0);
-  if (!worthShowing) return null;
+  // One day is still worth a row: it's the only place that says WHEN the time
+  // was spent, and hiding it until day two made the block impossible to find.
+  if (days.length === 0) return null;
+
+  // Under a minute the remainder is rounding noise from the stopwatch, not
+  // something the user actually did — a "Sin fecha: 0m" row would just confuse.
+  const showUntracked = untrackedMin >= 1;
 
   // Bars are relative to the biggest row so the heaviest day always fills it.
-  const scale = Math.max(breakdown.maxDayMin, untrackedMin, 1);
+  const scale = Math.max(breakdown.maxDayMin, showUntracked ? untrackedMin : 0, 1);
   const width = (min: number) => `${Math.max(4, (min / scale) * 100)}%`;
   const nameOf = (userId: string) => profiles.find((p) => p.id === userId)?.display_name ?? "?";
 
@@ -138,7 +143,7 @@ export function TimeBreakdownList({
           );
         })}
 
-        {untrackedMin > 0 && (
+        {showUntracked && (
           <li
             className="flex items-center gap-2.5"
             title="Tiempo cargado a mano, o registrado antes de que se guardara el detalle por día"

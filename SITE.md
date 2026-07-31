@@ -75,8 +75,9 @@ paralelo. Antes, arrancar uno detenía el anterior.
 
 ### Tiempo por día
 
-Cuando una tarea te lleva varios días, abrí la tarea y debajo de "Real" vas a ver **"Por día"**:
-una fila por cada día que le dedicaste, con una barrita comparativa.
+Abrí una tarea y debajo del cuadro de "Real" vas a ver **"Por día"**: una fila por cada día que le
+dedicaste, con una barrita comparativa. Aparece apenas medís tiempo con el cronómetro (aunque sea
+un solo día); si nunca lo usaste en esa tarea, el bloque no está.
 
 - Dice **Hoy**, **Ayer** o la fecha corta (`27 jul`), del más nuevo al más viejo.
 - Si la tarea es compartida, cada fila muestra **quién puso ese tiempo** (pasá el dedo o el mouse
@@ -126,6 +127,10 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
   - Una corrida que **cruza la medianoche se parte en dos**, y cada día se queda con los minutos que realmente le tocaron.
   - Lo cargado a mano en "Real" y lo que ya estaba medido de antes aparece como **"Sin fecha"**, así el desglose siempre suma exactamente el total de arriba.
   - El total de siempre (`Real`, el resumen, el cierre del día) **no cambió**: el desglose se suma al lado, no lo reemplaza.
+
+  - Ajuste del mismo día: el bloque **se muestra desde el primer día** medido. Antes esperaba a que
+    hubiera dos días distintos, así que recién estrenado no aparecía en ninguna tarea y no había
+    forma de encontrarlo. Además, un sobrante de menos de un minuto ya no genera fila "Sin fecha".
 
   Por detrás: tabla nueva `task_time_entries` (una fila por tarea + persona + día, **migración ya aplicada**), la lógica de partir corridas vive en `lib/time-entries.ts` con 13 tests, y el bloque visual es `components/tasks/task-time-breakdown.tsx`.
 
