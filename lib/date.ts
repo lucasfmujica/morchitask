@@ -22,6 +22,20 @@ export function addDays(day: DayISO, n: number): DayISO {
   return format(fnsAddDays(parseISO(day), n), "yyyy-MM-dd");
 }
 
+/**
+ * Where leftover work should land when you close `day`.
+ *
+ * Normally that's the next day — but closing a day that's already past used to
+ * send its pending tasks to *its* next day, which is still in the past. They
+ * landed on a date "Hoy" never shows, so they looked deleted. Never carry
+ * backwards: the floor is today.
+ * Safe to compare lexicographically since both are "YYYY-MM-DD".
+ */
+export function carryOverTarget(day: DayISO, today: DayISO = todayISO()): DayISO {
+  const next = addDays(day, 1);
+  return next < today ? today : next;
+}
+
 /** The 7 calendar days of the week containing `day`. weekStartsOn: 0=Sun, 1=Mon. */
 export function weekRange(day: DayISO, weekStartsOn: 0 | 1 = 1): DayISO[] {
   const date = parseISO(day);

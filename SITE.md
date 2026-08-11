@@ -135,6 +135,14 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 ## Cambios recientes
 
+- 2026-08-11: **Cerrar un día viejo ya no esconde las tareas.** Sofi cerró el sábado 7 un lunes, y el ritual mandó lo pendiente "a mañana" — o sea al domingo 8, que también era pasado. Ahí quedaron 14 tareas varadas en un día que la pantalla **Hoy** nunca muestra, y pareció que se había borrado todo (no se borró nada: estaban las 122 tareas en la base). Tres cambios:
+
+  1. **El cierre nunca manda tareas al pasado.** Si cerrás un día que ya pasó, lo pendiente viaja **a hoy**, no al día siguiente de aquel día. La pantalla también dice a dónde las está mandando ("Mover 14 a hoy" en vez de "a mañana", que era mentira).
+  2. **Aviso cuando estás parado en un día viejo.** Una franja naranja arriba del día: _"Estás viendo el sábado 8 de agosto, que ya pasó. Lo que agregues acá no aparece en Hoy"_, con un botón **Ir a hoy**. Las flechitas y el chip "Hoy" del encabezado eran demasiado discretos como para notar que llevabas días trabajando sobre una fecha vieja.
+  3. **Se reacomodaron las tareas de Sofi**: las 14 pendientes pasaron al 11/08 y las 4 que había terminado ese día quedaron con su fecha real.
+
+  Por detrás: `carryOverTarget` en `lib/date.ts` (4 tests nuevos) es la que nunca deja que el destino quede antes de hoy, y el aviso es `components/day/past-day-notice.tsx`.
+
 - 2026-07-31: **Se puede editar el tiempo de cada día a mano.** Antes, si corregías "Real" el tiempo caía en "Sin fecha" y no había forma de decir a qué día pertenecía. Ahora tocás el número de un día y lo cambiás, o agregás un día nuevo con **"+ Otro día"**. Lo importante: **asignarle un día a tiempo que estaba "Sin fecha" no infla el total** — sale de ahí. Bajar un día sí baja el total, porque significa "no trabajé tanto". Cada uno edita solo su parte, y el día que está corriendo el cronómetro queda bloqueado hasta que lo pares. Por detrás: `applyDayEdit` en `lib/time-entries.ts` (8 tests nuevos) es la misma función que usan la pantalla y el servidor, así que el número que ves al instante es el que se guarda.
 
 - 2026-07-30: **El tiempo de una tarea ahora se ve día por día, no solo el total.** Si arrastrás una tarea de ayer a hoy y seguís el cronómetro, el "Real" seguía sumando todo junto: 4h, sin manera de saber si fueron cuatro horas ayer o dos y dos. Ahora la app **guarda cada corrida del cronómetro con su fecha** y en la ficha de la tarea aparece **"Por día"**, una fila por jornada con barrita, quién puso el tiempo (en las compartidas) y la fila de hoy corriendo en vivo. Detalles:

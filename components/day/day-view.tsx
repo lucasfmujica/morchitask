@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { CarryoverPrompt } from "./carryover-prompt";
+import { PastDayNotice } from "./past-day-notice";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
 import { createTaskCollision } from "@/components/dnd/collision";
@@ -229,6 +230,7 @@ export function DayView({ date }: { date: string }) {
           </Link>
         </div>
       </div>
+      <PastDayNotice date={date} />
       {date === todayISO() && <CarryoverPrompt date={date} />}
 
       {/* Category filter at the top (mirrors the sidebar list, shared state). */}

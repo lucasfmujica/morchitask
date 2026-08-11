@@ -14,7 +14,7 @@ import {
   useUpsertDailyNote,
 } from "@/lib/queries/daily-notes";
 import type { Channel, DailyNote, Task } from "@/lib/queries/types";
-import { addDays, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
+import { carryOverTarget, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { accuracyLabel, MOODS, shutdownSummary } from "@/lib/shutdown";
 import { cn } from "@/lib/utils";
@@ -80,7 +80,9 @@ function ShutdownRitual({
   const [saveError, setSaveError] = useState(false);
 
   const { done, pending, estimatedMin, actualMin, accuracy } = shutdownSummary(tasks, meId);
-  const tomorrow = addDays(date, 1);
+  // Not always `date + 1`: closing an old day carries its leftovers to today,
+  // never to another past day where they'd strand out of sight.
+  const tomorrow = carryOverTarget(date);
   const alreadyClosed = !!note?.shutdown_completed_at;
 
   async function rollover() {
@@ -393,10 +395,15 @@ function StepTomorrow({
   onRollover: () => void;
 }) {
   const SHOWN = 6;
+  // Closing an old day carries its leftovers to today, not to "mañana" — so the
+  // copy has to name the day it's actually moving them to.
+  const target = relativeLabel(tomorrow, todayISO()).toLowerCase();
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-fg">Dejá mañana listo</h2>
+        <h2 className="text-xl font-bold tracking-tight text-fg">
+          {target === "hoy" ? "Traé lo pendiente a hoy" : "Dejá mañana listo"}
+        </h2>
         <p className="mt-1 text-sm text-muted">
           {pending.length === 0
             ? "No te quedó nada colgando."
@@ -431,12 +438,11 @@ function StepTomorrow({
               className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
               <MoveRight className="h-4 w-4" aria-hidden />
-              Mover {pending.length} a mañana
+              Mover {pending.length} a {target}
             </button>
           ) : (
             <p className="mt-4 text-sm text-success">
-              Movimos {rolledCount} {rolledCount === 1 ? "tarea" : "tareas"} a{" "}
-              {relativeLabel(tomorrow, todayISO()).toLowerCase()}.
+              Movimos {rolledCount} {rolledCount === 1 ? "tarea" : "tareas"} a {target}.
             </p>
           )}
         </div>

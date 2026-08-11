@@ -13,6 +13,7 @@ import {
   minutesFromMidnight,
   dueTone,
   dueLabel,
+  carryOverTarget,
 } from "./date";
 
 const BA = "America/Argentina/Buenos_Aires"; // UTC-3
@@ -34,6 +35,24 @@ describe("addDays", () => {
   it("crosses month and year boundaries", () => {
     expect(addDays("2026-06-30", 1)).toBe("2026-07-01");
     expect(addDays("2026-01-01", -1)).toBe("2025-12-31");
+  });
+});
+
+describe("carryOverTarget", () => {
+  it("hands leftovers to the next day when closing today or later", () => {
+    expect(carryOverTarget("2026-08-11", "2026-08-11")).toBe("2026-08-12");
+    expect(carryOverTarget("2026-08-14", "2026-08-11")).toBe("2026-08-15");
+  });
+  it("still uses the next day when closing yesterday", () => {
+    expect(carryOverTarget("2026-08-10", "2026-08-11")).toBe("2026-08-11");
+  });
+  it("never strands leftovers in the past (the bug that hid Sofi's tasks)", () => {
+    // Closing Friday the 7th on Tuesday the 11th used to send pending tasks to
+    // the 8th — a day "Hoy" never shows, so they looked deleted.
+    expect(carryOverTarget("2026-08-07", "2026-08-11")).toBe("2026-08-11");
+  });
+  it("crosses month boundaries", () => {
+    expect(carryOverTarget("2026-06-30", "2026-06-30")).toBe("2026-07-01");
   });
 });
 
