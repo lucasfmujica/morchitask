@@ -16,12 +16,13 @@ import { useMe } from "@/lib/queries/profiles";
 import { rolloverIncomplete, useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import type { DailyNote, Task } from "@/lib/queries/types";
-import { addDays, fullDayLabel } from "@/lib/date";
+import { addDays, fullDayLabel, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { resolveCapacity } from "@/lib/capacity";
 import { CapacityBar } from "@/components/day/capacity-bar";
+import { PastDayNotice } from "@/components/day/past-day-notice";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
 import { SkeletonList } from "@/components/ui";
 
@@ -100,6 +101,9 @@ function PlanForm({
   );
   const yesterday = addDays(date, -1);
   const alreadyPlanned = !!note?.plan_completed_at;
+  // Pulling work *into* a day that's already past just re-strands it somewhere
+  // Hoy never looks. Reviewing an old plan is fine; feeding it isn't.
+  const isPast = date < todayISO();
 
   function pullToToday(task: Task) {
     move.mutate({ task, toDate: date, sortOrder: orderForAppend(mine.map((t) => t.sort_order)) });
@@ -129,6 +133,11 @@ function PlanForm({
         </div>
       </header>
 
+      <PastDayNotice date={date}>
+        Estás planificando <span className="font-semibold">{fullDayLabel(date)}</span>, que ya pasó.
+        Podés mirarlo, pero traer tareas acá las deja fuera de Hoy.
+      </PastDayNotice>
+
       {/* Capacity */}
       <section className="rounded-card border border-border bg-surface p-4 shadow-soft">
         <CapacityBar
@@ -152,7 +161,7 @@ function PlanForm({
       </section>
 
       {/* Pull from yesterday */}
-      {yesterdayPending.length > 0 && (
+      {!isPast && yesterdayPending.length > 0 && (
         <section className="rounded-card border border-border bg-surface p-4 shadow-soft">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-fg">Quedó de ayer</h2>
@@ -176,7 +185,7 @@ function PlanForm({
       )}
 
       {/* Pull from backlog */}
-      {backlog.length > 0 && (
+      {!isPast && backlog.length > 0 && (
         <section className="rounded-card border border-border bg-surface p-4 shadow-soft">
           <h2 className="font-semibold text-fg">Del backlog</h2>
           <ul className="mt-2 flex flex-col divide-y divide-border/60">

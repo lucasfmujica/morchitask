@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Confetti } from "@/components/ui/confetti";
 import { SkeletonList } from "@/components/ui";
 import { TaskReactions } from "@/components/tasks/task-reactions";
+import { PastDayNotice } from "@/components/day/past-day-notice";
 
 const STEPS = ["Celebrá", "Reflexioná", "Mañana"] as const;
 
@@ -50,7 +51,8 @@ export function ShutdownView({ date }: { date: string }) {
 
 /**
  * The end-of-day ritual, in three steps: celebrate what happened, reflect on
- * it, then hand what's left to tomorrow.
+ * it, then hand what's left forward (see `carryOverTarget` — closing an old day
+ * carries to today, not to another past day).
  *
  * Form state lives here and the steps are presentational, so moving back and
  * forth never loses what you typed.
@@ -136,6 +138,11 @@ function ShutdownRitual({
         </div>
         <StepBar step={step} onJump={setStep} />
       </header>
+
+      <PastDayNotice date={date}>
+        Estás cerrando <span className="font-semibold">{fullDayLabel(date)}</span>, que ya pasó. Lo
+        que te haya quedado pendiente viaja a hoy.
+      </PastDayNotice>
 
       {step === 0 && (
         <StepCelebrate

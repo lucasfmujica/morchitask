@@ -138,8 +138,9 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - 2026-08-11: **Cerrar un día viejo ya no esconde las tareas.** Sofi cerró el sábado 7 un lunes, y el ritual mandó lo pendiente "a mañana" — o sea al domingo 8, que también era pasado. Ahí quedaron 14 tareas varadas en un día que la pantalla **Hoy** nunca muestra, y pareció que se había borrado todo (no se borró nada: estaban las 122 tareas en la base). Tres cambios:
 
   1. **El cierre nunca manda tareas al pasado.** Si cerrás un día que ya pasó, lo pendiente viaja **a hoy**, no al día siguiente de aquel día. La pantalla también dice a dónde las está mandando ("Mover 14 a hoy" en vez de "a mañana", que era mentira).
-  2. **Aviso cuando estás parado en un día viejo.** Una franja naranja arriba del día: _"Estás viendo el sábado 8 de agosto, que ya pasó. Lo que agregues acá no aparece en Hoy"_, con un botón **Ir a hoy**. Las flechitas y el chip "Hoy" del encabezado eran demasiado discretos como para notar que llevabas días trabajando sobre una fecha vieja.
-  3. **Se reacomodaron las tareas de Sofi**: las 14 pendientes pasaron al 11/08 y las 4 que había terminado ese día quedaron con su fecha real.
+  2. **Aviso cuando estás parado en un día viejo**, en las tres pantallas de ese día (Día, Planificar y Cerrar día). Una franja naranja con un botón **Ir a hoy**, y el texto que corresponde a cada una: en Día _"lo que agregues acá no aparece en Hoy"_, en Cerrar día _"lo que te haya quedado pendiente viaja a hoy"_. Las flechitas y el chip "Hoy" del encabezado eran demasiado discretos como para notar que llevabas días trabajando sobre una fecha vieja.
+  3. **Planificar un día pasado ya no ofrece traer tareas.** Las secciones "Quedó de ayer" y "Del backlog" desaparecen cuando el día ya pasó: meter tareas ahí solo las volvía a esconder. El día se sigue pudiendo mirar.
+  4. **Se reacomodaron las tareas de Sofi**: las 14 pendientes pasaron al 11/08 y las 4 que había terminado ese día quedaron con su fecha real.
 
   Por detrás: `carryOverTarget` en `lib/date.ts` (4 tests nuevos) es la que nunca deja que el destino quede antes de hoy, y el aviso es `components/day/past-day-notice.tsx`.
 
