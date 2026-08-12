@@ -6,6 +6,7 @@ import type {
   profiles,
   recurringTemplates,
   subtasks,
+  taskAttachments,
   taskBlocks,
   taskComments,
   taskReactions,
@@ -24,6 +25,7 @@ export type Objective = typeof objectives.$inferSelect;
 export type TaskComment = typeof taskComments.$inferSelect;
 export type TaskReaction = typeof taskReactions.$inferSelect;
 export type TaskBlock = typeof taskBlocks.$inferSelect;
+export type TaskAttachment = typeof taskAttachments.$inferSelect;
 
 /** One person's tracked minutes on a task for one calendar day. */
 export type TaskTimeEntry = { day: string; minutes: number; user_id: string };
@@ -42,6 +44,15 @@ export type NewTask = {
   timeEstimateMin?: number | null;
   priority?: PriorityKey;
   sortOrder: number;
+};
+
+/** A file already uploaded to Blob, on its way into `task_attachments`. */
+export type NewAttachment = {
+  url: string;
+  pathname: string;
+  name: string;
+  contentType: string;
+  sizeBytes: number;
 };
 
 export type TaskPatch = Partial<

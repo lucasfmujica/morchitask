@@ -1,6 +1,8 @@
 "use server";
 
+import { del } from "@vercel/blob";
 import { auth } from "@/lib/auth";
+import * as attachments from "@/lib/db/queries/attachments";
 import * as data from "@/lib/db/queries/tasks";
 import { isTaskPriority, type PriorityKey } from "@/lib/priority";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
@@ -81,7 +83,19 @@ export async function setTaskActiveSince(taskId: string, active: boolean) {
 export async function deleteTask(taskId: string) {
   const { householdId } = await requireSession();
   const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
+  // Attachment rows cascade with the task, but the stored files don't — read
+  // their paths while the rows still exist, then delete the blobs afterwards.
+  const attachmentPaths = await attachments.taskAttachmentPaths(householdId, taskId);
   await data.deleteTask(householdId, taskId);
+  if (attachmentPaths.length > 0) {
+    // Best effort, like every other blob delete: the task is already gone, and
+    // a leftover file costs storage but is unreachable from the app.
+    try {
+      await del(attachmentPaths);
+    } catch {
+      // ignore
+    }
+  }
   return { eventIds };
 }
 

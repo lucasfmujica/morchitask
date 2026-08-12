@@ -22,6 +22,7 @@ import {
   useToggleSubtask,
   useUpdateSubtask,
 } from "@/lib/queries/subtasks";
+import { useAttachments } from "@/lib/queries/attachments";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
 import { NO_PRIORITY_LABEL, PRIORITY_DOT, PRIORITY_LABEL, TASK_PRIORITIES } from "@/lib/priority";
@@ -49,6 +50,7 @@ import {
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Profile, Subtask, Task } from "@/lib/queries/types";
+import { TaskAttachments } from "./task-attachments";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskReactions } from "./task-reactions";
@@ -127,6 +129,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const toggleSub = useToggleSubtask(task.id);
   const deleteSub = useDeleteSubtask(task.id);
   const updateSub = useUpdateSubtask(task.id);
+  const attachmentCount = useAttachments(task.id).data?.length ?? 0;
   const timer = useTaskTimer(task);
 
   const [title, setTitle] = useState(task.title);
@@ -567,6 +570,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             </button>
           </div>
         </div>
+      </Field>
+
+      {/* Files — photos, PDFs and documents that belong with the task */}
+      <Field label={`Archivos${attachmentCount ? ` · ${attachmentCount}` : ""}`}>
+        <TaskAttachments taskId={task.id} />
       </Field>
 
       {/* Kudos — celebrate a finished shared task */}

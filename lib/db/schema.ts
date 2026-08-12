@@ -476,6 +476,39 @@ export const taskReactions = pgTable(
   ],
 );
 
+/**
+ * Files attached to a task. The bytes live in Vercel Blob; this table only
+ * records where they are and who put them there.
+ *
+ * `pathname` is stored alongside `url` because deleting the blob needs the
+ * path — without it a deleted attachment would leave its file behind forever.
+ */
+export const taskAttachments = pgTable(
+  "task_attachments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    household_id: uuid("household_id")
+      .notNull()
+      .references(() => households.id),
+    task_id: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    uploader_id: uuid("uploader_id")
+      .notNull()
+      .references(() => profiles.id),
+    url: text("url").notNull(),
+    pathname: text("pathname").notNull(),
+    /** The name the file had on the uploader's device, for display. */
+    name: text("name").notNull(),
+    content_type: text("content_type").notNull(),
+    size_bytes: integer("size_bytes").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("task_attachments_task_idx").on(t.task_id, t.created_at)],
+);
+
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: uuid("id").defaultRandom().primaryKey(),
   profile_id: uuid("profile_id")

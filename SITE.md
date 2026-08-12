@@ -100,7 +100,25 @@ un solo día); si nunca lo usaste en esa tarea, el bloque no está.
   lado cuánto puso la otra persona ese día.
 - El día que tiene el cronómetro corriendo no se puede editar hasta que lo pares (el número se
   está moviendo).
-- El bloque **no aparece** si la tarea tiene un solo día — ahí el "Real" de arriba ya lo dice todo.
+
+### Archivos en una tarea
+
+Abrí una tarea y vas a ver **"Archivos"**: fotos, PDFs y documentos que van con esa tarea (el
+presupuesto del pintor, el comprobante, la captura de la conversación).
+
+- **Agregar**: tocá **"Agregar archivo"**. En el celular te ofrece la cámara o la galería; en la
+  computadora también podés **arrastrar y soltar** encima del botón. Se pueden mandar varios juntos.
+- Las **fotos se ven como miniatura**; el resto muestra el nombre con un ícono. Tocando cualquiera
+  se abre en una pestaña nueva.
+- Debajo de cada uno dice **cuánto pesa y quién lo subió**. Cada uno borra lo que subió.
+- Límite: **10 MB por archivo**. Tipos: imágenes, PDF, Word, Excel, texto y CSV.
+- Si borrás la tarea, sus archivos se borran también.
+
+**Sobre la privacidad**: los archivos **no son públicos**. Están guardados en un depósito privado
+al que solo entra la app: si alguien copia el link y lo abre sin estar logueado en Morchitask, no
+ve nada. Cada archivo se sirve por `/api/attachments/[id]`, que primero comprueba la sesión y que
+el archivo sea de tu casa. Además el nombre original no viaja en la dirección (un archivo llamado
+"Estado de cuenta.pdf" no pone ese título en ninguna URL).
 
 ## Componentes
 
@@ -134,6 +152,8 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-08-12: **Se pueden adjuntar archivos a una tarea.** Fotos, PDFs y documentos, hasta 10 MB cada uno, desde la ficha de la tarea (sección **"Archivos"**). En el celular sale la cámara o la galería; en la compu también se arrastra y suelta. Las fotos se ven como miniatura, el resto por nombre, y abajo dice cuánto pesa y quién lo subió. En las tareas compartidas Sofi ve y sube lo mismo. Borrar la tarea borra sus archivos. Dos detalles técnicos que importan: **el archivo viaja del navegador directo al almacenamiento**, no a través de la app — si no, no podrían pasar de 1 MB; la app solo autoriza cada subida (`app/api/attachments/upload/route.ts`), y esa autorización verifica que la tarea sea tuya, el tamaño, el tipo y el destino. Y **el depósito es privado**: los archivos se leen de vuelta por `app/api/attachments/[id]/route.ts`, que pide sesión, así que no quedan links abiertos dando vueltas. Las reglas viven en `lib/attachments.ts` (32 tests) y se comprobaron contra el almacenamiento real.
 
 - 2026-08-11: **Los tiempos se muestran en minutos redondos.** En Cerrar día salía "Trabajaste 4h 19.225540400560560m", y lo mismo en cada tarea de la lista. El cronómetro cuenta segundos, así que el tiempo guardado tiene decimales; la etiqueta los mostraba tal cual. Ahora redondea al minuto: **4h 19m**. Toca todas las pantallas que muestran minutos (Cerrar día, Resumen, la barra de capacidad, la agenda). Por detrás: `formatMinutes` en `lib/format.ts`, con 3 tests nuevos.
 
