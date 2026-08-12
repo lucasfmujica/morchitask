@@ -135,6 +135,8 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 ## Cambios recientes
 
+- 2026-08-11: **Los tiempos se muestran en minutos redondos.** En Cerrar día salía "Trabajaste 4h 19.225540400560560m", y lo mismo en cada tarea de la lista. El cronómetro cuenta segundos, así que el tiempo guardado tiene decimales; la etiqueta los mostraba tal cual. Ahora redondea al minuto: **4h 19m**. Toca todas las pantallas que muestran minutos (Cerrar día, Resumen, la barra de capacidad, la agenda). Por detrás: `formatMinutes` en `lib/format.ts`, con 3 tests nuevos.
+
 - 2026-08-11: **Cerrar un día viejo ya no esconde las tareas.** Sofi cerró el sábado 7 un lunes, y el ritual mandó lo pendiente "a mañana" — o sea al domingo 8, que también era pasado. Ahí quedaron 14 tareas varadas en un día que la pantalla **Hoy** nunca muestra, y pareció que se había borrado todo (no se borró nada: estaban las 122 tareas en la base). Tres cambios:
 
   1. **El cierre nunca manda tareas al pasado.** Si cerrás un día que ya pasó, lo pendiente viaja **a hoy**, no al día siguiente de aquel día. La pantalla también dice a dónde las está mandando ("Mover 14 a hoy" en vez de "a mañana", que era mentira).

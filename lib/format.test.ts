@@ -43,6 +43,15 @@ describe("formatMinutes", () => {
   });
   it("guards zero/negative", () => {
     expect(formatMinutes(0)).toBe("0m");
+    expect(formatMinutes(-5)).toBe("0m");
+  });
+  it("rounds the stopwatch's fractional minutes", () => {
+    expect(formatMinutes(259.2255404005606)).toBe("4h 19m");
+    expect(formatMinutes(34.9469)).toBe("35m");
+    expect(formatMinutes(119.6)).toBe("2h");
+  });
+  it("floors sub-minute tracking to zero rather than showing a fraction", () => {
+    expect(formatMinutes(0.4)).toBe("0m");
   });
 });
 

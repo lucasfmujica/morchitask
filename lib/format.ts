@@ -5,12 +5,20 @@
  */
 export const TIME_ESTIMATES = [15, 30, 45, 60, 90, 120, 180, 240, 360, 480];
 
-/** Minutes as a compact human label: 45 → "45m", 90 → "1h 30m", 120 → "2h". */
+/**
+ * Minutes as a compact human label: 45 → "45m", 90 → "1h 30m", 120 → "2h".
+ *
+ * Rounds first: estimates are whole minutes, but tracked time comes off a
+ * stopwatch counting seconds, and 259.2255404 printed raw as "4h 19.2255404m".
+ * Whole minutes are the right resolution here — `formatDuration` is the one to
+ * reach for when seconds matter.
+ */
 export function formatMinutes(min: number): string {
-  if (min <= 0) return "0m";
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
+  const total = Math.round(min);
+  if (total <= 0) return "0m";
+  if (total < 60) return `${total}m`;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
