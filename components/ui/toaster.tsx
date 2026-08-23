@@ -45,7 +45,7 @@ export function Toaster() {
                   toast.action!.run();
                   dismiss(toast.id);
                 }}
-                className="shrink-0 cursor-pointer rounded-pill bg-primary-soft px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                className="shrink-0 cursor-pointer rounded-pill bg-primary/12 px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
               >
                 {toast.action.label}
               </button>

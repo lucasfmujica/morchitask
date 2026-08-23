@@ -530,7 +530,7 @@ function StepTomorrow({
                     className={cn(
                       "w-20 shrink-0 cursor-pointer rounded-pill px-2.5 py-1 text-2xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
                       dest === "tomorrow"
-                        ? "bg-primary-soft text-primary"
+                        ? "bg-primary/12 text-primary"
                         : "bg-surface-2 text-muted",
                     )}
                   >

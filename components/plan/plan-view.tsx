@@ -159,7 +159,7 @@ function PlanForm({
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
+    <div className="flex max-w-5xl flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
       <div className="flex min-w-0 flex-col gap-5">
         <header className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent">
@@ -462,7 +462,7 @@ function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onP
       ) : null}
       <button
         onClick={onPull}
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-pill bg-primary-soft px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary"
+        className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary"
       >
         <Plus className="h-3 w-3" aria-hidden />
         Hoy

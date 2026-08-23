@@ -174,7 +174,7 @@ export function UnscheduledSection({
             ) : null}
             <button
               onClick={() => bringToDay(task)}
-              className="shrink-0 cursor-pointer rounded-pill bg-primary-soft px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+              className="shrink-0 cursor-pointer rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
               + Hoy
             </button>

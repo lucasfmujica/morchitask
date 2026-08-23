@@ -53,7 +53,7 @@ import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
 import { TaskDragPreview } from "@/components/dnd/task-drag-preview";
-import { Button, SkeletonList } from "@/components/ui";
+import { SkeletonList } from "@/components/ui";
 import { DROP_ANIMATION } from "@/lib/motion";
 import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
@@ -472,16 +472,14 @@ function EmptyDay({
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border-strong px-3 py-3.5 text-center">
       <p className="text-xs font-semibold text-muted">Día libre</p>
-      <p className="text-2xs leading-4 text-subtle">
+      <p className="text-2xs leading-4 text-muted">
         {compactDayLabel(date, today)} tiene {formatMinutes(capacityMin)}. Pasá algo para acá.
       </p>
-      <Link href="/backlog" className="self-center">
-        <Button
-          size="sm"
-          className="h-7 rounded-pill bg-primary-soft px-3 text-2xs text-primary hover:bg-primary hover:text-on-primary"
-        >
-          Traer del backlog
-        </Button>
+      <Link
+        href="/backlog"
+        className="self-center rounded-pill bg-primary/12 px-3 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+      >
+        Traer del backlog
       </Link>
     </div>
   );

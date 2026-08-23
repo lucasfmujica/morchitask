@@ -13,6 +13,7 @@ import type { Channel, Task } from "@/lib/queries/types";
 import { formatMinutes } from "@/lib/format";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { FocusAudioPanel } from "./focus-audio-panel";
 
 type Mode = "focus" | "break";
 const DURATION: Record<Mode, number> = { focus: 25 * 60, break: 5 * 60 };
@@ -171,7 +172,7 @@ export function FocusTimer() {
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-7">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-7">
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-6">
         <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
           {(["focus", "break"] as const).map((m) => (
@@ -232,7 +233,7 @@ export function FocusTimer() {
             rail, the category and how far the block has got you against your
             own estimate. */}
         {mode === "focus" && (
-          <div className="w-full">
+          <div className="mx-auto w-full max-w-xs">
             <TaskPicker tasks={tasks} channels={channels} value={taskId} onChange={setTaskId} />
             {selected && (
               <div className="relative mt-2 overflow-hidden rounded-card border border-primary bg-surface px-3.5 py-2.5 shadow-soft">
@@ -258,10 +259,10 @@ export function FocusTimer() {
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
           <button
             onClick={reset}
-            className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            className="inline-flex h-11 w-11 cursor-pointer items-center justify-center justify-self-end rounded-full border border-border text-muted transition-colors hover:bg-surface-2 hover:text-fg"
             aria-label="Reiniciar"
           >
             <RotateCcw className="h-5 w-5" aria-hidden />
@@ -283,7 +284,7 @@ export function FocusTimer() {
             disabled={!selected}
             aria-label="Terminar tarea"
             title="Terminar tarea"
-            className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full border border-border px-3.5 text-xs font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
+            className="inline-flex h-11 cursor-pointer items-center gap-1.5 justify-self-start rounded-full border border-border px-3.5 text-xs font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
           >
             <Check className="h-4 w-4" aria-hidden />
             Terminar
@@ -299,7 +300,7 @@ export function FocusTimer() {
                 key={i}
                 className={cn(
                   "h-1.5 w-5 rounded-pill",
-                  i < completed ? "bg-primary" : "bg-surface-2",
+                  i < completed ? "bg-primary" : "bg-border-strong/60",
                 )}
               />
             ))}
@@ -308,6 +309,10 @@ export function FocusTimer() {
             {completed} de {BLOCKS_PER_SET}
           </span>
         </div>
+
+        {/* Lives inside the timer's column, not beside it: the sound follows
+            the block, and centred on the page it sat off the ring's axis. */}
+        <FocusAudioPanel />
       </div>
 
       <FocusSidebar tasks={tasks} activeId={taskId} onPick={setTaskId} channels={channels} />
