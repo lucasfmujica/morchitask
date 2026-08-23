@@ -8,6 +8,12 @@ import type { Task } from "@/lib/queries/types";
  * nine chips — in a 320px week column it wrapped unpredictably, so every card
  * was a different height. The fix is twofold: the meta row never wraps, and in
  * a narrow column some things are demoted to an icon or dropped entirely.
+ *
+ * The redesign took that further: the card is exactly two lines in BOTH
+ * densities, so the inline checklist is gone (it reads as three segments plus
+ * `2/3` on the meta row, and its items are edited in the detail sheet) and the
+ * priority pill is gone too — priority is the list's grouping, and repeating it
+ * on every card inside its own group was pure noise.
  */
 
 export type Density = "comfortable" | "compact";
@@ -16,10 +22,7 @@ export type MetaVisibility = {
   /** Title row */
   stopwatch: boolean;
   estimate: boolean;
-  /** Card body */
-  checklist: boolean;
   /** Meta row — identity cluster (elastic, left) */
-  priority: boolean;
   channel: boolean;
   due: boolean;
   /** Meta row — affordance cluster (fixed, right) */
@@ -37,7 +40,6 @@ export type MetaVisibility = {
 /**
  * `compact` is the week column (320px wide). What it drops and why:
  *
- * - checklist → the `3/5` counter already carries the information
  * - stopwatch/estimate → only when they hold state; the hover-to-reveal
  *   affordances belong in the day view where there's room
  * - move-to-day menu → dragging the card to another column does the same thing
@@ -62,11 +64,8 @@ export function taskMetaVisibility(input: {
     stopwatch: compact ? timerRunning : true,
     estimate: compact ? task.time_estimate_min != null : true,
 
-    checklist: subtaskCount > 0 && !compact,
-
-    // A finished task's priority and deadline stop being actionable — dropping
-    // them keeps completed cards visually quiet.
-    priority: !done && task.priority != null,
+    // A finished task's deadline stops being actionable — dropping it keeps
+    // completed cards visually quiet.
     channel: true,
     due: !done && task.due_date != null,
 

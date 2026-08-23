@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Moon, Sparkles, Sun } from "lucide-react";
+import { Check, Inbox, Moon, Sparkles, Sun } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -20,7 +20,14 @@ import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/
 import { useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
-import { useCreateTask, useReorderTask, useTasksForDate, taskKeys } from "@/lib/queries/tasks";
+import {
+  useBacklogTasks,
+  useCreateTask,
+  useMoveTaskToDate,
+  useReorderTask,
+  useTasksForDate,
+  taskKeys,
+} from "@/lib/queries/tasks";
 import { useBlocksForDate } from "@/lib/queries/task-blocks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import { useTaskDetail } from "@/lib/stores/task-detail";
@@ -31,7 +38,10 @@ import type { Task, TaskBlock } from "@/lib/queries/types";
 import { nextBlockDurationMin } from "@/lib/scheduling";
 import { orderForAppend } from "@/lib/ordering";
 import { resolveCapacity } from "@/lib/capacity";
-import { todayISO } from "@/lib/date";
+import { useToast } from "@/lib/stores/toast";
+import { useMediaQuery } from "@/lib/use-media-query";
+import { rolloverIncomplete } from "@/lib/queries/daily-notes";
+import { addDays, todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
@@ -45,8 +55,9 @@ import { DROP_ANIMATION } from "@/lib/motion";
 import { Confetti } from "@/components/ui/confetti";
 import { AgendaView } from "./agenda-view";
 import { CalendarEventsSection } from "./calendar-events-section";
+import { Button } from "@/components/ui";
 import { CapacityBar } from "./capacity-bar";
-import { DaySummary } from "./day-summary";
+import { DoneSection, UnscheduledSection } from "./day-sections";
 import { useAgendaScheduling } from "./use-agenda-scheduling";
 
 type Mode = "list" | "agenda";
@@ -84,6 +95,14 @@ export function DayView({ date }: { date: string }) {
   const openDetail = useTaskDetail((s) => s.open);
   const { selected } = useChannelFilter();
   const { scheduleNewBlock, moveBlock } = useAgendaScheduling(date);
+  const move = useMoveTaskToDate();
+  const toast = useToast();
+  const backlogCount = useBacklogTasks().data?.length ?? 0;
+  // Yesterday's leftovers, so the empty state can offer them by the count.
+  const yesterdayQ = useTasksForDate(addDays(date, -1));
+  const [carrying, setCarrying] = useState(false);
+  // The backlog section starts open where there's room for it.
+  const wideScreen = useMediaQuery("(min-width: 1024px)");
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
   const blocksByTask = useMemo(
@@ -94,7 +113,11 @@ export function DayView({ date }: { date: string }) {
   // stats, capacity and agenda stay computed from the full set.
   const filtering = selected.size > 0;
   // Filter by category → completed to the bottom → grouped by priority (display-only).
-  const visibleTasks = useMemo(() => orderTasksForDisplay(tasks, selected), [tasks, selected]);
+  const ordered = useMemo(() => orderTasksForDisplay(tasks, selected), [tasks, selected]);
+  // What's finished leaves the list entirely and folds into its own section at
+  // the foot — on a good day it was over half the screen.
+  const visibleTasks = useMemo(() => ordered.filter((t) => t.status !== "done"), [ordered]);
+  const doneTasks = useMemo(() => ordered.filter((t) => t.status === "done"), [ordered]);
   const myTasks = useMemo(() => tasks.filter((t) => t.owner_id === me?.id), [tasks, me?.id]);
   const myPlannedMin = useMemo(
     () => myTasks.reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0),
@@ -109,7 +132,7 @@ export function DayView({ date }: { date: string }) {
   useEffect(() => {
     if (allMineDone && !celebratedRef.current) {
       celebratedRef.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setCelebrate(true);
     } else if (!allMineDone) {
       celebratedRef.current = false;
@@ -160,6 +183,33 @@ export function DayView({ date }: { date: string }) {
     reorder.mutate({ task, sortOrder, priority });
   }
 
+  /** Empty-day shortcut: pull everything yesterday didn't finish into today. */
+  async function bringYesterday() {
+    setCarrying(true);
+    try {
+      await rolloverIncomplete(addDays(date, -1), date);
+      qc.invalidateQueries({ queryKey: taskKeys.date(addDays(date, -1)) });
+      qc.invalidateQueries({ queryKey: taskKeys.date(date) });
+    } finally {
+      setCarrying(false);
+    }
+  }
+
+  /** The capacity band's escape hatch: push the biggest loose task to tomorrow. */
+  function handleMoveOverflow(task: Task) {
+    const tomorrow = addDays(date, 1);
+    move.mutate({ task, toDate: tomorrow, sortOrder: orderForAppend([]) });
+    toast(`"${task.title}" va para mañana`, {
+      label: "Deshacer",
+      run: () =>
+        move.mutate({
+          task: { ...task, planned_date: tomorrow },
+          toDate: date,
+          sortOrder: task.sort_order,
+        }),
+    });
+  }
+
   function onDragStart(e: DragStartEvent) {
     const id = String(e.active.id);
     const data = e.active.data.current as { task?: Task; block?: TaskBlock } | undefined;
@@ -206,51 +256,76 @@ export function DayView({ date }: { date: string }) {
     handleReorder(task, drop.sortOrder, drop.priority);
   }
 
+  const doneCount = tasks.filter((t) => t.status === "done").length;
+  // Everything ticked off — a finished day, not an empty one.
+  const allDone = doneTasks.length > 0 && visibleTasks.length === 0;
+  const yesterdayPending = yesterdayQ.data?.filter(
+    (t) => t.owner_id === me?.id && t.status === "todo",
+  ).length;
+
   return (
     <div className="flex max-w-3xl flex-col gap-4 lg:max-w-5xl">
       {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <DateNavigator date={date} />
-        </div>
-        <div className="mt-1 flex shrink-0 items-center gap-0.5">
-          <Link
-            href={`/plan/${date}`}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-          >
-            <Sun className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Planificar</span>
-          </Link>
-          <Link
-            href={`/shutdown/${date}`}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-          >
-            <Moon className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Cerrar día</span>
-          </Link>
-        </div>
-      </div>
+
+      <DateNavigator
+        date={date}
+        meta={tasks.length > 0 ? `${doneCount} de ${tasks.length}` : undefined}
+        actions={
+          <>
+            <Link
+              href={`/plan/${date}`}
+              aria-label="Planificar el día"
+              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors hover:bg-accent hover:text-on-accent"
+            >
+              <Sun className="h-5 w-5" aria-hidden />
+            </Link>
+            {/* Desktop only: on a phone "Cerrar" is in the bottom nav, and the
+                header is deliberately down to two actions. */}
+            <Link
+              href={`/shutdown/${date}`}
+              aria-label="Cerrar el día"
+              className="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-fg md:flex"
+            >
+              <Moon className="h-5 w-5" aria-hidden />
+            </Link>
+          </>
+        }
+      />
+
       <PastDayNotice date={date} />
       {date === todayISO() && <CarryoverPrompt date={date} />}
 
       {/* Category filter at the top (mirrors the sidebar list, shared state). */}
       <ChannelFilterBar />
 
-      <div className="flex flex-col gap-3">
-        <DaySummary tasks={tasks} />
-        {myTasks.length > 0 && (
-          <CapacityBar
-            plannedMin={myPlannedMin}
-            targetMin={capacityTarget}
-            onTargetChange={(capacity_min) => upsertNote.mutate({ capacity_min })}
-          />
-        )}
-      </div>
+      {/* The capacity band bleeds to the page edges and stays put while you
+          scroll — under the mobile top bar, at the top of the content area on
+          desktop. It spans BOTH columns, because being over budget is a fact
+          about the day, not about the list. */}
+      {myTasks.length > 0 && (
+        <CapacityBar
+          tasks={myTasks}
+          plannedMin={myPlannedMin}
+          targetMin={capacityTarget}
+          onTargetChange={(capacity_min) => upsertNote.mutate({ capacity_min })}
+          onMoveOverflow={handleMoveOverflow}
+          className="-mx-4 top-[calc(3.5rem+env(safe-area-inset-top))] md:-mx-8 md:top-0"
+        />
+      )}
+
       <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
 
-      {/* Mobile: tabs switch Lista/Agenda. Desktop: both side by side. */}
-      <div className="lg:hidden">
-        <ModeToggle mode={mode} onChange={setMode} />
+      {/* Mobile: tabs switch Lista/Agenda. Desktop: both side by side — so the
+          tabs go away and only the score stays. */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="lg:hidden">
+          <ModeToggle mode={mode} onChange={setMode} />
+        </div>
+        {tasks.length > 0 && (
+          <span className="ml-auto text-xs font-semibold text-muted">
+            {doneCount} de {tasks.length} hechas
+          </span>
+        )}
       </div>
 
       <DndContext
@@ -263,7 +338,7 @@ export function DayView({ date }: { date: string }) {
           setActiveBlockId(null);
         }}
       >
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-7">
           <div className={cn("space-y-3 lg:block", mode === "list" ? "block" : "hidden")}>
             <CalendarEventsSection date={date} tasks={tasks} />
             <TaskListSection
@@ -276,15 +351,60 @@ export function DayView({ date }: { date: string }) {
               grouped
               scope={date}
               dragging={!!activeTask}
-              emptyTitle={filtering ? "Nada en esta categoría" : "Tu día está en blanco"}
+              // Three different "nothing here": a filter that matches nothing,
+              // a day you finished, and a day you haven't filled. They used to
+              // be one message — and now that finished tasks leave the list, a
+              // fully-done day would have read "Tu día está en blanco" with
+              // "traé más trabajo" buttons right above its own 13 hechas.
+              emptyTitle={
+                filtering
+                  ? "Nada en esta categoría"
+                  : allDone
+                    ? "Terminaste todo"
+                    : "Tu día está en blanco"
+              }
               emptyHint={
                 filtering
                   ? "No hay tareas de las categorías elegidas para hoy."
-                  : "Elegí unas pocas cosas para hoy y planificá con calma."
+                  : allDone
+                    ? `${doneCount} ${doneCount === 1 ? "tarea hecha" : "tareas hechas"}. Cerrá el día cuando quieras.`
+                    : emptyHint(yesterdayPending, backlogCount)
               }
-              emptyIcon={Sparkles}
+              emptyIcon={allDone && !filtering ? Check : Sparkles}
+              emptyAction={
+                filtering ? undefined : allDone ? (
+                  <Link href={`/shutdown/${date}`}>
+                    <Button size="sm">Cerrar el día</Button>
+                  </Link>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {!!yesterdayPending && (
+                      <Button size="sm" onClick={bringYesterday} disabled={carrying}>
+                        Traer {yesterdayPending} de ayer
+                      </Button>
+                    )}
+                    {backlogCount > 0 && (
+                      <Link href="/backlog">
+                        <Button variant="secondary" size="sm">
+                          <Inbox className="h-4 w-4" aria-hidden />
+                          Abrir backlog ({backlogCount})
+                        </Button>
+                      </Link>
+                    )}
+                    <Link href={`/plan/${date}`}>
+                      <Button variant="ghost" size="sm">
+                        Planificar
+                      </Button>
+                    </Link>
+                  </div>
+                )
+              }
               hosted
             />
+
+            {/* The foot of the day: what's finished, and what's still homeless. */}
+            <DoneSection tasks={doneTasks} channelsById={channelsById} defaultOpen={allDone} />
+            <UnscheduledSection date={date} channelsById={channelsById} defaultOpen={wideScreen} />
           </div>
           <div className={cn("lg:block", mode === "agenda" ? "block" : "hidden")}>
             <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-subtle lg:block">
@@ -314,6 +434,15 @@ export function DayView({ date }: { date: string }) {
       </DndContext>
     </div>
   );
+}
+
+/** The empty day, with the two places work can come from, counted. */
+function emptyHint(yesterdayPending: number | undefined, backlogCount: number): string {
+  const parts: string[] = [];
+  if (yesterdayPending) parts.push(`${yesterdayPending} quedaron de ayer`);
+  if (backlogCount) parts.push(`${backlogCount} esperan en el backlog`);
+  if (parts.length === 0) return "Elegí unas pocas cosas para hoy y planificá con calma.";
+  return `${parts.join(" y ")}. Traé dos o tres.`;
 }
 
 function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {

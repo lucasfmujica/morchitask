@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  ageLabel,
   dayISOInTimeZone,
   addDays,
   addMonths,
@@ -150,5 +151,29 @@ describe("monthGrid", () => {
     for (let i = 1; i < flat.length; i++) {
       expect(flat[i]).toBe(addDays(flat[i - 1], 1));
     }
+  });
+});
+
+describe("ageLabel", () => {
+  const today = "2026-08-23";
+  const at = (day: string) => `${day}T12:00:00.000Z`;
+
+  it("names the first two days rather than counting them", () => {
+    expect(ageLabel(at("2026-08-23"), today)).toBe("hoy");
+    expect(ageLabel(at("2026-08-22"), today)).toBe("ayer");
+  });
+
+  it("counts days up to a month", () => {
+    expect(ageLabel(at("2026-08-11"), today)).toBe("hace 12 días");
+    expect(ageLabel(at("2026-07-27"), today)).toBe("hace 27 días");
+  });
+
+  it("switches to months past that", () => {
+    expect(ageLabel(at("2026-07-14"), today)).toBe("hace un mes");
+    expect(ageLabel(at("2026-05-26"), today)).toBe("hace 3 meses");
+  });
+
+  it("never reports a negative age for a future timestamp", () => {
+    expect(ageLabel(at("2026-08-30"), today)).toBe("hoy");
   });
 });

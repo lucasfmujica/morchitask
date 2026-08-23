@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ListChecks, type LucideIcon } from "lucide-react";
 import type { PriorityKey } from "@/lib/priority";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
@@ -16,6 +17,7 @@ export function TaskListSection({
   emptyTitle,
   emptyHint,
   emptyIcon,
+  emptyAction,
   hosted = false,
   grouped = false,
   scope = "",
@@ -30,6 +32,8 @@ export function TaskListSection({
   emptyTitle: string;
   emptyHint: string;
   emptyIcon?: LucideIcon;
+  /** Buttons under the empty state — the next move, not just a shrug. */
+  emptyAction?: ReactNode;
   /** Share a parent DndContext (day view) so tasks can be dragged to the calendar. */
   hosted?: boolean;
   /** Show priority group separators and drop strips. */
@@ -46,6 +50,7 @@ export function TaskListSection({
         icon={emptyIcon ?? ListChecks}
         title={emptyTitle}
         hint={emptyHint}
+        action={emptyAction}
         kbd="N"
         kbdHint="para una nueva tarea"
       />

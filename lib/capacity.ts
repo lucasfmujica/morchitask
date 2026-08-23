@@ -1,3 +1,5 @@
+import type { Task } from "@/lib/queries/types";
+
 /** Default daily capacity when the user hasn't set one: 6 hours. */
 export const DEFAULT_CAPACITY_MIN = 360;
 
@@ -47,4 +49,33 @@ export function capacityState(plannedMin: number, targetMin: number): CapacitySt
   const over = plannedMin > targetMin;
   const near = !over && ratio >= 0.85;
   return { pct, over, near, overByMin: Math.max(0, plannedMin - targetMin) };
+}
+
+/**
+ * The concrete nudge behind an over-planned day: "mové X a mañana y entrás
+ * justo". Picks the biggest pending task that has no time block yet — moving
+ * something already placed in the agenda would leave a hole and undo a
+ * decision the person already made.
+ *
+ * Returns null when the day isn't over budget or nothing is movable, so the
+ * caller can render the plain over-by message without a suggestion.
+ */
+export function capacitySuggestion(
+  tasks: readonly Task[],
+  plannedMin: number,
+  targetMin: number,
+): { overByMin: number; task: Task | null } | null {
+  const { over, overByMin } = capacityState(plannedMin, targetMin);
+  if (!over) return null;
+
+  const movable = tasks
+    .filter((t) => t.status !== "done" && !t.block_start && (t.time_estimate_min ?? 0) > 0)
+    // Biggest first; ties broken by title so the suggestion doesn't flicker
+    // between two equal tasks as the query refetches.
+    .sort(
+      (a, b) =>
+        (b.time_estimate_min ?? 0) - (a.time_estimate_min ?? 0) || a.title.localeCompare(b.title),
+    );
+
+  return { overByMin, task: movable[0] ?? null };
 }

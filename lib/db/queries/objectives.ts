@@ -11,10 +11,19 @@ export async function listObjectives(householdId: string) {
 }
 
 export async function objectiveTaskCounts(householdId: string) {
-  return db
-    .select({ objective_id: tasks.objective_id, status: tasks.status })
-    .from(tasks)
-    .where(and(eq(tasks.household_id, householdId), isNotNull(tasks.objective_id)));
+  return (
+    db
+      // actual_time_min rides along so the goal can show the hours it actually
+      // absorbed, not just a task count — an 8-task goal and a 20-hour goal are
+      // very different commitments.
+      .select({
+        objective_id: tasks.objective_id,
+        status: tasks.status,
+        actual_time_min: tasks.actual_time_min,
+      })
+      .from(tasks)
+      .where(and(eq(tasks.household_id, householdId), isNotNull(tasks.objective_id)))
+  );
 }
 
 export async function createObjective(

@@ -64,3 +64,66 @@ export function nextBlockDurationMin(
   if (rem != null && rem > 0) return rem;
   return estimateMin ?? fallback;
 }
+
+/** A busy stretch of the day, in minutes from midnight. */
+export type BusyRange = { startMin: number; endMin: number };
+
+/** An opening in the day: where it starts and how long it lasts. */
+export type FreeSlot = { startMin: number; lenMin: number };
+
+/**
+ * The real gaps in a day between `fromMin` and `toMin`, given what's already
+ * busy. Overlapping ranges are merged first, so two blocks that overlap don't
+ * fabricate a slot between them.
+ *
+ * Takes plain minute ranges rather than `TaskBlock`s on purpose: converting a
+ * block's timestamps to minutes-from-midnight needs the household timezone,
+ * which would drag a TZ dependency into this otherwise pure module. Callers
+ * already have `blockStartMin`/`blockEndMin` — and this way Google Calendar
+ * events can be folded into the same busy list.
+ */
+export function freeSlots(
+  busy: readonly BusyRange[],
+  fromMin: number,
+  toMin: number,
+  minLenMin = 30,
+): FreeSlot[] {
+  if (toMin <= fromMin) return [];
+
+  const ranges = busy
+    .map((b) => ({ startMin: Math.max(b.startMin, fromMin), endMin: Math.min(b.endMin, toMin) }))
+    .filter((b) => b.endMin > b.startMin)
+    .sort((a, b) => a.startMin - b.startMin);
+
+  const merged: BusyRange[] = [];
+  for (const r of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && r.startMin <= last.endMin) last.endMin = Math.max(last.endMin, r.endMin);
+    else merged.push({ ...r });
+  }
+
+  const slots: FreeSlot[] = [];
+  let cursor = fromMin;
+  for (const r of merged) {
+    if (r.startMin - cursor >= minLenMin) {
+      slots.push({ startMin: cursor, lenMin: r.startMin - cursor });
+    }
+    cursor = Math.max(cursor, r.endMin);
+  }
+  if (toMin - cursor >= minLenMin) slots.push({ startMin: cursor, lenMin: toMin - cursor });
+  return slots;
+}
+
+/**
+ * Where a task of `durMin` fits first. Returns the start minute, or null when
+ * the day has no opening long enough.
+ */
+export function firstFreeSlot(
+  busy: readonly BusyRange[],
+  durMin: number,
+  fromMin: number,
+  toMin: number,
+): number | null {
+  const slot = freeSlots(busy, fromMin, toMin, Math.max(1, durMin)).at(0);
+  return slot ? slot.startMin : null;
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, SlidersHorizontal } from "lucide-react";
 import type { Channel } from "@/lib/queries/types";
 import {
   NO_PRIORITY_LABEL,
@@ -29,6 +29,11 @@ export function TaskComposer({
   const [title, setTitle] = useState("");
   const [channelId, setChannelId] = useState<string | null>(null);
   const [priority, setPriority] = useState<PriorityKey>(null);
+  // The chips used to be two permanently visible rows — three lines of UI for
+  // a field most tasks never set. They fold behind one button, and open
+  // themselves as soon as a choice is made so the state stays visible.
+  const [showChips, setShowChips] = useState(false);
+  const chipsOpen = showChips || channelId !== null || priority !== null;
 
   function submit() {
     const trimmed = title.trim();
@@ -36,6 +41,7 @@ export function TaskComposer({
     onSubmit({ title: trimmed, channelId, timeEstimateMin: null, priority });
     setTitle("");
     setPriority(null); // the next task starts unprioritized, not sticky
+    setShowChips(false);
   }
 
   return (
@@ -60,9 +66,21 @@ export function TaskComposer({
           aria-label="Nueva tarea"
           className="h-8 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
+        <button
+          onClick={() => setShowChips((v) => !v)}
+          aria-expanded={chipsOpen}
+          aria-label="Categoría y prioridad"
+          title="Categoría y prioridad"
+          className={cn(
+            "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors",
+            chipsOpen ? "bg-surface-2 text-fg" : "text-subtle hover:bg-surface-2 hover:text-muted",
+          )}
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+        </button>
       </div>
 
-      {channels.length > 0 && (
+      {chipsOpen && channels.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
           <ChannelChip
             label="Sin categoría"
@@ -82,22 +100,24 @@ export function TaskComposer({
       )}
 
       {/* Priority — set it here and the task lands in the right group straight away. */}
-      <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
-        <ChannelChip
-          label={NO_PRIORITY_LABEL}
-          active={priority === null}
-          onClick={() => setPriority(null)}
-        />
-        {TASK_PRIORITIES.map((p) => (
+      {chipsOpen && (
+        <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
           <ChannelChip
-            key={p}
-            label={PRIORITY_LABEL[p]}
-            color={PRIORITY_DOT[p]}
-            active={priority === p}
-            onClick={() => setPriority(p)}
+            label={NO_PRIORITY_LABEL}
+            active={priority === null}
+            onClick={() => setPriority(null)}
           />
-        ))}
-      </div>
+          {TASK_PRIORITIES.map((p) => (
+            <ChannelChip
+              key={p}
+              label={PRIORITY_LABEL[p]}
+              color={PRIORITY_DOT[p]}
+              active={priority === p}
+              onClick={() => setPriority(p)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -22,7 +22,7 @@ export function useObjectives() {
   });
 }
 
-export type ObjectiveProgress = { done: number; total: number };
+export type ObjectiveProgress = { done: number; total: number; actualMin: number };
 
 /**
  * Done/total task counts per objective (for progress bars). One query over all
@@ -36,8 +36,9 @@ export function useObjectiveProgress() {
       const counts = new Map<string, ObjectiveProgress>();
       for (const row of rows) {
         if (!row.objective_id) continue;
-        const entry = counts.get(row.objective_id) ?? { done: 0, total: 0 };
+        const entry = counts.get(row.objective_id) ?? { done: 0, total: 0, actualMin: 0 };
         entry.total += 1;
+        entry.actualMin += row.actual_time_min ?? 0;
         if (row.status === "done") entry.done += 1;
         counts.set(row.objective_id, entry);
       }

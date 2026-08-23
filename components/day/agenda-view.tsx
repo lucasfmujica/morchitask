@@ -9,13 +9,21 @@ import {
 } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { GripVertical, Wand2, X } from "lucide-react";
+import { useToast } from "@/lib/stores/toast";
 import { useMe } from "@/lib/queries/profiles";
 import { useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { useCalendarEvents } from "@/lib/queries/calendar";
 import type { Channel, Task, TaskBlock } from "@/lib/queries/types";
 import { DEFAULT_TIMEZONE, minutesFromMidnight, timeInTimeZone, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
-import { nextBlockDurationMin, remainingMin, showInUnscheduled } from "@/lib/scheduling";
+import {
+  firstFreeSlot,
+  freeSlots,
+  nextBlockDurationMin,
+  remainingMin,
+  showInUnscheduled,
+  type BusyRange,
+} from "@/lib/scheduling";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { CompactTaskRow } from "@/components/tasks/compact-task-row";
@@ -31,7 +39,15 @@ const DEFAULT_TARGET_MIN = 18 * 60; // 18:00
 
 const START_HOUR = 6;
 const END_HOUR = 24;
-const PX_PER_HOUR = 56;
+/** One hour of the day. 50px fits 09:00–20:00 without scrolling on a laptop;
+ *  the old 56 pushed the evening below the fold on every screen. */
+const PX_PER_HOUR = 50;
+/** A 30m block is 25px tall, which cut the title in half. Blocks never draw
+ *  shorter than this, even when the time they represent is. */
+const MIN_BLOCK_PX = 52;
+/** The window we look for openings in — nobody wants "hay un hueco a las 6am". */
+const DAY_START_MIN = 8 * 60;
+const DAY_END_MIN = 21 * 60;
 const SLOT_MIN = 30;
 const RESIZE_SNAP_MIN = 15;
 const MIN_BLOCK_MIN = 15;
@@ -76,6 +92,7 @@ export function AgendaView({
   );
   const noteQ = useDailyNote(date);
   const upsertNote = useUpsertDailyNote(date);
+  const toast = useToast();
   const targetMin = noteQ.data?.end_target_min ?? DEFAULT_TARGET_MIN;
 
   // Every block of every task, flattened and sorted by start, for the grid.
@@ -92,6 +109,26 @@ export function AgendaView({
     () => tasks.filter((t) => showInUnscheduled(t.time_estimate_min, blocksByTask.get(t.id) ?? [])),
     [tasks, blocksByTask],
   );
+
+  // Everything that occupies the day, blocks and calendar events alike — the
+  // openings have to account for both or "hueco de 1h" is a lie.
+  const busy: BusyRange[] = useMemo(() => {
+    const ranges: BusyRange[] = scheduled.map(({ block }) => ({
+      startMin: blockStartMin(block),
+      endMin: blockEndMin(block),
+    }));
+    for (const e of events) {
+      if (e.allDay || !e.start) continue;
+      const startMin = minutesFromMidnight(e.start, TZ);
+      ranges.push({
+        startMin,
+        endMin: e.end ? minutesFromMidnight(e.end, TZ) : startMin + 30,
+      });
+    }
+    return ranges;
+  }, [scheduled, events]);
+
+  const openings = useMemo(() => freeSlots(busy, DAY_START_MIN, DAY_END_MIN, 30), [busy]);
 
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   const slots = Array.from(
@@ -119,7 +156,34 @@ export function AgendaView({
     scheduleNewBlock(task, h * 60 + m, dur);
   }
 
+  /** Where this task would go if you just tapped it: the first real opening
+   *  long enough to hold it. null when the day genuinely has no room. */
+  function nextSlotFor(task: Task): number | null {
+    const dur = nextBlockDurationMin(task.time_estimate_min, blocksByTask.get(task.id) ?? []);
+    return firstFreeSlot(busy, dur, DAY_START_MIN, DAY_END_MIN);
+  }
+
+  function scheduleInFirstSlot(task: Task) {
+    const startMin = nextSlotFor(task);
+    if (startMin == null) return;
+    const dur = nextBlockDurationMin(task.time_estimate_min, blocksByTask.get(task.id) ?? []);
+    scheduleNewBlock(task, startMin, dur);
+    toast(`Agendada a las ${minutesToHHMM(startMin)}`);
+  }
+
   const myUnscheduled = unscheduled.filter((t) => t.owner_id === me?.id && t.status === "todo");
+
+  // The opening worth pointing at: the first one big enough for the next thing
+  // you'd schedule. No loose tasks → no hint, since there'd be nothing to drop.
+  const suggestedGap = useMemo(() => {
+    if (myUnscheduled.length === 0) return null;
+    const needed = Math.min(
+      ...myUnscheduled.map((t) =>
+        nextBlockDurationMin(t.time_estimate_min, blocksByTask.get(t.id) ?? []),
+      ),
+    );
+    return openings.find((slot) => slot.lenMin >= needed) ?? null;
+  }, [myUnscheduled, openings, blocksByTask]);
 
   // Pack my still-unscheduled time back-to-back so the last block ends at target.
   function autoSchedule() {
@@ -180,9 +244,22 @@ export function AgendaView({
                     {formatMinutes(rem)} rest.
                   </span>
                 )}
+                {/* One tap drops it in the first real opening; the picker is
+                    still there for "no, at 16:00". */}
+                {(() => {
+                  const slot = nextSlotFor(t);
+                  return slot == null ? null : (
+                    <button
+                      onClick={() => scheduleInFirstSlot(t)}
+                      className="shrink-0 cursor-pointer rounded-pill bg-primary-soft px-2.5 py-1 text-2xs font-bold tabular-nums text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                    >
+                      Agendar {minutesToHHMM(slot)}
+                    </button>
+                  );
+                })()}
                 <TimePicker
                   value={null}
-                  placeholder="Agendar"
+                  placeholder="Otra hora"
                   align="right"
                   onChange={(v) => schedule(t, v)}
                   className="shrink-0"
@@ -193,7 +270,46 @@ export function AgendaView({
         </section>
       )}
 
-      <div className="rounded-card border border-border bg-surface p-3 shadow-soft">
+      {/* The openings, spelled out. "Where does this fit?" is the question the
+          calendar is worst at answering by eye. */}
+      {openings.length > 0 && myUnscheduled.length > 0 && (
+        <section className="rounded-card border border-border bg-surface p-3 shadow-soft">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
+            Huecos libres
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {openings.map((slot) => (
+              <span
+                key={slot.startMin}
+                className="inline-flex items-center gap-1.5 rounded-pill bg-surface-2 px-2.5 py-1 text-2xs font-semibold tabular-nums text-muted"
+              >
+                {minutesToHHMM(slot.startMin)}
+                <span className="text-subtle">·</span>
+                {formatMinutes(slot.lenMin)}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="rounded-2xl border border-border bg-surface p-3.5 shadow-soft">
+        {/* Legend + the clock, so a glance tells you what the two block styles
+            mean and where "now" is without hunting for the line. */}
+        <div className="mb-3 flex items-center gap-3 text-2xs text-subtle">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm border border-l-[3px] border-primary/40 border-l-primary bg-primary/15" />
+            Bloque planeado
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-l-[3px] border-subtle border-l-subtle bg-surface-2" />
+            Google
+          </span>
+          {showNow && (
+            <span className="ml-auto font-semibold tabular-nums text-accent">
+              Ahora {minutesToHHMM(nowMin)}
+            </span>
+          )}
+        </div>
         {events.filter((e) => e.allDay).length > 0 && (
           <div className="mb-3 flex flex-col gap-1 border-b border-border pb-3">
             {events
@@ -215,18 +331,48 @@ export function AgendaView({
           </div>
         )}
         <div className="relative" style={{ height: (END_HOUR - START_HOUR) * PX_PER_HOUR }}>
-          {hours.map((h, i) => (
+          {hours.map((h, i) => {
+            // The hour you said you want to be done — the one line on the grid
+            // that is a decision rather than a tick mark.
+            const isTarget = h === Math.floor(targetMin / 60);
+            return (
+              <div
+                key={h}
+                className="absolute inset-x-0 flex items-start gap-2"
+                style={{ top: i * PX_PER_HOUR }}
+              >
+                <span
+                  className={cn(
+                    "-mt-1.5 w-10 shrink-0 text-right text-2xs tabular-nums",
+                    isTarget ? "font-bold text-accent" : "text-subtle",
+                  )}
+                >
+                  {String(h).padStart(2, "0")}:00
+                </span>
+                <div
+                  className={cn(
+                    "flex-1 border-t",
+                    isTarget ? "border-dashed border-accent/50" : "border-border",
+                  )}
+                />
+              </div>
+            );
+          })}
+
+          {/* The first opening that would actually hold something, drawn where
+              it is. Only while there's something to put in it. */}
+          {suggestedGap && (
             <div
-              key={h}
-              className="absolute inset-x-0 flex items-start gap-2"
-              style={{ top: i * PX_PER_HOUR }}
+              className="pointer-events-none absolute right-1 left-12 z-0 flex items-center justify-center rounded-xl border-[1.5px] border-dashed border-primary bg-primary/[0.07] px-2 text-2xs font-semibold text-primary"
+              style={{
+                top: ((suggestedGap.startMin - START_HOUR * 60) / 60) * PX_PER_HOUR,
+                height: Math.max((suggestedGap.lenMin / 60) * PX_PER_HOUR, 28),
+              }}
+              aria-hidden
             >
-              <span className="-mt-1.5 w-10 shrink-0 text-right text-2xs text-subtle">
-                {String(h).padStart(2, "0")}:00
-              </span>
-              <div className="flex-1 border-t border-border" />
+              Hueco de {formatMinutes(suggestedGap.lenMin)} · soltá una tarea acá
             </div>
-          ))}
+          )}
 
           {/* Drop slots (every 30 min) — receive dragged tasks/blocks. */}
           {slots.map((min) => (
@@ -240,16 +386,17 @@ export function AgendaView({
               const sMin = minutesFromMidnight(e.start!, TZ);
               const eMin = e.end ? minutesFromMidnight(e.end, TZ) : sMin + 30;
               const top = Math.max(0, ((sMin - START_HOUR * 60) / 60) * PX_PER_HOUR);
-              const height = Math.max(((eMin - sMin) / 60) * PX_PER_HOUR, 22);
+              const height = Math.max(((eMin - sMin) / 60) * PX_PER_HOUR, MIN_BLOCK_PX);
               const ec = e.color ?? "#94a3b8";
               return (
                 <div
                   key={e.id}
-                  className="pointer-events-none absolute right-1 left-12 z-0 overflow-hidden rounded-lg px-2 py-1 text-xs"
+                  className="pointer-events-none absolute right-1 left-12 z-[1] overflow-hidden rounded-xl px-2.5 py-2 text-xs"
                   style={{
                     top,
                     height,
-                    backgroundColor: `color-mix(in srgb, ${ec} 10%, var(--color-surface))`,
+                    boxSizing: "border-box",
+                    backgroundColor: `color-mix(in srgb, ${ec} 14%, var(--color-surface))`,
                     borderColor: `color-mix(in srgb, ${ec} 28%, var(--color-surface))`,
                     borderLeftColor: ec,
                     borderWidth: 1,
@@ -279,13 +426,15 @@ export function AgendaView({
           ))}
 
           {showNow && (
+            // z-[5] keeps it UNDER the blocks (z-10): drawn over them it read
+            // as a strikethrough across whatever you're doing right now.
             <div
-              className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
+              className="pointer-events-none absolute inset-x-0 z-[5] flex items-center"
               style={{ top: nowTop }}
               aria-hidden
             >
               <span className="ml-9 h-2 w-2 shrink-0 rounded-full bg-accent" />
-              <span className="h-px flex-1 bg-accent" />
+              <span className="h-[1.5px] flex-1 bg-accent" />
             </div>
           )}
         </div>
@@ -387,8 +536,13 @@ function ScheduledBlock({
   }
 
   const top = Math.max(0, ((startMin - START_HOUR * 60) / 60) * PX_PER_HOUR);
-  const height = Math.max(((shownEnd - startMin) / 60) * PX_PER_HOUR, 26);
+  // Never shorter than MIN_BLOCK_PX: at 50px/hour a 30m block is 25px, which
+  // clipped the title to a sliver of ascenders. A short block overlapping the
+  // next one slightly is a far smaller lie than an unreadable one.
+  const height = Math.max(((shownEnd - startMin) / 60) * PX_PER_HOUR, MIN_BLOCK_PX);
   const resizing = draftEnd != null;
+  // Under ~45m there isn't room for two lines, so title and range share one.
+  const oneLine = shownEnd - startMin < 45;
 
   return (
     <div
@@ -396,7 +550,7 @@ function ScheduledBlock({
       {...attributes}
       {...listeners}
       className={cn(
-        "group absolute right-1 left-12 z-10 cursor-grab touch-none overflow-hidden rounded-lg px-2 py-1 text-xs active:cursor-grabbing",
+        "group absolute right-1 left-12 z-10 cursor-grab touch-none overflow-hidden rounded-xl px-2.5 py-2 text-xs active:cursor-grabbing",
         done && "opacity-60",
         dragging && "opacity-40",
         resizing && "ring-2 ring-primary",
@@ -404,7 +558,8 @@ function ScheduledBlock({
       style={{
         top,
         height,
-        backgroundColor: `color-mix(in srgb, ${tc} 16%, var(--color-surface))`,
+        boxSizing: "border-box",
+        backgroundColor: `color-mix(in srgb, ${tc} 14%, var(--color-surface))`,
         borderColor: `color-mix(in srgb, ${tc} 32%, var(--color-surface))`,
         borderLeftColor: tc,
         borderWidth: 1,
@@ -412,10 +567,15 @@ function ScheduledBlock({
         borderStyle: "solid",
       }}
     >
-      <div className="flex items-start justify-between gap-1">
-        <span className={cn("truncate font-medium text-fg", done && "line-through")}>
+      <div className={cn("flex gap-1.5", oneLine ? "items-baseline" : "items-start")}>
+        <span className={cn("min-w-0 flex-1 truncate font-medium text-fg", done && "line-through")}>
           {task.title}
         </span>
+        {oneLine && (
+          <span className="shrink-0 text-2xs tabular-nums text-muted">
+            {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
+          </span>
+        )}
         <button
           onClick={onUnschedule}
           onPointerDown={(e) => e.stopPropagation()}
@@ -425,9 +585,11 @@ function ScheduledBlock({
           <X className="h-3 w-3" aria-hidden />
         </button>
       </div>
-      <span className="text-2xs text-muted">
-        {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
-      </span>
+      {!oneLine && (
+        <span className="text-2xs tabular-nums text-muted">
+          {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
+        </span>
+      )}
 
       {/* Resize handle (drag the bottom edge to change the duration). */}
       <div

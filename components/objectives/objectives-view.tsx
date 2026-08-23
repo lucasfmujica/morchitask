@@ -10,8 +10,10 @@ import {
   useObjectives,
   useUpdateObjective,
 } from "@/lib/queries/objectives";
+import type { ObjectiveProgress } from "@/lib/queries/objectives";
 import type { Objective, ObjectivePeriod } from "@/lib/queries/types";
 import { addDays, addMonths, monthLabel, todayISO, weekRange, weekRangeLabel } from "@/lib/date";
+import { formatMinutes } from "@/lib/format";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -58,13 +60,19 @@ export function ObjectivesView() {
         title="Esta semana"
         objectives={week}
         progress={progress}
-        emptyHint="Sin metas para la semana todavía."
+        emptyTitle="Sin metas para esta semana"
+        emptyHint="Una meta chica y concreta alcanza. ¿Qué querrías poder tachar el domingo?"
       />
       <Group
         title="Este mes"
         objectives={month}
         progress={progress}
-        emptyHint="Sin metas para el mes todavía."
+        emptyTitle={`Sin metas para ${monthLabel(todayISO())}`}
+        emptyHint={
+          week.length > 0
+            ? `Las ${week.length === 1 ? "de esta semana apunta" : `${week.length} de esta semana apuntan`} a algo más grande. ¿Lo convertimos en la meta del mes?`
+            : "Un objetivo del mes le da sentido a las metas de cada semana."
+        }
       />
     </div>
   );
@@ -125,18 +133,25 @@ function Group({
   title,
   objectives,
   progress,
+  emptyTitle,
   emptyHint,
 }: {
   title: string;
   objectives: Objective[];
-  progress: Map<string, { done: number; total: number }>;
+  progress: Map<string, ObjectiveProgress>;
+  emptyTitle: string;
   emptyHint: string;
 }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-subtle">{title}</h2>
       {objectives.length === 0 ? (
-        <p className="px-1 text-sm text-muted">{emptyHint}</p>
+        // A muted one-liner said "nothing here" and stopped. This says what a
+        // goal for this period would be for.
+        <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-center">
+          <p className="text-sm font-semibold text-fg">{emptyTitle}</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs text-muted">{emptyHint}</p>
+        </div>
       ) : (
         objectives.map((o) => (
           <ObjectiveRow key={o.id} objective={o} progress={progress.get(o.id)} />
@@ -151,17 +166,18 @@ function ObjectiveRow({
   progress,
 }: {
   objective: Objective;
-  progress?: { done: number; total: number };
+  progress?: ObjectiveProgress;
 }) {
   const update = useUpdateObjective();
   const remove = useDeleteObjective();
   const done = objective.status === "done";
   const total = progress?.total ?? 0;
   const completed = progress?.done ?? 0;
+  const actualMin = progress?.actualMin ?? 0;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="group flex items-center gap-3 rounded-card border border-border bg-surface p-3.5 shadow-soft">
+    <div className="group flex items-start gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft">
       <button
         onClick={() =>
           update.mutate({ id: objective.id, patch: { status: done ? "active" : "done" } })
@@ -169,7 +185,7 @@ function ObjectiveRow({
         aria-pressed={done}
         aria-label={done ? "Marcar activa" : "Marcar lograda"}
         className={cn(
-          "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition-colors",
+          "mt-0.5 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition-colors",
           done
             ? "border-primary bg-primary text-on-primary"
             : "border-border text-transparent hover:border-primary",
@@ -179,30 +195,41 @@ function ObjectiveRow({
       </button>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-baseline justify-between gap-2">
           <p
             className={cn(
-              "truncate text-sm font-semibold",
+              "min-w-0 flex-1 truncate text-base font-bold",
               done ? "text-subtle line-through" : "text-fg",
             )}
           >
             {objective.title}
           </p>
-          <span className="shrink-0 text-xs text-subtle">{rangeLabel(objective)}</span>
-        </div>
-        <div className="mt-1.5 flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
-            <motion.div
-              className="h-full rounded-full bg-primary"
-              initial={false}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.4, ease: EASE_OUT }}
-            />
-          </div>
-          <span className="shrink-0 text-xs text-muted">
-            {total > 0 ? `${completed}/${total} tareas` : "sin tareas"}
+          <span
+            className={cn(
+              "shrink-0 text-sm font-bold tabular-nums",
+              done ? "text-success" : "text-fg",
+            )}
+          >
+            {done ? "Lograda" : `${pct}%`}
           </span>
         </div>
+
+        <div className="mt-2 h-2 overflow-hidden rounded-pill bg-surface-2">
+          <motion.div
+            className={cn("h-full rounded-pill", done ? "bg-success" : "bg-primary")}
+            initial={false}
+            animate={{ width: `${done ? 100 : pct}%` }}
+            transition={{ duration: 0.4, ease: EASE_OUT }}
+          />
+        </div>
+
+        {/* Tasks AND the hours they absorbed: the count alone made a goal you
+            poured 6 hours into look identical to one you touched twice. */}
+        <p className="mt-2 text-xs text-muted">
+          {total > 0 ? `${completed} de ${total} tareas` : "Sin tareas vinculadas"}
+          {actualMin > 0 && ` · ${formatMinutes(actualMin)} aportadas`}
+          <span className="text-subtle"> · {rangeLabel(objective)}</span>
+        </p>
       </div>
 
       <button

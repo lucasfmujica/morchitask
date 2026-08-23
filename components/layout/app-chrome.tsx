@@ -10,6 +10,7 @@ import {
   CalendarRange,
   Inbox,
   Menu,
+  Moon,
   PanelLeft,
   PanelLeftClose,
   Repeat,
@@ -28,6 +29,7 @@ import { useCommandPalette } from "@/lib/stores/command-palette";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { Kbd } from "@/components/ui";
+import { Toaster } from "@/components/ui/toaster";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import { WeekCalendarRail } from "@/components/week/week-calendar-rail";
@@ -44,7 +46,6 @@ type NavItem = {
   label: string;
   icon: typeof CalendarCheck;
   match: (p: string) => boolean;
-  bottom?: boolean; // appears in the mobile bottom bar
 };
 
 // Grouped like Sunsama: planning views, then tools.
@@ -54,43 +55,40 @@ const PLAN_NAV: NavItem[] = [
     label: "Hoy",
     icon: CalendarCheck,
     match: (p) => p === "/today" || p.startsWith("/day"),
-    bottom: true,
   },
-  {
-    href: "/week",
-    label: "Semana",
-    icon: CalendarRange,
-    match: (p) => p.startsWith("/week"),
-    bottom: true,
-  },
-  {
-    href: "/month",
-    label: "Mes",
-    icon: CalendarDays,
-    match: (p) => p.startsWith("/month"),
-    bottom: true,
-  },
+  { href: "/week", label: "Semana", icon: CalendarRange, match: (p) => p.startsWith("/week") },
+  { href: "/month", label: "Mes", icon: CalendarDays, match: (p) => p.startsWith("/month") },
 ];
 const TOOL_NAV: NavItem[] = [
   { href: "/focus", label: "Foco", icon: Timer, match: (p) => p.startsWith("/focus") },
-  {
-    href: "/backlog",
-    label: "Backlog",
-    icon: Inbox,
-    match: (p) => p.startsWith("/backlog"),
-    bottom: true,
-  },
-  {
-    href: "/routines",
-    label: "Rutinas",
-    icon: Repeat,
-    match: (p) => p.startsWith("/routines"),
-    bottom: true,
-  },
+  { href: "/backlog", label: "Backlog", icon: Inbox, match: (p) => p.startsWith("/backlog") },
+  { href: "/routines", label: "Rutinas", icon: Repeat, match: (p) => p.startsWith("/routines") },
   { href: "/metas", label: "Metas", icon: Target, match: (p) => p.startsWith("/metas") },
   { href: "/resumen", label: "Resumen", icon: BarChart3, match: (p) => p.startsWith("/resumen") },
 ];
-const BOTTOM_NAV = [...PLAN_NAV, ...TOOL_NAV].filter((n) => n.bottom);
+
+/**
+ * The phone's five: the day, the week, the two inboxes you pull from, and the
+ * ritual that ends the day. Mes, Rutinas, Foco, Resumen and Ajustes moved to
+ * the drawer — a six/seven-item bar was 55px per target on a 390px screen and
+ * two of those items were places you visit once a week.
+ *
+ * "Cerrar" is a route with today's date in it, so it's built per render.
+ */
+function bottomNav(today: string): NavItem[] {
+  return [
+    PLAN_NAV[0], // Hoy
+    PLAN_NAV[1], // Semana
+    TOOL_NAV[1], // Backlog
+    TOOL_NAV[3], // Metas
+    {
+      href: `/shutdown/${today}`,
+      label: "Cerrar",
+      icon: Moon,
+      match: (p) => p.startsWith("/shutdown"),
+    },
+  ];
+}
 
 /** Closing the day is a ritual, not a page you browse: the chrome steps back so
  *  the three steps have the screen. Cheaper and more reversible than moving the
@@ -136,12 +134,11 @@ export function AppChrome({ children }: { children: ReactNode }) {
                   </span>
                 </Link>
               </div>
+              {/* Two actions, not six: the page owns its own header now, and
+                  Foco / Resumen / Ajustes live in the drawer. */}
               <div className="flex items-center gap-0.5">
                 <SearchButton />
                 <MobileRitualIcons />
-                <TopBarIcon href="/focus" label="Foco" icon={Timer} />
-                <TopBarIcon href="/resumen" label="Resumen" icon={BarChart3} />
-                <TopBarIcon href="/settings" label="Ajustes" icon={Settings} />
               </div>
             </div>
           </header>
@@ -159,7 +156,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
             )}
           >
             <div className="flex">
-              {BOTTOM_NAV.map(({ href, label, icon: Icon, match }) => {
+              {bottomNav(todayISO()).map(({ href, label, icon: Icon, match }) => {
                 const active = match(pathname);
                 return (
                   <Link
@@ -185,6 +182,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         <TimerBar />
         <KeyboardShortcuts />
         <CommandPalette />
+        <Toaster />
       </div>
     </ChannelFilterProvider>
   );
@@ -420,26 +418,6 @@ function SidebarLink({
     >
       <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.4 : 2} aria-hidden />
       {item.label}
-    </Link>
-  );
-}
-
-function TopBarIcon({
-  href,
-  label,
-  icon: Icon,
-}: {
-  href: string;
-  label: string;
-  icon: typeof Settings;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-    >
-      <Icon className="h-[18px] w-[18px]" aria-hidden />
     </Link>
   );
 }

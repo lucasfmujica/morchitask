@@ -334,7 +334,8 @@ export async function deleteTask(householdId: string, taskId: string) {
 export async function moveTaskToDate(
   householdId: string,
   taskId: string,
-  toDate: string,
+  /** null sends the task back to the backlog (no planned day). */
+  toDate: string | null,
   sortOrder: number,
   priority?: PriorityKey,
 ) {

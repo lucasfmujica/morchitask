@@ -62,3 +62,50 @@ export const MOODS = [
   { value: 4, label: "Bueno", emoji: "🙂" },
   { value: 5, label: "Excelente", emoji: "😄" },
 ] as const;
+
+/**
+ * Where each unfinished task goes when the day closes.
+ *
+ * The old ritual was all-or-nothing: every pending task rolled over to
+ * tomorrow. That quietly rebuilt an over-full day every night. Now each task
+ * carries its own destination and the CTA applies the map.
+ */
+export type CarryDestination = "tomorrow" | "backlog";
+export type CarryPlan = Record<string, CarryDestination>;
+
+/** Everything rolls over unless you say otherwise — the gentler default. */
+export function defaultCarryPlan(pending: readonly Task[]): CarryPlan {
+  return Object.fromEntries(pending.map((t) => [t.id, "tomorrow" as const]));
+}
+
+export function carryDestination(plan: CarryPlan, taskId: string): CarryDestination {
+  return plan[taskId] ?? "tomorrow";
+}
+
+/** Split the pending tasks by where the plan sends them. */
+export function splitByDestination(
+  pending: readonly Task[],
+  plan: CarryPlan,
+): { toTomorrow: Task[]; toBacklog: Task[] } {
+  const toTomorrow: Task[] = [];
+  const toBacklog: Task[] = [];
+  for (const t of pending) {
+    (carryDestination(plan, t.id) === "backlog" ? toBacklog : toTomorrow).push(t);
+  }
+  return { toTomorrow, toBacklog };
+}
+
+/**
+ * What tomorrow would weigh once this plan is applied: whatever is already
+ * planned for tomorrow plus the estimates of everything rolling over.
+ */
+export function projectedTomorrowMin(
+  pending: readonly Task[],
+  plan: CarryPlan,
+  tomorrowPlannedMin = 0,
+): number {
+  return splitByDestination(pending, plan).toTomorrow.reduce(
+    (sum, t) => sum + (t.time_estimate_min ?? 0),
+    tomorrowPlannedMin,
+  );
+}

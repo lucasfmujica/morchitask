@@ -453,8 +453,9 @@ export function useDeleteTask() {
   });
 }
 
-/** Move a task to a different day (Week drag-and-drop). Drops its time-blocks
- *  (they belonged to the old day); the DB trigger clears block_start/end. */
+/** Move a task to a different day — or to the backlog with `toDate: null`.
+ *  Drops its time-blocks (they belonged to the old day); the DB trigger clears
+ *  block_start/end. */
 export function useMoveTaskToDate() {
   const qc = useQueryClient();
   return useMutation({
@@ -465,7 +466,9 @@ export function useMoveTaskToDate() {
       priority,
     }: {
       task: Task;
-      toDate: string;
+      /** null = back to the backlog, which is how the shutdown ritual parks
+       *  work you decided not to carry into tomorrow. */
+      toDate: string | null;
       sortOrder: number;
       priority?: PriorityKey;
     }): Promise<void> => {

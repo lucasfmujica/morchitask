@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { accuracyLabel, shutdownSummary } from "./shutdown";
+import {
+  accuracyLabel,
+  carryDestination,
+  defaultCarryPlan,
+  projectedTomorrowMin,
+  shutdownSummary,
+  splitByDestination,
+} from "./shutdown";
 import type { Task } from "./queries/types";
 
 const ME = "me";
@@ -107,5 +114,30 @@ describe("accuracyLabel", () => {
   it("reports overrun and underrun in plain terms", () => {
     expect(accuracyLabel(1.4)).toBe("Tardaste 40% más de lo previsto");
     expect(accuracyLabel(0.7)).toBe("Terminaste 30% antes");
+  });
+});
+
+describe("carry plan", () => {
+  const pending = [
+    task({ id: "a", time_estimate_min: 60 }),
+    task({ id: "b", time_estimate_min: 30 }),
+    task({ id: "c", time_estimate_min: null }),
+  ];
+
+  it("rolls everything over by default", () => {
+    expect(defaultCarryPlan(pending)).toEqual({ a: "tomorrow", b: "tomorrow", c: "tomorrow" });
+    expect(carryDestination({}, "unknown")).toBe("tomorrow");
+  });
+
+  it("splits by the chosen destination", () => {
+    const { toTomorrow, toBacklog } = splitByDestination(pending, { a: "backlog", b: "tomorrow" });
+    expect(toTomorrow.map((t) => t.id)).toEqual(["b", "c"]);
+    expect(toBacklog.map((t) => t.id)).toEqual(["a"]);
+  });
+
+  it("projects what tomorrow would weigh", () => {
+    // b (30m) rolls over on top of the 90m already planned; c has no estimate.
+    expect(projectedTomorrowMin(pending, { a: "backlog" }, 90)).toBe(120);
+    expect(projectedTomorrowMin(pending, {}, 0)).toBe(90);
   });
 });

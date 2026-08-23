@@ -5,8 +5,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, ChevronDown, Pause, Play, RotateCcw } from "lucide-react";
 import { setActualTime as setActualTimeAction } from "@/lib/actions/tasks";
-import { taskKeys, useTasksForDate } from "@/lib/queries/tasks";
+import { taskKeys, useTasksForDate, useToggleTask } from "@/lib/queries/tasks";
 import { useChannels } from "@/lib/queries/channels";
+import { useToast } from "@/lib/stores/toast";
 import { useAudio } from "@/lib/stores/audio";
 import type { Channel, Task } from "@/lib/queries/types";
 import { formatMinutes } from "@/lib/format";
@@ -15,6 +16,8 @@ import { cn } from "@/lib/utils";
 
 type Mode = "focus" | "break";
 const DURATION: Record<Mode, number> = { focus: 25 * 60, break: 5 * 60 };
+/** A pomodoro set. Four blocks is the classic before a long break. */
+const BLOCKS_PER_SET = 4;
 
 function mmss(total: number) {
   const m = Math.floor(total / 60);
@@ -64,6 +67,8 @@ export function FocusTimer() {
   const [running, setRunning] = useState(false);
   const [taskId, setTaskId] = useState<string>("");
   const [completed, setCompleted] = useState(0);
+  const toggle = useToggleTask();
+  const toast = useToast();
 
   // Optional: let the focus timer nudge the background-sound player.
   const audioAutoStart = useAudio((s) => s.autoStartWithFocus);
@@ -144,90 +149,288 @@ export function FocusTimer() {
   const progress = 1 - secondsLeft / total;
   const R = 120;
   const C = 2 * Math.PI * R;
+  const selected = tasks.find((t) => t.id === taskId);
+  const selectedChannel = channels.find((c) => c.id === selected?.channel_id);
+  const status = running
+    ? mode === "focus"
+      ? "Concentrate"
+      : "Respirá"
+    : secondsLeft < total
+      ? "En pausa"
+      : "Listo para arrancar";
+
+  /** Tick the block's task off without leaving the timer. */
+  function finishTask() {
+    if (!selected) return;
+    toggle.mutate(selected);
+    setTaskId("");
+    toast(`"${selected.title}" hecha`, {
+      label: "Deshacer",
+      run: () => toggle.mutate({ ...selected, status: "done" } as Task),
+    });
+  }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-7 py-4">
-      <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
-        {(["focus", "break"] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => switchMode(m)}
-            aria-pressed={mode === m}
-            className={cn(
-              "cursor-pointer rounded-pill px-4 py-1.5 text-sm font-medium transition-colors",
-              mode === m ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
-            )}
-          >
-            {m === "focus" ? "Foco" : "Descanso"}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-7">
+      <div className="mx-auto flex w-full max-w-md flex-col items-center gap-6">
+        <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
+          {(["focus", "break"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => switchMode(m)}
+              aria-pressed={mode === m}
+              className={cn(
+                "cursor-pointer rounded-pill px-4 py-1.5 text-sm font-medium transition-colors",
+                mode === m ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
+              )}
+            >
+              {m === "focus" ? "Foco" : "Descanso"}
+            </button>
+          ))}
+        </div>
 
-      <div className="relative grid place-items-center">
-        <svg viewBox="0 0 280 280" className="h-64 w-64 -rotate-90">
-          <circle
-            cx="140"
-            cy="140"
-            r={R}
-            fill="none"
-            stroke="var(--color-surface-2)"
-            strokeWidth="12"
-          />
-          <circle
-            cx="140"
-            cy="140"
-            r={R}
-            fill="none"
-            stroke="var(--color-primary)"
-            strokeWidth="12"
-            strokeLinecap="round"
-            strokeDasharray={C}
-            strokeDashoffset={C * (1 - progress)}
-            style={{ transition: "stroke-dashoffset 1s linear" }}
-          />
-        </svg>
-        <div className="absolute flex flex-col items-center">
-          <span className="text-5xl font-extrabold tabular-nums tracking-tight text-fg">
-            {mmss(secondsLeft)}
+        <div className="relative grid place-items-center">
+          <svg
+            viewBox="0 0 280 280"
+            className="h-[226px] w-[226px] -rotate-90 lg:h-[220px] lg:w-[220px]"
+          >
+            <circle
+              cx="140"
+              cy="140"
+              r={R}
+              fill="none"
+              stroke="var(--color-surface-2)"
+              strokeWidth="12"
+            />
+            <circle
+              cx="140"
+              cy="140"
+              r={R}
+              fill="none"
+              stroke="var(--color-primary)"
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={C}
+              strokeDashoffset={C * (1 - progress)}
+              style={{ transition: "stroke-dashoffset 1s linear" }}
+            />
+          </svg>
+          <div className="absolute flex flex-col items-center gap-1">
+            <span className="text-[42px] leading-none font-extrabold tabular-nums tracking-tight text-fg">
+              {mmss(secondsLeft)}
+            </span>
+            <span className="text-sm text-muted">{status}</span>
+            {mode === "focus" && (
+              <span className="mt-1 rounded-pill bg-surface-2 px-2.5 py-0.5 text-2xs font-semibold text-muted">
+                Bloque {Math.min(completed + 1, BLOCKS_PER_SET)} de {BLOCKS_PER_SET}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* The task you're on, as a card rather than a bare dropdown — with the
+            rail, the category and how far the block has got you against your
+            own estimate. */}
+        {mode === "focus" && (
+          <div className="w-full">
+            <TaskPicker tasks={tasks} channels={channels} value={taskId} onChange={setTaskId} />
+            {selected && (
+              <div className="relative mt-2 overflow-hidden rounded-card border border-primary bg-surface px-3.5 py-2.5 shadow-soft">
+                <span
+                  className={cn(
+                    "absolute inset-y-0 left-0 w-[3px]",
+                    !selectedChannel && "bg-border",
+                  )}
+                  style={selectedChannel ? { background: selectedChannel.color } : undefined}
+                  aria-hidden
+                />
+                <div className="flex items-baseline gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
+                    {selected.title}
+                  </span>
+                  {selectedChannel && (
+                    <span className="shrink-0 text-2xs text-muted">#{selectedChannel.name}</span>
+                  )}
+                </div>
+                <TaskProgress task={selected} />
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={reset}
+            className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            aria-label="Reiniciar"
+          >
+            <RotateCcw className="h-5 w-5" aria-hidden />
+          </button>
+          <button
+            onClick={toggleRun}
+            className="inline-flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-primary text-on-primary shadow-card transition-colors hover:bg-primary-hover"
+            aria-label={running ? "Pausar" : "Empezar"}
+          >
+            {running ? (
+              <Pause className="h-7 w-7" aria-hidden />
+            ) : (
+              <Play className="ml-0.5 h-7 w-7" aria-hidden />
+            )}
+          </button>
+          {/* You used to have to leave the timer, find the card and tick it. */}
+          <button
+            onClick={finishTask}
+            disabled={!selected}
+            aria-label="Terminar tarea"
+            title="Terminar tarea"
+            className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full border border-border px-3.5 text-xs font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
+          >
+            <Check className="h-4 w-4" aria-hidden />
+            Terminar
+          </button>
+        </div>
+
+        {/* The set, as four bars. A count in prose made you read a sentence to
+            learn something a shape says instantly. */}
+        <div className="flex items-center gap-2">
+          <span className="flex gap-1" aria-hidden>
+            {Array.from({ length: BLOCKS_PER_SET }, (_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "h-1.5 w-5 rounded-pill",
+                  i < completed ? "bg-primary" : "bg-surface-2",
+                )}
+              />
+            ))}
           </span>
-          <span className="mt-1 text-sm text-muted">
-            {mode === "focus" ? "Concentrate" : "Respirá"}
+          <span className="text-2xs font-semibold tabular-nums text-muted">
+            {completed} de {BLOCKS_PER_SET}
           </span>
         </div>
       </div>
 
-      {mode === "focus" && (
-        <TaskPicker tasks={tasks} channels={channels} value={taskId} onChange={setTaskId} />
-      )}
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={toggleRun}
-          className="inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-on-primary shadow-card transition-colors hover:bg-primary-hover"
-          aria-label={running ? "Pausar" : "Empezar"}
-        >
-          {running ? (
-            <Pause className="h-6 w-6" aria-hidden />
-          ) : (
-            <Play className="ml-0.5 h-6 w-6" aria-hidden />
-          )}
-        </button>
-        <button
-          onClick={reset}
-          className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-          aria-label="Reiniciar"
-        >
-          <RotateCcw className="h-5 w-5" aria-hidden />
-        </button>
-      </div>
-
-      {completed > 0 && (
-        <p className="text-sm text-muted">
-          Completaste <span className="font-semibold text-fg">{completed}</span>{" "}
-          {completed === 1 ? "bloque" : "bloques"} de foco
-        </p>
-      )}
+      <FocusSidebar tasks={tasks} activeId={taskId} onPick={setTaskId} channels={channels} />
     </div>
+  );
+}
+
+/** How far the day's tracked time has got you against your own estimate. */
+function TaskProgress({ task }: { task: Task }) {
+  const actual = task.actual_time_min ?? 0;
+  const estimate = task.time_estimate_min;
+  if (!estimate) {
+    return (
+      <p className="mt-1.5 text-2xs text-subtle">
+        {actual > 0 ? `${formatMinutes(actual)} trabajadas · sin estimar` : "Sin estimar"}
+      </p>
+    );
+  }
+  const filled = Math.min(3, Math.round((actual / estimate) * 3));
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <span className="flex gap-0.5" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={cn("h-[3px] w-2.5 rounded-pill", i < filled ? "bg-primary" : "bg-surface-2")}
+          />
+        ))}
+      </span>
+      <span className="text-2xs tabular-nums text-muted">
+        {formatMinutes(actual)} de {formatMinutes(estimate)} estimada
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The queue beside the timer: what's next, and how today's estimates are
+ * holding up. Both answer "should I keep going?" without leaving the page.
+ */
+function FocusSidebar({
+  tasks,
+  activeId,
+  onPick,
+  channels,
+}: {
+  tasks: Task[];
+  activeId: string;
+  onPick: (id: string) => void;
+  channels: Channel[];
+}) {
+  const estimatedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
+  const actualMin = tasks.reduce((s, t) => s + (t.actual_time_min ?? 0), 0);
+  const max = Math.max(estimatedMin, actualMin, 1);
+
+  return (
+    <aside className="flex flex-col gap-3 lg:sticky lg:top-6">
+      <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-soft">
+        <h2 className="text-xs font-bold text-fg">Cola de foco</h2>
+        {tasks.length === 0 ? (
+          <p className="mt-2 text-2xs text-subtle">No te queda nada pendiente para hoy.</p>
+        ) : (
+          <ul className="mt-2.5 flex flex-col gap-1.5">
+            {tasks.slice(0, 6).map((t) => {
+              const channel = channels.find((c) => c.id === t.channel_id);
+              const active = t.id === activeId;
+              return (
+                <li key={t.id}>
+                  <button
+                    onClick={() => onPick(t.id)}
+                    className={cn(
+                      "relative flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-xl border py-2 pr-2.5 pl-3 text-left transition-colors",
+                      active
+                        ? "border-primary bg-primary-soft"
+                        : "border-border hover:bg-surface-2",
+                    )}
+                  >
+                    <span
+                      className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
+                      style={channel ? { background: channel.color } : undefined}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate text-xs text-fg">{t.title}</span>
+                    {t.time_estimate_min ? (
+                      <span className="shrink-0 text-2xs font-semibold tabular-nums text-muted">
+                        {formatMinutes(t.time_estimate_min)}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      {(estimatedMin > 0 || actualMin > 0) && (
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-soft">
+          <h2 className="text-xs font-bold text-fg">Estimado vs. real hoy</h2>
+          <div className="mt-2.5 flex flex-col gap-2">
+            {(
+              [
+                ["Estimado", estimatedMin, "bg-primary/45"],
+                ["Real", actualMin, "bg-primary"],
+              ] as const
+            ).map(([label, value, tone]) => (
+              <div key={label}>
+                <div className="flex items-baseline justify-between gap-2 text-2xs">
+                  <span className="text-muted">{label}</span>
+                  <span className="font-semibold tabular-nums text-fg">{formatMinutes(value)}</span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-pill bg-surface-2">
+                  <div
+                    className={cn("h-full rounded-pill", tone)}
+                    style={{ width: `${(value / max) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </aside>
   );
 }
 

@@ -33,6 +33,17 @@ export async function rolloverIncomplete(from: string, to: string): Promise<numb
   return rolloverIncompleteAction(from, to);
 }
 
+/** Which days in a range have been closed. One query for a whole week — the
+ *  Week view uses it to collapse days you already put to bed. */
+export function useShutdownDays(from: string, to: string) {
+  const q = useQuery({
+    queryKey: ["daily_note", "shutdown_days", from, to] as const,
+    queryFn: (): Promise<string[]> => getShutdownDaysAction(from, to),
+    staleTime: 60_000,
+  });
+  return useMemo(() => new Set(q.data ?? []), [q.data]);
+}
+
 /** How many days in a row you've closed the day, counting back from `today`.
  *  Today gets grace: not having closed it yet doesn't break the streak. */
 export function useShutdownStreak(today: string) {

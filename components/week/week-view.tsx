@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
 import {
   tasksForDateQueryOptions,
   useCreateTask,
@@ -26,10 +26,19 @@ import {
 } from "@/lib/queries/tasks";
 import { subtasksForDateQueryOptions } from "@/lib/queries/subtasks";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
-import { useProfiles } from "@/lib/queries/profiles";
+import { useMe, useProfiles } from "@/lib/queries/profiles";
+import { useShutdownDays } from "@/lib/queries/daily-notes";
+import { resolveCapacity } from "@/lib/capacity";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
-import { addDays, todayISO, weekDayHeading, weekRange, weekRangeLabel } from "@/lib/date";
+import {
+  addDays,
+  compactDayLabel,
+  todayISO,
+  weekDayHeading,
+  weekRange,
+  weekRangeLabel,
+} from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
 import {
   parsePriorityDropId,
@@ -44,13 +53,13 @@ import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "@/components/tasks/task-card";
 import { TaskDragPreview } from "@/components/dnd/task-drag-preview";
-import { EmptyHint, SkeletonList } from "@/components/ui";
+import { Button, SkeletonList } from "@/components/ui";
 import { DROP_ANIMATION } from "@/lib/motion";
 import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { createTaskCollision } from "@/components/dnd/collision";
 import { CarryoverPrompt } from "@/components/day/carryover-prompt";
-import { DayProgressBar } from "./day-progress-bar";
+import { DayLoadBar } from "./day-progress-bar";
 
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
@@ -79,6 +88,11 @@ export function WeekView({ date }: { date: string }) {
   const channelsById = channelLookupQ.data ?? EMPTY_CHANNEL_MAP;
   const profilesById = new Map((profilesQ.data ?? []).map((p) => [p.id, p]));
 
+  const me = useMe().data;
+  const capacityTarget = resolveCapacity(null, me?.capacity_target_min);
+  // One query for the whole week: which days you already closed.
+  const closedDays = useShutdownDays(week[0], week[week.length - 1]);
+  const [hideClosed, setHideClosed] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   // Category filter — shared via context with the sidebar and the top filter
   // bar. Empty = "Todas".
@@ -140,7 +154,25 @@ export function WeekView({ date }: { date: string }) {
           <h1 className="text-2xl font-extrabold tracking-tight text-fg">Semana</h1>
           <p className="text-sm text-muted">{weekRangeLabel(week)}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-2">
+          {closedDays.size > 0 && (
+            <button
+              onClick={() => setHideClosed((v) => !v)}
+              aria-pressed={hideClosed}
+              className={cn(
+                "inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-2.5 py-1.5 text-xs font-semibold transition-colors md:px-3",
+                hideClosed
+                  ? "bg-primary-soft text-primary"
+                  : "bg-surface-2 text-muted hover:text-fg",
+              )}
+            >
+              <Check className="h-3.5 w-3.5" aria-hidden />
+              <span className="hidden sm:inline">
+                {hideClosed ? "Mostrar días cerrados" : "Ocultar días cerrados"}
+              </span>
+              <span className="sm:hidden">{hideClosed ? "Mostrar" : "Ocultar"} cerrados</span>
+            </button>
+          )}
           <button
             onClick={() => router.push(`/week/${addDays(week[0], -7)}`)}
             aria-label="Semana anterior"
@@ -207,6 +239,9 @@ export function WeekView({ date }: { date: string }) {
                   channelsById={channelsById}
                   profilesById={profilesById}
                   dragging={!!activeTask}
+                  capacityMin={capacityTarget}
+                  closed={closedDays.has(d)}
+                  hideClosed={hideClosed}
                   onAdd={(title) =>
                     create.mutate(
                       {
@@ -246,6 +281,18 @@ export function WeekView({ date }: { date: string }) {
   );
 }
 
+/**
+ * One day of the week, as a card.
+ *
+ * The columns used to be bare stacks separated by whitespace, which made a busy
+ * Thursday and an empty Friday look like the same object. Now each day is a
+ * bordered card and today is the only lit one, so the week reads as five
+ * containers with different amounts in them — which is the question you open
+ * this screen to answer.
+ *
+ * A day you already closed collapses to one line: it's settled, and five
+ * settled days shouldn't cost the same screen space as five open ones.
+ */
 function DayColumn({
   date,
   today,
@@ -256,6 +303,9 @@ function DayColumn({
   channelsById,
   profilesById,
   dragging,
+  capacityMin,
+  closed,
+  hideClosed,
   onAdd,
 }: {
   date: string;
@@ -267,101 +317,173 @@ function DayColumn({
   channelsById: Map<string, Channel>;
   profilesById: Map<string, Profile>;
   dragging: boolean;
+  capacityMin: number;
+  closed: boolean;
+  hideClosed: boolean;
   onAdd: (title: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${date}` });
   const isToday = date === today;
   const done = tasks.filter((t) => t.status === "done").length;
   const plannedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
+  const measuredMin = tasks.reduce((s, t) => s + (t.actual_time_min ?? 0), 0);
+  // A closed day only folds away when you asked for it — otherwise you'd lose
+  // the drop target for "actually, move that to Tuesday".
+  const folded = closed && hideClosed;
+
+  const heading = (
+    <Link
+      href={isToday ? "/today" : `/day/${date}`}
+      className="group sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 block bg-bg/95 py-1 backdrop-blur md:static md:bg-transparent md:py-0 md:backdrop-blur-none"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <span
+          className={cn(
+            "text-base font-extrabold tracking-tight transition-colors group-hover:text-primary",
+            isToday ? "text-primary" : "text-fg",
+          )}
+        >
+          {weekDayHeading(date, today)}
+        </span>
+        {tasks.length > 0 && (
+          <span
+            className={cn(
+              "shrink-0 text-2xs font-bold tabular-nums",
+              isToday ? "text-fg" : "text-subtle",
+            )}
+          >
+            {done}/{tasks.length}
+          </span>
+        )}
+      </div>
+    </Link>
+  );
 
   return (
     <section
       className={cn(
         // Phone: a full-width block in a vertical stack — no fixed width, no
         // snap. Tablet and up: a fixed-width column in the horizontal strip.
-        "flex flex-col gap-2 md:w-[320px] md:shrink-0 md:snap-start lg:w-auto lg:min-w-0 lg:shrink",
+        "flex flex-col gap-2.5 rounded-2xl border p-3 md:w-[320px] md:shrink-0 md:snap-start lg:w-auto lg:min-w-0 lg:shrink",
+        // Today is the only column that gets a surface — everything else is a
+        // hairline on the page background.
+        isToday ? "border-primary/45 bg-surface shadow-card" : "border-border",
         // Weekends exist on phone and tablet; the desktop grid is Mon–Fri.
         weekend && "lg:hidden",
       )}
     >
-      {/* Sticky on phone so you always know which day you're scrolling through
-          in the vertical stack; a plain heading once the days sit side by side.
-          top-14 clears the mobile top bar. */}
-      <Link
-        href={isToday ? "/today" : `/day/${date}`}
-        className="group sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 block bg-bg/95 py-1 backdrop-blur md:static md:bg-transparent md:py-0 md:backdrop-blur-none"
-      >
-        <div className="flex items-baseline justify-between gap-2">
-          <span
+      {heading}
+
+      {folded ? (
+        <div
+          ref={setNodeRef}
+          className={cn(
+            "flex items-center gap-2 rounded-xl bg-surface-2 px-2.5 py-2 transition-colors",
+            isOver && "bg-primary-soft",
+          )}
+        >
+          <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-2xs font-semibold text-muted">
+            {done} {done === 1 ? "hecha" : "hechas"}
+            {measuredMin > 0 && ` · ${formatMinutes(measuredMin)}`}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 -rotate-90 text-subtle" aria-hidden />
+        </div>
+      ) : (
+        <>
+          {/* How full the day is, not how much of it you've ticked off. */}
+          <DayLoadBar
+            plannedMin={plannedMin}
+            capacityMin={capacityMin}
+            measuredMin={measuredMin}
+            closed={closed}
+          />
+
+          {/* Add task at the top of each day. */}
+          <QuickAdd onAdd={onAdd} />
+
+          <div
+            ref={setNodeRef}
             className={cn(
-              "text-lg font-bold tracking-tight transition-colors group-hover:text-primary md:text-base",
-              isToday ? "text-primary" : "text-fg",
+              "flex flex-1 flex-col gap-2 rounded-xl transition-colors",
+              dragging && "outline-dashed outline-1 outline-transparent",
+              isOver && "bg-primary-soft/50 outline-primary",
             )}
           >
-            {weekDayHeading(date, today)}
-          </span>
-          {tasks.length > 0 && (
-            <span className="shrink-0 text-2xs font-medium text-subtle">
-              {done}/{tasks.length}
-              {plannedMin > 0 ? ` · ${formatMinutes(plannedMin)}` : ""}
-            </span>
-          )}
-        </div>
-      </Link>
+            <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              {/* Columns are narrow, so separators stay compact and only appear
+                  when the day actually mixes priorities (or while dragging, so
+                  an empty group still has somewhere to drop). */}
+              {priorityRows(tasks, { includeEmpty: dragging }).map((row) =>
+                row.kind === "header" ? (
+                  <PriorityGroupHeader
+                    key={`prio-${row.priority ?? "none"}`}
+                    scope={date}
+                    priority={row.priority}
+                    count={row.empty ? undefined : row.count}
+                    empty={row.empty}
+                    compact
+                  />
+                ) : (
+                  <WeekCard
+                    key={row.task.id}
+                    task={row.task}
+                    channel={
+                      row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined
+                    }
+                    owner={profilesById.get(row.task.owner_id)}
+                    subtasks={subsMap.get(row.task.id) ?? []}
+                  />
+                ),
+              )}
+            </SortableContext>
 
-      {/* Completion bar — fills as the day's tasks get checked off. */}
-      <DayProgressBar done={done} total={tasks.length} />
-
-      {/* Add task at the top of each day. */}
-      <QuickAdd onAdd={onAdd} />
-
-      <div
-        ref={setNodeRef}
-        className={cn(
-          "flex flex-1 flex-col gap-2 rounded-xl transition-colors",
-          dragging && "outline-dashed outline-1 outline-transparent",
-          isOver && "bg-primary-soft/50 outline-primary",
-        )}
-      >
-        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {/* Columns are narrow, so separators stay compact and only appear when
-              the day actually mixes priorities (or while dragging, so an empty
-              group still has somewhere to drop). */}
-          {priorityRows(tasks, { includeEmpty: dragging }).map((row) =>
-            row.kind === "header" ? (
-              <PriorityGroupHeader
-                key={`prio-${row.priority ?? "none"}`}
-                scope={date}
-                priority={row.priority}
-                count={row.empty ? undefined : row.count}
-                empty={row.empty}
-                compact
-              />
+            {/* A day that hasn't loaded is NOT an empty day. Without this branch
+                every column announced "Sin tareas" until its query resolved, so
+                opening the week looked like the whole week was blank. */}
+            {loading ? (
+              <SkeletonList count={2} rowClassName="h-16" />
             ) : (
-              <WeekCard
-                key={row.task.id}
-                task={row.task}
-                channel={row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined}
-                owner={profilesById.get(row.task.owner_id)}
-                subtasks={subsMap.get(row.task.id) ?? []}
-              />
-            ),
-          )}
-        </SortableContext>
-
-        {/* A day that hasn't loaded is NOT an empty day. Without this branch
-            every column announced "Sin tareas" until its query resolved, so
-            opening the week looked like the whole week was blank. */}
-        {loading ? (
-          <SkeletonList count={2} rowClassName="h-16" />
-        ) : (
-          // Narrow region → a single line, not the dashed EmptyState card, which
-          // would dwarf a 320px column. Doubles as the drop hint: the column is
-          // already a droppable, so an empty day still reads as a target.
-          tasks.length === 0 && !dragging && <EmptyHint>Sin tareas</EmptyHint>
-        )}
-      </div>
+              // Cards and an empty state are mutually exclusive — showing both
+              // (which the drop hint used to do) reads as a bug.
+              tasks.length === 0 &&
+              !dragging && <EmptyDay date={date} today={today} capacityMin={capacityMin} />
+            )}
+          </div>
+        </>
+      )}
     </section>
+  );
+}
+
+/**
+ * A free day, with the two things you'd actually do about it. A bare "Sin
+ * tareas" was true and useless; this one names the room the day has.
+ */
+function EmptyDay({
+  date,
+  today,
+  capacityMin,
+}: {
+  date: string;
+  today: string;
+  capacityMin: number;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border-strong px-3 py-3.5 text-center">
+      <p className="text-xs font-semibold text-muted">Día libre</p>
+      <p className="text-2xs leading-4 text-subtle">
+        {compactDayLabel(date, today)} tiene {formatMinutes(capacityMin)}. Pasá algo para acá.
+      </p>
+      <Link href="/backlog" className="self-center">
+        <Button
+          size="sm"
+          className="h-7 rounded-pill bg-primary-soft px-3 text-2xs text-primary hover:bg-primary hover:text-on-primary"
+        >
+          Traer del backlog
+        </Button>
+      </Link>
+    </div>
   );
 }
 

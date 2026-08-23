@@ -35,14 +35,13 @@ function visibility(overrides: {
 
 describe("taskMetaVisibility", () => {
   describe("compact (week columns)", () => {
-    it("hides the checklist, move menu and delete button", () => {
+    it("hides the move menu and delete button", () => {
       const v = visibility({ density: "compact", subtaskCount: 3 });
-      expect(v.checklist).toBe(false);
       expect(v.moveMenu).toBe(false);
       expect(v.deleteButton).toBe(false);
     });
 
-    it("still shows the subtask counter, which replaces the checklist", () => {
+    it("still shows the subtask counter, which is all the checklist ever is now", () => {
       const v = visibility({ density: "compact", subtaskCount: 3 });
       expect(v.subtaskCount).toBe(true);
     });
@@ -74,9 +73,9 @@ describe("taskMetaVisibility", () => {
       expect(v.estimate).toBe(true);
     });
 
-    it("shows the checklist when there are subtasks", () => {
-      expect(visibility({ subtaskCount: 2 }).checklist).toBe(true);
-      expect(visibility({ subtaskCount: 0 }).checklist).toBe(false);
+    it("shows the checklist meter only when there are subtasks", () => {
+      expect(visibility({ subtaskCount: 2 }).subtaskCount).toBe(true);
+      expect(visibility({ subtaskCount: 0 }).subtaskCount).toBe(false);
     });
 
     it("keeps the move menu and delete button", () => {
@@ -87,10 +86,8 @@ describe("taskMetaVisibility", () => {
   });
 
   describe("completed tasks", () => {
-    it("drops priority and due date, which are no longer actionable", () => {
-      const v = visibility({ task: { status: "done" } });
-      expect(v.priority).toBe(false);
-      expect(v.due).toBe(false);
+    it("drops the due date, which is no longer actionable", () => {
+      expect(visibility({ task: { status: "done" } }).due).toBe(false);
     });
 
     it("keeps the channel so you can still tell what the task was", () => {
@@ -99,10 +96,6 @@ describe("taskMetaVisibility", () => {
   });
 
   describe("absent data", () => {
-    it("hides priority when the task has none", () => {
-      expect(visibility({ task: { priority: null } }).priority).toBe(false);
-    });
-
     it("hides the due badge when there is no due date", () => {
       expect(visibility({ task: { due_date: null } }).due).toBe(false);
     });
@@ -127,12 +120,10 @@ describe("taskMetaVisibility", () => {
     });
   });
 
-  it("never shows the checklist and its counter as the only difference between densities", () => {
-    // The counter is the compact stand-in for the list: with subtasks present,
-    // exactly one of the two renders in compact, and both render comfortably.
-    const compact = visibility({ density: "compact", subtaskCount: 4 });
-    const comfortable = visibility({ density: "comfortable", subtaskCount: 4 });
-    expect([compact.checklist, compact.subtaskCount]).toEqual([false, true]);
-    expect([comfortable.checklist, comfortable.subtaskCount]).toEqual([true, true]);
+  it("shows the checklist meter in both densities — the card is two lines either way", () => {
+    // The redesign dropped the inline item list, so the meter is the only
+    // checklist representation and it must not differ between densities.
+    expect(visibility({ density: "compact", subtaskCount: 4 }).subtaskCount).toBe(true);
+    expect(visibility({ density: "comfortable", subtaskCount: 4 }).subtaskCount).toBe(true);
   });
 });

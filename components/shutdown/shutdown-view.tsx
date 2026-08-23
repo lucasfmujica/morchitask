@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, Flame, MoveRight, Quote, Target } from "lucide-react";
-import { taskKeys, useTasksForDate } from "@/lib/queries/tasks";
+import { ArrowLeft, ArrowRight, Check, Flame, Quote } from "lucide-react";
+import { taskKeys, useMoveTaskToDate, useTasksForDate } from "@/lib/queries/tasks";
 import { useMe } from "@/lib/queries/profiles";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import {
@@ -16,7 +16,18 @@ import {
 import type { Channel, DailyNote, Task } from "@/lib/queries/types";
 import { carryOverTarget, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
-import { accuracyLabel, MOODS, shutdownSummary } from "@/lib/shutdown";
+import {
+  accuracyLabel,
+  carryDestination,
+  defaultCarryPlan,
+  MOODS,
+  projectedTomorrowMin,
+  shutdownSummary,
+  splitByDestination,
+  type CarryPlan,
+} from "@/lib/shutdown";
+import { resolveCapacity } from "@/lib/capacity";
+import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { Confetti } from "@/components/ui/confetti";
 import { SkeletonList } from "@/components/ui";
@@ -45,6 +56,7 @@ export function ShutdownView({ date }: { date: string }) {
       tasks={tasksQ.data ?? []}
       meId={me.id}
       note={noteQ.data ?? null}
+      capacityTarget={resolveCapacity(noteQ.data?.capacity_min, me.capacity_target_min)}
     />
   );
 }
@@ -62,11 +74,13 @@ function ShutdownRitual({
   tasks,
   meId,
   note,
+  capacityTarget,
 }: {
   date: string;
   tasks: Task[];
   meId: string;
   note: DailyNote | null;
+  capacityTarget: number;
 }) {
   const router = useRouter();
   const qc = useQueryClient();
@@ -77,26 +91,56 @@ function ShutdownRitual({
   const [step, setStep] = useState(0);
   const [reflection, setReflection] = useState(note?.reflection ?? "");
   const [mood, setMood] = useState<number | null>(note?.mood ?? null);
-  const [rolledCount, setRolledCount] = useState<number | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
-  const { done, pending, estimatedMin, actualMin, accuracy } = shutdownSummary(tasks, meId);
+  const {
+    done,
+    pending: allPending,
+    estimatedMin,
+    actualMin,
+    accuracy,
+  } = shutdownSummary(tasks, meId);
+  // Routine instances are excluded from the destination list: tomorrow's copy
+  // materializes on its own, so "Mañana" would be a no-op — while "Backlog"
+  // would quietly pull an instance out of its recurrence. Neither choice means
+  // what it says, so we don't offer it. The rollover sweep skips them too.
+  const pending = allPending.filter((t) => !t.template_id);
   // Not always `date + 1`: closing an old day carries its leftovers to today,
   // never to another past day where they'd strand out of sight.
   const tomorrow = carryOverTarget(date);
   const alreadyClosed = !!note?.shutdown_completed_at;
+  const move = useMoveTaskToDate();
+  const tomorrowTasks = useTasksForDate(tomorrow).data ?? [];
+  const tomorrowPlannedMin = tomorrowTasks
+    .filter((t) => t.owner_id === meId && t.status !== "done")
+    .reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0);
 
-  async function rollover() {
-    const n = await rolloverIncomplete(date, tomorrow);
-    setRolledCount(n);
+  // Where each leftover goes. Everything rolls over unless you say otherwise —
+  // moving the whole pile was the old behaviour and it quietly rebuilt an
+  // over-full day every night.
+  const [plan, setPlan] = useState<CarryPlan>(() => defaultCarryPlan(pending));
+  const projectedMin = projectedTomorrowMin(pending, plan, tomorrowPlannedMin);
+
+  async function applyCarryPlan() {
+    const { toBacklog } = splitByDestination(pending, plan);
+    // Park the ones you're not carrying first, so the sweep below only picks up
+    // what's actually meant to travel.
+    await Promise.all(
+      toBacklog.map((task) =>
+        move.mutateAsync({ task, toDate: null, sortOrder: orderForAppend([]) }),
+      ),
+    );
+    await rolloverIncomplete(date, tomorrow);
     qc.invalidateQueries({ queryKey: taskKeys.date(date) });
     qc.invalidateQueries({ queryKey: taskKeys.date(tomorrow) });
+    qc.invalidateQueries({ queryKey: taskKeys.backlog });
   }
 
   async function closeDay() {
     setSaveError(false);
     try {
+      await applyCarryPlan();
       // Await before navigating. The old version fired the mutation and pushed
       // in the same breath, so a failure silently ate the reflection.
       await upsert.mutateAsync({
@@ -147,7 +191,7 @@ function ShutdownRitual({
       {step === 0 && (
         <StepCelebrate
           done={done}
-          total={done.length + pending.length}
+          total={done.length + allPending.length}
           estimatedMin={estimatedMin}
           actualMin={actualMin}
           accuracy={accuracy}
@@ -167,12 +211,21 @@ function ShutdownRitual({
         <StepTomorrow
           pending={pending}
           tomorrow={tomorrow}
-          rolledCount={rolledCount}
-          onRollover={rollover}
+          plan={plan}
+          onToggle={(id) =>
+            setPlan((p) => ({
+              ...p,
+              [id]: carryDestination(p, id) === "tomorrow" ? "backlog" : "tomorrow",
+            }))
+          }
+          projectedMin={projectedMin}
+          capacityTarget={capacityTarget}
         />
       )}
 
-      <div className="flex items-center gap-3 pb-safe">
+      {/* On a phone the CTA is pinned: the step content scrolls under it, so
+          "Cerrar el día" is never a scroll away. */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-3 border-t border-border bg-bg/95 px-4 py-3 pb-safe backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         {step > 0 && (
           <button
             onClick={() => setStep(step - 1)}
@@ -250,7 +303,7 @@ function StepCelebrate({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-fg">
+        <h2 className="text-xl font-extrabold tracking-tight text-fg">
           {done.length === 0
             ? "Hoy no cerraste nada, y está bien"
             : `Hiciste ${done.length} ${done.length === 1 ? "cosa" : "cosas"} hoy`}
@@ -258,7 +311,9 @@ function StepCelebrate({
         <p className="mt-1 text-sm text-muted">
           {done.length === 0
             ? "Hay días así. Lo que quedó pendiente pasa a mañana en el último paso."
-            : `De ${total} que te habías propuesto.`}
+            : `De ${total} que te habías propuesto${
+                actualMin > 0 ? ` · ${formatMinutes(actualMin)} medidas` : ""
+              }.`}
         </p>
       </div>
 
@@ -288,22 +343,31 @@ function StepCelebrate({
         </ul>
       )}
 
-      {/* Estimated vs actual — the loop that makes you better at planning, and
-          the number the old screen threw away by summing estimates instead. */}
+      {/* Estimated vs actual, as two bars against a shared scale. Two sentences
+          made you do the arithmetic; two bars make the gap the thing you see —
+          which is the whole feedback loop this screen exists for. */}
       {(estimatedMin > 0 || actualMin > 0) && (
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-card border border-border bg-surface p-4 shadow-soft">
-          <span className="text-sm text-muted">
-            Estimaste{" "}
-            <strong className="font-semibold text-fg">{formatMinutes(estimatedMin)}</strong>
-          </span>
-          <span className="text-sm text-muted">
-            Trabajaste <strong className="font-semibold text-fg">{formatMinutes(actualMin)}</strong>
-          </span>
-          {accuracyText && <span className="w-full text-2xs text-subtle">{accuracyText}</span>}
+        <div className="flex flex-col gap-2.5 rounded-card border border-border bg-surface p-4 shadow-soft">
+          <CompareBar
+            label="Estimaste"
+            min={estimatedMin}
+            max={Math.max(estimatedMin, actualMin)}
+            tone="soft"
+          />
+          <CompareBar
+            label="Trabajaste"
+            min={actualMin}
+            max={Math.max(estimatedMin, actualMin)}
+            tone="solid"
+          />
+          {accuracyText && (
+            <p className="mt-0.5 text-2xs font-semibold text-warning">{accuracyText}</p>
+          )}
         </div>
       )}
 
-      {/* The morning's intention, closing the loop it opened in /plan. */}
+      {/* The morning's intention, closing the loop it opened in /plan — with
+          the day's result attached, so it reads as answered rather than filed. */}
       {intention && (
         <div className="flex gap-3 rounded-card border border-border bg-surface-2/60 p-4">
           <Quote className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
@@ -312,6 +376,13 @@ function StepCelebrate({
               Tu intención de esta mañana
             </p>
             <p className="mt-1 text-sm text-fg">{intention}</p>
+            <p className="mt-1.5 text-2xs font-semibold text-success">
+              {done.length === 0
+                ? "Queda para mañana."
+                : done.length === total
+                  ? "Cumplida: salió todo."
+                  : `Avanzaste: ${done.length} de ${total}.`}
+            </p>
           </div>
         </div>
       )}
@@ -389,34 +460,47 @@ function StepReflect({
   );
 }
 
-/** Step 3 — hand what's left to tomorrow, then close. */
+/**
+ * Step 3 — decide where each leftover goes, then close.
+ *
+ * It used to be one "Mover N a mañana" button: all or nothing. That's how
+ * tomorrow ends up pre-loaded with today's failures before you've even planned
+ * it. Each task now carries its own destination, and the footer shows what
+ * tomorrow would weigh once you apply them — so parking something in the
+ * backlog is a visible relief rather than an admission.
+ */
 function StepTomorrow({
   pending,
   tomorrow,
-  rolledCount,
-  onRollover,
+  plan,
+  onToggle,
+  projectedMin,
+  capacityTarget,
 }: {
   pending: Task[];
   tomorrow: string;
-  rolledCount: number | null;
-  onRollover: () => void;
+  plan: CarryPlan;
+  onToggle: (taskId: string) => void;
+  projectedMin: number;
+  capacityTarget: number;
 }) {
-  const SHOWN = 6;
   // Closing an old day carries its leftovers to today, not to "mañana" — so the
   // copy has to name the day it's actually moving them to.
   const target = relativeLabel(tomorrow, todayISO()).toLowerCase();
+  const over = projectedMin > capacityTarget;
+
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-fg">
+        <h2 className="text-xl font-extrabold tracking-tight text-fg">
           {target === "hoy" ? "Traé lo pendiente a hoy" : "Dejá mañana listo"}
         </h2>
         <p className="mt-1 text-sm text-muted">
           {pending.length === 0
             ? "No te quedó nada colgando."
             : pending.length === 1
-              ? "Te quedó 1 tarea sin terminar."
-              : `Te quedaron ${pending.length} tareas sin terminar.`}
+              ? "Te quedó 1 tarea sin terminar. Elegí a dónde va."
+              : `Te quedaron ${pending.length} tareas sin terminar. Elegí a dónde va cada una.`}
         </p>
       </div>
 
@@ -425,35 +509,86 @@ function StepTomorrow({
           <Check className="h-4 w-4 shrink-0" aria-hidden /> Cerraste todo. Que descanses.
         </p>
       ) : (
-        <div className="rounded-card border border-border bg-surface p-4 shadow-soft">
+        <>
           <ul className="flex flex-col gap-1.5">
-            {pending.slice(0, SHOWN).map((t) => (
-              <li key={t.id} className="flex items-center gap-2 text-sm text-fg">
-                <Target className="h-3 w-3 shrink-0 text-subtle" aria-hidden />
-                <span className="min-w-0 truncate">{t.title}</span>
-              </li>
-            ))}
+            {pending.map((t) => {
+              const dest = carryDestination(plan, t.id);
+              return (
+                <li
+                  key={t.id}
+                  className="flex items-center gap-2.5 rounded-xl border border-border bg-surface py-2 pr-2 pl-3 shadow-soft"
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm text-fg">{t.title}</span>
+                  {t.time_estimate_min ? (
+                    <span className="shrink-0 text-2xs font-semibold tabular-nums text-muted">
+                      {formatMinutes(t.time_estimate_min)}
+                    </span>
+                  ) : null}
+                  <button
+                    onClick={() => onToggle(t.id)}
+                    aria-label={`Destino de ${t.title}`}
+                    className={cn(
+                      "w-20 shrink-0 cursor-pointer rounded-pill px-2.5 py-1 text-2xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                      dest === "tomorrow"
+                        ? "bg-primary-soft text-primary"
+                        : "bg-surface-2 text-muted",
+                    )}
+                  >
+                    {dest === "tomorrow" ? (target === "hoy" ? "Hoy" : "Mañana") : "Backlog"}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
-          {/* Say how many are hidden — the old version sliced at 6 silently. */}
-          {pending.length > SHOWN && (
-            <p className="mt-2 text-2xs text-subtle">y {pending.length - SHOWN} más</p>
-          )}
 
-          {rolledCount === null ? (
-            <button
-              onClick={onRollover}
-              className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-            >
-              <MoveRight className="h-4 w-4" aria-hidden />
-              Mover {pending.length} a {target}
-            </button>
-          ) : (
-            <p className="mt-4 text-sm text-success">
-              Movimos {rolledCount} {rolledCount === 1 ? "tarea" : "tareas"} a {target}.
-            </p>
-          )}
-        </div>
+          {/* What you just decided, in minutes. */}
+          <p
+            className={cn(
+              "rounded-card border px-4 py-3 text-sm",
+              over
+                ? "border-danger/30 bg-danger/5 text-danger"
+                : "border-border bg-surface text-muted shadow-soft",
+            )}
+          >
+            {target === "hoy" ? "Hoy" : "Mañana"} quedaría en{" "}
+            <strong className="font-semibold">{formatMinutes(projectedMin)}</strong> de{" "}
+            {formatMinutes(capacityTarget)}
+            {over && " — te conviene mandar algo al backlog."}
+          </p>
+        </>
       )}
+    </div>
+  );
+}
+
+/**
+ * One bar of the estimate-vs-actual pair. Both are drawn against the SAME
+ * maximum, which is the only way the comparison means anything.
+ */
+function CompareBar({
+  label,
+  min,
+  max,
+  tone,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  tone: "soft" | "solid";
+}) {
+  const pct = max > 0 ? (min / max) * 100 : 0;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 text-xs">
+        <span className="text-muted">{label}</span>
+        <span className="font-semibold tabular-nums text-fg">{formatMinutes(min)}</span>
+      </div>
+      <div className="mt-1 h-2 rounded-pill bg-surface-2">
+        <div
+          className={cn("h-full rounded-pill", tone === "solid" ? "bg-primary" : "bg-primary/45")}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

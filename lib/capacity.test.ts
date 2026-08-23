@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { capacityState, clampCapacity, DEFAULT_CAPACITY_MIN, resolveCapacity } from "./capacity";
+import {
+  capacityState,
+  capacitySuggestion,
+  clampCapacity,
+  DEFAULT_CAPACITY_MIN,
+  resolveCapacity,
+} from "./capacity";
+import type { Task } from "./queries/types";
 
 describe("clampCapacity", () => {
   it("snaps to the nearest 30 min", () => {
@@ -50,5 +57,56 @@ describe("capacityState", () => {
 
   it("is empty at zero planned", () => {
     expect(capacityState(0, 360)).toMatchObject({ pct: 0, over: false, near: false });
+  });
+});
+
+function t(overrides: Partial<Task> = {}): Task {
+  return {
+    id: overrides.title ?? Math.random().toString(36).slice(2),
+    title: "x",
+    status: "todo",
+    block_start: null,
+    time_estimate_min: null,
+    ...overrides,
+  } as unknown as Task;
+}
+
+describe("capacitySuggestion", () => {
+  it("says nothing while the day fits", () => {
+    expect(capacitySuggestion([t({ time_estimate_min: 60 })], 60, 360)).toBeNull();
+    // Exactly on target is not over.
+    expect(capacitySuggestion([t({ time_estimate_min: 360 })], 360, 360)).toBeNull();
+  });
+
+  it("suggests the biggest pending task with no block", () => {
+    const tasks = [
+      t({ title: "chica", time_estimate_min: 30 }),
+      t({ title: "grande", time_estimate_min: 90 }),
+    ];
+    const s = capacitySuggestion(tasks, 405, 360);
+    expect(s?.overByMin).toBe(45);
+    expect(s?.task?.title).toBe("grande");
+  });
+
+  it("never suggests a task already placed in the agenda, nor a finished one", () => {
+    const tasks = [
+      t({ title: "agendada", time_estimate_min: 120, block_start: "09:00" }),
+      t({ title: "hecha", time_estimate_min: 120, status: "done" }),
+      t({ title: "libre", time_estimate_min: 30 }),
+    ];
+    expect(capacitySuggestion(tasks, 405, 360)?.task?.title).toBe("libre");
+  });
+
+  it("still reports the overrun when nothing is movable", () => {
+    const s = capacitySuggestion([t({ time_estimate_min: 400, block_start: "09:00" })], 400, 360);
+    expect(s).toMatchObject({ overByMin: 40, task: null });
+  });
+
+  it("breaks ties by title so the suggestion does not flicker", () => {
+    const tasks = [
+      t({ title: "b", time_estimate_min: 60 }),
+      t({ title: "a", time_estimate_min: 60 }),
+    ];
+    expect(capacitySuggestion(tasks, 400, 360)?.task?.title).toBe("a");
   });
 });

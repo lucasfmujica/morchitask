@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   blockDurationMin,
+  firstFreeSlot,
+  freeSlots,
   nextBlockDurationMin,
   remainingMin,
   scheduledMin,
@@ -73,5 +75,68 @@ describe("nextBlockDurationMin", () => {
     // (In practice a fully-scheduled task leaves the list, so this is just the
     //  coherent fallback: a full estimate-sized session.)
     expect(nextBlockDurationMin(60, [oneHour])).toBe(60);
+  });
+});
+
+describe("freeSlots", () => {
+  it("returns the whole window when nothing is busy", () => {
+    expect(freeSlots([], 540, 720)).toEqual([{ startMin: 540, lenMin: 180 }]);
+  });
+
+  it("finds the gaps between blocks", () => {
+    const busy = [
+      { startMin: 600, endMin: 660 }, // 10:00–11:00
+      { startMin: 720, endMin: 780 }, // 12:00–13:00
+    ];
+    expect(freeSlots(busy, 540, 840)).toEqual([
+      { startMin: 540, lenMin: 60 }, // 09:00–10:00
+      { startMin: 660, lenMin: 60 }, // 11:00–12:00
+      { startMin: 780, lenMin: 60 }, // 13:00–14:00
+    ]);
+  });
+
+  it("drops gaps shorter than the minimum", () => {
+    const busy = [
+      { startMin: 555, endMin: 600 },
+      { startMin: 615, endMin: 660 },
+    ];
+    // The 15m hole at 10:00 is not worth offering.
+    expect(freeSlots(busy, 540, 660, 30)).toEqual([]);
+    expect(freeSlots(busy, 540, 660, 15)).toHaveLength(2);
+  });
+
+  it("merges overlapping and touching busy ranges", () => {
+    const busy = [
+      { startMin: 600, endMin: 700 },
+      { startMin: 650, endMin: 720 },
+      { startMin: 720, endMin: 750 },
+    ];
+    expect(freeSlots(busy, 540, 840)).toEqual([
+      { startMin: 540, lenMin: 60 },
+      { startMin: 750, lenMin: 90 },
+    ]);
+  });
+
+  it("clips busy ranges to the window and handles an empty one", () => {
+    expect(freeSlots([{ startMin: 0, endMin: 600 }], 540, 720)).toEqual([
+      { startMin: 600, lenMin: 120 },
+    ]);
+    expect(freeSlots([], 720, 720)).toEqual([]);
+  });
+});
+
+describe("firstFreeSlot", () => {
+  const busy = [
+    { startMin: 540, endMin: 630 }, // 09:00–10:30
+    { startMin: 660, endMin: 720 }, // 11:00–12:00
+  ];
+
+  it("returns the first opening long enough", () => {
+    expect(firstFreeSlot(busy, 30, 540, 840)).toBe(630); // 10:30, the 30m gap
+    expect(firstFreeSlot(busy, 60, 540, 840)).toBe(720); // needs an hour → 12:00
+  });
+
+  it("returns null when nothing fits", () => {
+    expect(firstFreeSlot(busy, 180, 540, 780)).toBeNull();
   });
 });

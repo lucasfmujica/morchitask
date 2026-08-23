@@ -22,7 +22,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - ✅ Base de datos con login, hogar compartido, canales y tareas (con seguridad por fila)
 - ✅ Login con Google (requiere una configuración tuya — ver `docs/GOOGLE_SETUP.md`)
 - ✅ Vista del **Día**: agregar, completar, editar, borrar, **reordenar arrastrando**
-- ✅ Vista **Semana** (estilo Sunsama): el **mini-calendario** y el **filtro por categorías** viven en la **barra lateral única** (como Sunsama), así las columnas de días usan **todo el ancho**; **barra de progreso** arriba de cada día (se llena al tildar tareas, verde al 100%), con tarjetas que muestran el **checklist tildable**, la duración y la categoría
+- ✅ Vista **Semana** (estilo Sunsama): el **mini-calendario** y el **filtro por categorías** viven en la **barra lateral única** (como Sunsama), así las columnas de días usan **todo el ancho**; cada día es una **tarjeta** con una **barra de carga** (cuánto planeaste contra tu capacidad, no cuánto tildaste) y los días ya cerrados se pueden plegar
 - ✅ Vista **Mes**: calendario con puntos por día; tocás un día y lo planificás
 - ✅ **Agenda / time-blocking**: poné un horario a una tarea y vela en una línea de tiempo
 - ✅ Backlog (tareas sin fecha)
@@ -37,10 +37,10 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - **/login** — entrar con Google.
 - **/today** y **/day/AAAA-MM-DD** — la vista del Día (con pestañas **Lista** y **Agenda**).
 - **/plan/AAAA-MM-DD** — **planificar el día** (ritual de la mañana): poné tu foco del día, traé lo que quedó de ayer o del backlog, ajustá duraciones y mirá la **capacidad del día**.
-- **/week** y **/week/AAAA-MM-DD** — la semana. El **mini-calendario** y el **filtro de categorías** están en la **barra lateral** (en compu), no en una segunda columna, así los días ocupan todo el ancho. Cada día tiene su **barra de progreso** y cada tarjeta muestra su checklist, duración y categoría.
+- **/week** y **/week/AAAA-MM-DD** — la semana. El **mini-calendario** y el **filtro de categorías** están en la **barra lateral** (en compu), no en una segunda columna, así los días ocupan todo el ancho. Cada día es una **tarjeta** con su **barra de carga** ("6h 45m de 6h"), y cada tarjeta de tarea muestra su carril de categoría, la hora y la duración.
 - **/month** y **/month/AAAA-MM-DD** — el calendario mensual.
-- **/backlog** — tareas sin fecha asignada.
-- **/metas** — tus **objetivos** de la semana y del mes; cada meta muestra una barra de progreso con las tareas que tenés enganchadas.
+- **/backlog** — tareas sin fecha asignada, con la **antigüedad** de cada una y botones **+ Hoy** / **+ Mañana**.
+- **/metas** — tus **objetivos** de la semana y del mes; cada meta muestra el porcentaje, las tareas enganchadas y **las horas que le dedicaste de verdad**.
 
 ## Prioridades
 
@@ -152,6 +152,24 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-08-23: **Rediseño completo de las pantallas del ritual diario** (viene del bundle `design_handoff_morchitask_1a`, hecho en Claude Design). Cambió cómo se ve y se usa casi todo, sin tocar la base de datos ni sumar librerías nuevas. Lo grande:
+
+  - **La tarjeta de tarea tiene forma fija.** Un **carril de color** de 3px a la izquierda dice la categoría, y adentro hay **exactamente dos líneas**: arriba el título con la duración a la derecha; abajo la hora agendada, la categoría y el avance del checklist como **tres barritas + "2/3"**. Antes cada tarjeta medía distinto según cuántos datos tuviera; ahora todas miden igual y la lista se lee de un vistazo. **Ojo con esto:** la lista de subtareas ya **no se despliega dentro de la tarjeta** (los ítems se tildan abriendo la tarea), y la etiqueta de prioridad salió de la tarjeta porque el título del grupo ya la dice.
+  - **La capacidad del día es una banda que se queda pegada arriba.** Reemplaza a las dos barritas finitas de antes. Mientras entrás en tu tiempo es tranquila; cuando te pasás, **la barra se parte justo en tu objetivo** y el excedente se dibuja rayado _afuera_ del presupuesto, con una marca en el corte. Además **te nombra la tarea** que conviene mover ("Te pasaste 45m. Mové _Microfloor_ a mañana y entrás justo.") y trae el botón para hacerlo, con **Deshacer**. La tarea propuesta es la más larga que todavía no tiene horario, para no romper algo que ya acomodaste.
+  - **Al pie del día hay dos secciones plegadas:** **"hechas"** (con el total de tiempo medido) y **"Sin agendar"**, que muestra el **backlog** con la antigüedad de cada idea ("hace 12 días") y un botón **+ Hoy** para traerla de una. En compu la segunda arranca abierta; en el celular, cerrada.
+  - **Avisos con Deshacer.** Tildar, mover, agendar o traer algo del backlog ahora deja un cartelito abajo con **Deshacer** por unos segundos. Antes no había ninguna red.
+  - **Semana:** cada día es una **tarjeta**, y hoy es la única con fondo. La barrita de cada día dejó de medir "cuánto tildaste" y ahora mide **cuánto cargaste** contra tu capacidad ("6h 45m de 6h · +45m"), que es la pregunta real cuando planificás la semana. Los días que ya cerraste se pueden **plegar** todos juntos, y un día vacío propone qué hacer en vez de decir "Sin tareas".
+  - **Agenda:** los bloques cortos ya **no cortan el texto** (tienen un alto mínimo y, si son muy chicos, ponen título y horario en una línea). Aparece la lista de **huecos libres reales** del día, se marca **el primer hueco donde entraría** lo próximo que tenés sin agendar, y tocando una tarea suelta se agenda ahí ("Agendar 11:00"). La línea de "ahora" pasó **por debajo** de los bloques (antes parecía un tachón sobre el título).
+  - **Planificar** quedó en dos columnas: a la izquierda decidís, a la derecha ves la consecuencia **sin que se te escape de la pantalla** (capacidad grande, en qué categorías se te va el día, y a qué hora terminarías). Lo que traés de ayer y del backlog está unificado con pestañas.
+  - **Cerrar el día:** el paso final dejó de ser "mover todo o nada". Ahora **elegís por tarea** si va a **Mañana** o al **Backlog**, y abajo te dice cuánto pesaría mañana con esa decisión. El "estimado vs. real" pasó de dos frases a **dos barras comparadas**.
+  - **Foco:** la tarea es una tarjeta con su carril y su avance contra lo estimado, hay un botón **Terminar** para tildarla sin salir, los bloques del set se ven como cuatro barritas, y en compu aparece al costado la **cola de pendientes** y el estimado vs. real del día. El panel de sonidos se plegó a **una fila**.
+  - **Backlog:** el encabezado dice los números de verdad ("6 sin fecha · 3h 45m estimadas · 3 sin estimar"), cada fila muestra su antigüedad y tiene **+ Hoy** y **+ Mañana**, y al pie avisa cuántas ideas llevan más de un mes ahí. Los chips de categoría y prioridad del cuadro de agregar se pliegan detrás de un botón (antes ocupaban tres filas siempre).
+  - **Metas:** cada meta es una tarjeta con el porcentaje grande y, además de las tareas, **las horas que le dedicaste de verdad**.
+  - **Cerrar el día** también deja fuera del reparto a las **rutinas**: la copia de mañana se genera sola, así que mandarlas "a mañana" no haría nada y mandarlas al backlog las sacaría de su repetición.
+  - **Celular:** la barra de abajo pasó a **cinco** botones — Hoy · Semana · Backlog · Metas · Cerrar — y Mes, Rutinas, Foco, Resumen y Ajustes se fueron al menú lateral. La barra de arriba quedó con dos acciones en vez de seis, porque ahora cada pantalla tiene su propio título grande.
+
+  Por detrás: tres funciones nuevas con tests (`capacitySuggestion` en `lib/capacity.ts`, `freeSlots`/`firstFreeSlot` en `lib/scheduling.ts`, y los destinos del cierre en `lib/shutdown.ts`), un aviso mínimo (`lib/stores/toast.ts` + `components/ui/toaster.tsx`) y una sección plegable reusable (`components/ui/collapsible-section.tsx`). No se agregaron colores ni tipografías: todo sale de los tokens que ya estaban en `app/globals.css`, así que el modo oscuro funciona solo.
 
 - 2026-08-23: **Los componentes visuales de Morchitask ahora viven también en Claude Design.** Se subieron las 11 piezas básicas de la interfaz (botones, tarjetas, campos de texto, etiquetas, los carteles de "no hay nada acá", los esqueletos de carga, las teclas, el selector de hora y el papelito de festejo) a un proyecto de diseño propio: [Morchitask UI Kit](https://claude.ai/design/p/8490950c-1c7d-43fa-996c-f8c7470f1250). Sirve para que, cuando se diseñe una pantalla nueva, se arme con **las piezas reales de la app** y no con dibujos parecidos — lo que se diseñe ahí se puede programar tal cual. Van también los colores, la tipografía DM Sans y el modo oscuro, así que se ve igual que la app.
 

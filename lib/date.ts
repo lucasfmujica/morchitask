@@ -132,6 +132,32 @@ export function dueTone(due: DayISO, today: DayISO): DueTone {
   return "later";
 }
 
+/**
+ * How long something has been sitting there: "hoy", "ayer", "hace 12 días",
+ * "hace 3 meses".
+ *
+ * This is what makes the backlog honest — a list of titles hides that an idea
+ * has been waiting since March, and that age IS the decision (schedule it or
+ * let it go). Months are approximated at 30 days on purpose: past a few weeks
+ * the exact figure stops mattering and "hace 3 meses" is the useful sentence.
+ */
+export function ageInDays(createdAt: string, today: DayISO = todayISO()): number {
+  const created = dayISOInTimeZone(parseISO(createdAt), DEFAULT_TIMEZONE);
+  return Math.max(
+    0,
+    Math.round((parseISO(today).getTime() - parseISO(created).getTime()) / 86_400_000),
+  );
+}
+
+export function ageLabel(createdAt: string, today: DayISO = todayISO()): string {
+  const days = ageInDays(createdAt, today);
+  if (days === 0) return "hoy";
+  if (days === 1) return "ayer";
+  if (days < 30) return `hace ${days} días`;
+  const months = Math.round(days / 30);
+  return months === 1 ? "hace un mes" : `hace ${months} meses`;
+}
+
 /** Compact label for a due-date badge: "Hoy" / "Mañana" / "Ayer" or "5 jul". */
 export function dueLabel(due: DayISO, today: DayISO): string {
   if (due === today) return "Hoy";

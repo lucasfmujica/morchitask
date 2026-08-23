@@ -101,7 +101,7 @@ export async function deleteTask(taskId: string) {
 
 export async function moveTaskToDate(
   taskId: string,
-  toDate: string,
+  toDate: string | null,
   sortOrder: number,
   priority?: PriorityKey,
 ) {

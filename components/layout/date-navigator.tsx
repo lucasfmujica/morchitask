@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
@@ -7,7 +8,24 @@ import { addDays, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
 
-export function DateNavigator({ date }: { date: string }) {
+/**
+ * The day's title block: what day it is, how it's going, and how to leave it.
+ *
+ * `meta` rides on the subtitle ("Jueves 20 de agosto · 5 de 13") instead of
+ * getting its own line — the redesign's whole mobile header is 2 lines and a
+ * pair of 44px buttons, so the score has to travel with the date.
+ */
+export function DateNavigator({
+  date,
+  meta,
+  actions,
+}: {
+  date: string;
+  /** Appended to the date line, e.g. "5 de 13". */
+  meta?: string;
+  /** Page-level actions, shown after the day arrows. */
+  actions?: ReactNode;
+}) {
   const router = useRouter();
   const today = todayISO();
   const isToday = date === today;
@@ -19,7 +37,10 @@ export function DateNavigator({ date }: { date: string }) {
         <h1 className="truncate text-2xl font-extrabold tracking-tight text-fg">
           {relativeLabel(date, today)}
         </h1>
-        <p className="text-sm text-muted">{fullDayLabel(date)}</p>
+        <p className="truncate text-sm text-muted">
+          {fullDayLabel(date)}
+          {meta && ` · ${meta}`}
+        </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <button onClick={() => go(addDays(date, -1))} aria-label="Día anterior" className={arrow}>
@@ -40,6 +61,7 @@ export function DateNavigator({ date }: { date: string }) {
         <button onClick={() => go(addDays(date, 1))} aria-label="Día siguiente" className={arrow}>
           <ChevronRight className="h-5 w-5" aria-hidden />
         </button>
+        {actions}
       </div>
     </div>
   );
