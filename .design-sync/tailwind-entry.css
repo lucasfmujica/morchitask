@@ -1,0 +1,40 @@
+@import "../app/globals.css";
+
+/* Scan the whole product, not just components/ui — the stylesheet should carry
+   the real utility vocabulary the app uses, not only the classes the nine
+   primitives happen to reference. */
+@source "../components/**/*.tsx";
+@source "../app/**/*.tsx";
+
+/* Tailwind skips dot-directories, so .design-sync/previews is never scanned.
+   More importantly: the design agent composes its own layouts around these
+   components, and Tailwind only emits classes it has SEEN. Without a safelist
+   the agent's layout glue (grid-cols-3, max-w-2xl, gap-6…) would resolve to
+   nothing. This is that vocabulary, kept to layout/spacing/sizing — the parts
+   an agent reaches for. Colour, radius, shadow and type stay token-driven and
+   come from globals.css above. */
+@source inline("{flex,inline-flex,grid,block,inline-block,hidden}");
+@source inline("flex-{row,col,wrap,nowrap,1,auto,none}");
+@source inline("{items,justify,self}-{start,center,end,between,around,stretch,baseline}");
+@source inline("grid-cols-{1,2,3,4,5,6,12}");
+@source inline("col-span-{1,2,3,4,5,6,full}");
+@source inline("{gap,gap-x,gap-y}-{0,1,1.5,2,2.5,3,4,5,6,8,10,12}");
+@source inline("{p,px,py,pt,pr,pb,pl}-{0,1,1.5,2,2.5,3,4,5,6,8,10,12,16}");
+@source inline("{m,mx,my,mt,mr,mb,ml}-{0,1,2,3,4,5,6,8,10,12,auto}");
+@source inline("{w,h}-{4,5,6,8,10,12,16,20,24,32,40,48,56,64,72,80,96,full,auto,screen}");
+@source inline("max-w-{xs,sm,md,lg,xl,2xl,3xl,4xl,5xl,6xl,full,none}");
+@source inline("min-h-{0,full,screen}");
+@source inline("{relative,absolute,fixed,sticky,inset-0,overflow-hidden,overflow-y-auto,overflow-x-auto}");
+@source inline("text-{left,center,right}");
+@source inline("{truncate,uppercase,lowercase,capitalize,tracking-wide,tracking-tight}");
+@source inline("font-{normal,medium,semibold,bold}");
+@source inline("space-{x,y}-{1,2,3,4,6}");
+@source inline("w-1/2 w-1/3 w-2/3 w-1/4 w-3/4 w-2/5 w-3/5");
+
+/* The app defines --font-dm-sans at runtime via next/font. The design bundle
+   has no next/font, so bind it here to the @font-face family shipped in
+   fonts/dm-sans.css — without this, `font-sans` resolves to nothing and every
+   card renders in the browser default face. */
+:root {
+  --font-dm-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}

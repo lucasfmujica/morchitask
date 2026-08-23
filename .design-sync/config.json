@@ -1,0 +1,18 @@
+{
+  "projectId": "8490950c-1c7d-43fa-996c-f8c7470f1250",
+  "shape": "package",
+  "pkg": "morchitask",
+  "globalName": "MorchitaskUI",
+  "srcDir": "components/ui",
+  "tsconfig": "./tsconfig.json",
+  "cssEntry": ".design-sync/.cache/ds-styles.css",
+  "extraFonts": [".design-sync/fonts/dm-sans.css"],
+  "guidelinesGlob": [],
+  "overrides": {
+    "Confetti": {
+      "cardMode": "single",
+      "viewport": "520x360"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
