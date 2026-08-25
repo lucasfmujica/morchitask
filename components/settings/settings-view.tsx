@@ -16,6 +16,7 @@ import { useHousehold, useUpdateHouseholdName } from "@/lib/queries/households";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { ThemeSelector } from "./theme-selector";
 import { ChannelsManager } from "./channels-manager";
+import { InviteCard } from "./invite-card";
 import { NotificationsCard } from "./notifications-card";
 
 export function SettingsView() {
@@ -231,6 +232,11 @@ export function SettingsView() {
             </button>
           )}
         </div>
+      </Section>
+
+      {/* Sharing */}
+      <Section title="Tu espacio">
+        <InviteCard />
       </Section>
 
       {/* Notifications */}
