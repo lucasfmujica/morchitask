@@ -153,6 +153,8 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 ## Cambios recientes
 
+- 2026-08-25: Nuevo comando `node scripts/paso-0-metricas.mjs`. Contesta, con los datos que ya están en la base, si la app realmente retiene: cuántos días la usó cada persona, si el uso se sostiene o va cayendo semana a semana, y —lo más importante— cuántas veces se completó el **ritual** de planificar y cerrar el día. Es de solo lectura. Ver "Cómo saber si la app retiene" más abajo.
+
 - 2026-08-23: **Rediseño completo de las pantallas del ritual diario** (viene del bundle `design_handoff_morchitask_1a`, hecho en Claude Design). Cambió cómo se ve y se usa casi todo, sin tocar la base de datos ni sumar librerías nuevas. Lo grande:
 
   - **La tarjeta de tarea tiene forma fija.** Un **carril de color** de 3px a la izquierda dice la categoría, y adentro hay **exactamente dos líneas**: arriba el título con la duración a la derecha; abajo la hora agendada, la categoría y el avance del checklist como **tres barritas + "2/3"**. Antes cada tarjeta medía distinto según cuántos datos tuviera; ahora todas miden igual y la lista se lee de un vistazo. **Ojo con esto:** la lista de subtareas ya **no se despliega dentro de la tarjeta** (los ítems se tildan abriendo la tarea), y la etiqueta de prioridad salió de la tarjeta porque el título del grupo ya la dice.
@@ -303,3 +305,19 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - 2026-06-22: Fase 2 — vistas Semana y Mes, y time-blocking (pestaña Agenda con línea de tiempo por horas).
 - 2026-06-22: Fase 1 — login con Google, hogar compartido, vista del Día (agregar/completar/editar/borrar/reordenar) y Backlog.
 - 2026-06-22: Fase 0 — fundación. Diseño base, PWA instalable, base de datos Supabase nueva ("Morchitask"), librería de componentes y tests automáticos.
+
+## Cómo saber si la app retiene
+
+Antes de invertir en salir a vender, hay una pregunta que se contesta con los datos que ya existen: **¿alguien vuelve todos los días, y hace el ritual completo o solo carga tareas?**
+
+Para responderla:
+
+```bash
+node scripts/paso-0-metricas.mjs
+```
+
+Necesita `DATABASE_URL` en `.env.local` (la misma que ya usás para las migraciones). Es de solo lectura — no modifica nada.
+
+Te muestra, por persona: cuántos días usó la app de verdad, si el uso se sostiene o va cayendo semana a semana, cuántas veces completó el ritual de planificar y cerrar el día, y cuántas tareas creó y terminó cada mes. Al final da una lectura en castellano de lo que significan esos números.
+
+**Lo importante es la sección del ritual.** Si alguien carga tareas todos los días pero casi nunca cierra el día, lo que le gusta de la app es la lista de tareas, no el ritual — y eso cambia por completo cómo habría que presentarla.
