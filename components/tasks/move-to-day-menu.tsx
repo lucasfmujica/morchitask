@@ -26,6 +26,7 @@ function useAppendOrder() {
  *  another day without dragging — works on the Day view and on mobile. */
 export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "left" | "right" }) {
   const t = useTranslations("tasks");
+  const tcm = useTranslations("common");
   const labels = useDateLabels();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -55,8 +56,8 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
   }
 
   const options: { label: string; date: DayISO }[] = [
-    { label: "Hoy", date: today },
-    { label: "Mañana", date: tomorrow },
+    { label: tcm("today"), date: today },
+    { label: tcm("tomorrow"), date: tomorrow },
     { label: t("nextMonday"), date: nextMonday },
   ];
 
