@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
+import { securityHeaders } from "./lib/security-headers";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
 };
 
 // Serwist injects a `webpack` config to build the service worker. Next 16's dev

@@ -36,6 +36,13 @@
       "when": 1786573330560,
       "tag": "0004_big_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787674727095,
+      "tag": "0005_perfect_silvermane",
+      "breakpoints": true
     }
   ]
 }

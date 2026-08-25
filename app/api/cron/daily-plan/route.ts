@@ -5,18 +5,13 @@ import {
   profileNotificationPrefs,
   subscriptionsForProfiles,
 } from "@/lib/db/queries/cron";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 
 /** Sends the daily "plan your day" push to every subscribed user. Triggered by
- * Vercel Cron at 11:00 UTC (08:00 America/Argentina/Buenos_Aires). Vercel Cron
- * sends `Authorization: Bearer <CRON_SECRET>` automatically when that env var
- * is set; `x-cron-secret` is accepted too for manual/QStash calls. */
+ * Vercel Cron at 11:00 UTC (08:00 America/Argentina/Buenos_Aires).
+ * Authorization is handled by `isAuthorizedCron`. */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  const authorized =
-    !secret ||
-    req.headers.get("x-cron-secret") === secret ||
-    req.headers.get("authorization") === `Bearer ${secret}`;
-  if (!authorized) return new Response("forbidden", { status: 401 });
+  if (!isAuthorizedCron(req)) return new Response("forbidden", { status: 401 });
 
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT!,

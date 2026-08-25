@@ -153,6 +153,14 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 ## Cambios recientes
 
+- 2026-08-25: **Dos arreglos de seguridad y las defensas del navegador.** (1) En un celular compartido, si una persona se registraba en el navegador donde antes estaba la otra, las notificaciones seguían llegándole a la primera — ahora la suscripción pasa a quien se registró último, que es como debía ser desde el principio en una app pensada para dos. (2) Cancelar las notificaciones borraba la suscripción sin verificar que fuera tuya. (3) La app ahora manda las cabeceras estándar que le piden al navegador que la proteja (no dejarse meter dentro de otra web, no adivinar tipos de archivo, forzar HTTPS, y bloquear cámara/micrófono/ubicación, que la app nunca usa). Hay además una política de contenido en modo "solo avisar": está puesta pero todavía no bloquea nada, para poder revisar que no rompa nada antes de activarla.
+
+- 2026-08-25: **Ya podés invitar a alguien a tu espacio.** En Ajustes hay una sección nueva, "Tu espacio", donde escribís el mail de la persona y le generás una invitación. Como todavía no mandamos mails automáticos, copiás el link con el botón y se lo pasás por donde ya hablen. Cuando esa persona se registre con ese mail, entra directo a tu espacio. Detalles: la invitación vence a los 7 días, se usa una sola vez, la podés cancelar cuando quieras, y si volvés a invitar al mismo mail se reemplaza la anterior en vez de acumularse. Un espacio admite dos personas.
+
+- 2026-08-25: **Cada cuenta nueva ahora tiene su propio espacio.** Antes, cualquier persona que se registrara entraba automáticamente al espacio más viejo que existiera — o sea, al de Lucas y Sofi, con todas sus tareas a la vista. Era la razón principal por la que la app no se podía abrir a nadie más. Ahora la única forma de entrar al espacio de otra persona es que te inviten a tu dirección de mail, y esa invitación se puede usar una sola vez y vence a los 7 días. También se cerró un agujero en los avisos automáticos: si faltaba una configuración del servidor, cualquiera podía disparar notificaciones a todos los usuarios. Se agregaron 20 pruebas automáticas que corren contra una base de datos real para que ninguna de las dos cosas pueda volver sin que alguien se entere.
+
+- 2026-08-25: Nuevo comando `node scripts/paso-0-metricas.mjs`. Contesta, con los datos que ya están en la base, si la app realmente retiene: cuántos días la usó cada persona, si el uso se sostiene o va cayendo semana a semana, y —lo más importante— cuántas veces se completó el **ritual** de planificar y cerrar el día. Es de solo lectura. Ver "Cómo saber si la app retiene" más abajo.
+
 - 2026-08-23: **Rediseño completo de las pantallas del ritual diario** (viene del bundle `design_handoff_morchitask_1a`, hecho en Claude Design). Cambió cómo se ve y se usa casi todo, sin tocar la base de datos ni sumar librerías nuevas. Lo grande:
 
   - **La tarjeta de tarea tiene forma fija.** Un **carril de color** de 3px a la izquierda dice la categoría, y adentro hay **exactamente dos líneas**: arriba el título con la duración a la derecha; abajo la hora agendada, la categoría y el avance del checklist como **tres barritas + "2/3"**. Antes cada tarjeta medía distinto según cuántos datos tuviera; ahora todas miden igual y la lista se lee de un vistazo. **Ojo con esto:** la lista de subtareas ya **no se despliega dentro de la tarjeta** (los ítems se tildan abriendo la tarea), y la etiqueta de prioridad salió de la tarjeta porque el título del grupo ya la dice.
@@ -303,3 +311,19 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - 2026-06-22: Fase 2 — vistas Semana y Mes, y time-blocking (pestaña Agenda con línea de tiempo por horas).
 - 2026-06-22: Fase 1 — login con Google, hogar compartido, vista del Día (agregar/completar/editar/borrar/reordenar) y Backlog.
 - 2026-06-22: Fase 0 — fundación. Diseño base, PWA instalable, base de datos Supabase nueva ("Morchitask"), librería de componentes y tests automáticos.
+
+## Cómo saber si la app retiene
+
+Antes de invertir en salir a vender, hay una pregunta que se contesta con los datos que ya existen: **¿alguien vuelve todos los días, y hace el ritual completo o solo carga tareas?**
+
+Para responderla:
+
+```bash
+node scripts/paso-0-metricas.mjs
+```
+
+Necesita `DATABASE_URL` en `.env.local` (la misma que ya usás para las migraciones). Es de solo lectura — no modifica nada.
+
+Te muestra, por persona: cuántos días usó la app de verdad, si el uso se sostiene o va cayendo semana a semana, cuántas veces completó el ritual de planificar y cerrar el día, y cuántas tareas creó y terminó cada mes. Al final da una lectura en castellano de lo que significan esos números.
+
+**Lo importante es la sección del ritual.** Si alguien carga tareas todos los días pero casi nunca cierra el día, lo que le gusta de la app es la lista de tareas, no el ritual — y eso cambia por completo cómo habría que presentarla.

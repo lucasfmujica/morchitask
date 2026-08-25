@@ -1,0 +1,82 @@
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { db } from "@/lib/db/client";
+import { channels, householdInvites, households, profiles } from "@/lib/db/schema";
+
+const DEFAULT_CHANNELS = [
+  { name: "Trabajo", color: "#0d9488", icon: "briefcase" },
+  { name: "Hogar", color: "#ea580c", icon: "home" },
+  { name: "Personal", color: "#7c3aed", icon: "sparkles" },
+];
+
+/**
+ * Consumes a pending invite for `email` and returns the household it points at,
+ * or null when there is none.
+ *
+ * Marking it accepted in the same statement that selects it is what stops one
+ * invite from seeding two accounts: `accepted_at is null` is part of the
+ * UPDATE, so a concurrent second call matches zero rows and gets null back.
+ */
+async function claimInvite(email: string | null | undefined): Promise<string | null> {
+  if (!email) return null;
+
+  const [claimed] = await db
+    .update(householdInvites)
+    .set({ accepted_at: sql`now()` })
+    .where(
+      and(
+        eq(householdInvites.email, email.toLowerCase()),
+        isNull(householdInvites.accepted_at),
+        gt(householdInvites.expires_at, sql`now()`),
+      ),
+    )
+    .returning({ householdId: householdInvites.household_id });
+
+  return claimed?.householdId ?? null;
+}
+
+/**
+ * Gives a brand-new account somewhere to live: its own household, unless a
+ * standing invite addressed to this email says to join an existing one.
+ *
+ * This is the multi-tenancy boundary. It used to drop every new sign-in into
+ * whichever household was oldest, on the assumption that there would only ever
+ * be one — which held for exactly two users, and would have put the third
+ * inside their data. Joining someone else's space is now only possible when
+ * someone already inside invited this specific address.
+ *
+ * Returns the household id the user was placed in.
+ */
+export async function provisionNewUser(user: {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+}): Promise<string> {
+  const invited = await claimInvite(user.email);
+
+  const householdId =
+    invited ?? (await db.insert(households).values({}).returning({ id: households.id }))[0].id;
+
+  await db.insert(profiles).values({
+    id: user.id,
+    household_id: householdId,
+    display_name: user.name ?? user.email?.split("@")[0] ?? "",
+    avatar_url: user.image ?? null,
+  });
+
+  // Channels are per-person, not per-household, so someone joining an existing
+  // space needs their own set too — not just whoever created it. Must run after
+  // the profile insert: `owner_id` points at it.
+  await db.insert(channels).values(
+    DEFAULT_CHANNELS.map((c, i) => ({
+      household_id: householdId,
+      owner_id: user.id,
+      name: c.name,
+      color: c.color,
+      icon: c.icon,
+      sort_order: i,
+    })),
+  );
+
+  return householdId;
+}

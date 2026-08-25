@@ -102,6 +102,46 @@ export const households = pgTable("households", {
     .$onUpdateFn(touchUpdatedAt),
 });
 
+/**
+ * A standing invitation to join a household.
+ *
+ * This table is what makes joining someone else's space an explicit act. Until
+ * it existed, `createUser` put every new sign-in into the oldest household on
+ * the assumption that there would only ever be one — which meant a stranger
+ * signing up landed inside someone else's data.
+ *
+ * Matched on `email` at sign-up rather than on a link click: the invitee has no
+ * account yet when the invite is sent, so there is no user id to point at. The
+ * token is for the accept link; the email is what the claim actually keys on.
+ */
+export const householdInvites = pgTable(
+  "household_invites",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    household_id: uuid("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    invited_by: uuid("invited_by")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    /** Stored lowercased — the claim compares against a lowercased address. */
+    email: text("email").notNull(),
+    token: text("token").notNull().unique(),
+    expires_at: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+    /** Set once claimed, so a single invite can't seed two accounts. */
+    accepted_at: timestamp("accepted_at", { withTimezone: true, mode: "string" }),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("household_invites_email_idx")
+      .on(t.email)
+      .where(sql`${t.accepted_at} is null`),
+    index("household_invites_household_idx").on(t.household_id),
+  ],
+);
+
 export const profiles = pgTable(
   "profiles",
   {

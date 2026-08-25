@@ -1,23 +1,10 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { and, asc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import {
-  accounts,
-  channels,
-  households,
-  profiles,
-  sessions,
-  users,
-  verificationTokens,
-} from "@/lib/db/schema";
-
-const DEFAULT_CHANNELS = [
-  { name: "Trabajo", color: "#0d9488", icon: "briefcase" },
-  { name: "Hogar", color: "#ea580c", icon: "home" },
-  { name: "Personal", color: "#7c3aed", icon: "sparkles" },
-];
+import { accounts, profiles, sessions, users, verificationTokens } from "@/lib/db/schema";
+import { provisionNewUser } from "@/lib/household-provisioning";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -82,39 +69,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     /**
      * Ported from Supabase's `handle_new_user` trigger. Fires exactly once,
-     * right after the Adapter inserts a brand-new user row. This app is
-     * permanently a 2-person household — every new sign-in joins whichever
-     * household already exists (creating one with default channels only the
-     * very first time, i.e. never in practice post-migration).
+     * right after the Adapter inserts a brand-new user row.
+     *
+     * Every new account gets a household of its own. The only way into someone
+     * else's is a standing invite addressed to this email — an explicit act by
+     * someone already inside.
+     *
+     * This used to join whichever household was oldest, on the assumption that
+     * there would only ever be one. That assumption held for exactly two users;
+     * a third sign-up would have landed inside their data.
      */
     async createUser({ user }) {
       if (!user.id) return;
-
-      let [household] = await db
-        .select({ id: households.id })
-        .from(households)
-        .orderBy(asc(households.created_at))
-        .limit(1);
-
-      if (!household) {
-        [household] = await db.insert(households).values({}).returning({ id: households.id });
-        await db.insert(channels).values(
-          DEFAULT_CHANNELS.map((c, i) => ({
-            household_id: household.id,
-            owner_id: user.id!,
-            name: c.name,
-            color: c.color,
-            icon: c.icon,
-            sort_order: i,
-          })),
-        );
-      }
-
-      await db.insert(profiles).values({
+      await provisionNewUser({
         id: user.id,
-        household_id: household.id,
-        display_name: user.name ?? user.email?.split("@")[0] ?? "",
-        avatar_url: user.image ?? null,
+        email: user.email,
+        name: user.name,
+        image: user.image,
       });
     },
   },
