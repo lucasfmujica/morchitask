@@ -5,6 +5,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { accounts, profiles, sessions, users, verificationTokens } from "@/lib/db/schema";
 import { provisionNewUser } from "@/lib/household-provisioning";
+import { setLocaleCookie } from "@/lib/actions/locale";
+import { toLocale } from "@/lib/locale";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -32,12 +34,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ session, user }) {
       const [profile] = await db
-        .select({ householdId: profiles.household_id })
+        .select({ householdId: profiles.household_id, locale: profiles.locale })
         .from(profiles)
         .where(eq(profiles.id, user.id));
 
       session.user.id = user.id;
       session.householdId = profile?.householdId ?? null;
+      session.locale = toLocale(profile?.locale);
       return session;
     },
     /**
@@ -48,6 +51,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * returns a refresh_token on every sign-in, so persist it ourselves.
      */
     async signIn({ user, account }) {
+      // Re-point the rendering cookie at whatever this account chose, and
+      // refresh its expiry. This is what makes the preference travel: sign in
+      // on a new phone and the column, not that browser, decides the language.
+      if (user.id) {
+        const [profile] = await db
+          .select({ locale: profiles.locale })
+          .from(profiles)
+          .where(eq(profiles.id, user.id));
+        // Never block a sign-in over a display preference.
+        await setLocaleCookie(toLocale(profile?.locale)).catch(() => {});
+      }
+
       if (account?.provider === "google" && account.refresh_token && user.id) {
         await db
           .update(accounts)

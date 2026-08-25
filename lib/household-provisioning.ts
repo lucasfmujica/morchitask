@@ -1,6 +1,8 @@
+import { headers } from "next/headers";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { channels, householdInvites, households, profiles } from "@/lib/db/schema";
+import { DEFAULT_LOCALE, localeFromAcceptLanguage } from "@/lib/locale";
 
 const DEFAULT_CHANNELS = [
   { name: "Trabajo", color: "#0d9488", icon: "briefcase" },
@@ -35,6 +37,19 @@ async function claimInvite(email: string | null | undefined): Promise<string | n
 }
 
 /**
+ * First guess at someone's language, from the browser that signed them up.
+ * Only a starting point — Settings overrides it, and that choice wins from
+ * then on. Never worth failing a sign-up over, so it falls back on any error.
+ */
+async function initialLocale() {
+  try {
+    return localeFromAcceptLanguage((await headers()).get("accept-language"));
+  } catch {
+    return DEFAULT_LOCALE;
+  }
+}
+
+/**
  * Gives a brand-new account somewhere to live: its own household, unless a
  * standing invite addressed to this email says to join an existing one.
  *
@@ -62,6 +77,7 @@ export async function provisionNewUser(user: {
     household_id: householdId,
     display_name: user.name ?? user.email?.split("@")[0] ?? "",
     avatar_url: user.image ?? null,
+    locale: await initialLocale(),
   });
 
   // Channels are per-person, not per-household, so someone joining an existing

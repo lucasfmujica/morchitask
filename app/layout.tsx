@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
 import { Providers } from "./providers";
@@ -40,16 +42,22 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // `lang` has to follow the chosen language, not sit on "es": screen readers
+  // pick pronunciation from it, and so does the browser's translate prompt.
+  const locale = await getLocale();
+
   return (
-    <html lang="es" className={dmSans.variable}>
+    <html lang={locale} className={dmSans.variable}>
       <body className="bg-bg text-fg antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-        <Providers>{children}</Providers>
+        <NextIntlClientProvider>
+          <Providers>{children}</Providers>
+        </NextIntlClientProvider>
         <AgentationProvider />
       </body>
     </html>

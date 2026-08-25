@@ -152,6 +152,9 @@ export const profiles = pgTable(
       .notNull()
       .references(() => households.id),
     display_name: text("display_name").notNull().default("Sin nombre"),
+    /** Interface language. The cookie that renders each request is a copy of
+     *  this; the column is what makes the choice follow you to another device. */
+    locale: text("locale").notNull().default("es"),
     color: text("color").notNull().default("#0d9488"),
     avatar_url: text("avatar_url"),
     capacity_target_min: integer("capacity_target_min"),
