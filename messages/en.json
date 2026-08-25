@@ -6,6 +6,58 @@
     "todayLower": "today",
     "yesterdayLower": "yesterday",
     "daysAgo": "{n} days ago",
-    "monthsAgo": "{n, plural, =1 {a month ago} other {# months ago}}"
+    "monthsAgo": "{n, plural, =1 {a month ago} other {# months ago}}",
+    "close": "Close",
+    "signOut": "Sign out",
+    "search": "Search"
+  },
+  "nav": {
+    "today": "Today",
+    "week": "Week",
+    "month": "Month",
+    "focus": "Focus",
+    "backlog": "Backlog",
+    "routines": "Routines",
+    "goals": "Goals",
+    "summary": "Summary",
+    "settings": "Settings",
+    "plan": "Plan the day",
+    "shutdown": "Shut down"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "palette": "Search tasks / jump to a view",
+    "newTask": "New task",
+    "navigate": "Previous and next day / week / month",
+    "goToday": "Go to today",
+    "toggleHelp": "Show / hide this help"
+  },
+  "presence": {
+    "fallbackName": "Your partner",
+    "working": "is on <task>{title}</task>",
+    "andMore": "{n, plural, =1 {and 1 more} other {and # more}}"
+  },
+  "chrome": {
+    "openMenu": "Open menu",
+    "showMenu": "Show menu",
+    "hideMenu": "Hide menu",
+    "closeMenu": "Close menu",
+    "close": "Close"
+  },
+  "palette": {
+    "label": "Search and quick actions",
+    "placeholder": "Search a task or type a new one…",
+    "inputLabel": "Search task or action",
+    "results": "Results",
+    "empty": "No results for “{query}”",
+    "createTask": "Create task: “{title}”",
+    "goTo": "Go to {view}"
+  },
+  "channels": {
+    "add": "Add category",
+    "namePlaceholder": "Category name…",
+    "newLabel": "New category",
+    "reorder": "Reorder category",
+    "rename": "Rename category"
   }
 }

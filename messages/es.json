@@ -6,6 +6,58 @@
     "todayLower": "hoy",
     "yesterdayLower": "ayer",
     "daysAgo": "hace {n} días",
-    "monthsAgo": "{n, plural, =1 {hace un mes} other {hace # meses}}"
+    "monthsAgo": "{n, plural, =1 {hace un mes} other {hace # meses}}",
+    "close": "Cerrar",
+    "signOut": "Cerrar sesión",
+    "search": "Buscar"
+  },
+  "nav": {
+    "today": "Hoy",
+    "week": "Semana",
+    "month": "Mes",
+    "focus": "Foco",
+    "backlog": "Backlog",
+    "routines": "Rutinas",
+    "goals": "Metas",
+    "summary": "Resumen",
+    "settings": "Ajustes",
+    "plan": "Planificar",
+    "shutdown": "Cerrar día"
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "palette": "Buscar tareas / ir a una vista",
+    "newTask": "Nueva tarea",
+    "navigate": "Día / semana / mes anterior y siguiente",
+    "goToday": "Ir a hoy",
+    "toggleHelp": "Mostrar / ocultar esta ayuda"
+  },
+  "presence": {
+    "fallbackName": "Tu compa",
+    "working": "está en <task>{title}</task>",
+    "andMore": "{n, plural, =1 {y 1 más} other {y # más}}"
+  },
+  "chrome": {
+    "openMenu": "Abrir menú",
+    "showMenu": "Mostrar menú",
+    "hideMenu": "Ocultar menú",
+    "closeMenu": "Cerrar menú",
+    "close": "Cerrar"
+  },
+  "palette": {
+    "label": "Buscar y acciones rápidas",
+    "placeholder": "Buscar una tarea o escribir una nueva…",
+    "inputLabel": "Buscar tarea o acción",
+    "results": "Resultados",
+    "empty": "Sin resultados para «{query}»",
+    "createTask": "Crear tarea: «{title}»",
+    "goTo": "Ir a {view}"
+  },
+  "channels": {
+    "add": "Agregar categoría",
+    "namePlaceholder": "Nombre de la categoría…",
+    "newLabel": "Nueva categoría",
+    "reorder": "Reordenar categoría",
+    "rename": "Renombrar categoría"
   }
 }

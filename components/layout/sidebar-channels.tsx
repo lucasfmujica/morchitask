@@ -30,6 +30,7 @@ import { useChannelFilter } from "@/lib/channel-filter";
 import { useHydrated } from "@/lib/use-hydrated";
 import type { Channel } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // Drag handle — reserved space (no layout shift), revealed on hover/touch.
 const GRIP_CLASS =
@@ -49,6 +50,7 @@ export function SidebarChannels({
   /** On views that filter by category, rows become toggle filters. */
   filterable: boolean;
 }) {
+  const t = useTranslations("channels");
   const create = useCreateChannel();
   const reorder = useReorderChannels();
   const { selected, toggle, clear } = useChannelFilter();
@@ -104,7 +106,7 @@ export function SidebarChannels({
         </span>
         <button
           onClick={() => setAdding((a) => !a)}
-          aria-label="Agregar categoría"
+          aria-label={t("add")}
           className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-fg"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -138,7 +140,7 @@ export function SidebarChannels({
               <ChannelRowBody
                 {...rowProps(c)}
                 handle={
-                  <button aria-label="Reordenar categoría" tabIndex={-1} className={GRIP_CLASS}>
+                  <button aria-label={t("reorder")} tabIndex={-1} className={GRIP_CLASS}>
                     <GripVertical className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 }
@@ -167,8 +169,8 @@ export function SidebarChannels({
                 setAdding(false);
               }
             }}
-            placeholder="Nombre de la categoría…"
-            aria-label="Nueva categoría"
+            placeholder={t("namePlaceholder")}
+            aria-label={t("newLabel")}
             className="w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
           />
         </div>
@@ -193,6 +195,7 @@ type RowProps = {
 };
 
 function SortableChannelRow(props: RowProps) {
+  const t = useTranslations("channels");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.channel.id,
   });
@@ -202,7 +205,7 @@ function SortableChannelRow(props: RowProps) {
     <button
       {...attributes}
       {...listeners}
-      aria-label="Reordenar categoría"
+      aria-label={t("reorder")}
       tabIndex={-1}
       className={GRIP_CLASS}
     >
@@ -282,6 +285,7 @@ function ChannelRowBody({
 }
 
 function ChannelMenuPanel({ channel, onClose }: { channel: Channel; onClose: () => void }) {
+  const t = useTranslations("channels");
   const update = useUpdateChannel();
   const remove = useDeleteChannel();
   const [confirming, setConfirming] = useState(false);
@@ -308,7 +312,7 @@ function ChannelMenuPanel({ channel, onClose }: { channel: Channel; onClose: () 
             onClose();
           }
         }}
-        aria-label="Renombrar categoría"
+        aria-label={t("rename")}
         className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-fg outline-none focus:border-primary"
       />
 

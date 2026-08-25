@@ -6,6 +6,7 @@ import { Check, Moon, Sun } from "lucide-react";
 import { todayISO } from "@/lib/date";
 import { useDailyNote } from "@/lib/queries/daily-notes";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // Before this hour we nudge "Planificar"; after it, "Cerrar día". Easy to tweak.
 const MORNING_UNTIL = 14;
@@ -16,7 +17,7 @@ type Ritual = {
   key: "plan" | "shutdown";
   href: string;
   base: string;
-  label: string;
+  labelKey: "plan" | "shutdown";
   icon: typeof Sun;
   tone: Tone;
   done: boolean;
@@ -45,7 +46,7 @@ function useRitualStatus(): Ritual[] {
       key: "plan",
       href: `/plan/${today}`,
       base: "/plan",
-      label: "Planificar",
+      labelKey: "plan",
       icon: Sun,
       tone: "accent",
       done: planDone,
@@ -55,7 +56,7 @@ function useRitualStatus(): Ritual[] {
       key: "shutdown",
       href: `/shutdown/${today}`,
       base: "/shutdown",
-      label: "Cerrar día",
+      labelKey: "shutdown",
       icon: Moon,
       tone: "primary",
       done: shutdownDone,
@@ -99,6 +100,7 @@ function RitualStatus({ ritual }: { ritual: Ritual }) {
 
 /** Desktop sidebar: two ritual links matching the SidebarLink visual grammar. */
 export function SidebarRituals({ pathname }: { pathname: string }) {
+  const t = useTranslations("nav");
   const rituals = useRitualStatus();
   return (
     <div className="flex flex-col gap-0.5">
@@ -117,7 +119,7 @@ export function SidebarRituals({ pathname }: { pathname: string }) {
             )}
           >
             <Icon className="h-[18px] w-[18px]" strokeWidth={lit ? 2.4 : 2} aria-hidden />
-            <span>{r.label}</span>
+            <span>{t(r.labelKey)}</span>
             <span className="ml-auto flex items-center">
               <RitualStatus ritual={r} />
             </span>
@@ -130,6 +132,7 @@ export function SidebarRituals({ pathname }: { pathname: string }) {
 
 /** Mobile top bar: the two rituals as compact icon buttons with a corner status badge. */
 export function MobileRitualIcons() {
+  const t = useTranslations("nav");
   const rituals = useRitualStatus();
   return (
     <>
@@ -139,7 +142,7 @@ export function MobileRitualIcons() {
           <Link
             key={r.key}
             href={r.href}
-            aria-label={r.label}
+            aria-label={t(r.labelKey)}
             className={cn(
               "relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
               r.emphasized
