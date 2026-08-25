@@ -7,18 +7,14 @@ import {
   profileNotificationPrefs,
   subscriptionsForProfiles,
 } from "@/lib/db/queries/cron";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 
 /** Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
  * haven't been sent yet, and pushes the owner (if they enabled task reminders).
  * Triggered every ~5 minutes via Upstash QStash, configured to send
  * `x-cron-secret` as a custom header (see migration plan Fase 5). */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  const authorized =
-    !secret ||
-    req.headers.get("x-cron-secret") === secret ||
-    req.headers.get("authorization") === `Bearer ${secret}`;
-  if (!authorized) return new Response("forbidden", { status: 401 });
+  if (!isAuthorizedCron(req)) return new Response("forbidden", { status: 401 });
 
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT!,

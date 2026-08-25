@@ -47,7 +47,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-5 text-center text-xs text-subtle">
-          Usá tu cuenta de Google. Lucas y Sofi comparten el mismo espacio.
+          Usá tu cuenta de Google. Después podés invitar a alguien a tu espacio.
         </p>
       </div>
     </main>

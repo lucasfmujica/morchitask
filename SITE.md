@@ -153,6 +153,8 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 ## Cambios recientes
 
+- 2026-08-25: **Cada cuenta nueva ahora tiene su propio espacio.** Antes, cualquier persona que se registrara entraba automáticamente al espacio más viejo que existiera — o sea, al de Lucas y Sofi, con todas sus tareas a la vista. Era la razón principal por la que la app no se podía abrir a nadie más. Ahora la única forma de entrar al espacio de otra persona es que te inviten a tu dirección de mail, y esa invitación se puede usar una sola vez y vence a los 7 días. También se cerró un agujero en los avisos automáticos: si faltaba una configuración del servidor, cualquiera podía disparar notificaciones a todos los usuarios. Se agregaron 20 pruebas automáticas que corren contra una base de datos real para que ninguna de las dos cosas pueda volver sin que alguien se entere.
+
 - 2026-08-25: Nuevo comando `node scripts/paso-0-metricas.mjs`. Contesta, con los datos que ya están en la base, si la app realmente retiene: cuántos días la usó cada persona, si el uso se sostiene o va cayendo semana a semana, y —lo más importante— cuántas veces se completó el **ritual** de planificar y cerrar el día. Es de solo lectura. Ver "Cómo saber si la app retiene" más abajo.
 
 - 2026-08-23: **Rediseño completo de las pantallas del ritual diario** (viene del bundle `design_handoff_morchitask_1a`, hecho en Claude Design). Cambió cómo se ve y se usa casi todo, sin tocar la base de datos ni sumar librerías nuevas. Lo grande:
