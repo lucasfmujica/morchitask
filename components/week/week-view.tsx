@@ -31,14 +31,7 @@ import { useShutdownDays } from "@/lib/queries/daily-notes";
 import { resolveCapacity } from "@/lib/capacity";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
-import {
-  addDays,
-  compactDayLabel,
-  todayISO,
-  weekDayHeading,
-  weekRange,
-  weekRangeLabel,
-} from "@/lib/date";
+import { addDays, todayISO, weekRange } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
 import {
   parsePriorityDropId,
@@ -60,6 +53,7 @@ import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { createTaskCollision } from "@/components/dnd/collision";
 import { CarryoverPrompt } from "@/components/day/carryover-prompt";
 import { DayLoadBar } from "./day-progress-bar";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
@@ -70,6 +64,7 @@ const NO_SUBTASKS = new Map<string, Subtask[]>();
 const weekCollision = createTaskCollision({ fallback: closestCorners });
 
 export function WeekView({ date }: { date: string }) {
+  const labels = useDateLabels();
   const router = useRouter();
   const today = todayISO();
   const week = weekRange(date, 1);
@@ -152,7 +147,7 @@ export function WeekView({ date }: { date: string }) {
       <header className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight text-fg">Semana</h1>
-          <p className="text-sm text-muted">{weekRangeLabel(week)}</p>
+          <p className="text-sm text-muted">{labels.weekRangeLabel(week)}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {closedDays.size > 0 && (
@@ -322,6 +317,7 @@ function DayColumn({
   hideClosed: boolean;
   onAdd: (title: string) => void;
 }) {
+  const labels = useDateLabels();
   const { setNodeRef, isOver } = useDroppable({ id: `day-${date}` });
   const isToday = date === today;
   const done = tasks.filter((t) => t.status === "done").length;
@@ -343,7 +339,7 @@ function DayColumn({
             isToday ? "text-primary" : "text-fg",
           )}
         >
-          {weekDayHeading(date, today)}
+          {labels.weekDayHeading(date, today)}
         </span>
         {tasks.length > 0 && (
           <span
@@ -469,11 +465,13 @@ function EmptyDay({
   today: string;
   capacityMin: number;
 }) {
+  const labels = useDateLabels();
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border-strong px-3 py-3.5 text-center">
       <p className="text-xs font-semibold text-muted">Día libre</p>
       <p className="text-2xs leading-4 text-muted">
-        {compactDayLabel(date, today)} tiene {formatMinutes(capacityMin)}. Pasá algo para acá.
+        {labels.compactDayLabel(date, today)} tiene {formatMinutes(capacityMin)}. Pasá algo para
+        acá.
       </p>
       <Link
         href="/backlog"

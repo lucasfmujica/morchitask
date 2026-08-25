@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock } from "lucide-react";
-import { fullDayLabel, todayISO } from "@/lib/date";
+import { todayISO } from "@/lib/date";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /**
  * A loud "this isn't today" strip for the day, plan and shutdown screens.
@@ -18,6 +19,7 @@ import { fullDayLabel, todayISO } from "@/lib/date";
  * now safe and only worth mentioning.
  */
 export function PastDayNotice({ date, children }: { date: string; children?: ReactNode }) {
+  const labels = useDateLabels();
   const router = useRouter();
   const today = todayISO();
   if (date >= today) return null;
@@ -28,8 +30,8 @@ export function PastDayNotice({ date, children }: { date: string; children?: Rea
       <p className="min-w-0 flex-1 text-sm text-fg">
         {children ?? (
           <>
-            Estás viendo <span className="font-semibold">{fullDayLabel(date)}</span>, que ya pasó.
-            Lo que agregues acá no aparece en Hoy.
+            Estás viendo <span className="font-semibold">{labels.fullDayLabel(date)}</span>, que ya
+            pasó. Lo que agregues acá no aparece en Hoy.
           </>
         )}
       </p>

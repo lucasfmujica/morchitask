@@ -14,18 +14,11 @@ import {
   minutesByChannel,
   ownerStats,
 } from "@/lib/analytics";
-import {
-  addDays,
-  addMonths,
-  monthLabel,
-  shortDayLabel,
-  todayISO,
-  weekRange,
-  weekRangeLabel,
-  type DayISO,
-} from "@/lib/date";
+import { addDays, addMonths, todayISO, weekRange, type DayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { DateLabels } from "@/lib/date-labels";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 type Period = "week" | "4weeks" | "month";
 
@@ -39,7 +32,9 @@ type PeriodShape = {
 };
 
 /** The days + week buckets covered by a period, anchored on `today`. */
-function buildPeriod(today: DayISO, period: Period): PeriodShape {
+/** Takes `labels` rather than reaching for the hook: this sits outside the
+ *  component, where hooks cannot run. */
+function buildPeriod(today: DayISO, period: Period, labels: DateLabels): PeriodShape {
   if (period === "month") {
     const first = `${today.slice(0, 7)}-01`;
     const last = addDays(addMonths(first, 1), -1);
@@ -51,10 +46,11 @@ function buildPeriod(today: DayISO, period: Period): PeriodShape {
     while (ws <= last) {
       const seven = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
       const inMonth = seven.filter((d) => days.has(d));
-      if (inMonth.length) weeks.push({ key: ws, label: shortDayLabel(inMonth[0]), days: inMonth });
+      if (inMonth.length)
+        weeks.push({ key: ws, label: labels.shortDayLabel(inMonth[0]), days: inMonth });
       ws = addDays(ws, 7);
     }
-    return { label: monthLabel(today), start: first, end: last, days, weeks };
+    return { label: labels.monthLabel(today), start: first, end: last, days, weeks };
   }
 
   const thisWeekStart = weekRange(today, 1)[0];
@@ -65,11 +61,14 @@ function buildPeriod(today: DayISO, period: Period): PeriodShape {
     const ws = addDays(thisWeekStart, -7 * (count - 1 - i));
     const seven = Array.from({ length: 7 }, (_, j) => addDays(ws, j));
     seven.forEach((d) => days.add(d));
-    weeks.push({ key: ws, label: shortDayLabel(ws), days: seven });
+    weeks.push({ key: ws, label: labels.shortDayLabel(ws), days: seven });
   }
   const start = weeks[0].days[0];
   const end = weeks[weeks.length - 1].days[6];
-  const label = period === "4weeks" ? weekRangeLabel([start, end]) : weekRangeLabel(weeks[0].days);
+  const label =
+    period === "4weeks"
+      ? labels.weekRangeLabel([start, end])
+      : labels.weekRangeLabel(weeks[0].days);
   return { label, start, end, days, weeks };
 }
 
@@ -80,9 +79,10 @@ const PERIODS: { value: Period; label: string }[] = [
 ];
 
 export function ResumenView() {
+  const labels = useDateLabels();
   const [period, setPeriod] = useState<Period>("week");
   const today = todayISO();
-  const shape = useMemo(() => buildPeriod(today, period), [today, period]);
+  const shape = useMemo(() => buildPeriod(today, period, labels), [today, period, labels]);
 
   const channels = useChannels().data ?? [];
   const profiles = useProfiles().data ?? [];

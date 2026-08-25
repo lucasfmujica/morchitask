@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMonthCounts } from "@/lib/queries/tasks";
-import { addMonths, monthGrid, monthLabel, monthOf, todayISO, weekRange } from "@/lib/date";
+import { addMonths, monthGrid, monthOf, todayISO, weekRange } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 const navBtn =
@@ -18,6 +19,7 @@ const navBtn =
  * state so the user can page months without changing the viewed week.
  */
 export function WeekCalendarRail({ date }: { date: string }) {
+  const labels = useDateLabels();
   const router = useRouter();
   const today = todayISO();
 
@@ -39,7 +41,9 @@ export function WeekCalendarRail({ date }: { date: string }) {
   return (
     <div className="rounded-card border border-border bg-surface p-3 shadow-soft">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-bold tracking-tight text-fg">{monthLabel(cursor)}</span>
+        <span className="text-sm font-bold tracking-tight text-fg">
+          {labels.monthLabel(cursor)}
+        </span>
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setCursor(addMonths(cursor, -1))}

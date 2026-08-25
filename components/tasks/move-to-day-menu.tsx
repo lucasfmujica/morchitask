@@ -6,9 +6,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CalendarArrowUp, Check } from "lucide-react";
 import { taskKeys, useMoveTaskToDate } from "@/lib/queries/tasks";
 import { orderForAppend } from "@/lib/ordering";
-import { addDays, fullDayLabel, todayISO, type DayISO } from "@/lib/date";
+import { addDays, todayISO, type DayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /** sort_order that appends the task to the end of `date`'s list, read from the
  *  cache. Falls back to a high value when that day isn't loaded yet. */
@@ -23,6 +24,7 @@ function useAppendOrder() {
 /** Quick reschedule options + a free date picker. Lets you move a task to
  *  another day without dragging — works on the Day view and on mobile. */
 export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "left" | "right" }) {
+  const labels = useDateLabels();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +114,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
                 >
                   <span className="flex min-w-0 flex-col">
                     <span>{o.label}</span>
-                    <span className="text-2xs text-subtle">{fullDayLabel(o.date)}</span>
+                    <span className="text-2xs text-subtle">{labels.fullDayLabel(o.date)}</span>
                   </span>
                   {active && <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />}
                 </button>

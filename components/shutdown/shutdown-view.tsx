@@ -14,7 +14,7 @@ import {
   useUpsertDailyNote,
 } from "@/lib/queries/daily-notes";
 import type { Channel, DailyNote, Task } from "@/lib/queries/types";
-import { carryOverTarget, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
+import { carryOverTarget, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import {
   accuracyLabel,
@@ -33,6 +33,7 @@ import { Confetti } from "@/components/ui/confetti";
 import { SkeletonList } from "@/components/ui";
 import { TaskReactions } from "@/components/tasks/task-reactions";
 import { PastDayNotice } from "@/components/day/past-day-notice";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 const STEPS = ["Celebrá", "Reflexioná", "Mañana"] as const;
 
@@ -82,6 +83,7 @@ function ShutdownRitual({
   note: DailyNote | null;
   capacityTarget: number;
 }) {
+  const labels = useDateLabels();
   const router = useRouter();
   const qc = useQueryClient();
   const upsert = useUpsertDailyNote(date);
@@ -168,7 +170,7 @@ function ShutdownRitual({
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-fg">Cerrar el día</h1>
-            <p className="text-sm text-muted">{fullDayLabel(date)}</p>
+            <p className="text-sm text-muted">{labels.fullDayLabel(date)}</p>
           </div>
           {streak > 0 && (
             <span
@@ -184,8 +186,8 @@ function ShutdownRitual({
       </header>
 
       <PastDayNotice date={date}>
-        Estás cerrando <span className="font-semibold">{fullDayLabel(date)}</span>, que ya pasó. Lo
-        que te haya quedado pendiente viaja a hoy.
+        Estás cerrando <span className="font-semibold">{labels.fullDayLabel(date)}</span>, que ya
+        pasó. Lo que te haya quedado pendiente viaja a hoy.
       </PastDayNotice>
 
       {step === 0 && (
@@ -484,9 +486,10 @@ function StepTomorrow({
   projectedMin: number;
   capacityTarget: number;
 }) {
+  const labels = useDateLabels();
   // Closing an old day carries its leftovers to today, not to "mañana" — so the
   // copy has to name the day it's actually moving them to.
-  const target = relativeLabel(tomorrow, todayISO()).toLowerCase();
+  const target = labels.relativeLabel(tomorrow, todayISO()).toLowerCase();
   const over = projectedMin > capacityTarget;
 
   return (

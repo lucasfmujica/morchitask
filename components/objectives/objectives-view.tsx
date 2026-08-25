@@ -12,10 +12,12 @@ import {
 } from "@/lib/queries/objectives";
 import type { ObjectiveProgress } from "@/lib/queries/objectives";
 import type { Objective, ObjectivePeriod } from "@/lib/queries/types";
-import { addDays, addMonths, monthLabel, todayISO, weekRange, weekRangeLabel } from "@/lib/date";
+import { addDays, addMonths, todayISO, weekRange } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import type { DateLabels } from "@/lib/date-labels";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /** Start/end calendar days for a period anchored on `today`. */
 function periodRange(period: ObjectivePeriod, today: string) {
@@ -27,13 +29,16 @@ function periodRange(period: ObjectivePeriod, today: string) {
   return { start, end: addDays(addMonths(start, 1), -1) };
 }
 
-function rangeLabel(o: Objective) {
+/** Takes `labels` rather than reaching for the hook: this sits outside the
+ *  component, where hooks cannot run. */
+function rangeLabel(o: Objective, labels: DateLabels) {
   return o.period === "month"
-    ? monthLabel(o.start_date)
-    : weekRangeLabel([o.start_date, o.end_date]);
+    ? labels.monthLabel(o.start_date)
+    : labels.weekRangeLabel([o.start_date, o.end_date]);
 }
 
 export function ObjectivesView() {
+  const labels = useDateLabels();
   const objectivesQ = useObjectives();
   const progressQ = useObjectiveProgress();
   const objectives = objectivesQ.data ?? [];
@@ -67,7 +72,7 @@ export function ObjectivesView() {
         title="Este mes"
         objectives={month}
         progress={progress}
-        emptyTitle={`Sin metas para ${monthLabel(todayISO())}`}
+        emptyTitle={`Sin metas para ${labels.monthLabel(todayISO())}`}
         emptyHint={
           week.length > 0
             ? `Las ${week.length === 1 ? "de esta semana apunta" : `${week.length} de esta semana apuntan`} a algo más grande. ¿Lo convertimos en la meta del mes?`
@@ -168,6 +173,7 @@ function ObjectiveRow({
   objective: Objective;
   progress?: ObjectiveProgress;
 }) {
+  const labels = useDateLabels();
   const update = useUpdateObjective();
   const remove = useDeleteObjective();
   const done = objective.status === "done";
@@ -228,7 +234,7 @@ function ObjectiveRow({
         <p className="mt-2 text-xs text-muted">
           {total > 0 ? `${completed} de ${total} tareas` : "Sin tareas vinculadas"}
           {actualMin > 0 && ` · ${formatMinutes(actualMin)} aportadas`}
-          <span className="text-subtle"> · {rangeLabel(objective)}</span>
+          <span className="text-subtle"> · {rangeLabel(objective, labels)}</span>
         </p>
       </div>
 

@@ -18,7 +18,7 @@ import { useBlocksForDate } from "@/lib/queries/task-blocks";
 import { rolloverIncomplete, useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import type { Channel, DailyNote, Task, TaskBlock } from "@/lib/queries/types";
-import { addDays, fullDayLabel, todayISO } from "@/lib/date";
+import { addDays, todayISO } from "@/lib/date";
 import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ import { blockEndMin } from "@/components/day/use-agenda-scheduling";
 import { PastDayNotice } from "@/components/day/past-day-notice";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
 import { Button, SkeletonList } from "@/components/ui";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /** Where the projection starts when the day has no blocks and hasn't begun. */
 const DAY_START_MIN = 9 * 60;
@@ -108,6 +109,7 @@ function PlanForm({
   note: DailyNote | null;
   capacityTarget: number;
 }) {
+  const labels = useDateLabels();
   const router = useRouter();
   const qc = useQueryClient();
   const upsert = useUpsertDailyNote(date);
@@ -167,13 +169,13 @@ function PlanForm({
           </span>
           <div className="min-w-0">
             <h1 className="text-2xl font-extrabold tracking-tight text-fg">Planificá tu día</h1>
-            <p className="truncate text-sm text-muted">{fullDayLabel(date)}</p>
+            <p className="truncate text-sm text-muted">{labels.fullDayLabel(date)}</p>
           </div>
         </header>
 
         <PastDayNotice date={date}>
-          Estás planificando <span className="font-semibold">{fullDayLabel(date)}</span>, que ya
-          pasó. Podés mirarlo, pero traer tareas acá las deja fuera de Hoy.
+          Estás planificando <span className="font-semibold">{labels.fullDayLabel(date)}</span>, que
+          ya pasó. Podés mirarlo, pero traer tareas acá las deja fuera de Hoy.
         </PastDayNotice>
 
         {/* Focus. Once it says something it stops looking like an empty field

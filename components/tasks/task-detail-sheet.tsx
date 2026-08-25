@@ -26,14 +26,7 @@ import { useAttachments } from "@/lib/queries/attachments";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
 import { NO_PRIORITY_LABEL, PRIORITY_DOT, PRIORITY_LABEL, TASK_PRIORITIES } from "@/lib/priority";
-import {
-  DEFAULT_TIMEZONE,
-  addDays,
-  blockInstant,
-  dueLabel,
-  timeInTimeZone,
-  todayISO,
-} from "@/lib/date";
+import { DEFAULT_TIMEZONE, addDays, blockInstant, timeInTimeZone, todayISO } from "@/lib/date";
 import {
   REMINDER_OFFSETS,
   offsetFromRemindAt,
@@ -57,6 +50,7 @@ import { TaskReactions } from "./task-reactions";
 import { TaskComments } from "./task-comments";
 import { TaskTimeBreakdown } from "./task-time-breakdown";
 import { useTaskTimer } from "./use-task-timer";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /**
  * The sheet is opened with a snapshot of the task, but edits go to the React
@@ -111,6 +105,7 @@ export function TaskDetailSheet() {
 }
 
 function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: () => void }) {
+  const labels = useDateLabels();
   // Live row from the cache so chips/toggles reflect edits instantly.
   const task = useLiveTask(snapshot);
   const update = useUpdateTask();
@@ -286,7 +281,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           <DateChip
             label={
               task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
-                ? dueLabel(task.planned_date, today)
+                ? labels.dueLabel(task.planned_date, today)
                 : "Otro día"
             }
             active={
@@ -319,7 +314,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           <DateChip
             label={
               task.due_date && task.due_date !== today && task.due_date !== tomorrow
-                ? dueLabel(task.due_date, today)
+                ? labels.dueLabel(task.due_date, today)
                 : "Otra fecha"
             }
             active={!!task.due_date && task.due_date !== today && task.due_date !== tomorrow}

@@ -14,12 +14,13 @@ import { useToast } from "@/lib/stores/toast";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { filterTasksByChannels } from "@/lib/week-filter";
 import type { Channel, Task } from "@/lib/queries/types";
-import { addDays, ageInDays, ageLabel, todayISO } from "@/lib/date";
+import { addDays, ageInDays, todayISO } from "@/lib/date";
 import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { Button, EmptyState, SkeletonList } from "@/components/ui";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /** Past this, an idea isn't waiting for a slot — it's waiting for a decision. */
 const STALE_DAYS = 30;
@@ -160,6 +161,7 @@ function BacklogRow({
   today: string;
   estimating: boolean;
 }) {
+  const labels = useDateLabels();
   const move = useMoveTaskToDate();
   const update = useUpdateTask();
   const openDetail = useTaskDetail((s) => s.open);
@@ -211,7 +213,7 @@ function BacklogRow({
         <span className="block truncate text-sm text-fg">{task.title}</span>
         <span className="block truncate text-2xs text-muted">
           {channel ? `#${channel.name} · ` : ""}
-          {ageLabel(task.created_at, today)}
+          {labels.ageLabel(task.created_at, today)}
         </span>
       </button>
 

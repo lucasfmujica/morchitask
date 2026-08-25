@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMonthCounts, type DayCount } from "@/lib/queries/tasks";
-import { addMonths, monthGrid, monthLabel, monthOf, todayISO } from "@/lib/date";
+import { addMonths, monthGrid, monthOf, todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 const WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
 
 export function MonthView({ date }: { date: string }) {
+  const labels = useDateLabels();
   const router = useRouter();
   const today = todayISO();
   const weeks = monthGrid(date, 1);
@@ -25,7 +27,9 @@ export function MonthView({ date }: { date: string }) {
   return (
     <div className="flex max-w-3xl flex-col gap-4 lg:max-w-4xl">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight text-fg">{monthLabel(date)}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-fg">
+          {labels.monthLabel(date)}
+        </h1>
         <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => router.push(`/month/${addMonths(date, -1)}`)}

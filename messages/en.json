@@ -1,1 +1,11 @@
-{}
+{
+  "common": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "todayLower": "today",
+    "yesterdayLower": "yesterday",
+    "daysAgo": "{n} days ago",
+    "monthsAgo": "{n, plural, =1 {a month ago} other {# months ago}}"
+  }
+}

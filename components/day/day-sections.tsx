@@ -6,11 +6,11 @@ import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import type { Channel, Task } from "@/lib/queries/types";
 import { formatMinutes } from "@/lib/format";
-import { ageLabel } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { CollapsibleSection } from "@/components/ui";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /** The 3px category rail, shared by both section row types. */
 function Rail({ channel }: { channel?: Channel }) {
@@ -114,6 +114,7 @@ export function UnscheduledSection({
   channelsById: Map<string, Channel>;
   defaultOpen?: boolean;
 }) {
+  const labels = useDateLabels();
   const backlogQ = useBacklogTasks();
   const move = useMoveTaskToDate();
   const openDetail = useTaskDetail((s) => s.open);
@@ -164,7 +165,7 @@ export function UnscheduledSection({
               <span className="block truncate text-sm text-fg">{task.title}</span>
               <span className="block truncate text-2xs text-muted">
                 {channel ? `#${channel.name} · ` : ""}
-                {ageLabel(task.created_at)}
+                {labels.ageLabel(task.created_at)}
               </span>
             </button>
             {task.time_estimate_min ? (

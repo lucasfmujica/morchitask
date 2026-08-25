@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
 import { useProfiles } from "@/lib/queries/profiles";
 import { useSetTaskDayTime, useTaskTimeEntries } from "@/lib/queries/tasks";
-import { addDays, compactDayLabel, todayISO } from "@/lib/date";
+import { addDays, todayISO } from "@/lib/date";
 import { formatDuration, parseDuration } from "@/lib/format";
 import { buildTimeBreakdown, type TimeBreakdown, type TimeSegment } from "@/lib/time-entries";
 import { cn } from "@/lib/utils";
 import type { Profile, Task } from "@/lib/queries/types";
 import { OwnerAvatar } from "./owner-avatar";
+import { useDateLabels } from "@/lib/use-date-labels";
 
 /**
  * Day-by-day tracked time for one task.
@@ -80,6 +81,7 @@ export function TimeBreakdownList({
   /** Set (not add) my minutes on `day`. */
   onSetDay?: (day: string, minutes: number) => void;
 }) {
+  const labels = useDateLabels();
   const { days, untrackedMin } = breakdown;
   const running = new Set(runningDays);
   const multiPerson = profiles.length > 1;
@@ -127,7 +129,7 @@ export function TimeBreakdownList({
             return (
               <li key={d.day} className="flex items-center gap-2.5">
                 <span className="w-14 shrink-0 truncate text-xs font-semibold text-fg sm:w-16">
-                  {compactDayLabel(d.day, today)}
+                  {labels.compactDayLabel(d.day, today)}
                 </span>
                 <DurationInput
                   initial={myMinutes(d.day)}
@@ -154,7 +156,7 @@ export function TimeBreakdownList({
                   d.day === today ? "font-semibold text-fg" : "text-muted",
                 )}
               >
-                {compactDayLabel(d.day, today)}
+                {labels.compactDayLabel(d.day, today)}
               </span>
 
               <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2">
