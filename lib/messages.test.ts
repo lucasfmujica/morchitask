@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/messages/en.json";
 import es from "@/messages/es.json";
+import { PRIORITY_GROUPS, priorityLabelKey } from "@/lib/priority";
 
 /** Flattens {a: {b: "x"}} to ["a.b"], so a whole missing namespace shows up. */
 function keysOf(obj: Record<string, unknown>, prefix = ""): string[] {
@@ -42,5 +43,18 @@ describe("message catalogs", () => {
 
   it("is not empty — this test is worthless if the catalogs are", () => {
     expect(esKeys.length).toBeGreaterThan(20);
+  });
+
+  /**
+   * `lib/priority.ts` hands out catalog keys instead of words, so nothing in
+   * the type system connects the two. A rename on either side would surface
+   * only as the literal string "priorityHigh" appearing in the UI.
+   */
+  it("has an entry for every key lib/priority hands out", () => {
+    for (const priority of [...PRIORITY_GROUPS]) {
+      const key = `tasks.${priorityLabelKey(priority)}`;
+      expect(esKeys, `es is missing ${key}`).toContain(key);
+      expect(enKeys, `en is missing ${key}`).toContain(key);
+    }
   });
 });

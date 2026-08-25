@@ -10,6 +10,7 @@ import { addDays, todayISO, type DayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /** sort_order that appends the task to the end of `date`'s list, read from the
  *  cache. Falls back to a high value when that day isn't loaded yet. */
@@ -24,6 +25,7 @@ function useAppendOrder() {
 /** Quick reschedule options + a free date picker. Lets you move a task to
  *  another day without dragging — works on the Day view and on mobile. */
 export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "left" | "right" }) {
+  const t = useTranslations("tasks");
   const labels = useDateLabels();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -55,7 +57,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
   const options: { label: string; date: DayISO }[] = [
     { label: "Hoy", date: today },
     { label: "Mañana", date: tomorrow },
-    { label: "Próx. lunes", date: nextMonday },
+    { label: t("nextMonday"), date: nextMonday },
   ];
 
   return (
@@ -71,8 +73,8 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Mover a otro día"
-        title="Mover a otro día"
+        aria-label={t("moveToDay")}
+        title={t("moveToDay")}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(

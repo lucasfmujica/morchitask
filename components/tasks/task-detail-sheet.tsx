@@ -25,7 +25,12 @@ import {
 import { useAttachments } from "@/lib/queries/attachments";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
-import { NO_PRIORITY_LABEL, PRIORITY_DOT, PRIORITY_LABEL, TASK_PRIORITIES } from "@/lib/priority";
+import {
+  NO_PRIORITY_LABEL_KEY,
+  PRIORITY_DOT,
+  PRIORITY_LABEL_KEY,
+  TASK_PRIORITIES,
+} from "@/lib/priority";
 import { DEFAULT_TIMEZONE, addDays, blockInstant, timeInTimeZone, todayISO } from "@/lib/date";
 import {
   REMINDER_OFFSETS,
@@ -51,6 +56,7 @@ import { TaskComments } from "./task-comments";
 import { TaskTimeBreakdown } from "./task-time-breakdown";
 import { useTaskTimer } from "./use-task-timer";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /**
  * The sheet is opened with a snapshot of the task, but edits go to the React
@@ -105,6 +111,7 @@ export function TaskDetailSheet() {
 }
 
 function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: () => void }) {
+  const tt = useTranslations("tasks");
   const labels = useDateLabels();
   // Live row from the cache so chips/toggles reflect edits instantly.
   const task = useLiveTask(snapshot);
@@ -386,14 +393,14 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         <div className="flex flex-wrap gap-1.5">
           <Chip
             active={!task.priority}
-            label={NO_PRIORITY_LABEL}
+            label={tt(NO_PRIORITY_LABEL_KEY)}
             onClick={() => update.mutate({ task, patch: { priority: null } })}
           />
           {TASK_PRIORITIES.map((p) => (
             <Chip
               key={p}
               active={task.priority === p}
-              label={PRIORITY_LABEL[p]}
+              label={tt(PRIORITY_LABEL_KEY[p])}
               color={PRIORITY_DOT[p]}
               onClick={() => update.mutate({ task, patch: { priority: p } })}
             />

@@ -1,8 +1,9 @@
 "use client";
 
 import { ChevronDown, ChevronsUp, Equal } from "lucide-react";
-import { PRIORITY_LABEL, type PriorityKey, type TaskPriority } from "@/lib/priority";
+import { PRIORITY_LABEL_KEY, type PriorityKey, type TaskPriority } from "@/lib/priority";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 const TONE_STYLES: Record<TaskPriority, string> = {
   high: "bg-danger/10 text-danger",
@@ -28,6 +29,7 @@ export function PriorityBadge({
   priority: PriorityKey;
   className?: string;
 }) {
+  const t = useTranslations("tasks");
   if (!priority) return null;
   const Icon = ICONS[priority];
   return (
@@ -37,10 +39,10 @@ export function PriorityBadge({
         TONE_STYLES[priority],
         className,
       )}
-      title={`Prioridad ${PRIORITY_LABEL[priority].toLowerCase()}`}
+      title={t("priorityTitle", { level: t(PRIORITY_LABEL_KEY[priority]) })}
     >
       <Icon className="h-3 w-3" aria-hidden />
-      {PRIORITY_LABEL[priority]}
+      {t(PRIORITY_LABEL_KEY[priority])}
     </span>
   );
 }

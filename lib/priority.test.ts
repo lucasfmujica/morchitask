@@ -4,7 +4,7 @@ import {
   isTaskPriority,
   parsePriorityDropId,
   priorityDropId,
-  priorityLabel,
+  priorityLabelKey,
   priorityRank,
   priorityRows,
   resolveTaskDrop,
@@ -25,12 +25,14 @@ describe("priorityRank", () => {
   });
 });
 
-describe("priorityLabel", () => {
-  it("labels every slot in Spanish", () => {
-    expect(priorityLabel("high")).toBe("Alta");
-    expect(priorityLabel("medium")).toBe("Media");
-    expect(priorityLabel("low")).toBe("Baja");
-    expect(priorityLabel(null)).toBe("Sin prioridad");
+describe("priorityLabelKey", () => {
+  // Keys, not words: the labels moved to the message catalog so they can be
+  // read in either language. What stays here is that every slot maps to one.
+  it("maps every slot to a catalog key, including 'none'", () => {
+    expect(priorityLabelKey("high")).toBe("priorityHigh");
+    expect(priorityLabelKey("medium")).toBe("priorityMedium");
+    expect(priorityLabelKey("low")).toBe("priorityLow");
+    expect(priorityLabelKey(null)).toBe("noPriority");
   });
 });
 

@@ -13,6 +13,7 @@ import { TaskCheckbox } from "./task-checkbox";
 import { TaskMetaRow } from "./task-meta-row";
 import { TaskReactions } from "./task-reactions";
 import { useTaskTimer } from "./use-task-timer";
+import { useTranslations } from "next-intl";
 
 /**
  * The task card, in its post-redesign anatomy: a category rail and exactly two
@@ -46,6 +47,7 @@ export function TaskCard({
   subtasks?: Subtask[];
   density?: Density;
 }) {
+  const t = useTranslations("tasks");
   const toggle = useToggleTask();
   const remove = useDeleteTask();
   const update = useUpdateTask();
@@ -86,8 +88,8 @@ export function TaskCard({
   function handleToggle() {
     if (timer.running) timer.stopTimer();
     toggle.mutate(task);
-    toast(done ? "Marcada como pendiente" : "Hecha", {
-      label: "Deshacer",
+    toast(done ? t("markedPending") : t("done"), {
+      label: t("undo"),
       run: () => toggle.mutate({ ...task, status: done ? "todo" : "done" } as Task),
     });
   }
@@ -143,8 +145,8 @@ export function TaskCard({
           <button
             onClick={cycleEstimate}
             disabled={done}
-            aria-label="Estimación de tiempo"
-            title={done ? "Tiempo medido" : "Estimar tiempo"}
+            aria-label={t("estimate")}
+            title={done ? t("measuredTime") : t("estimateTime")}
             className="shrink-0 cursor-pointer rounded text-xs font-semibold tabular-nums text-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:cursor-default disabled:hover:text-muted"
           >
             {rightLabel}
@@ -154,8 +156,8 @@ export function TaskCard({
           !done && (
             <button
               onClick={cycleEstimate}
-              aria-label="Estimar tiempo"
-              title="Estimar tiempo"
+              aria-label={t("estimateTime")}
+              title={t("estimateTime")}
               className="shrink-0 cursor-pointer rounded text-subtle opacity-0 transition-opacity hover:text-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none group-hover:opacity-100 touch:opacity-100"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />

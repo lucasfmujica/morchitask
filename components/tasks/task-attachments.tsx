@@ -17,6 +17,7 @@ import {
 } from "@/lib/queries/attachments";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /**
  * Files attached to a task: photos, PDFs, documents.
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
  * anything this sheet could show in 300 pixels.
  */
 export function TaskAttachments({ taskId }: { taskId: string }) {
+  const t = useTranslations("tasks");
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const { data: files = [] } = useAttachments(taskId);
@@ -62,7 +64,9 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
   }
 
   const nameOf = (userId: string) =>
-    userId === me?.id ? "Vos" : (profiles.find((p) => p.id === userId)?.display_name ?? "Alguien");
+    userId === me?.id
+      ? "Vos"
+      : (profiles.find((p) => p.id === userId)?.display_name ?? t("someone"));
 
   return (
     <div className="flex flex-col gap-2">
@@ -144,7 +148,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         )}
       >
         <Paperclip className="h-4 w-4" aria-hidden />
-        {dragging ? "Soltá el archivo acá" : "Agregar archivo"}
+        {dragging ? t("dropFile") : t("addFile")}
       </button>
 
       <input
