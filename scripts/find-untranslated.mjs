@@ -20,7 +20,7 @@ import { join } from "node:path";
 const VISIBLE_ATTRS = ["placeholder", "aria-label", "title", "alt", "kbdHint", "hint", "label"];
 
 /** Text that is not language: symbols, brand, key caps, bare numbers. */
-const ALLOWED = /^(?:[\s\d.,:;+\-–—/%·×()[\]{}]*|Morchitask|Google|Spotify|esc|[A-Z]|⌘K|↑|↓|⏎)$/;
+const ALLOWED = /^(?:[\s\d.,:;+\-–—/%·×()[\]{}]*|Morchitask|Google|Spotify|esc|[A-Z]|⌘K|↑|↓|⏎|Enter|Escape|Tab|Backspace|Delete|Arrow(?:Up|Down|Left|Right)|Premium|Promise)$/;
 
 /** Tailwind classes, CSS values and framework literals — most of the noise. */
 const CSSISH =
@@ -81,7 +81,10 @@ function findings(file) {
     const text = m[1];
     if (ALLOWED.test(text)) continue;
     if (!/\p{L}{2}/u.test(text)) continue;
-    if (!/[\s]/.test(text) && !/[áéíóúñÁÉÍÓÚÑ¿¡]/.test(text)) continue; // one plain word: likely an id
+    // A single word only counts when it looks like a word: an accent, or a
+    // capitalised first letter. "Foco" is copy; "focus" is an identifier.
+    const oneWord = !/\s/.test(text);
+    if (oneWord && !/[áéíóúñÁÉÍÓÚÑ¿¡]/.test(text) && !/^[A-ZÁ-Ú][a-zá-úñ]{2,}$/u.test(text)) continue;
     if (CSSISH.test(text)) continue;
     if (/[{}`$=<>[\]]/.test(text)) continue; // the regex ran through code, not a string
     if (/^[a-z-]+\/[a-z0-9-]+$/.test(text)) continue; // a mime type
