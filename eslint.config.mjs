@@ -17,8 +17,6 @@ const eslintConfig = defineConfig([
     "public/sw.js.map",
     "public/swe-worker*.js",
     ".shipstudio/**",
-    // Supabase Edge Functions run on Deno, not in the Next app:
-    "supabase/functions/**",
   ]),
   {
     /**

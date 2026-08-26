@@ -76,7 +76,7 @@ export const verificationTokens = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// App tables — ported 1:1 from lib/supabase/database.types.ts.
+// App tables — ported 1:1 from the Supabase schema this replaced.
 // google_credentials is dropped: the Google refresh token now lives on
 // `accounts` (provider = "google"), populated automatically by the adapter.
 //
