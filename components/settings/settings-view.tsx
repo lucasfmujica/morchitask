@@ -19,6 +19,7 @@ import { ChannelsManager } from "./channels-manager";
 import { InviteCard } from "./invite-card";
 import { NotificationsCard } from "./notifications-card";
 import { LanguageSelector } from "./language-selector";
+import { DangerZone } from "./danger-zone";
 import { useTranslations } from "next-intl";
 
 export function SettingsView() {
@@ -247,6 +248,12 @@ export function SettingsView() {
       {/* Notifications */}
       <Section title={t("notifications")}>
         <NotificationsCard />
+      </Section>
+
+      {/* Data rights. Last, because it is where you leave — and visible,
+          because the privacy policy says it is here. */}
+      <Section title={t("yourData")}>
+        <DangerZone />
       </Section>
 
       <button

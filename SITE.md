@@ -19,7 +19,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 (time-blocking) con una agenda visual por horas. Vos y Sofi comparten el mismo espacio.
 
 - ✅ Diseño base (colores, fuente, modo claro/oscuro) + PWA instalable
-- ✅ Base de datos con login, hogar compartido, canales y tareas (con seguridad por fila)
+- ✅ Base de datos con login, hogar compartido, canales y tareas (cada espacio aislado del resto, verificado con un test que levanta una base de verdad)
 - ✅ Login con Google (requiere una configuración tuya — ver `docs/GOOGLE_SETUP.md`)
 - ✅ Vista del **Día**: agregar, completar, editar, borrar, **reordenar arrastrando**
 - ✅ Vista **Semana** (estilo Sunsama): el **mini-calendario** y el **filtro por categorías** viven en la **barra lateral única** (como Sunsama), así las columnas de días usan **todo el ancho**; cada día es una **tarjeta** con una **barra de carga** (cuánto planeaste contra tu capacidad, no cuánto tildaste) y los días ya cerrados se pueden plegar
@@ -33,7 +33,9 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 
 ## Páginas
 
-- **/** — redirige a "Hoy".
+- **/** — la **portada pública**: qué es la app, el ritual y el precio. Si ya entraste, te lleva a "Hoy".
+- **/pricing** — el precio, qué incluye y por qué no hay plan gratis.
+- **/privacy** y **/terms** — política de privacidad y términos. Google los pide para verificar la app.
 - **/login** — entrar con Google.
 - **/today** y **/day/AAAA-MM-DD** — la vista del Día (con pestañas **Lista** y **Agenda**).
 - **/plan/AAAA-MM-DD** — **planificar el día** (ritual de la mañana): poné tu foco del día, traé lo que quedó de ayer o del backlog, ajustá duraciones y mirá la **capacidad del día**.
@@ -152,6 +154,10 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-08-26: **Ya podés llevarte tus datos, y borrar la cuenta.** En Ajustes, abajo de todo, hay una sección nueva: **Tus datos**. Con **Descargar** te bajás un archivo con todo lo tuyo —tareas, notas, categorías, metas, rutinas, comentarios y los tiempos que mediste—; con **Borrar cuenta** se va todo, para siempre, sin copia guardada. El borrado pide que escribas una palabra en vez de un simple "¿estás seguro?", porque un botón de confirmar se aprieta sin leer. Dos cosas que importan: si compartís el espacio con alguien, **lo de esa persona queda intacto** (sus tareas siguen ahí, sin tu nombre), y si eras la última persona del espacio, el espacio se va con vos. Esto no es un extra: la política de privacidad ya prometía las dos cosas, así que hasta hoy decía algo que no era cierto.
+
+- 2026-08-26: **La app dejó de ser privada: ya tiene portada, precio y legales.** Hasta ayer no existía ninguna página que pudiera ver alguien sin cuenta — entrabas y te mandaba al login. Ahora hay cuatro páginas públicas: la **portada** (el ritual de la mañana, el día, el cierre, y una sección honesta de lo que la app **no** hace), **el precio** (US$10 por mes o US$80 por año, 14 días de prueba sin tarjeta, con la comparación contra Sunsama), y la **política de privacidad** y los **términos**, que Google exige para verificar el acceso al calendario. Las legales están marcadas como borrador a propósito: cubren lo que Google pide, pero conviene que las lea un abogado antes de cobrarle a alguien. Además, la primera vez que alguien entra, la app le habla en **el idioma de su navegador** en vez de asumir español.
 
 - 2026-08-25: **La app ya está preparada para hablar otro idioma.** Todavía se ve exactamente igual —todo sigue en español y nada cambió de lugar—, pero por dentro quedó armada para que agregar inglés sea llenar una lista de textos en vez de tocar cada pantalla. Lo que sí cambió por dentro: la parte que convierte una fecha en palabras ("Lunes 23 de junio", "hace 3 meses") se separó del resto, porque en inglés no alcanza con traducir palabra por palabra — se escribe al revés ("Monday, June 23") y los plurales funcionan distinto. Se comprobó que las fechas en español salen idénticas a antes en 400 días seguidos, uno por uno. El idioma se va a poder elegir en Ajustes y queda guardado en tu cuenta, así que te sigue si entrás desde otro dispositivo.
 
