@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { withIntl } from "@/test/intl";
 
 const listInvites = vi.fn();
 const inviteToHousehold = vi.fn();
@@ -18,9 +19,11 @@ const { InviteCard } = await import("./invite-card");
 const renderCard = () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={qc}>
-      <InviteCard />
-    </QueryClientProvider>,
+    withIntl(
+      <QueryClientProvider client={qc}>
+        <InviteCard />
+      </QueryClientProvider>,
+    ),
   );
 };
 
