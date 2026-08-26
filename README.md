@@ -106,6 +106,8 @@ drizzle/migrations/       # Schema migrations
 
 **Data flow:** components read and mutate through `lib/queries/*`, which wrap **Server Actions** from `lib/actions/*` in TanStack Query with optimistic updates. Every action starts with `requireSession()` and every database query takes a `householdId` — that is the authorization boundary, so it lives in one reviewable place rather than being sprinkled through the UI. Secrets (Google token refresh, calendar writes, push delivery) never reach the client.
 
+**A note on the crons.** `daily-plan` is declared in `vercel.json` and runs at 11:00 UTC (08:00 in Buenos Aires). `task-reminders` is **not**: it needs to run every few minutes, so an external Upstash QStash schedule calls it. That means nothing in this repo will tell you if that schedule stops — and that adding it to `vercel.json` without removing the QStash one would send every reminder twice. Both routes reject requests when `CRON_SECRET` is unset; they fail closed on purpose.
+
 **A note on offline.** The app installs as a PWA and its shell is precached, but **there is no offline data layer**: API traffic is `NetworkOnly` in the service worker on purpose, because caching one person's tasks and serving them to whoever opens the app next is worse than an empty list. Persisting the query cache to IndexedDB (offline _reads_) is a modest change; offline _mutations_ with replay on reconnect is a much bigger one. Neither is built — this section will say so until one of them is.
 
 ---

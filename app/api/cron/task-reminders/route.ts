@@ -12,10 +12,18 @@ import {
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/locale";
 
-/** Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
+/**
+ * Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
  * haven't been sent yet, and pushes the owner (if they enabled task reminders).
- * Triggered every ~5 minutes via Upstash QStash, configured to send
- * `x-cron-secret` as a custom header (see migration plan Fase 5). */
+ *
+ * **Scheduled outside this repo.** Unlike `daily-plan`, this one is NOT in
+ * `vercel.json`: it needs to run every ~5 minutes and Vercel's Hobby plan caps
+ * crons at daily, so it's driven by an external Upstash QStash schedule that
+ * sends `x-cron-secret` as a custom header. Two consequences worth knowing:
+ * nothing in the repo will tell you if that schedule stops, and adding it to
+ * `vercel.json` on Pro without deleting the QStash one would fire every
+ * reminder twice.
+ */
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) return new Response("forbidden", { status: 401 });
 

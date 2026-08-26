@@ -8,8 +8,11 @@
  * reads the JSX instead — text nodes and the attributes a person can actually
  * see — so a miss has to survive a rule rather than a memory.
  *
- * Not a linter: it errs toward reporting, and a few known-good hits (a brand
- * name, a key cap) stay on the list. Read the output, don't count it.
+ * Exits non-zero when it finds anything, so CI can gate on it. That only works
+ * because the filters below are tuned to zero false positives on this codebase
+ * — a scan that always reports two known-good hits is a scan everyone learns to
+ * ignore. If you add a symbol, a brand or a CSS-ish string that trips it, widen
+ * ALLOWED or CSSISH rather than letting the count drift back up.
  *
  *   node scripts/find-untranslated.mjs [paths…]     (default: components app)
  */
@@ -21,11 +24,11 @@ const VISIBLE_ATTRS = ["placeholder", "aria-label", "title", "alt", "kbdHint", "
 
 /** Text that is not language: symbols, brand, key caps, bare numbers. */
 const ALLOWED =
-  /^(?:[\s\d.,:;+\-–—/%·×()[\]{}]*|Morchitask|Google|Spotify|esc|[A-Z]|⌘K|↑|↓|⏎|Enter|Escape|Tab|Backspace|Delete|Arrow(?:Up|Down|Left|Right)|Premium|Promise)$/;
+  /^(?:[\s\d.,:;+\-–—/%·×()[\]{}]*|Morchitask|Google|Spotify|esc|[A-Z]|⌘K|↑|↓|⏎|Enter|Escape|Tab|Backspace|Delete|Home|End|Arrow(?:Up|Down|Left|Right)|Premium|Promise|Google Calendar|\d+(?:[.,]\d+)? ?[KMG]?B)$/;
 
 /** Tailwind classes, CSS values and framework literals — most of the noise. */
 const CSSISH =
-  /(^|\s)(flex|grid|inline|block|hidden|absolute|relative|fixed|sticky|rounded|border|bg-|text-|font-|tracking-|leading-|shadow|gap-|p[xytblr]?-|m[xytblr]?-|[hw]-|min-|max-|top-|bottom-|left-|right-|inset|z-|overflow|cursor-|transition|duration-|ease-|animate-|opacity-|ring-|outline|divide-|space-|truncate|shrink|grow|items-|justify-|self-|order-|col-|row-|snap-|touch-|pointer-events|whitespace|tabular-nums|sr-only|backdrop|placeholder:|hover:|focus|group|peer|md:|lg:|sm:|dark:|use client|use server|noopener|repeating-linear|var\(--|min-width|max-width)/;
+  /(^|[\s(])(flex|grid|inline|block|hidden|absolute|relative|fixed|sticky|rounded|border|bg-|text-|font-|tracking-|leading-|shadow|gap-|p[xytblr]?-|m[xytblr]?-|[hw]-|min-|max-|top-|bottom-|left-|right-|inset|z-|overflow|cursor-|transition|duration-|ease-|animate-|opacity-|ring-|outline|divide-|space-|truncate|shrink|grow|items-|justify-|self-|order-|col-|row-|snap-|touch-|pointer-events|whitespace|tabular-nums|sr-only|backdrop|placeholder:|hover:|focus|disabled:|group|peer|md:|lg:|sm:|dark:|use client|use server|noopener|repeating-linear|var\(--|min-width|max-width|prefers-color-scheme|stroke-dashoffset|linear|ease-in|ease-out)/;
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -70,6 +73,9 @@ function findings(file) {
     if (!/\p{L}{2}/u.test(text)) continue;
     if (ALLOWED.test(text)) continue;
     if (/[=;(){}[\]]|=>|\?\?|\|\||&&|\.\w/.test(text)) continue;
+    // A fragment that opens on punctuation is the tail of a generic
+    // (`Foo<Bar, VariantProps<…>>`), not a sentence someone reads.
+    if (/^[,:;.]/.test(text)) continue;
     // A lone lowercase identifier is a code fragment, not a sentence.
     if (/^[\w$]+$/.test(text) && !/^[A-ZÁ-Ú]/u.test(text)) continue;
     hits.push([lineOf(src, m.index), "text", raw]);
@@ -89,6 +95,9 @@ function findings(file) {
       continue;
     if (CSSISH.test(text)) continue;
     if (/[{}`$=<>[\]]/.test(text)) continue; // the regex ran through code, not a string
+    // Ran from one closing quote to the next opening one, capturing the code
+    // in between (`"md", elevation: "soft"`).
+    if (/^[,:;.]/.test(text)) continue;
     if (/^[a-z-]+\/[a-z0-9-]+$/.test(text)) continue; // a mime type
     hits.push([lineOf(src, m.index), "string", text]);
   }
@@ -111,3 +120,10 @@ for (const file of files.sort()) {
   }
 }
 console.log(`\n${total} candidate${total === 1 ? "" : "s"} in ${files.length} files.`);
+if (total > 0) {
+  console.log(
+    "\nMove these into messages/es.json + messages/en.json, or — if it really " +
+      "isn't language — add it to ALLOWED/CSSISH in this file.",
+  );
+  process.exit(1);
+}
