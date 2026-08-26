@@ -85,9 +85,12 @@ drizzle/migrations/ Migraciones
 ```bash
 npm run typecheck && npx eslint . && npm test && npm run build
 npm run i18n:scan     # si tocaste algo con texto
+npm run e2e           # si tocaste rutas, proxy.ts, headers o el manifest
 ```
 
 El build local necesita `DATABASE_URL` seteada (sirve cualquier string con forma de URL de Postgres; no se conecta).
+
+El E2E levanta la app solo, contra una base inalcanzable a propósito: cubre lo que ve alguien deslogueado (protección de rutas, idioma, headers, manifest). Todo lo que necesita sesión **no** está cubierto — haría falta un Postgres real _y_ el proxy HTTP de Neon delante, porque `lib/db/client.ts` habla el protocolo de Neon, no pg pelado. Dentro de un contenedor corriendo como root hace falta `PLAYWRIGHT_CHROMIUM_PATH` y `PLAYWRIGHT_NO_SANDBOX=1`.
 
 Otras cosas que valen:
 

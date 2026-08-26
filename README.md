@@ -144,9 +144,10 @@ You'll need a Postgres database ([Neon](https://neon.tech)'s free tier is what t
 | `npm test`           | Vitest (399 tests, some against a real Postgres)       |
 | `npm run i18n:scan`  | Find user-visible text that isn't in a message catalog |
 | `npm run db:migrate` | Apply Drizzle migrations                               |
+| `npm run e2e`        | Playwright against a real build (it starts it itself)  |
 | `npm run format`     | Prettier                                               |
 
-`npm run e2e` runs Playwright, which is configured but has **no specs yet** — `playwright.config.ts` points at an `e2e/` directory that doesn't exist. It's deliberately left out of CI until it does.
+`npm run e2e` runs Playwright against a real production build that the config starts itself. It covers what a logged-out visitor gets: route protection, that data endpoints serve nothing, that the interface really does render in English when the locale cookie says so, the security headers, and the PWA manifest. Anything needing a session is not covered — that needs a real Postgres _and_ Neon's HTTP proxy in front of it, since `lib/db/client.ts` speaks Neon's wire protocol rather than plain pg.
 
 ---
 
