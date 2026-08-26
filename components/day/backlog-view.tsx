@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { Button, EmptyState, SkeletonList } from "@/components/ui";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /** Past this, an idea isn't waiting for a slot — it's waiting for a decision. */
 const STALE_DAYS = 30;
@@ -34,6 +35,7 @@ const STALE_DAYS = 30;
  * rather than a trip through the task sheet.
  */
 export function BacklogView() {
+  const t = useTranslations("backlog");
   const tasksQ = useBacklogTasks();
   const channelsQ = useChannels();
   const channelLookupQ = useChannelLookup();
@@ -75,19 +77,19 @@ export function BacklogView() {
           <Inbox className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">Backlog</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
           {/* Real numbers, not "N tareas": what's here, how long it'd take, and
               how much of it you can't even weigh yet. */}
           <p className="truncate text-sm text-muted">
             {tasks.length > 0
               ? [
-                  `${tasks.length} sin fecha`,
-                  estimatedMin > 0 && `${formatMinutes(estimatedMin)} estimadas`,
-                  unestimated.length > 0 && `${unestimated.length} sin estimar`,
+                  t("undated", { n: tasks.length }),
+                  estimatedMin > 0 && t("estimated", { time: formatMinutes(estimatedMin) }),
+                  unestimated.length > 0 && t("unestimated", { n: unestimated.length }),
                 ]
                   .filter(Boolean)
                   .join(" · ")
-              : "Ideas y pendientes sin fecha."}
+              : t("subtitle")}
           </p>
         </div>
         {unestimated.length > 0 && (
@@ -98,7 +100,7 @@ export function BacklogView() {
             onClick={() => setEstimating((v) => !v)}
             aria-pressed={estimating}
           >
-            {estimating ? "Listo" : `Estimar las ${unestimated.length}`}
+            {estimating ? t("doneEstimating") : t("estimateThem", { n: unestimated.length })}
           </Button>
         )}
       </header>
@@ -110,12 +112,8 @@ export function BacklogView() {
       ) : visibleTasks.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title={filtering ? "Nada en esta categoría" : "Backlog despejado"}
-          hint={
-            filtering
-              ? "No hay pendientes de las categorías elegidas."
-              : "Guardá acá ideas y pendientes que todavía no tienen día."
-          }
+          title={filtering ? t("emptyCategory") : t("emptyTitle")}
+          hint={filtering ? t("emptyCategoryHint") : t("emptyHint")}
           kbd="N"
           kbdHint="para una nueva tarea"
         />
@@ -139,7 +137,7 @@ export function BacklogView() {
           <p className="text-sm font-semibold text-fg">
             {stale.length === 1
               ? "1 idea lleva más de un mes acá"
-              : `${stale.length} ideas llevan más de un mes acá`}
+              : t("staleWarning", { n: stale.length })}
           </p>
           <p className="mt-1 text-xs text-muted">
             O las agendás esta semana, o las archivás sin culpa.
@@ -161,6 +159,8 @@ function BacklogRow({
   today: string;
   estimating: boolean;
 }) {
+  const t = useTranslations("backlog");
+  const tt = useTranslations("tasks");
   const labels = useDateLabels();
   const move = useMoveTaskToDate();
   const update = useUpdateTask();
@@ -170,7 +170,7 @@ function BacklogRow({
   function schedule(toDate: string, label: string) {
     move.mutate({ task, toDate, sortOrder: orderForAppend([]) });
     toast(`"${task.title}" va para ${label}`, {
-      label: "Deshacer",
+      label: tt("undo"),
       run: () =>
         move.mutate({
           task: { ...task, planned_date: toDate },
@@ -219,7 +219,7 @@ function BacklogRow({
 
       <button
         onClick={cycleEstimate}
-        aria-label="Estimación de tiempo"
+        aria-label={tt("estimate")}
         className={cn(
           "shrink-0 cursor-pointer rounded-pill px-2 py-0.5 text-2xs font-semibold tabular-nums transition-colors",
           task.time_estimate_min
@@ -239,8 +239,8 @@ function BacklogRow({
         </button>
         <button
           onClick={() => schedule(addDays(today, 1), "mañana")}
-          aria-label="Pasar a mañana"
-          title="Pasar a mañana"
+          aria-label={t("moveToTomorrow")}
+          title={t("moveToTomorrow")}
           className="flex h-6 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-2 text-2xs font-bold text-muted transition-colors hover:bg-border hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
         >
           <CalendarClock className="h-3 w-3" aria-hidden />

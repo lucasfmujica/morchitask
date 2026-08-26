@@ -34,6 +34,7 @@ import {
   minutesToHHMM,
   useAgendaScheduling,
 } from "./use-agenda-scheduling";
+import { useTranslations } from "next-intl";
 
 const DEFAULT_TARGET_MIN = 18 * 60; // 18:00
 
@@ -75,6 +76,7 @@ export function AgendaView({
   activeTask: Task | null;
   activeBlockId: string | null;
 }) {
+  const td = useTranslations("day");
   const me = useMe().data;
   const { scheduleNewBlock, resizeBlock, removeBlock, connected } = useAgendaScheduling(date);
   const calendarQ = useCalendarEvents(date, connected);
@@ -202,7 +204,7 @@ export function AgendaView({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-card border border-border bg-surface p-3 shadow-soft">
-        <span className="text-sm text-muted">Terminar a las</span>
+        <span className="text-sm text-muted">{td("endAt")}</span>
         <TimePicker
           value={minutesToHHMM(targetMin)}
           onChange={(v) => {
@@ -259,7 +261,7 @@ export function AgendaView({
                 })()}
                 <TimePicker
                   value={null}
-                  placeholder="Otra hora"
+                  placeholder={td("otherTime")}
                   align="right"
                   onChange={(v) => schedule(t, v)}
                   className="shrink-0"
@@ -444,6 +446,7 @@ export function AgendaView({
 }
 
 function DragHandle({ task }: { task: Task }) {
+  const td = useTranslations("day");
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: `task-${task.id}`,
     data: { task },
@@ -453,7 +456,7 @@ function DragHandle({ task }: { task: Task }) {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      aria-label="Arrastrar al calendario"
+      aria-label={td("dragToCalendar")}
       className="shrink-0 cursor-grab touch-none text-subtle/70 transition-colors hover:text-muted active:cursor-grabbing"
     >
       <GripVertical className="h-4 w-4" aria-hidden />
@@ -496,6 +499,7 @@ function ScheduledBlock({
   onResize: (endMin: number) => void;
   dragging: boolean;
 }) {
+  const td = useTranslations("day");
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: `block-${block.id}`,
     data: { block, task },
@@ -579,7 +583,7 @@ function ScheduledBlock({
         <button
           onClick={onUnschedule}
           onPointerDown={(e) => e.stopPropagation()}
-          aria-label="Quitar este bloque"
+          aria-label={td("removeBlock")}
           className="shrink-0 cursor-pointer text-muted hover:text-danger"
         >
           <X className="h-3 w-3" aria-hidden />
@@ -597,7 +601,7 @@ function ScheduledBlock({
         onPointerMove={onResizeMove}
         onPointerUp={onResizeUp}
         onPointerCancel={onResizeUp}
-        aria-label="Cambiar duración"
+        aria-label={td("resizeBlock")}
         className="absolute inset-x-0 bottom-0 h-2.5 cursor-ns-resize touch-none"
       >
         <span className="mx-auto mt-0.5 block h-1 w-8 rounded-full bg-current opacity-0 transition-opacity group-hover:opacity-30" />

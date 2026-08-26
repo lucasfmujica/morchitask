@@ -7,6 +7,7 @@ import { taskKeys, useTasksForDate } from "@/lib/queries/tasks";
 import { useMe } from "@/lib/queries/profiles";
 import { rolloverIncomplete } from "@/lib/queries/daily-notes";
 import { addDays } from "@/lib/date";
+import { useTranslations } from "next-intl";
 
 /**
  * "Che, no terminaste esto ayer — ¿lo sumás a hoy?" A gentle nudge at the top of
@@ -14,6 +15,7 @@ import { addDays } from "@/lib/date";
  * into today (reuses the same rollover as the shutdown/plan rituals). Dismissable.
  */
 export function CarryoverPrompt({ date }: { date: string }) {
+  const t = useTranslations("day");
   const qc = useQueryClient();
   const me = useMe().data;
   const yesterday = addDays(date, -1);
@@ -43,11 +45,11 @@ export function CarryoverPrompt({ date }: { date: string }) {
     <div className="flex items-center gap-3 rounded-card border border-accent/30 bg-accent-soft/60 p-3 shadow-soft">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-fg">
-          {n === 1
-            ? "Che, ayer quedó 1 tarea sin terminar."
-            : `Che, ayer quedaron ${n} tareas sin terminar.`}
+          {/* One ICU message, not a ternary: Spanish changes the verb too
+              ("quedó" / "quedaron"), and other languages have their own rules. */}
+          {t("carryover", { n })}
         </p>
-        <p className="text-xs text-muted">¿Las sumás a hoy?</p>
+        <p className="text-xs text-muted">{t("carryoverAsk")}</p>
       </div>
       <button
         onClick={bringToToday}
@@ -59,7 +61,7 @@ export function CarryoverPrompt({ date }: { date: string }) {
       </button>
       <button
         onClick={() => setDismissed(true)}
-        aria-label="Ahora no"
+        aria-label={t("notNow")}
         className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
       >
         <X className="h-4 w-4" aria-hidden />

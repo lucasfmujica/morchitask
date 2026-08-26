@@ -9,7 +9,8 @@
     "monthsAgo": "{n, plural, =1 {hace un mes} other {hace # meses}}",
     "close": "Cerrar",
     "signOut": "Cerrar sesión",
-    "search": "Buscar"
+    "search": "Buscar",
+    "listJoin": " y "
   },
   "nav": {
     "today": "Hoy",
@@ -133,5 +134,49 @@
     "unassigned": "Sin asignar",
     "reactions": "Reacciones",
     "comments": "Comentarios"
+  },
+  "day": {
+    "capacity": "Capacidad del día",
+    "adjustCapacity": "Ajustar la capacidad de hoy",
+    "lowerCapacity": "Bajar capacidad",
+    "raiseCapacity": "Subir capacidad",
+    "planDay": "Planificar el día",
+    "shutdown": "Cerrar",
+    "shutdownDay": "Cerrar el día",
+    "emptyDay": "Tu día está en blanco",
+    "emptyCategory": "Nada en esta categoría",
+    "allDone": "Terminaste todo",
+    "noTasksInCategory": "No hay tareas de las categorías elegidas para hoy.",
+    "planHint": "Elegí unas pocas cosas para hoy y planificá con calma.",
+    "tabList": "Lista",
+    "tabAgenda": "Agenda",
+    "endAt": "Terminar a las",
+    "otherTime": "Otra hora",
+    "dragToCalendar": "Arrastrar al calendario",
+    "removeBlock": "Quitar este bloque",
+    "resizeBlock": "Cambiar duración",
+    "carryover": "{n, plural, =1 {Che, ayer quedó 1 tarea sin terminar.} other {Che, ayer quedaron # tareas sin terminar.}}",
+    "carryoverAsk": "¿Las sumás a hoy?",
+    "notNow": "Ahora no",
+    "hintYesterday": "{n, plural, =1 {1 quedó de ayer} other {# quedaron de ayer}}",
+    "hintBacklog": "{n, plural, =1 {1 espera en el backlog} other {# esperan en el backlog}}",
+    "hintTail": "{parts}. Traé dos o tres.",
+    "movedToTomorrow": "«{title}» va para mañana",
+    "doneCount": "{n, plural, =1 {1 tarea hecha} other {# tareas hechas}}. Cerrá el día cuando quieras."
+  },
+  "backlog": {
+    "title": "Backlog",
+    "subtitle": "Ideas y pendientes sin fecha.",
+    "undated": "{n, plural, =1 {1 sin fecha} other {# sin fecha}}",
+    "estimated": "{time} estimadas",
+    "unestimated": "{n, plural, =1 {1 sin estimar} other {# sin estimar}}",
+    "estimateThem": "{n, plural, =1 {Estimar la que falta} other {Estimar las #}}",
+    "doneEstimating": "Listo",
+    "emptyTitle": "Backlog despejado",
+    "emptyCategory": "Nada en esta categoría",
+    "emptyHint": "Guardá acá ideas y pendientes que todavía no tienen día.",
+    "emptyCategoryHint": "No hay pendientes de las categorías elegidas.",
+    "moveToTomorrow": "Pasar a mañana",
+    "staleWarning": "{n, plural, =1 {1 idea lleva más de un mes acá} other {# ideas llevan más de un mes acá}}"
   }
 }

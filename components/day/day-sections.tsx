@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { CollapsibleSection } from "@/components/ui";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /** The 3px category rail, shared by both section row types. */
 function Rail({ channel }: { channel?: Channel }) {
@@ -40,6 +41,7 @@ export function DoneSection({
   channelsById: Map<string, Channel>;
   defaultOpen?: boolean;
 }) {
+  const tt = useTranslations("tasks");
   const toggle = useToggleTask();
   const openDetail = useTaskDetail((s) => s.open);
   const toast = useToast();
@@ -71,8 +73,8 @@ export function DoneSection({
               checked
               onToggle={() => {
                 toggle.mutate(task);
-                toast("Marcada como pendiente", {
-                  label: "Deshacer",
+                toast(tt("markedPending"), {
+                  label: tt("undo"),
                   run: () => toggle.mutate({ ...task, status: "todo" } as Task),
                 });
               }}
@@ -114,6 +116,7 @@ export function UnscheduledSection({
   channelsById: Map<string, Channel>;
   defaultOpen?: boolean;
 }) {
+  const tt = useTranslations("tasks");
   const labels = useDateLabels();
   const backlogQ = useBacklogTasks();
   const move = useMoveTaskToDate();
@@ -128,7 +131,7 @@ export function UnscheduledSection({
   function bringToDay(task: Task) {
     move.mutate({ task, toDate: date, sortOrder: orderForAppend([]) });
     toast(`"${task.title}" va para hoy`, {
-      label: "Deshacer",
+      label: tt("undo"),
       run: () =>
         move.mutate({
           task: { ...task, planned_date: date },

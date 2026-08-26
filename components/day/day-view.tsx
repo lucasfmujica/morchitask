@@ -59,6 +59,7 @@ import { Button } from "@/components/ui";
 import { CapacityBar } from "./capacity-bar";
 import { DoneSection, UnscheduledSection } from "./day-sections";
 import { useAgendaScheduling } from "./use-agenda-scheduling";
+import { useTranslations } from "next-intl";
 
 type Mode = "list" | "agenda";
 
@@ -71,6 +72,9 @@ const dayCollision = createTaskCollision({
 });
 
 export function DayView({ date }: { date: string }) {
+  const t = useTranslations("day");
+  const tt = useTranslations("tasks");
+  const tcm = useTranslations("common");
   const [mode, setMode] = useState<Mode>("list");
   const qc = useQueryClient();
 
@@ -199,8 +203,8 @@ export function DayView({ date }: { date: string }) {
   function handleMoveOverflow(task: Task) {
     const tomorrow = addDays(date, 1);
     move.mutate({ task, toDate: tomorrow, sortOrder: orderForAppend([]) });
-    toast(`"${task.title}" va para mañana`, {
-      label: "Deshacer",
+    toast(t("movedToTomorrow", { title: task.title }), {
+      label: tt("undo"),
       run: () =>
         move.mutate({
           task: { ...task, planned_date: tomorrow },
@@ -274,16 +278,16 @@ export function DayView({ date }: { date: string }) {
           <>
             <Link
               href={`/plan/${date}`}
-              aria-label="Planificar el día"
+              aria-label={t("planDay")}
               className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors hover:bg-accent hover:text-on-accent"
             >
               <Sun className="h-5 w-5" aria-hidden />
             </Link>
-            {/* Desktop only: on a phone "Cerrar" is in the bottom nav, and the
+            {/* Desktop only: on a phone t("shutdown") is in the bottom nav, and the
                 header is deliberately down to two actions. */}
             <Link
               href={`/shutdown/${date}`}
-              aria-label="Cerrar el día"
+              aria-label={t("shutdownDay")}
               className="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-fg md:flex"
             >
               <Moon className="h-5 w-5" aria-hidden />
@@ -354,27 +358,21 @@ export function DayView({ date }: { date: string }) {
               // Three different "nothing here": a filter that matches nothing,
               // a day you finished, and a day you haven't filled. They used to
               // be one message — and now that finished tasks leave the list, a
-              // fully-done day would have read "Tu día está en blanco" with
+              // fully-done day would have read t("emptyDay") with
               // "traé más trabajo" buttons right above its own 13 hechas.
-              emptyTitle={
-                filtering
-                  ? "Nada en esta categoría"
-                  : allDone
-                    ? "Terminaste todo"
-                    : "Tu día está en blanco"
-              }
+              emptyTitle={filtering ? t("emptyCategory") : allDone ? t("allDone") : t("emptyDay")}
               emptyHint={
                 filtering
-                  ? "No hay tareas de las categorías elegidas para hoy."
+                  ? t("noTasksInCategory")
                   : allDone
-                    ? `${doneCount} ${doneCount === 1 ? "tarea hecha" : "tareas hechas"}. Cerrá el día cuando quieras.`
-                    : emptyHint(yesterdayPending, backlogCount)
+                    ? t("doneCount", { n: doneCount })
+                    : emptyHint(yesterdayPending, backlogCount, t, tcm("listJoin"))
               }
               emptyIcon={allDone && !filtering ? Check : Sparkles}
               emptyAction={
                 filtering ? undefined : allDone ? (
                   <Link href={`/shutdown/${date}`}>
-                    <Button size="sm">Cerrar el día</Button>
+                    <Button size="sm">{t("shutdownDay")}</Button>
                   </Link>
                 ) : (
                   <div className="flex flex-wrap items-center justify-center gap-2">
@@ -437,15 +435,24 @@ export function DayView({ date }: { date: string }) {
 }
 
 /** The empty day, with the two places work can come from, counted. */
-function emptyHint(yesterdayPending: number | undefined, backlogCount: number): string {
+/** Takes the translator rather than calling the hook: this is a plain helper,
+ *  and hooks may only run inside components. */
+function emptyHint(
+  yesterdayPending: number | undefined,
+  backlogCount: number,
+  t: ReturnType<typeof useTranslations<"day">>,
+  join: string,
+): string {
   const parts: string[] = [];
-  if (yesterdayPending) parts.push(`${yesterdayPending} quedaron de ayer`);
-  if (backlogCount) parts.push(`${backlogCount} esperan en el backlog`);
-  if (parts.length === 0) return "Elegí unas pocas cosas para hoy y planificá con calma.";
-  return `${parts.join(" y ")}. Traé dos o tres.`;
+  if (yesterdayPending) parts.push(t("hintYesterday", { n: yesterdayPending }));
+  if (backlogCount) parts.push(t("hintBacklog", { n: backlogCount }));
+  if (parts.length === 0) return t("planHint");
+  // The connector is language too: " y " / " and ".
+  return t("hintTail", { parts: parts.join(join) });
 }
 
 function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  const t = useTranslations("day");
   return (
     <div className="flex w-fit gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
       {(["list", "agenda"] as const).map((m) => (
@@ -458,7 +465,7 @@ function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
             mode === m ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
           )}
         >
-          {m === "list" ? "Lista" : "Agenda"}
+          {m === "list" ? t("tabList") : t("tabAgenda")}
         </button>
       ))}
     </div>

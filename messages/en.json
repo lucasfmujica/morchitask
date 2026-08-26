@@ -9,7 +9,8 @@
     "monthsAgo": "{n, plural, =1 {a month ago} other {# months ago}}",
     "close": "Close",
     "signOut": "Sign out",
-    "search": "Search"
+    "search": "Search",
+    "listJoin": " and "
   },
   "nav": {
     "today": "Today",
@@ -133,5 +134,49 @@
     "unassigned": "Unassigned",
     "reactions": "Reactions",
     "comments": "Comments"
+  },
+  "day": {
+    "capacity": "Today's capacity",
+    "adjustCapacity": "Adjust today's capacity",
+    "lowerCapacity": "Lower capacity",
+    "raiseCapacity": "Raise capacity",
+    "planDay": "Plan the day",
+    "shutdown": "Shut down",
+    "shutdownDay": "Shut down the day",
+    "emptyDay": "Your day is empty",
+    "emptyCategory": "Nothing in this category",
+    "allDone": "You finished everything",
+    "noTasksInCategory": "No tasks in the selected categories for today.",
+    "planHint": "Pick a few things for today and plan calmly.",
+    "tabList": "List",
+    "tabAgenda": "Agenda",
+    "endAt": "Finish at",
+    "otherTime": "Another time",
+    "dragToCalendar": "Drag to the calendar",
+    "removeBlock": "Remove this block",
+    "resizeBlock": "Change duration",
+    "carryover": "{n, plural, =1 {You left 1 task unfinished yesterday.} other {You left # tasks unfinished yesterday.}}",
+    "carryoverAsk": "Add them to today?",
+    "notNow": "Not now",
+    "hintYesterday": "{n, plural, =1 {1 left over from yesterday} other {# left over from yesterday}}",
+    "hintBacklog": "{n, plural, =1 {1 waiting in the backlog} other {# waiting in the backlog}}",
+    "hintTail": "{parts}. Bring two or three.",
+    "movedToTomorrow": "“{title}” moves to tomorrow",
+    "doneCount": "{n, plural, =1 {1 task done} other {# tasks done}}. Shut down whenever you like."
+  },
+  "backlog": {
+    "title": "Backlog",
+    "subtitle": "Ideas and to-dos without a date.",
+    "undated": "{n, plural, =1 {1 undated} other {# undated}}",
+    "estimated": "{time} estimated",
+    "unestimated": "{n, plural, =1 {1 unestimated} other {# unestimated}}",
+    "estimateThem": "{n, plural, =1 {Estimate the last one} other {Estimate the #}}",
+    "doneEstimating": "Done",
+    "emptyTitle": "Backlog is clear",
+    "emptyCategory": "Nothing in this category",
+    "emptyHint": "Keep ideas and to-dos here until they get a day.",
+    "emptyCategoryHint": "Nothing pending in the selected categories.",
+    "moveToTomorrow": "Move to tomorrow",
+    "staleWarning": "{n, plural, =1 {1 idea has been here over a month} other {# ideas have been here over a month}}"
   }
 }
