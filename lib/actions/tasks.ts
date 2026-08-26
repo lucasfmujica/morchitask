@@ -78,8 +78,8 @@ export async function setTaskActiveSince(taskId: string, active: boolean) {
 }
 
 /** Deletes the task and returns the Google Calendar event ids its blocks had,
- * so the client can clean them up (calendar sync stays client-side until
- * the edge functions are ported — see migration plan Fase 4). */
+ * so the client can clean them up — the calendar write goes out from the
+ * browser through `/api/calendar/blocks`, not from here. */
 export async function deleteTask(taskId: string) {
   const { householdId } = await requireSession();
   const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);

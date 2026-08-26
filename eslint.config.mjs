@@ -83,7 +83,7 @@ const eslintConfig = defineConfig([
           selector:
             'JSXAttribute[name.name=/^(placeholder|aria-label|title|alt|kbdHint|hint|label|desc|emptyTitle|emptyHint)$/] > Literal[value=/[A-Za-zÀ-ÿ]{2}/][value!="Morchitask"]',
           message:
-            "Ese texto lo lee una persona (o un lector de pantalla): sacalo a messages/es.json y usá t(\"clave\"). Si de verdad no es idioma —una marca, un símbolo— agregalo a la lista de excepciones en eslint.config.mjs.",
+            'Ese texto lo lee una persona (o un lector de pantalla): sacalo a messages/es.json y usá t("clave"). Si de verdad no es idioma —una marca, un símbolo— agregalo a la lista de excepciones en eslint.config.mjs.',
         },
         {
           // Keep the design system honest: styling goes through the semantic

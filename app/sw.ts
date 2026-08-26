@@ -17,8 +17,10 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
-    // Never cache authenticated API traffic in the SW — offline data is
-    // owned by the React Query persistence layer, not the service worker.
+    // Never cache authenticated API traffic in the SW. Serving one person's
+    // tasks to whoever opens the app next is the failure this prevents; there
+    // is no offline data layer to fall back on, so offline means the shell
+    // loads and the lists are empty, which is the honest outcome.
     {
       matcher: ({ url }) => url.pathname.startsWith("/api/"),
       handler: new NetworkOnly(),
@@ -30,7 +32,7 @@ const serwist = new Serwist({
 serwist.addEventListeners();
 
 // ------------------------------------------------------------ Web Push
-// Daily "plan your day" reminder (sent by the send-push edge function).
+// Daily "plan your day" reminder (sent by app/api/cron/daily-plan).
 self.addEventListener("push", (event) => {
   let payload: { title?: string; body?: string; url?: string } = {};
   try {
