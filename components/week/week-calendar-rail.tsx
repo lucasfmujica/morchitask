@@ -7,8 +7,10 @@ import { useMonthCounts } from "@/lib/queries/tasks";
 import { addMonths, monthGrid, monthOf, todayISO, weekRange } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
-const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
+/** Monday first, matching `monthGrid`. */
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const navBtn =
   "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
 
@@ -20,6 +22,7 @@ const navBtn =
  */
 export function WeekCalendarRail({ date }: { date: string }) {
   const labels = useDateLabels();
+  const t = useTranslations("week");
   const router = useRouter();
   const today = todayISO();
 
@@ -47,14 +50,14 @@ export function WeekCalendarRail({ date }: { date: string }) {
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setCursor(addMonths(cursor, -1))}
-            aria-label="Mes anterior"
+            aria-label={t("prevMonth")}
             className={navBtn}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
           <button
             onClick={() => setCursor(addMonths(cursor, 1))}
-            aria-label="Mes siguiente"
+            aria-label={t("nextMonth")}
             className={navBtn}
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
@@ -63,9 +66,9 @@ export function WeekCalendarRail({ date }: { date: string }) {
       </div>
 
       <div className="mb-1 grid grid-cols-7">
-        {WEEKDAYS.map((w, i) => (
-          <div key={i} className="py-1 text-center text-2xs font-semibold text-subtle">
-            {w}
+        {WEEKDAY_KEYS.map((key) => (
+          <div key={key} className="py-1 text-center text-2xs font-semibold text-subtle">
+            {t(`weekdayInitials.${key}`)}
           </div>
         ))}
       </div>
@@ -82,7 +85,7 @@ export function WeekCalendarRail({ date }: { date: string }) {
             <button
               key={d}
               onClick={() => router.push(`/week/${d}`)}
-              aria-label={`Semana del ${d}`}
+              aria-label={t("weekOf", { date: d })}
               aria-current={inWeek ? "date" : undefined}
               className={cn(
                 "flex flex-col items-center gap-0.5 py-0.5 transition-colors",

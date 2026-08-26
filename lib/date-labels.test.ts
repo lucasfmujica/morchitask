@@ -85,6 +85,17 @@ describe("English uses its own patterns, not the Spanish ones re-localized", () 
   });
 });
 
+describe("weekdayHeaders", () => {
+  it("starts on Monday, matching the month grid", () => {
+    // These are the exact seven strings the month view used to hardcode.
+    expect(es.weekdayHeaders()).toEqual(["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]);
+  });
+
+  it("names them in English too", () => {
+    expect(en.weekdayHeaders()).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+  });
+});
+
 describe("edge cases", () => {
   it("labels a day in another year without confusion", () => {
     expect(es.compactDayLabel("2027-01-05", MON)).toBe("5 ene");

@@ -178,5 +178,44 @@
     "emptyCategoryHint": "No hay pendientes de las categorías elegidas.",
     "moveToTomorrow": "Pasar a mañana",
     "staleWarning": "{n, plural, =1 {1 idea lleva más de un mes acá} other {# ideas llevan más de un mes acá}}"
+  },
+  "week": {
+    "title": "Semana",
+    "showClosed": "Mostrar días cerrados",
+    "hideClosed": "Ocultar días cerrados",
+    "showClosedShort": "Mostrar cerrados",
+    "hideClosedShort": "Ocultar cerrados",
+    "prevWeek": "Semana anterior",
+    "nextWeek": "Semana siguiente",
+    "freeDay": "Día libre",
+    "freeDayHint": "{day} tiene {capacity}. Pasá algo para acá.",
+    "fromBacklog": "Traer del backlog",
+    "addTaskToDay": "Agregar tarea a este día",
+    "addTaskPlaceholder": "Agregar tarea…",
+    "noLoad": "Sin carga",
+    "closed": "{time} · cerrado",
+    "loadOf": "{planned} de {capacity}",
+    "over": " · +{over}",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "thisWeek": "Esta semana",
+    "doneCount": "{n, plural, =1 {# hecha} other {# hechas}}",
+    "weekOf": "Semana del {date}",
+    "weekdayInitials": {
+      "mon": "L",
+      "tue": "M",
+      "wed": "M",
+      "thu": "J",
+      "fri": "V",
+      "sat": "S",
+      "sun": "D"
+    }
+  },
+  "month": {
+    "thisMonth": "Este mes",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "tapDayHint": "Tocá un día para planificarlo.",
+    "taskCount": "{n, plural, =1 {# tarea} other {# tareas}}"
   }
 }

@@ -54,6 +54,7 @@ import { createTaskCollision } from "@/components/dnd/collision";
 import { CarryoverPrompt } from "@/components/day/carryover-prompt";
 import { DayLoadBar } from "./day-progress-bar";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
@@ -65,6 +66,7 @@ const weekCollision = createTaskCollision({ fallback: closestCorners });
 
 export function WeekView({ date }: { date: string }) {
   const labels = useDateLabels();
+  const t = useTranslations("week");
   const router = useRouter();
   const today = todayISO();
   const week = weekRange(date, 1);
@@ -146,7 +148,7 @@ export function WeekView({ date }: { date: string }) {
     <div className="flex flex-col gap-4">
       <header className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">Semana</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
           <p className="text-sm text-muted">{labels.weekRangeLabel(week)}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -163,14 +165,17 @@ export function WeekView({ date }: { date: string }) {
             >
               <Check className="h-3.5 w-3.5" aria-hidden />
               <span className="hidden sm:inline">
-                {hideClosed ? "Mostrar días cerrados" : "Ocultar días cerrados"}
+                {hideClosed ? t("showClosed") : t("hideClosed")}
               </span>
-              <span className="sm:hidden">{hideClosed ? "Mostrar" : "Ocultar"} cerrados</span>
+              {/* Whole phrases, not verb + noun glued in JSX: word order differs. */}
+              <span className="sm:hidden">
+                {hideClosed ? t("showClosedShort") : t("hideClosedShort")}
+              </span>
             </button>
           )}
           <button
             onClick={() => router.push(`/week/${addDays(week[0], -7)}`)}
-            aria-label="Semana anterior"
+            aria-label={t("prevWeek")}
             className={arrow}
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -183,11 +188,11 @@ export function WeekView({ date }: { date: string }) {
               thisWeek ? "cursor-default text-subtle" : "text-primary hover:bg-primary-soft",
             )}
           >
-            Esta semana
+            {t("thisWeek")}
           </button>
           <button
             onClick={() => router.push(`/week/${addDays(week[0], 7)}`)}
-            aria-label="Semana siguiente"
+            aria-label={t("nextWeek")}
             className={arrow}
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
@@ -246,7 +251,7 @@ export function WeekView({ date }: { date: string }) {
                         timeEstimateMin: null,
                         // Order against the full (unfiltered) day so a hidden
                         // filter never corrupts sort positions.
-                        sortOrder: orderForAppend(all.map((t) => t.sort_order)),
+                        sortOrder: orderForAppend(all.map((task) => task.sort_order)),
                       },
                       // Open the new task so you can flesh it out or complete it
                       // straight away, same as the Day list.
@@ -318,11 +323,12 @@ function DayColumn({
   onAdd: (title: string) => void;
 }) {
   const labels = useDateLabels();
+  const t = useTranslations("week");
   const { setNodeRef, isOver } = useDroppable({ id: `day-${date}` });
   const isToday = date === today;
-  const done = tasks.filter((t) => t.status === "done").length;
-  const plannedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
-  const measuredMin = tasks.reduce((s, t) => s + (t.actual_time_min ?? 0), 0);
+  const done = tasks.filter((task) => task.status === "done").length;
+  const plannedMin = tasks.reduce((sum, task) => sum + (task.time_estimate_min ?? 0), 0);
+  const measuredMin = tasks.reduce((sum, task) => sum + (task.actual_time_min ?? 0), 0);
   // A closed day only folds away when you asked for it — otherwise you'd lose
   // the drop target for "actually, move that to Tuesday".
   const folded = closed && hideClosed;
@@ -380,7 +386,7 @@ function DayColumn({
         >
           <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
           <span className="min-w-0 flex-1 truncate text-2xs font-semibold text-muted">
-            {done} {done === 1 ? "hecha" : "hechas"}
+            {t("doneCount", { n: done })}
             {measuredMin > 0 && ` · ${formatMinutes(measuredMin)}`}
           </span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 -rotate-90 text-subtle" aria-hidden />
@@ -406,7 +412,10 @@ function DayColumn({
               isOver && "bg-primary-soft/50 outline-primary",
             )}
           >
-            <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={tasks.map((task) => task.id)}
+              strategy={verticalListSortingStrategy}
+            >
               {/* Columns are narrow, so separators stay compact and only appear
                   when the day actually mixes priorities (or while dragging, so
                   an empty group still has somewhere to drop). */}
@@ -466,18 +475,21 @@ function EmptyDay({
   capacityMin: number;
 }) {
   const labels = useDateLabels();
+  const t = useTranslations("week");
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border-strong px-3 py-3.5 text-center">
-      <p className="text-xs font-semibold text-muted">Día libre</p>
+      <p className="text-xs font-semibold text-muted">{t("freeDay")}</p>
       <p className="text-2xs leading-4 text-muted">
-        {labels.compactDayLabel(date, today)} tiene {formatMinutes(capacityMin)}. Pasá algo para
-        acá.
+        {t("freeDayHint", {
+          day: labels.compactDayLabel(date, today),
+          capacity: formatMinutes(capacityMin),
+        })}
       </p>
       <Link
         href="/backlog"
         className="self-center rounded-pill bg-primary/12 px-3 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
-        Traer del backlog
+        {t("fromBacklog")}
       </Link>
     </div>
   );
@@ -494,6 +506,7 @@ function WeekCard({
   owner?: Profile;
   subtasks: Subtask[];
 }) {
+  const tt = useTranslations("tasks");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { task },
@@ -519,7 +532,7 @@ function WeekCard({
       {coarse && (
         <button
           {...handle}
-          aria-label="Mover a otro día"
+          aria-label={tt("moveToDay")}
           className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 touch:opacity-100 active:cursor-grabbing"
         >
           <GripVertical className="h-3.5 w-3.5" aria-hidden />
@@ -533,12 +546,14 @@ function WeekCard({
 }
 
 function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
+  const t = useTranslations("week");
+  const tt = useTranslations("tasks");
   const [title, setTitle] = useState("");
 
   function submit() {
-    const t = title.trim();
-    if (!t) return;
-    onAdd(t);
+    const value = title.trim();
+    if (!value) return;
+    onAdd(value);
     setTitle("");
   }
 
@@ -547,7 +562,7 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
       <button
         onClick={submit}
         disabled={!title.trim()}
-        aria-label="Agregar tarea a este día"
+        aria-label={t("addTaskToDay")}
         className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-subtle transition-colors hover:text-primary disabled:opacity-40"
       >
         <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
@@ -558,8 +573,8 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
         onKeyDown={(e) => {
           if (e.key === "Enter") submit();
         }}
-        placeholder="Agregar tarea…"
-        aria-label="Nueva tarea"
+        placeholder={t("addTaskPlaceholder")}
+        aria-label={tt("newTask")}
         className="h-6 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
       />
     </div>

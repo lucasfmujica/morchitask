@@ -111,6 +111,20 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
     return titled(day, p.weekday);
   }
 
+  /**
+   * Column headers for a month grid, Monday first: "lun mar mié…" /
+   * "Mon Tue Wed…".
+   *
+   * Derived rather than kept in the catalog because date-fns already knows
+   * these names in both languages, and its Spanish output is exactly what the
+   * grid showed before. Two lists that must agree are two lists that can drift.
+   */
+  function weekdayHeaders(): string[] {
+    // Any Monday will do — only the weekday name is read back.
+    const MONDAY = "2024-01-01";
+    return Array.from({ length: 7 }, (_, i) => write(addDays(MONDAY, i), "EEE"));
+  }
+
   /** The month a day belongs to: "Junio 2026" / "June 2026". */
   function monthLabel(day: DayISO): string {
     return titled(day, "MMMM yyyy");
@@ -149,6 +163,7 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
     shortDayLabel,
     weekRangeLabel,
     weekDayHeading,
+    weekdayHeaders,
     monthLabel,
     dueLabel,
     ageLabel,

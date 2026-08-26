@@ -7,13 +7,14 @@ import { useMonthCounts, type DayCount } from "@/lib/queries/tasks";
 import { addMonths, monthGrid, monthOf, todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
-const WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
 
 export function MonthView({ date }: { date: string }) {
   const labels = useDateLabels();
+  const t = useTranslations("month");
   const router = useRouter();
   const today = todayISO();
   const weeks = monthGrid(date, 1);
@@ -33,7 +34,7 @@ export function MonthView({ date }: { date: string }) {
         <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => router.push(`/month/${addMonths(date, -1)}`)}
-            aria-label="Mes anterior"
+            aria-label={t("prevMonth")}
             className={arrow}
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -46,11 +47,11 @@ export function MonthView({ date }: { date: string }) {
               isThisMonth ? "cursor-default text-subtle" : "text-primary hover:bg-primary-soft",
             )}
           >
-            Este mes
+            {t("thisMonth")}
           </button>
           <button
             onClick={() => router.push(`/month/${addMonths(date, 1)}`)}
-            aria-label="Mes siguiente"
+            aria-label={t("nextMonth")}
             className={arrow}
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
@@ -60,7 +61,7 @@ export function MonthView({ date }: { date: string }) {
 
       <div className="rounded-card border border-border bg-surface p-2 shadow-soft sm:p-3">
         <div className="mb-1 grid grid-cols-7">
-          {WEEKDAYS.map((w) => (
+          {labels.weekdayHeaders().map((w) => (
             <div
               key={w}
               className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-subtle"
@@ -107,18 +108,19 @@ export function MonthView({ date }: { date: string }) {
         </div>
       </div>
 
-      <p className="text-center text-xs text-subtle">Tocá un día para planificarlo.</p>
+      <p className="text-center text-xs text-subtle">{t("tapDayHint")}</p>
     </div>
   );
 }
 
 function Dots({ entry }: { entry?: DayCount }) {
+  const t = useTranslations("month");
   if (!entry || entry.total === 0) return null;
   const pending = entry.total - entry.done;
   const allDone = pending === 0;
   const capped = Math.min(entry.total, 4);
   return (
-    <span className="flex items-center gap-0.5" aria-label={`${entry.total} tareas`}>
+    <span className="flex items-center gap-0.5" aria-label={t("taskCount", { n: entry.total })}>
       {Array.from({ length: capped }, (_, i) => (
         <span
           key={i}

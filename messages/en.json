@@ -178,5 +178,44 @@
     "emptyCategoryHint": "Nothing pending in the selected categories.",
     "moveToTomorrow": "Move to tomorrow",
     "staleWarning": "{n, plural, =1 {1 idea has been here over a month} other {# ideas have been here over a month}}"
+  },
+  "week": {
+    "title": "Week",
+    "showClosed": "Show closed days",
+    "hideClosed": "Hide closed days",
+    "showClosedShort": "Show closed",
+    "hideClosedShort": "Hide closed",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "freeDay": "Free day",
+    "freeDayHint": "{day} has {capacity} free. Move something here.",
+    "fromBacklog": "Pull from backlog",
+    "addTaskToDay": "Add a task to this day",
+    "addTaskPlaceholder": "Add task…",
+    "noLoad": "Nothing planned",
+    "closed": "{time} · closed",
+    "loadOf": "{planned} of {capacity}",
+    "over": " · +{over}",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "thisWeek": "This week",
+    "doneCount": "{n, plural, =1 {# done} other {# done}}",
+    "weekOf": "Week of {date}",
+    "weekdayInitials": {
+      "mon": "M",
+      "tue": "T",
+      "wed": "W",
+      "thu": "T",
+      "fri": "F",
+      "sat": "S",
+      "sun": "S"
+    }
+  },
+  "month": {
+    "thisMonth": "This month",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "tapDayHint": "Tap a day to plan it.",
+    "taskCount": "{n, plural, =1 {# task} other {# tasks}}"
   }
 }
