@@ -224,7 +224,7 @@ function BacklogRow({
             : "border border-dashed border-border-strong text-subtle hover:text-muted",
         )}
       >
-        {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "+ tiempo"}
+        {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : tt("addTime")}
       </button>
 
       <div className="flex shrink-0 items-center gap-1">

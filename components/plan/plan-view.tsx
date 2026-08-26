@@ -29,6 +29,7 @@ import { PastDayNotice } from "@/components/day/past-day-notice";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
 import { Button, SkeletonList } from "@/components/ui";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /** Where the projection starts when the day has no blocks and hasn't begun. */
 const DAY_START_MIN = 9 * 60;
@@ -110,6 +111,10 @@ function PlanForm({
   capacityTarget: number;
 }) {
   const labels = useDateLabels();
+  const t = useTranslations("plan");
+  const tcm = useTranslations("common");
+  const tnav = useTranslations("nav");
+  const tt = useTranslations("tasks");
   const router = useRouter();
   const qc = useQueryClient();
   const upsert = useUpsertDailyNote(date);
@@ -135,7 +140,11 @@ function PlanForm({
     () => projectedFinishMin(mine, blocksByTask, looseMin),
     [mine, blocksByTask, looseMin],
   );
-  const byCategory = useMemo(() => categoryBreakdown(mine, channelsById), [mine, channelsById]);
+  const noCategory = tt("noCategory");
+  const byCategory = useMemo(
+    () => categoryBreakdown(mine, channelsById, noCategory),
+    [mine, channelsById, noCategory],
+  );
 
   const yesterday = addDays(date, -1);
   const alreadyPlanned = !!note?.plan_completed_at;
@@ -168,25 +177,27 @@ function PlanForm({
             <Sun className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0">
-            <h1 className="text-2xl font-extrabold tracking-tight text-fg">Planificá tu día</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
             <p className="truncate text-sm text-muted">{labels.fullDayLabel(date)}</p>
           </div>
         </header>
 
         <PastDayNotice date={date}>
-          Estás planificando <span className="font-semibold">{labels.fullDayLabel(date)}</span>, que
-          ya pasó. Podés mirarlo, pero traer tareas acá las deja fuera de Hoy.
+          {t.rich("pastNotice", {
+            day: labels.fullDayLabel(date),
+            b: (chunks) => <span className="font-semibold">{chunks}</span>,
+          })}
         </PastDayNotice>
 
         {/* Focus. Once it says something it stops looking like an empty field
             and starts looking like a commitment. */}
         <section className="flex flex-col gap-2.5">
-          <h2 className="text-sm font-bold text-fg">Foco del día</h2>
+          <h2 className="text-sm font-bold text-fg">{t("focusHeading")}</h2>
           <textarea
             value={intention}
             onChange={(e) => setIntention(e.target.value)}
             onBlur={() => upsert.mutate({ intention: intention || null })}
-            placeholder="Una intención para el día: en qué querés avanzar de verdad…"
+            placeholder={t("intentionPlaceholder")}
             rows={2}
             className={cn(
               "w-full resize-none rounded-card border px-3 py-2.5 text-sm text-fg placeholder:text-subtle outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
@@ -202,16 +213,16 @@ function PlanForm({
         {!isPast && (yesterdayPending.length > 0 || backlog.length > 0) && (
           <section className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-fg">Para traer</h2>
+              <h2 className="text-sm font-bold text-fg">{t("pullHeading")}</h2>
               <div className="ml-auto flex gap-0.5 rounded-pill bg-surface-2 p-0.5">
                 <SourceTab
-                  label="Ayer"
+                  label={tcm("yesterday")}
                   count={yesterdayPending.length}
                   active={source === "yesterday"}
                   onClick={() => setSource("yesterday")}
                 />
                 <SourceTab
-                  label="Backlog"
+                  label={tnav("backlog")}
                   count={backlog.length}
                   active={source === "backlog"}
                   onClick={() => setSource("backlog")}
@@ -226,10 +237,10 @@ function PlanForm({
                     onClick={pullAllFromYesterday}
                     className="cursor-pointer text-xs font-semibold text-primary hover:underline"
                   >
-                    Traer las {yesterdayPending.length}
+                    {t("pullAll", { n: yesterdayPending.length })}
                   </button>
                 ) : (
-                  <span className="text-xs font-semibold text-success">Listo</span>
+                  <span className="text-xs font-semibold text-success">{t("pulled")}</span>
                 )}
               </div>
             )}
@@ -245,7 +256,7 @@ function PlanForm({
               ))}
               {pullable.length === 0 && (
                 <li className="rounded-card border border-dashed border-border px-3 py-4 text-center text-xs text-subtle">
-                  {source === "yesterday" ? "Ayer no quedó nada." : "El backlog está limpio."}
+                  {source === "yesterday" ? t("emptyYesterday") : t("emptyBacklog")}
                 </li>
               )}
             </ul>
@@ -254,12 +265,10 @@ function PlanForm({
 
         {/* The day itself — this is where estimates get filled in. */}
         <section className="flex flex-col gap-2.5">
-          <h2 className="text-sm font-bold text-fg">
-            Tu día · {mine.length} {mine.length === 1 ? "tarea" : "tareas"}
-          </h2>
+          <h2 className="text-sm font-bold text-fg">{t("dayHeading", { n: mine.length })}</h2>
           {mine.length === 0 ? (
             <p className="rounded-card border border-dashed border-border px-3 py-5 text-center text-sm text-muted">
-              Todavía no elegiste nada. Traé algo de arriba o agregá tareas en la vista del día.
+              {t("emptyDay")}
             </p>
           ) : (
             <ul className="flex flex-col gap-1.5">
@@ -285,10 +294,10 @@ function PlanForm({
             onTargetChange={(capacity_min) => upsert.mutate({ capacity_min })}
           />
           <dl className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
-            <Stat label="Agendado" value={formatMinutes(bookedMin)} />
-            <Stat label="Sin hora" value={looseMin > 0 ? formatMinutes(looseMin) : "—"} />
+            <Stat label={t("statBooked")} value={formatMinutes(bookedMin)} />
+            <Stat label={t("statLoose")} value={looseMin > 0 ? formatMinutes(looseMin) : "—"} />
             <Stat
-              label="Terminarías"
+              label={t("statFinish")}
               value={finishMin == null ? "—" : minutesAsClock(finishMin)}
               strong
             />
@@ -297,7 +306,7 @@ function PlanForm({
 
         {byCategory.length > 0 && (
           <section className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
-            <h2 className="text-xs font-bold text-fg">Reparto por categoría</h2>
+            <h2 className="text-xs font-bold text-fg">{t("categoryHeading")}</h2>
             <div className="mt-2.5 flex h-2.5 overflow-hidden rounded-pill bg-surface-2">
               {byCategory.map((c) => (
                 <span
@@ -326,7 +335,7 @@ function PlanForm({
         )}
 
         <Button size="lg" onClick={startDay} className="w-full">
-          {alreadyPlanned ? "Guardar y empezar" : "Empezar el día"}
+          {alreadyPlanned ? t("saveAndStart") : t("start")}
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Button>
       </aside>
@@ -344,6 +353,7 @@ function CapacityDial({
   targetMin: number;
   onTargetChange: (min: number) => void;
 }) {
+  const t = useTranslations("plan");
   const { pct, over, near, overByMin } = capacityState(plannedMin, targetMin);
   const targetPct = over ? (targetMin / plannedMin) * 100 : 100;
 
@@ -358,7 +368,9 @@ function CapacityDial({
         >
           {formatMinutes(plannedMin)}
         </span>
-        <span className="text-sm text-muted">de {formatMinutes(targetMin)}</span>
+        <span className="text-sm text-muted">
+          {t("capacityOf", { target: formatMinutes(targetMin) })}
+        </span>
         {over && (
           <span className="ml-auto rounded-pill bg-danger/12 px-1.5 py-0.5 text-2xs font-bold tabular-nums text-danger">
             +{formatMinutes(overByMin)}
@@ -401,7 +413,7 @@ function CapacityDial({
             onClick={() => onTargetChange(clampCapacity(targetMin + delta))}
             className="cursor-pointer rounded-pill bg-surface-2 px-2 py-0.5 text-2xs font-semibold text-muted transition-colors hover:bg-border hover:text-fg"
           >
-            {delta > 0 ? `+${delta}m` : `${delta}m`} de capacidad
+            {t("capacityDelta", { delta: delta > 0 ? `+${delta}m` : `${delta}m` })}
           </button>
         ))}
       </div>
@@ -449,6 +461,7 @@ function SourceTab({
 
 /** A pullable task (from yesterday or backlog): rail + title + "+ Hoy". */
 function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onPull: () => void }) {
+  const t = useTranslations("plan");
   return (
     <li className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-border bg-surface py-2 pr-2 pl-3.5">
       <span
@@ -467,7 +480,7 @@ function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onP
         className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary"
       >
         <Plus className="h-3 w-3" aria-hidden />
-        Hoy
+        {t("pullToToday")}
       </button>
     </li>
   );
@@ -475,6 +488,7 @@ function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onP
 
 /** A task in today's plan, with the estimate chip that makes the panel move. */
 function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
+  const tt = useTranslations("tasks");
   const toggle = useToggleTask();
   const update = useUpdateTask();
   const done = task.status === "done";
@@ -509,7 +523,7 @@ function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
       </span>
       <button
         onClick={cycleEstimate}
-        aria-label="Estimación de tiempo"
+        aria-label={tt("estimate")}
         className={cn(
           "shrink-0 cursor-pointer rounded-pill px-2 py-0.5 text-2xs font-semibold tabular-nums transition-colors",
           task.time_estimate_min
@@ -517,7 +531,7 @@ function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
             : "border border-dashed border-border-strong text-subtle hover:text-muted",
         )}
       >
-        {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "+ tiempo"}
+        {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : tt("addTime")}
       </button>
     </li>
   );
@@ -556,10 +570,13 @@ function minutesAsClock(min: number): string {
 }
 
 /** Planned minutes per category, biggest first. Uncategorised work is folded
- *  into one "Sin categoría" bucket rather than dropped — it's still your day. */
+ *  into one bucket rather than dropped — it's still your day. That bucket's
+ *  name arrives as an argument: this is a plain function, not a component, so
+ *  it has no translator of its own. */
 function categoryBreakdown(
   tasks: readonly Task[],
   channelsById: Map<string, Channel>,
+  noCategoryName: string,
 ): { id: string; name: string; color: string; minutes: number }[] {
   const totals = new Map<string, { name: string; color: string; minutes: number }>();
   for (const t of tasks) {
@@ -568,7 +585,7 @@ function categoryBreakdown(
     const channel = t.channel_id ? channelsById.get(t.channel_id) : undefined;
     const id = channel?.id ?? "none";
     const entry = totals.get(id) ?? {
-      name: channel?.name ?? "Sin categoría",
+      name: channel?.name ?? noCategoryName,
       color: channel?.color ?? "var(--color-border-strong)",
       minutes: 0,
     };

@@ -22,6 +22,10 @@ const VISIBLE_ATTRS = ["placeholder", "aria-label", "title", "alt", "kbdHint", "
 /** Text that is not language: symbols, brand, key caps, bare numbers. */
 const ALLOWED = /^(?:[\s\d.,:;+\-–—/%·×()[\]{}]*|Morchitask|Google|Spotify|esc|[A-Z]|⌘K|↑|↓|⏎)$/;
 
+/** Tailwind classes, CSS values and framework literals — most of the noise. */
+const CSSISH =
+  /(^|\s)(flex|grid|inline|block|hidden|absolute|relative|fixed|sticky|rounded|border|bg-|text-|font-|tracking-|leading-|shadow|gap-|p[xytblr]?-|m[xytblr]?-|[hw]-|min-|max-|top-|bottom-|left-|right-|inset|z-|overflow|cursor-|transition|duration-|ease-|animate-|opacity-|ring-|outline|divide-|space-|truncate|shrink|grow|items-|justify-|self-|order-|col-|row-|snap-|touch-|pointer-events|whitespace|tabular-nums|sr-only|backdrop|placeholder:|hover:|focus|group|peer|md:|lg:|sm:|dark:|use client|use server|noopener|repeating-linear|var\(--|min-width|max-width)/;
+
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     if (name === "node_modules" || name.startsWith(".")) continue;
@@ -68,6 +72,20 @@ function findings(file) {
     // A lone lowercase identifier is a code fragment, not a sentence.
     if (/^[\w$]+$/.test(text) && !/^[A-ZÁ-Ú]/u.test(text)) continue;
     hits.push([lineOf(src, m.index), "text", raw]);
+  }
+
+  // Prose sitting in a plain string literal — a ternary inside JSX, a `label:`
+  // on an object, an argument to a toast. Invisible to the two passes above,
+  // and where the leftovers hid the longest.
+  for (const m of src.matchAll(/"([^"\\\n]{3,})"/g)) {
+    const text = m[1];
+    if (ALLOWED.test(text)) continue;
+    if (!/\p{L}{2}/u.test(text)) continue;
+    if (!/[\s]/.test(text) && !/[áéíóúñÁÉÍÓÚÑ¿¡]/.test(text)) continue; // one plain word: likely an id
+    if (CSSISH.test(text)) continue;
+    if (/[{}`$=<>[\]]/.test(text)) continue; // the regex ran through code, not a string
+    if (/^[a-z-]+\/[a-z0-9-]+$/.test(text)) continue; // a mime type
+    hits.push([lineOf(src, m.index), "string", text]);
   }
   return hits;
 }

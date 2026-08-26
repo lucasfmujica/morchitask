@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  accuracyLabel,
+  accuracyLabelKey,
   carryDestination,
   defaultCarryPlan,
   projectedTomorrowMin,
@@ -100,20 +100,20 @@ describe("shutdownSummary", () => {
   });
 });
 
-describe("accuracyLabel", () => {
+describe("accuracyLabelKey", () => {
   it("says nothing when there is no ratio", () => {
-    expect(accuracyLabel(null)).toBeNull();
+    expect(accuracyLabelKey(null)).toBeNull();
   });
 
   it("calls anything within 10% on target", () => {
-    expect(accuracyLabel(1)).toBe("Calculaste bien el día");
-    expect(accuracyLabel(0.92)).toBe("Calculaste bien el día");
-    expect(accuracyLabel(1.08)).toBe("Calculaste bien el día");
+    expect(accuracyLabelKey(1)).toEqual({ key: "accuracyOnTarget", pct: 0 });
+    expect(accuracyLabelKey(0.92)).toEqual({ key: "accuracyOnTarget", pct: 0 });
+    expect(accuracyLabelKey(1.08)).toEqual({ key: "accuracyOnTarget", pct: 0 });
   });
 
   it("reports overrun and underrun in plain terms", () => {
-    expect(accuracyLabel(1.4)).toBe("Tardaste 40% más de lo previsto");
-    expect(accuracyLabel(0.7)).toBe("Terminaste 30% antes");
+    expect(accuracyLabelKey(1.4)).toEqual({ key: "accuracySlower", pct: 40 });
+    expect(accuracyLabelKey(0.7)).toEqual({ key: "accuracyFaster", pct: 30 });
   });
 });
 
