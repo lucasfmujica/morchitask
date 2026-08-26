@@ -7,14 +7,25 @@ import { auth } from "@/lib/auth";
 // from Spotify can't bounce an already-signed-in user to /login mid-flow.
 const PUBLIC_PREFIXES = ["/login", "/api/auth", "/auth"];
 
+/** The marketing surface: the only pages a stranger is meant to read. Listed
+ *  exactly rather than by prefix, so adding a route to `(marketing)` is a
+ *  deliberate act and not an accidental hole in the app. */
+const MARKETING_PATHS = ["/", "/pricing", "/privacy", "/terms"];
+
 function isPublic(pathname: string) {
+  if (MARKETING_PATHS.includes(pathname)) return true;
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 /**
  * Next 16 renamed the "middleware" convention to "proxy".
- * - no session + private route  -> redirect to /login
- * - session + /login            -> redirect to /today
+ * - no session + private route      -> redirect to /login
+ * - session + /login or /           -> redirect to /today
+ *
+ * Signed-in people never see the marketing pages at `/`: they came to plan
+ * their day, not to read a pitch they already accepted. The other marketing
+ * routes stay reachable either way — someone with an account still has a
+ * legitimate reason to read the terms or the price.
  */
 export const proxy = auth((req) => {
   const { pathname } = req.nextUrl;
@@ -26,7 +37,7 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(url);
   }
 
-  if (isLoggedIn && pathname === "/login") {
+  if (isLoggedIn && (pathname === "/login" || pathname === "/")) {
     const url = req.nextUrl.clone();
     url.pathname = "/today";
     return NextResponse.redirect(url);

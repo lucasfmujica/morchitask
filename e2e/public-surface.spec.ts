@@ -80,11 +80,18 @@ test.describe("language", () => {
   // `/login` is fully translated and needs no session, so it is the one page
   // where this can be proven end to end.
 
-  test("renders Spanish by default", async ({ page }) => {
+  test("a Spanish browser with no cookie gets Spanish", async ({ browser }) => {
+    // The locale is explicit because the rule depends on it: with no cookie the
+    // language comes from Accept-Language, so a test that relied on the
+    // runner's default browser locale would be asserting an accident.
+    const context = await browser.newContext({ locale: "es-AR" });
+    const page = await context.newPage();
     await page.goto("/login");
+
     await expect(page.locator("html")).toHaveAttribute("lang", "es");
     await expect(page.getByText("Planificá tu día y tu semana")).toBeVisible();
     await expect(page.getByRole("button", { name: "Continuar con Google" })).toBeVisible();
+    await context.close();
   });
 
   test("renders English when the locale cookie says so", async ({ page, context }) => {
@@ -99,12 +106,19 @@ test.describe("language", () => {
     await expect(page.getByText("Planificá tu día y tu semana")).toHaveCount(0);
   });
 
-  test("falls back to Spanish on a nonsense cookie", async ({ page, context }) => {
+  test("a nonsense cookie is ignored, not obeyed", async ({ browser }) => {
+    // An unusable cookie means "no stated preference", so the browser decides —
+    // the same path a first-time visitor takes. It must not render the literal
+    // "zzz" locale, and it must not throw.
+    const context = await browser.newContext({ locale: "es-AR" });
     await context.addCookies([
       { name: "morchitask-locale", value: "zzz", url: "http://localhost:3100" },
     ]);
+    const page = await context.newPage();
     await page.goto("/login");
+
     await expect(page.locator("html")).toHaveAttribute("lang", "es");
+    await context.close();
   });
 });
 
