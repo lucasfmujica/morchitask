@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
+import { getTranslations } from "next-intl/server";
 import {
   deleteSubscriptions,
   dueTaskReminders,
   markRemindersSent,
+  profileLocales,
   profileNotificationPrefs,
   subscriptionsForProfiles,
 } from "@/lib/db/queries/cron";
 import { isAuthorizedCron } from "@/lib/cron-auth";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/locale";
 
 /** Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
  * haven't been sent yet, and pushes the owner (if they enabled task reminders).
@@ -32,7 +35,15 @@ export async function GET(req: Request) {
   );
 
   const owners = [...new Set(dueTasks.map((t) => t.owner_id))];
-  const subs = await subscriptionsForProfiles(owners);
+  const [subs, locales] = await Promise.all([subscriptionsForProfiles(owners), profileLocales()]);
+
+  // Only the body is ours; the title is the task, which is whatever the person
+  // typed. One lookup per language rather than per reminder.
+  const bodies = new Map<Locale, string>();
+  for (const locale of LOCALES) {
+    const t = await getTranslations({ locale, namespace: "push" });
+    bodies.set(locale, t("reminderBody"));
+  }
   const subsByOwner = new Map<string, typeof subs>();
   for (const s of subs) {
     const list = subsByOwner.get(s.profile_id) ?? [];
@@ -47,7 +58,7 @@ export async function GET(req: Request) {
       if (!wantsReminders.has(t.owner_id)) return; // opted out — still marked sent below
       const payload = JSON.stringify({
         title: t.title,
-        body: "Es hora de tu tarea ⏰",
+        body: bodies.get(locales.get(t.owner_id) ?? DEFAULT_LOCALE)!,
         url: t.planned_date ? `/day/${t.planned_date}` : "/today",
       });
       for (const s of subsByOwner.get(t.owner_id) ?? []) {

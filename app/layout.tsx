@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
 import { Providers } from "./providers";
@@ -13,9 +13,17 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-export const metadata: Metadata = {
+/**
+ * `description` is the one piece of metadata that is prose, so it follows the
+ * reader's language. The rest is the product's name, which does not.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth");
+  return { ...metadata, description: t("appDescription") };
+}
+
+const metadata: Metadata = {
   title: "Morchitask",
-  description: "Planificá tu día con calma. Una app de productividad para organizarse juntos.",
   applicationName: "Morchitask",
   appleWebApp: {
     capable: true,

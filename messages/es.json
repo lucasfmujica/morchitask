@@ -565,5 +565,25 @@
     "resume": "Reanudar",
     "pause": "Pausar",
     "history": "Últimas {n} veces: {done} completadas"
+  },
+  "auth": {
+    "tagline": "Planificá tu día con calma, concentrate y cerrá tranquilo.",
+    "featurePlan": "Planificá tu día y tu semana",
+    "featureFocus": "Concentrate con Pomodoro",
+    "featureShutdown": "Cerrá el día con calma",
+    "googleNote": "Usá tu cuenta de Google. Después podés invitar a alguien a tu espacio.",
+    "continueWithGoogle": "Continuar con Google",
+    "connecting": "Conectando…",
+    "signInFailed": "No pudimos iniciar sesión. Intentá de nuevo.",
+    "appDescription": "Planificá tu día con calma. Una app de productividad para organizarse juntos."
+  },
+  "errors": {
+    "invalidEmail": "Esa dirección de mail no parece válida.",
+    "spaceFull": "Tu espacio ya está completo. Cancelá una invitación para enviar otra."
+  },
+  "push": {
+    "planTitle": "Planificá tu día ☀️",
+    "planBody": "Elegí tus tareas y ponéles una intención.",
+    "reminderBody": "Es hora de tu tarea ⏰"
   }
 }

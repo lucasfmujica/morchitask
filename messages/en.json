@@ -565,5 +565,25 @@
     "resume": "Resume",
     "pause": "Pause",
     "history": "Last {n}: {done} completed"
+  },
+  "auth": {
+    "tagline": "Plan your day calmly, focus, and finish it in peace.",
+    "featurePlan": "Plan your day and your week",
+    "featureFocus": "Focus with a Pomodoro timer",
+    "featureShutdown": "Close the day calmly",
+    "googleNote": "Use your Google account. You can invite someone into your space afterwards.",
+    "continueWithGoogle": "Continue with Google",
+    "connecting": "Connecting…",
+    "signInFailed": "We couldn't sign you in. Try again.",
+    "appDescription": "Plan your day calmly. A productivity app for getting organised together."
+  },
+  "errors": {
+    "invalidEmail": "That email address doesn't look right.",
+    "spaceFull": "Your space is full. Cancel an invite to send another."
+  },
+  "push": {
+    "planTitle": "Plan your day ☀️",
+    "planBody": "Pick your tasks and give them an intention.",
+    "reminderBody": "Time for your task ⏰"
   }
 }

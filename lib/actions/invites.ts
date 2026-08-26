@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { auth } from "@/lib/auth";
 import * as data from "@/lib/db/queries/invites";
 import { isValidEmail } from "@/lib/email";
+import { getTranslations } from "next-intl/server";
 
 async function requireSession() {
   const session = await auth();
@@ -30,9 +31,13 @@ export async function listInvites() {
  */
 export async function inviteToHousehold(email: string) {
   const { householdId, userId } = await requireSession();
+  // The card renders `error.message` straight onto the screen, so these two
+  // are copy, not diagnostics — a server action can't use `useTranslations`,
+  // but `getTranslations` reads the same cookie the page was rendered with.
+  const t = await getTranslations("errors");
 
   const normalized = email.trim().toLowerCase();
-  if (!isValidEmail(normalized)) throw new Error("Esa dirección de mail no parece válida.");
+  if (!isValidEmail(normalized)) throw new Error(t("invalidEmail"));
 
   // Counting live invites as if they were already members: otherwise sending
   // two invites and having both accepted would quietly overshoot the cap.
@@ -42,7 +47,7 @@ export async function inviteToHousehold(email: string) {
   ]);
   const alreadyInvited = pending.some((i) => i.email === normalized);
   if (!alreadyInvited && members + pending.length >= data.MAX_HOUSEHOLD_MEMBERS) {
-    throw new Error("Tu espacio ya está completo. Cancelá una invitación para enviar otra.");
+    throw new Error(t("spaceFull"));
   }
 
   return data.createInvite(householdId, userId, normalized, randomBytes(32).toString("base64url"));
