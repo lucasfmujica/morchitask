@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 function buildTimes(stepMin = 30, startHour = 5, endHour = 24): string[] {
   const out: string[] = [];
@@ -18,7 +19,7 @@ const TIMES = buildTimes();
 export function TimePicker({
   value,
   onChange,
-  placeholder = "Hora",
+  placeholder,
   align = "left",
   className,
 }: {
@@ -28,6 +29,7 @@ export function TimePicker({
   align?: "left" | "right";
   className?: string;
 }) {
+  const t = useTranslations("common");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -51,7 +53,7 @@ export function TimePicker({
         )}
       >
         <Clock className="h-3.5 w-3.5 text-subtle" aria-hidden />
-        {value ?? placeholder}
+        {value ?? placeholder ?? t("time")}
       </button>
 
       <AnimatePresence>

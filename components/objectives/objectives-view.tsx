@@ -18,6 +18,7 @@ import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { DateLabels } from "@/lib/date-labels";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /** Start/end calendar days for a period anchored on `today`. */
 function periodRange(period: ObjectivePeriod, today: string) {
@@ -39,6 +40,7 @@ function rangeLabel(o: Objective, labels: DateLabels) {
 
 export function ObjectivesView() {
   const labels = useDateLabels();
+  const t = useTranslations("goals");
   const objectivesQ = useObjectives();
   const progressQ = useObjectiveProgress();
   const objectives = objectivesQ.data ?? [];
@@ -54,29 +56,27 @@ export function ObjectivesView() {
           <Target className="h-5 w-5" aria-hidden />
         </span>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">Metas</h1>
-          <p className="text-sm text-muted">Tus objetivos de la semana y del mes.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+          <p className="text-sm text-muted">{t("subtitle")}</p>
         </div>
       </header>
 
       <NewObjective />
 
       <Group
-        title="Esta semana"
+        title={t("thisWeek")}
         objectives={week}
         progress={progress}
-        emptyTitle="Sin metas para esta semana"
-        emptyHint="Una meta chica y concreta alcanza. ¿Qué querrías poder tachar el domingo?"
+        emptyTitle={t("emptyWeek")}
+        emptyHint={t("emptyWeekHint")}
       />
       <Group
-        title="Este mes"
+        title={t("thisMonth")}
         objectives={month}
         progress={progress}
-        emptyTitle={`Sin metas para ${labels.monthLabel(todayISO())}`}
+        emptyTitle={t("emptyMonth", { month: labels.monthLabel(todayISO()) })}
         emptyHint={
-          week.length > 0
-            ? `Las ${week.length === 1 ? "de esta semana apunta" : `${week.length} de esta semana apuntan`} a algo más grande. ¿Lo convertimos en la meta del mes?`
-            : "Un objetivo del mes le da sentido a las metas de cada semana."
+          week.length > 0 ? t("emptyMonthFromWeek", { n: week.length }) : t("emptyMonthHint")
         }
       />
     </div>
@@ -84,15 +84,16 @@ export function ObjectivesView() {
 }
 
 function NewObjective() {
+  const t = useTranslations("goals");
   const create = useCreateObjective();
   const [title, setTitle] = useState("");
   const [period, setPeriod] = useState<ObjectivePeriod>("week");
 
   function add() {
-    const t = title.trim();
-    if (!t) return;
+    const value = title.trim();
+    if (!value) return;
     const { start, end } = periodRange(period, todayISO());
-    create.mutate({ title: t, period, start_date: start, end_date: end });
+    create.mutate({ title: value, period, start_date: start, end_date: end });
     setTitle("");
   }
 
@@ -102,8 +103,8 @@ function NewObjective() {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && add()}
-        placeholder="Una meta concreta…"
-        aria-label="Nueva meta"
+        placeholder={t("newPlaceholder")}
+        aria-label={t("newLabel")}
         className="min-w-0 flex-1 bg-transparent px-1 text-sm text-fg placeholder:text-subtle outline-none"
       />
       <div className="flex items-center gap-2">
@@ -118,7 +119,7 @@ function NewObjective() {
                 period === p ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
               )}
             >
-              {p === "week" ? "Semana" : "Mes"}
+              {p === "week" ? t("periodWeek") : t("periodMonth")}
             </button>
           ))}
         </div>
@@ -127,7 +128,7 @@ function NewObjective() {
           className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" aria-hidden />
-          Agregar
+          {t("add")}
         </button>
       </div>
     </div>
@@ -174,6 +175,7 @@ function ObjectiveRow({
   progress?: ObjectiveProgress;
 }) {
   const labels = useDateLabels();
+  const t = useTranslations("goals");
   const update = useUpdateObjective();
   const remove = useDeleteObjective();
   const done = objective.status === "done";
@@ -189,7 +191,7 @@ function ObjectiveRow({
           update.mutate({ id: objective.id, patch: { status: done ? "active" : "done" } })
         }
         aria-pressed={done}
-        aria-label={done ? "Marcar activa" : "Marcar lograda"}
+        aria-label={done ? t("markActive") : t("markDone")}
         className={cn(
           "mt-0.5 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition-colors",
           done
@@ -216,7 +218,7 @@ function ObjectiveRow({
               done ? "text-success" : "text-fg",
             )}
           >
-            {done ? "Lograda" : `${pct}%`}
+            {done ? t("achieved") : `${pct}%`}
           </span>
         </div>
 
@@ -232,15 +234,15 @@ function ObjectiveRow({
         {/* Tasks AND the hours they absorbed: the count alone made a goal you
             poured 6 hours into look identical to one you touched twice. */}
         <p className="mt-2 text-xs text-muted">
-          {total > 0 ? `${completed} de ${total} tareas` : "Sin tareas vinculadas"}
-          {actualMin > 0 && ` · ${formatMinutes(actualMin)} aportadas`}
+          {total > 0 ? t("taskProgress", { done: completed, total }) : t("noTasks")}
+          {actualMin > 0 && t("contributed", { time: formatMinutes(actualMin) })}
           <span className="text-subtle"> · {rangeLabel(objective, labels)}</span>
         </p>
       </div>
 
       <button
         onClick={() => remove.mutate(objective.id)}
-        aria-label="Eliminar meta"
+        aria-label={t("delete")}
         className="shrink-0 cursor-pointer text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 touch:opacity-100"
       >
         <Trash2 className="h-4 w-4" aria-hidden />

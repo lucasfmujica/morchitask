@@ -29,6 +29,7 @@ import { useTranslations } from "next-intl";
  */
 export function TaskAttachments({ taskId }: { taskId: string }) {
   const t = useTranslations("tasks");
+  const tcm = useTranslations("common");
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const { data: files = [] } = useAttachments(taskId);
@@ -65,7 +66,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
 
   const nameOf = (userId: string) =>
     userId === me?.id
-      ? "Vos"
+      ? tcm("you")
       : (profiles.find((p) => p.id === userId)?.display_name ?? t("someone"));
 
   return (

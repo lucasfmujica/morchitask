@@ -19,6 +19,7 @@ import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { DateLabels } from "@/lib/date-labels";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 type Period = "week" | "4weeks" | "month";
 
@@ -72,14 +73,15 @@ function buildPeriod(today: DayISO, period: Period, labels: DateLabels): PeriodS
   return { label, start, end, days, weeks };
 }
 
-const PERIODS: { value: Period; label: string }[] = [
-  { value: "week", label: "Esta semana" },
-  { value: "4weeks", label: "Últimas 4" },
-  { value: "month", label: "Este mes" },
+const PERIODS: { value: Period; labelKey: string }[] = [
+  { value: "week", labelKey: "periodWeek" },
+  { value: "4weeks", labelKey: "period4Weeks" },
+  { value: "month", labelKey: "periodMonth" },
 ];
 
 export function ResumenView() {
   const labels = useDateLabels();
+  const t = useTranslations("summary");
   const [period, setPeriod] = useState<Period>("week");
   const today = todayISO();
   const shape = useMemo(() => buildPeriod(today, period, labels), [today, period, labels]);
@@ -106,7 +108,7 @@ export function ResumenView() {
     })),
     {
       id: "none",
-      name: "Sin categoría",
+      name: t("noCategory"),
       color: "var(--color-subtle)",
       min: byChannel.get("none") ?? 0,
     },
@@ -129,7 +131,7 @@ export function ResumenView() {
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-col gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">Resumen</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
           <p className="text-sm text-muted">{shape.label}</p>
         </div>
         <div className="-mx-1 overflow-x-auto px-1">
@@ -146,7 +148,7 @@ export function ResumenView() {
                     : "text-muted hover:text-fg",
                 )}
               >
-                {p.label}
+                {t(p.labelKey)}
               </button>
             ))}
           </div>
@@ -155,21 +157,26 @@ export function ResumenView() {
 
       <div className="grid grid-cols-2 gap-3">
         <Stat
-          label="Completadas"
+          label={t("statDone")}
           value={`${overall.done}`}
-          sub={`de ${overall.total} tareas · ${Math.round(completionRate(overall) * 100)}%`}
+          sub={t("statDoneSub", {
+            total: overall.total,
+            pct: Math.round(completionRate(overall) * 100),
+          })}
         />
         <Stat
-          label="Tiempo planeado"
+          label={t("statPlanned")}
           value={plannedMin > 0 ? formatMinutes(plannedMin) : "—"}
           sub={
-            accuracy.actualMin > 0 ? `${formatMinutes(accuracy.actualMin)} medido` : "en el período"
+            accuracy.actualMin > 0
+              ? t("statPlannedMeasured", { time: formatMinutes(accuracy.actualMin) })
+              : t("statPlannedSub")
           }
         />
       </div>
 
       {weekBars.length > 1 && (
-        <Section title="Completado por semana">
+        <Section title={t("byWeek")}>
           <div className="flex items-end gap-2 sm:gap-3">
             {weekBars.map((w) => (
               <div key={w.key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
@@ -189,15 +196,18 @@ export function ResumenView() {
       )}
 
       {accuracy.trackedCount > 0 && (
-        <Section title="Estimado vs. real" hint={`${accuracy.trackedCount} con tiempo medido`}>
+        <Section
+          title={t("estimateVsActual")}
+          hint={t("trackedCount", { n: accuracy.trackedCount })}
+        >
           <CompareBar
-            label="Estimado"
+            label={t("estimatedBar")}
             min={accuracy.estimatedMin}
             max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
             tone="bg-subtle"
           />
           <CompareBar
-            label="Real"
+            label={t("actualBar")}
             min={accuracy.actualMin}
             max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
             tone="bg-primary"
@@ -205,11 +215,9 @@ export function ResumenView() {
         </Section>
       )}
 
-      <Section title="Tiempo por categoría">
+      <Section title={t("byCategory")}>
         {channelRows.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted">
-            Asigná tiempos y categorías a tus tareas para ver el desglose.
-          </p>
+          <p className="py-4 text-center text-sm text-muted">{t("byCategoryEmpty")}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {channelRows.map((r) => (
@@ -240,7 +248,7 @@ export function ResumenView() {
       </Section>
 
       {ownerRows.length > 0 && (
-        <Section title="Por persona">
+        <Section title={t("byPerson")}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ownerRows.map(({ profile, stat }) => (
               <div
@@ -251,7 +259,11 @@ export function ResumenView() {
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-fg">{profile.display_name}</p>
                   <p className="text-xs text-muted">
-                    {stat!.done}/{stat!.total} hechas · {formatMinutes(stat!.plannedMin)}
+                    {t("personStats", {
+                      done: stat!.done,
+                      total: stat!.total,
+                      time: formatMinutes(stat!.plannedMin),
+                    })}
                   </p>
                 </div>
               </div>
