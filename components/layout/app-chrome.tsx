@@ -241,7 +241,7 @@ function SidebarSearchButton() {
       className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
     >
       <Search className="h-[18px] w-[18px] shrink-0" aria-hidden />
-      <span className="flex-1 text-left">Buscar</span>
+      <span className="flex-1 text-left">{tcm("search")}</span>
       <Kbd>⌘K</Kbd>
     </button>
   );
@@ -379,7 +379,7 @@ function SidebarBody({
           <OwnerAvatar profile={me ?? undefined} size={32} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-fg">{me?.display_name ?? "…"}</p>
-            <p className="truncate text-xs text-subtle">{household?.name || "Tu espacio"}</p>
+            <p className="truncate text-xs text-subtle">{household?.name || tc("yourSpace")}</p>
           </div>
           <Settings
             className={cn("h-4 w-4 shrink-0", onSettings ? "text-primary" : "text-subtle")}

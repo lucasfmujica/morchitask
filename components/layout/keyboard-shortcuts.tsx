@@ -110,7 +110,7 @@ export function KeyboardShortcuts() {
             role="dialog"
             aria-label={t("title")}
           >
-            <h2 className="mb-3 text-sm font-bold tracking-tight text-fg">Atajos de teclado</h2>
+            <h2 className="mb-3 text-sm font-bold tracking-tight text-fg">{t("heading")}</h2>
             <ul className="flex flex-col gap-2.5">
               {SHORTCUTS.map((s) => (
                 <li key={s.labelKey} className="flex items-center justify-between gap-3">

@@ -111,7 +111,8 @@ export type PaletteItem =
   | { kind: "task"; id: string; task: Task; ranges: MatchRange[] }
   | { kind: "create"; id: "create"; title: string };
 
-export type PaletteSection = { id: string; heading: string; items: PaletteItem[] };
+/** `headingKey` indexes the `palette` catalog — this module has no translator. */
+export type PaletteSection = { id: string; headingKey: string; items: PaletteItem[] };
 
 /**
  * Penalty applied to an already-finished task.
@@ -150,13 +151,13 @@ export function buildPaletteItems(input: {
     if (recents.length > 0) {
       sections.push({
         id: "recents",
-        heading: "Recientes",
+        headingKey: "recents",
         items: recents.map((task) => ({ kind: "task", id: task.id, task, ranges: [] })),
       });
     }
     sections.push({
       id: "actions",
-      heading: "Ir a",
+      headingKey: "goToHeading",
       items: input.actions.map((action) => ({
         kind: "action",
         id: action.id,
@@ -184,7 +185,7 @@ export function buildPaletteItems(input: {
       }),
     );
   if (taskItems.length > 0) {
-    sections.push({ id: "tasks", heading: "Tareas", items: taskItems });
+    sections.push({ id: "tasks", headingKey: "tasksHeading", items: taskItems });
   }
 
   const actionItems = input.actions
@@ -201,14 +202,14 @@ export function buildPaletteItems(input: {
       }),
     );
   if (actionItems.length > 0) {
-    sections.push({ id: "actions", heading: "Ir a", items: actionItems });
+    sections.push({ id: "actions", headingKey: "goToHeading", items: actionItems });
   }
 
   // Always last, always present: Enter on a partial view name still navigates
   // rather than silently creating a task called "sema".
   sections.push({
     id: "create",
-    heading: "Crear",
+    headingKey: "createHeading",
     items: [{ kind: "create", id: "create", title: query }],
   });
 

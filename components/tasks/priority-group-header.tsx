@@ -42,7 +42,7 @@ export function PriorityGroupHeader({
             : "border-border/70 text-subtle/70",
         )}
       >
-        Soltá acá para {label}
+        {t("dropHereFor", { label })}
       </div>
     );
   }

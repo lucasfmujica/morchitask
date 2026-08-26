@@ -218,7 +218,7 @@ export function AgendaView({
           className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
         >
           <Wand2 className="h-4 w-4" aria-hidden />
-          Auto-agendar
+          {td("autoSchedule")}
         </button>
       </div>
 
@@ -227,7 +227,7 @@ export function AgendaView({
       {unscheduled.length > 0 && (
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-3 shadow-soft lg:hidden">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">
-            Sin agendar · arrastrá al calendario
+            {td("unscheduledHint")}
           </p>
           {unscheduled.map((t) => {
             const rem = remainingMin(t.time_estimate_min, blocksByTask.get(t.id) ?? []);
@@ -243,7 +243,7 @@ export function AgendaView({
                 </div>
                 {hasBlocks && rem != null && (
                   <span className="shrink-0 text-2xs font-medium text-accent">
-                    {formatMinutes(rem)} rest.
+                    {td("remaining", { time: formatMinutes(rem) })}
                   </span>
                 )}
                 {/* One tap drops it in the first real opening; the picker is
@@ -255,7 +255,7 @@ export function AgendaView({
                       onClick={() => scheduleInFirstSlot(t)}
                       className="shrink-0 cursor-pointer rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold tabular-nums text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
                     >
-                      Agendar {minutesToHHMM(slot)}
+                      {td("scheduleAt", { time: minutesToHHMM(slot) })}
                     </button>
                   );
                 })()}
@@ -277,7 +277,7 @@ export function AgendaView({
       {openings.length > 0 && myUnscheduled.length > 0 && (
         <section className="rounded-card border border-border bg-surface p-3 shadow-soft">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
-            Huecos libres
+            {td("openings")}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {openings.map((slot) => (
@@ -300,7 +300,7 @@ export function AgendaView({
         <div className="mb-3 flex items-center gap-3 text-2xs text-subtle">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-sm border border-l-[3px] border-primary/40 border-l-primary bg-primary/15" />
-            Bloque planeado
+            {td("legendPlanned")}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-l-[3px] border-subtle border-l-subtle bg-surface-2" />
@@ -308,7 +308,7 @@ export function AgendaView({
           </span>
           {showNow && (
             <span className="ml-auto font-semibold tabular-nums text-accent">
-              Ahora {minutesToHHMM(nowMin)}
+              {td("nowAt", { time: minutesToHHMM(nowMin) })}
             </span>
           )}
         </div>
@@ -327,7 +327,7 @@ export function AgendaView({
                     aria-hidden
                   />
                   <span className="truncate">{e.title}</span>
-                  <span className="ml-auto shrink-0 text-2xs text-subtle">todo el día</span>
+                  <span className="ml-auto shrink-0 text-2xs text-subtle">{td("allDayEvent")}</span>
                 </div>
               ))}
           </div>
@@ -372,7 +372,7 @@ export function AgendaView({
               }}
               aria-hidden
             >
-              Hueco de {formatMinutes(suggestedGap.lenMin)} · soltá una tarea acá
+              {td("gapHint", { length: formatMinutes(suggestedGap.lenMin) })}
             </div>
           )}
 

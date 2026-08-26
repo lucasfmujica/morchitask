@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 /** Comment thread on a task — both household members can read and post. */
 export function TaskComments({ taskId }: { taskId: string }) {
   const t = useTranslations("tasks");
+  const tcm = useTranslations("common");
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const { data: comments = [] } = useComments(taskId);
@@ -74,7 +75,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
             "h-7 shrink-0 cursor-pointer rounded-md bg-primary px-2.5 text-xs font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40",
           )}
         >
-          Enviar
+          {tcm("send")}
         </button>
       </div>
     </div>

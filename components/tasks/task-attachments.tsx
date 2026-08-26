@@ -8,7 +8,7 @@ import {
   formatBytes,
   isImage,
   MAX_ATTACHMENT_BYTES,
-  rejectionReason,
+  rejectionKey,
 } from "@/lib/attachments";
 import {
   useAttachments,
@@ -44,7 +44,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
   function send(list: FileList | File[]) {
     setError(null);
     for (const file of Array.from(list)) {
-      const reason = rejectionReason(file);
+      const reason = rejectionKey(file);
       if (reason) {
         setError(`${file.name}: ${reason}`);
         continue;
@@ -122,7 +122,9 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           </span>
-          <span className="min-w-0 flex-1 truncate text-sm text-muted">Subiendo {name}…</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted">
+            {t("uploading", { name })}
+          </span>
         </div>
       ))}
 
@@ -171,7 +173,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         uploading.length === 0 && (
           <span className="flex items-center gap-1.5 text-2xs text-subtle">
             <ImageIcon className="h-3 w-3" aria-hidden />
-            Fotos, PDFs o documentos, hasta {formatBytes(MAX_ATTACHMENT_BYTES)} cada uno.
+            {t("attachmentsHint", { max: formatBytes(MAX_ATTACHMENT_BYTES) })}
           </span>
         )
       )}

@@ -26,7 +26,12 @@ export function offsetFromRemindAt(
   return Math.round((new Date(blockStartISO).getTime() - new Date(remindAtISO).getTime()) / 60_000);
 }
 
-/** Short Spanish label for an offset preset. */
-export function reminderOffsetLabel(offsetMin: number): string {
-  return offsetMin === 0 ? "Al empezar" : `${offsetMin} min antes`;
+/**
+ * Catalog key for an offset preset. Hands out a key rather than a word for the
+ * same reason `lib/priority.ts` does: this module is imported by client and
+ * server alike, and neither has a translator to hand at import time. The caller
+ * passes `{ n: offsetMin }`; ICU ignores it for the "at the start" case.
+ */
+export function reminderOffsetLabelKey(offsetMin: number): "reminderAtStart" | "reminderBefore" {
+  return offsetMin === 0 ? "reminderAtStart" : "reminderBefore";
 }

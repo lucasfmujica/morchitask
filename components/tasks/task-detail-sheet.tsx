@@ -36,7 +36,7 @@ import {
   REMINDER_OFFSETS,
   offsetFromRemindAt,
   remindAtFromBlock,
-  reminderOffsetLabel,
+  reminderOffsetLabelKey,
 } from "@/lib/reminders";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
@@ -386,7 +386,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-pill border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-primary hover:text-primary"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
-              Nueva
+              {tcm("new")}
             </button>
           )}
         </div>
@@ -442,7 +442,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           <div className="flex items-baseline gap-6">
             <div className="flex flex-col">
               <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
-                Real
+                {tt("actualTime")}
               </span>
               {timer.running ? (
                 <span className="text-lg font-bold tabular-nums text-primary">
@@ -474,7 +474,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             </div>
             <div className="flex flex-col">
               <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
-                Estimado
+                {tt("estimatedTime")}
               </span>
               <span className="text-lg font-bold tabular-nums text-muted">
                 {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "—"}
@@ -493,11 +493,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           >
             {timer.running ? (
               <>
-                <Pause className="h-4 w-4" aria-hidden /> Detener
+                <Pause className="h-4 w-4" aria-hidden /> {tt("stop")}
               </>
             ) : (
               <>
-                <Play className="h-4 w-4" aria-hidden /> Empezar
+                <Play className="h-4 w-4" aria-hidden /> {tt("startTimerShort")}
               </>
             )}
           </button>
@@ -606,7 +606,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
       >
         <Trash2 className="h-4 w-4" aria-hidden />
-        Eliminar tarea
+        {tt("deleteTask")}
       </button>
     </div>
   );
@@ -653,20 +653,16 @@ function ReminderControl({
           <Chip
             key={o}
             active={task.remind_at != null && currentOffset === o}
-            label={reminderOffsetLabel(o)}
+            label={tt(reminderOffsetLabelKey(o), { n: o })}
             disabled={!hasBlock}
             onClick={() => setOffset(o)}
           />
         ))}
       </div>
-      {!hasBlock && (
-        <p className="text-xs text-subtle">
-          Programá un horario en la agenda para avisarte antes de empezar.
-        </p>
-      )}
+      {!hasBlock && <p className="text-xs text-subtle">{tt("reminderNeedsBlock")}</p>}
       {task.planned_date && (
         <div className="flex items-center gap-2 text-sm text-muted">
-          <span>o a una hora:</span>
+          <span>{tt("orAtATime")}</span>
           <TimePicker value={customTime} onChange={setCustom} placeholder={tt("pick")} />
         </div>
       )}

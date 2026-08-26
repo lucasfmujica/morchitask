@@ -261,9 +261,9 @@ function PaletteBody({ close }: { close: () => void }) {
           </p>
         ) : (
           sections.map((section) => (
-            <div key={section.id} role="group" aria-label={section.heading}>
+            <div key={section.id} role="group" aria-label={tp(section.headingKey)}>
               <p className="px-3 pt-2 pb-1 text-2xs font-semibold uppercase tracking-wide text-subtle">
-                {section.heading}
+                {tp(section.headingKey)}
               </p>
               {section.items.map((item) => {
                 index += 1;
@@ -303,13 +303,13 @@ function PaletteBody({ close }: { close: () => void }) {
       <div className="flex shrink-0 items-center gap-3 border-t border-border px-3 py-2 text-2xs text-subtle">
         <span className="flex items-center gap-1">
           <Kbd>↑</Kbd>
-          <Kbd>↓</Kbd> navegar
+          <Kbd>↓</Kbd> {tp("navigate")}
         </span>
         <span className="flex items-center gap-1">
-          <Kbd>⏎</Kbd> abrir
+          <Kbd>⏎</Kbd> {tp("openItem")}
         </span>
         <span className="ml-auto flex items-center gap-1">
-          <Kbd>esc</Kbd> cerrar
+          <Kbd>esc</Kbd> {tp("closeItem")}
         </span>
       </div>
     </>
@@ -324,6 +324,7 @@ function PaletteRowContent({
   channelsById: Map<string, Channel>;
 }) {
   const tp = useTranslations("palette");
+  const tcm = useTranslations("common");
   if (item.kind === "task") {
     return (
       <PaletteTaskRow
@@ -338,7 +339,7 @@ function PaletteRowContent({
       <>
         <Plus className="h-4 w-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate">{tp("createTask", { title: item.title })}</span>
-        <span className="shrink-0 text-2xs text-subtle">Hoy</span>
+        <span className="shrink-0 text-2xs text-subtle">{tcm("today")}</span>
       </>
     );
   }

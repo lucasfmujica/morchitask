@@ -36,6 +36,7 @@ const STALE_DAYS = 30;
  */
 export function BacklogView() {
   const t = useTranslations("backlog");
+  const tt = useTranslations("tasks");
   const tasksQ = useBacklogTasks();
   const channelsQ = useChannels();
   const channelLookupQ = useChannelLookup();
@@ -115,7 +116,7 @@ export function BacklogView() {
           title={filtering ? t("emptyCategory") : t("emptyTitle")}
           hint={filtering ? t("emptyCategoryHint") : t("emptyHint")}
           kbd="N"
-          kbdHint="para una nueva tarea"
+          kbdHint={tt("kbdNewTask")}
         />
       ) : (
         <ul className="flex flex-col gap-1.5">
@@ -134,14 +135,8 @@ export function BacklogView() {
       {/* The honest question nobody asks themselves unprompted. */}
       {stale.length > 0 && (
         <section className="rounded-card border border-border bg-surface p-4 shadow-soft">
-          <p className="text-sm font-semibold text-fg">
-            {stale.length === 1
-              ? "1 idea lleva más de un mes acá"
-              : t("staleWarning", { n: stale.length })}
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            O las agendás esta semana, o las archivás sin culpa.
-          </p>
+          <p className="text-sm font-semibold text-fg">{t("staleWarning", { n: stale.length })}</p>
+          <p className="mt-1 text-xs text-muted">{t("staleAction")}</p>
         </section>
       )}
     </div>
@@ -161,15 +156,17 @@ function BacklogRow({
 }) {
   const t = useTranslations("backlog");
   const tt = useTranslations("tasks");
+  const tcm = useTranslations("common");
+  const td = useTranslations("day");
   const labels = useDateLabels();
   const move = useMoveTaskToDate();
   const update = useUpdateTask();
   const openDetail = useTaskDetail((s) => s.open);
   const toast = useToast();
 
-  function schedule(toDate: string, label: string) {
+  function schedule(toDate: string, when: string) {
     move.mutate({ task, toDate, sortOrder: orderForAppend([]) });
-    toast(`"${task.title}" va para ${label}`, {
+    toast(t("movedTo", { title: task.title, when }), {
       label: tt("undo"),
       run: () =>
         move.mutate({
@@ -232,19 +229,19 @@ function BacklogRow({
 
       <div className="flex shrink-0 items-center gap-1">
         <button
-          onClick={() => schedule(today, "hoy")}
+          onClick={() => schedule(today, tcm("todayLower"))}
           className="cursor-pointer rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
         >
-          + Hoy
+          {td("plusToday")}
         </button>
         <button
-          onClick={() => schedule(addDays(today, 1), "mañana")}
+          onClick={() => schedule(addDays(today, 1), tcm("tomorrowLower"))}
           aria-label={t("moveToTomorrow")}
           title={t("moveToTomorrow")}
           className="flex h-6 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-2 text-2xs font-bold text-muted transition-colors hover:bg-border hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
         >
           <CalendarClock className="h-3 w-3" aria-hidden />
-          Mañana
+          {tcm("tomorrow")}
         </button>
       </div>
     </li>

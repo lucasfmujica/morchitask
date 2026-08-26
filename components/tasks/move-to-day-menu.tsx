@@ -100,7 +100,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
             )}
           >
             <p className="px-2 pt-1 pb-0.5 text-2xs font-semibold uppercase tracking-wide text-subtle">
-              Mover a
+              {t("moveTo")}
             </p>
             {options.map((o) => {
               const active = o.date === task.planned_date;
@@ -142,7 +142,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
               }}
               className="relative mt-0.5 flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg transition-colors hover:bg-surface-2"
             >
-              <span>Otra fecha…</span>
+              <span>{t("otherDate")}</span>
               <input
                 ref={dateInputRef}
                 id={dateInputId}

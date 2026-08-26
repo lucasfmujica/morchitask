@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Profile, Task } from "@/lib/queries/types";
 import { OwnerAvatar } from "./owner-avatar";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /**
  * Day-by-day tracked time for one task.
@@ -82,6 +83,7 @@ export function TimeBreakdownList({
   onSetDay?: (day: string, minutes: number) => void;
 }) {
   const labels = useDateLabels();
+  const t = useTranslations("tasks");
   const { days, untrackedMin } = breakdown;
   const running = new Set(runningDays);
   const multiPerson = profiles.length > 1;
@@ -114,9 +116,11 @@ export function TimeBreakdownList({
   return (
     <div className="mt-2 rounded-xl border border-border bg-surface px-3.5 py-3">
       <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">Por día</span>
+        <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
+          {t("perDay")}
+        </span>
         <span className="text-2xs tabular-nums text-subtle">
-          {days.length} {days.length === 1 ? "día" : "días"}
+          {t("dayCount", { n: days.length })}
         </span>
       </div>
 
@@ -140,8 +144,10 @@ export function TimeBreakdownList({
                   // Editing only ever touches my own share, so say out loud
                   // what the row's number also contains.
                   <span className="shrink-0 text-2xs text-subtle">
-                    + {formatDuration(others * 60)} de{" "}
-                    {nameOf(d.byUser.find((u) => u.userId !== meId)?.userId ?? "")}
+                    {t("plusFrom", {
+                      time: formatDuration(others * 60),
+                      name: nameOf(d.byUser.find((u) => u.userId !== meId)?.userId ?? ""),
+                    })}
                   </span>
                 )}
               </li>
@@ -178,7 +184,10 @@ export function TimeBreakdownList({
                       key={u.userId}
                       profile={profiles.find((p) => p.id === u.userId)}
                       size={16}
-                      title={`${nameOf(u.userId)}: ${formatDuration(u.minutes * 60)}`}
+                      title={t("personTime", {
+                        name: nameOf(u.userId),
+                        time: formatDuration(u.minutes * 60),
+                      })}
                     />
                   ))}
                 </span>
@@ -189,7 +198,7 @@ export function TimeBreakdownList({
               {editable && !live ? (
                 <button
                   onClick={() => setEditingDay(d.day)}
-                  title="Corregir tu tiempo de este día"
+                  title={t("fixMyTime")}
                   className="w-14 shrink-0 cursor-pointer text-right text-xs font-semibold tabular-nums text-fg underline decoration-dotted decoration-from-font underline-offset-4 transition-colors hover:text-primary sm:w-16"
                 >
                   {formatDuration(d.minutes * 60)}
@@ -211,13 +220,11 @@ export function TimeBreakdownList({
         {showUntracked && (
           <li
             className="flex items-center gap-2.5"
-            title={
-              editable
-                ? "Tiempo sin día: cargalo en un día con «Otro día» y sale de acá"
-                : "Tiempo cargado a mano, o registrado antes de que se guardara el detalle por día"
-            }
+            title={editable ? t("untrackedEditable") : t("untrackedReadOnly")}
           >
-            <span className="w-14 shrink-0 truncate text-xs text-subtle sm:w-16">Sin fecha</span>
+            <span className="w-14 shrink-0 truncate text-xs text-subtle sm:w-16">
+              {t("noDate")}
+            </span>
             <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2">
               <span
                 style={{ width: width(untrackedMin) }}
@@ -246,7 +253,7 @@ export function TimeBreakdownList({
           onClick={() => setAdding(true)}
           className="mt-2.5 inline-flex cursor-pointer items-center gap-1 text-2xs font-semibold text-subtle transition-colors hover:text-primary"
         >
-          <Plus className="h-3 w-3" aria-hidden /> Otro día
+          <Plus className="h-3 w-3" aria-hidden /> {t("otherDay")}
         </button>
       )}
     </div>
@@ -263,6 +270,7 @@ function DurationInput({
   onCommit: (raw: string) => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations("tasks");
   const [value, setValue] = useState(initial > 0 ? formatDuration(initial * 60) : "");
   return (
     <input
@@ -278,8 +286,8 @@ function DurationInput({
           onCancel();
         }
       }}
-      placeholder="ej. 1h 30m"
-      aria-label="Tiempo de este día"
+      placeholder={t("timePlaceholder")}
+      aria-label={t("timeThisDay")}
       className="min-w-0 flex-1 border-b border-primary bg-transparent text-xs font-semibold tabular-nums text-fg outline-none placeholder:font-normal placeholder:text-subtle"
     />
   );
@@ -300,6 +308,8 @@ function AddDayRow({
   onCommit: (day: string, raw: string) => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations("tasks");
+  const tc = useTranslations("common");
   const yesterday = addDays(today, -1);
   // Default to whichever of today/yesterday you haven't logged yet: adding a
   // day you already have is the one thing this row isn't for.
@@ -313,7 +323,7 @@ function AddDayRow({
         value={day}
         max={today}
         onChange={(e) => e.target.value && setDay(e.target.value)}
-        aria-label="Día"
+        aria-label={t("dayField")}
         className="w-[7.5rem] shrink-0 rounded-md border border-border bg-surface-2 px-1.5 py-1 text-xs tabular-nums text-fg outline-none focus:border-primary"
       />
       <input
@@ -324,21 +334,21 @@ function AddDayRow({
           if (e.key === "Enter" && value.trim()) onCommit(day, value);
           if (e.key === "Escape") onCancel();
         }}
-        placeholder="ej. 1h 30m"
-        aria-label="Cuánto tiempo"
+        placeholder={t("timePlaceholder")}
+        aria-label={t("howLong")}
         className="min-w-0 flex-1 border-b border-primary bg-transparent text-xs font-semibold tabular-nums text-fg outline-none placeholder:font-normal placeholder:text-subtle"
       />
       <button
         onClick={() => value.trim() && onCommit(day, value)}
         disabled={!value.trim()}
-        aria-label="Guardar"
+        aria-label={tc("save")}
         className="shrink-0 cursor-pointer rounded-md p-1 text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:text-subtle disabled:hover:bg-transparent"
       >
         <Check className="h-3.5 w-3.5" aria-hidden />
       </button>
       <button
         onClick={onCancel}
-        aria-label="Cancelar"
+        aria-label={tc("cancel")}
         className="shrink-0 cursor-pointer rounded-md p-1 text-subtle transition-colors hover:bg-surface-2 hover:text-fg"
       >
         <X className="h-3.5 w-3.5" aria-hidden />

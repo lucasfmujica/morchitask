@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { TOAST_DURATION_MS, useToastStore } from "@/lib/stores/toast";
 import { EASE_OUT } from "@/lib/motion";
+import { useTranslations } from "next-intl";
 
 /**
  * The single toast slot, mounted once by the app chrome.
@@ -14,14 +15,15 @@ import { EASE_OUT } from "@/lib/motion";
  * area clickable — only the pill itself takes clicks.
  */
 export function Toaster() {
+  const t = useTranslations("common");
   const toast = useToastStore((s) => s.toast);
   const dismiss = useToastStore((s) => s.dismiss);
 
   useEffect(() => {
     if (!toast) return;
     const id = toast.id;
-    const t = setTimeout(() => dismiss(id), TOAST_DURATION_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => dismiss(id), TOAST_DURATION_MS);
+    return () => clearTimeout(timer);
   }, [toast, dismiss]);
 
   return (
@@ -52,7 +54,7 @@ export function Toaster() {
             )}
             <button
               onClick={() => dismiss(toast.id)}
-              aria-label="Cerrar aviso"
+              aria-label={t("dismissNotice")}
               className="shrink-0 cursor-pointer rounded-full p-1 text-subtle transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
               <X className="h-3.5 w-3.5" aria-hidden />

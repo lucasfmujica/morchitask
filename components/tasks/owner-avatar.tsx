@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Profile } from "@/lib/queries/types";
+import { useTranslations } from "next-intl";
 
 /**
  * A person's photo, or their coloured initial.
@@ -22,6 +23,7 @@ export function OwnerAvatar({
   size?: number;
   title?: string;
 }) {
+  const t = useTranslations("tasks");
   const url = profile?.avatar_url;
   const [broken, setBroken] = useState(false);
 
@@ -57,7 +59,7 @@ export function OwnerAvatar({
   return (
     <span
       title={label}
-      aria-label={profile ? `Asignado a ${profile.display_name}` : undefined}
+      aria-label={profile ? t("assignedTo", { name: profile.display_name }) : undefined}
       style={{ width: size, height: size, backgroundColor: profile?.color ?? "var(--color-muted)" }}
       className="inline-flex shrink-0 items-center justify-center rounded-full text-2xs font-bold text-white"
     >

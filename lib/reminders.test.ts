@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { offsetFromRemindAt, remindAtFromBlock, reminderOffsetLabel } from "./reminders";
+import { offsetFromRemindAt, remindAtFromBlock, reminderOffsetLabelKey } from "./reminders";
 
 const BLOCK = "2026-06-24T12:00:00.000Z";
 
@@ -25,9 +25,9 @@ describe("offsetFromRemindAt", () => {
   });
 });
 
-describe("reminderOffsetLabel", () => {
-  it("labels the presets in Spanish", () => {
-    expect(reminderOffsetLabel(0)).toBe("Al empezar");
-    expect(reminderOffsetLabel(5)).toBe("5 min antes");
+describe("reminderOffsetLabelKey", () => {
+  it("separates 'at the start' from a countdown, which read differently", () => {
+    expect(reminderOffsetLabelKey(0)).toBe("reminderAtStart");
+    expect(reminderOffsetLabelKey(5)).toBe("reminderBefore");
   });
 });

@@ -117,6 +117,7 @@ export function UnscheduledSection({
   defaultOpen?: boolean;
 }) {
   const tt = useTranslations("tasks");
+  const td = useTranslations("day");
   const labels = useDateLabels();
   const backlogQ = useBacklogTasks();
   const move = useMoveTaskToDate();
@@ -148,7 +149,7 @@ export function UnscheduledSection({
       defaultOpen={defaultOpen}
       label={
         <>
-          Sin agendar · {tasks.length} del backlog
+          {td("unscheduledCount", { n: tasks.length })}
           {estimatedMin > 0 && ` · ${formatMinutes(estimatedMin)}`}
         </>
       }
@@ -180,7 +181,7 @@ export function UnscheduledSection({
               onClick={() => bringToDay(task)}
               className="shrink-0 cursor-pointer rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
-              + Hoy
+              {td("plusToday")}
             </button>
           </div>
         );

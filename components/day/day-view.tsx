@@ -75,6 +75,7 @@ export function DayView({ date }: { date: string }) {
   const t = useTranslations("day");
   const tt = useTranslations("tasks");
   const tcm = useTranslations("common");
+  const tnav = useTranslations("nav");
   const [mode, setMode] = useState<Mode>("list");
   const qc = useQueryClient();
 
@@ -327,7 +328,7 @@ export function DayView({ date }: { date: string }) {
         </div>
         {tasks.length > 0 && (
           <span className="ml-auto text-xs font-semibold text-muted">
-            {doneCount} de {tasks.length} hechas
+            {t("doneOfTotal", { done: doneCount, total: tasks.length })}
           </span>
         )}
       </div>
@@ -378,20 +379,20 @@ export function DayView({ date }: { date: string }) {
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     {!!yesterdayPending && (
                       <Button size="sm" onClick={bringYesterday} disabled={carrying}>
-                        Traer {yesterdayPending} de ayer
+                        {t("bringYesterday", { n: yesterdayPending })}
                       </Button>
                     )}
                     {backlogCount > 0 && (
                       <Link href="/backlog">
                         <Button variant="secondary" size="sm">
                           <Inbox className="h-4 w-4" aria-hidden />
-                          Abrir backlog ({backlogCount})
+                          {t("openBacklog", { n: backlogCount })}
                         </Button>
                       </Link>
                     )}
                     <Link href={`/plan/${date}`}>
                       <Button variant="ghost" size="sm">
-                        Planificar
+                        {tnav("plan")}
                       </Button>
                     </Link>
                   </div>
@@ -406,7 +407,7 @@ export function DayView({ date }: { date: string }) {
           </div>
           <div className={cn("lg:block", mode === "agenda" ? "block" : "hidden")}>
             <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-subtle lg:block">
-              Agenda · arrastrá una tarea a una hora
+              {t("agendaHint")}
             </p>
             <AgendaView
               date={date}

@@ -70,7 +70,7 @@ export function TaskMetaRow({
         (vis.iconOnly ? (
           <StickyNote className="h-3 w-3 shrink-0 text-subtle" aria-label={t("hasNotes")} />
         ) : (
-          <span className="shrink-0 text-subtle">· nota</span>
+          <span className="shrink-0 text-subtle">{t("noteBadge")}</span>
         ))}
       {vis.objective && task.objective_id && (
         <ObjectiveBadge objectiveId={task.objective_id} iconOnly={vis.iconOnly} />

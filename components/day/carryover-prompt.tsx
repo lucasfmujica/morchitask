@@ -57,7 +57,7 @@ export function CarryoverPrompt({ date }: { date: string }) {
         className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         <ArrowRight className="h-4 w-4" aria-hidden />
-        Sumar a hoy
+        {t("addToToday")}
       </button>
       <button
         onClick={() => setDismissed(true)}

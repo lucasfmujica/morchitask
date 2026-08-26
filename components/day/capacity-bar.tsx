@@ -137,16 +137,15 @@ export function CapacityBar({
         <div className="mt-2 flex items-center gap-2">
           <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-danger" aria-hidden />
           <p className="min-w-0 flex-1 text-xs leading-[17px] text-fg">
-            Te pasaste {formatMinutes(overByMin)}.
-            {suggestion?.task ? (
-              <>
-                {" "}
-                Mové <span className="font-semibold">{suggestion.task.title}</span> a mañana y
-                entrás justo.
-              </>
-            ) : (
-              " Sacá algo o movelo a mañana."
-            )}
+            {t("overBy", { over: formatMinutes(overByMin) })}{" "}
+            {/* One message per case, not a shared prefix plus a glued tail:
+                the emphasised word moves in another language. */}
+            {suggestion?.task
+              ? t.rich("overMoveSuggestion", {
+                  title: suggestion.task.title,
+                  b: (chunks) => <span className="font-semibold">{chunks}</span>,
+                })
+              : t("overGeneric")}
           </p>
           {suggestion?.task && onMoveOverflow && (
             <Button
@@ -155,14 +154,15 @@ export function CapacityBar({
               className="shrink-0"
               onClick={() => onMoveOverflow(suggestion.task!)}
             >
-              Mover {formatMinutes(suggestion.task.time_estimate_min ?? overByMin)}
+              {t("moveAmount", {
+                time: formatMinutes(suggestion.task.time_estimate_min ?? overByMin),
+              })}
             </Button>
           )}
         </div>
       ) : (
         <p className="mt-1.5 text-xs text-muted">
-          Te quedan {formatMinutes(targetMin - plannedMin)} libres · {pendingCount}{" "}
-          {pendingCount === 1 ? "pendiente" : "pendientes"}
+          {t("leftOver", { time: formatMinutes(targetMin - plannedMin), n: pendingCount })}
         </p>
       )}
     </div>

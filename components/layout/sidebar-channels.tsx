@@ -102,7 +102,7 @@ export function SidebarChannels({
     <div className="mt-5 flex flex-col px-3 pb-2">
       <div className="flex items-center justify-between px-2 pb-1">
         <span className="text-xs font-semibold uppercase tracking-wide text-subtle">
-          Categorías
+          {t("heading")}
         </span>
         <button
           onClick={() => setAdding((a) => !a)}
@@ -119,7 +119,7 @@ export function SidebarChannels({
           className="mb-0.5 flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm font-medium text-primary transition-colors hover:bg-surface-2"
         >
           <X className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span className="truncate">Mostrar todas</span>
+          <span className="truncate">{t("showAll")}</span>
         </button>
       )}
 
@@ -177,9 +177,7 @@ export function SidebarChannels({
       )}
 
       {channels.length === 0 && !adding && (
-        <p className="px-2 py-1.5 text-xs text-subtle">
-          Sin categorías. Tocá + para crear la primera.
-        </p>
+        <p className="px-2 py-1.5 text-xs text-subtle">{t("empty")}</p>
       )}
     </div>
   );
@@ -286,6 +284,7 @@ function ChannelRowBody({
 
 function ChannelMenuPanel({ channel, onClose }: { channel: Channel; onClose: () => void }) {
   const t = useTranslations("channels");
+  const tcm = useTranslations("common");
   const update = useUpdateChannel();
   const remove = useDeleteChannel();
   const [confirming, setConfirming] = useState(false);
@@ -344,13 +343,13 @@ function ChannelMenuPanel({ channel, onClose }: { channel: Channel; onClose: () 
             className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-danger/10 px-2 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/20"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
-            Borrar
+            {tcm("delete")}
           </button>
           <button
             onClick={() => setConfirming(false)}
             className="cursor-pointer rounded-md px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface"
           >
-            No
+            {tcm("no")}
           </button>
         </div>
       ) : (
@@ -359,7 +358,7 @@ function ChannelMenuPanel({ channel, onClose }: { channel: Channel; onClose: () 
           className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface hover:text-danger"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden />
-          Borrar categoría
+          {t("delete")}
         </button>
       )}
     </div>

@@ -76,11 +76,12 @@ const DOT_TONE: Record<Tone, string> = {
 
 /** Trailing check (done) or dot (pending) for a ritual row/icon. */
 function RitualStatus({ ritual }: { ritual: Ritual }) {
+  const t = useTranslations("chrome");
   if (ritual.done) {
     return (
       <>
         <Check className="h-3.5 w-3.5 text-success" aria-hidden />
-        <span className="sr-only">hecho</span>
+        <span className="sr-only">{t("ritualDone")}</span>
       </>
     );
   }
@@ -93,7 +94,7 @@ function RitualStatus({ ritual }: { ritual: Ritual }) {
         )}
         aria-hidden
       />
-      <span className="sr-only">pendiente</span>
+      <span className="sr-only">{t("ritualPending")}</span>
     </>
   );
 }
