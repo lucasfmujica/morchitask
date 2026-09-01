@@ -43,24 +43,29 @@ export function shutdownSummary(tasks: Task[], meId: string): ShutdownSummary {
 }
 
 /**
- * How the day went against the estimate, as something you'd actually say.
- * Within 10% counts as on target — false precision here would just be noise.
+ * How the day went against the estimate, as a catalog key plus the number to
+ * put in it. Within 10% counts as on target — false precision here would just
+ * be noise, and "on target" carries no percentage at all, which is why this
+ * returns a shape rather than three separate helpers.
  */
-export function accuracyLabel(accuracy: number | null): string | null {
+export function accuracyLabelKey(
+  accuracy: number | null,
+): { key: "accuracyOnTarget" | "accuracySlower" | "accuracyFaster"; pct: number } | null {
   if (accuracy === null) return null;
-  if (accuracy >= 0.9 && accuracy <= 1.1) return "Calculaste bien el día";
+  if (accuracy >= 0.9 && accuracy <= 1.1) return { key: "accuracyOnTarget", pct: 0 };
   const pct = Math.round(Math.abs(accuracy - 1) * 100);
-  return accuracy > 1 ? `Tardaste ${pct}% más de lo previsto` : `Terminaste ${pct}% antes`;
+  return { key: accuracy > 1 ? "accuracySlower" : "accuracyFaster", pct };
 }
 
 /** The five moods, stored as 1..5 in `daily_notes.mood` — no migration needed.
- *  Words rather than bare numbers: "3 de 5" tells you nothing a month later. */
+ *  Words rather than bare numbers: "3 de 5" tells you nothing a month later.
+ *  `labelKey` indexes the `shutdown` catalog; the emoji needs no translating. */
 export const MOODS = [
-  { value: 1, label: "Duro", emoji: "😩" },
-  { value: 2, label: "Flojo", emoji: "😕" },
-  { value: 3, label: "Normal", emoji: "😐" },
-  { value: 4, label: "Bueno", emoji: "🙂" },
-  { value: 5, label: "Excelente", emoji: "😄" },
+  { value: 1, labelKey: "moodHard", emoji: "😩" },
+  { value: 2, labelKey: "moodMeh", emoji: "😕" },
+  { value: 3, labelKey: "moodNormal", emoji: "😐" },
+  { value: 4, labelKey: "moodGood", emoji: "🙂" },
+  { value: 5, labelKey: "moodGreat", emoji: "😄" },
 ] as const;
 
 /**

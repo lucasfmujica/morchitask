@@ -14,10 +14,10 @@ import {
   useUpsertDailyNote,
 } from "@/lib/queries/daily-notes";
 import type { Channel, DailyNote, Task } from "@/lib/queries/types";
-import { carryOverTarget, fullDayLabel, relativeLabel, todayISO } from "@/lib/date";
+import { carryOverTarget, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import {
-  accuracyLabel,
+  accuracyLabelKey,
   carryDestination,
   defaultCarryPlan,
   MOODS,
@@ -33,8 +33,12 @@ import { Confetti } from "@/components/ui/confetti";
 import { SkeletonList } from "@/components/ui";
 import { TaskReactions } from "@/components/tasks/task-reactions";
 import { PastDayNotice } from "@/components/day/past-day-notice";
+import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
-const STEPS = ["Celebrá", "Reflexioná", "Mañana"] as const;
+/** The step names are words, so they live in the catalog; the array holds the
+ *  keys, which is also what the progress bar indexes. */
+const STEP_KEYS = ["stepCelebrate", "stepReflect", "stepTomorrow"] as const;
 
 export function ShutdownView({ date }: { date: string }) {
   const tasksQ = useTasksForDate(date);
@@ -82,6 +86,8 @@ function ShutdownRitual({
   note: DailyNote | null;
   capacityTarget: number;
 }) {
+  const labels = useDateLabels();
+  const ts = useTranslations("shutdown");
   const router = useRouter();
   const qc = useQueryClient();
   const upsert = useUpsertDailyNote(date);
@@ -158,7 +164,7 @@ function ShutdownRitual({
     setTimeout(() => router.push(`/day/${tomorrow}`), 900);
   }
 
-  const isLast = step === STEPS.length - 1;
+  const isLast = step === STEP_KEYS.length - 1;
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6 py-2">
@@ -167,13 +173,13 @@ function ShutdownRitual({
       <header className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-fg">Cerrar el día</h1>
-            <p className="text-sm text-muted">{fullDayLabel(date)}</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-fg">{ts("title")}</h1>
+            <p className="text-sm text-muted">{labels.fullDayLabel(date)}</p>
           </div>
           {streak > 0 && (
             <span
               className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent"
-              title={`Cerraste el día ${streak} ${streak === 1 ? "día" : "días"} seguidos`}
+              title={ts("streak", { n: streak })}
             >
               <Flame className="h-4 w-4" aria-hidden />
               {streak}
@@ -184,8 +190,10 @@ function ShutdownRitual({
       </header>
 
       <PastDayNotice date={date}>
-        Estás cerrando <span className="font-semibold">{fullDayLabel(date)}</span>, que ya pasó. Lo
-        que te haya quedado pendiente viaja a hoy.
+        {ts.rich("pastNotice", {
+          day: labels.fullDayLabel(date),
+          b: (chunks) => <span className="font-semibold">{chunks}</span>,
+        })}
       </PastDayNotice>
 
       {step === 0 && (
@@ -232,7 +240,7 @@ function ShutdownRitual({
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            Atrás
+            {ts("back")}
           </button>
         )}
         <button
@@ -240,29 +248,26 @@ function ShutdownRitual({
           disabled={upsert.isPending}
           className="ml-auto inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-on-primary transition-colors hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:opacity-60"
         >
-          {isLast ? (alreadyClosed ? "Guardar y ver mañana" : "Cerrar el día") : "Seguir"}
+          {isLast ? (alreadyClosed ? ts("saveAndSee") : ts("title")) : ts("next")}
           <ArrowRight className="h-4 w-4" aria-hidden />
         </button>
       </div>
 
-      {saveError && (
-        <p className="text-right text-sm text-danger">
-          No se pudo guardar. Probá de nuevo — tu reflexión sigue acá.
-        </p>
-      )}
+      {saveError && <p className="text-right text-sm text-danger">{ts("saveError")}</p>}
     </div>
   );
 }
 
 function StepBar({ step, onJump }: { step: number; onJump: (i: number) => void }) {
+  const ts = useTranslations("shutdown");
   return (
     <div className="flex items-center gap-3">
       <div className="flex flex-1 items-center gap-1.5">
-        {STEPS.map((label, i) => (
+        {STEP_KEYS.map((key, i) => (
           <button
-            key={label}
+            key={key}
             onClick={() => onJump(i)}
-            aria-label={`Paso ${i + 1}: ${label}`}
+            aria-label={ts("stepAria", { n: i + 1, name: ts(key) })}
             aria-current={i === step ? "step" : undefined}
             className={cn(
               "h-1.5 flex-1 cursor-pointer rounded-pill transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
@@ -272,7 +277,7 @@ function StepBar({ step, onJump }: { step: number; onJump: (i: number) => void }
         ))}
       </div>
       <span className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-subtle">
-        {step + 1} de {STEPS.length} · {STEPS[step]}
+        {ts("stepOf", { step: step + 1, total: STEP_KEYS.length, name: ts(STEP_KEYS[step]) })}
       </span>
     </div>
   );
@@ -297,23 +302,22 @@ function StepCelebrate({
   intention: string | null;
   channelsById: Map<string, Channel>;
 }) {
-  const accuracyText = accuracyLabel(accuracy);
+  const ts = useTranslations("shutdown");
+  const acc = accuracyLabelKey(accuracy);
   const sharedDone = done.filter((t) => t.shared);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-xl font-extrabold tracking-tight text-fg">
-          {done.length === 0
-            ? "Hoy no cerraste nada, y está bien"
-            : `Hiciste ${done.length} ${done.length === 1 ? "cosa" : "cosas"} hoy`}
+          {done.length === 0 ? ts("nothingDone") : ts("didCount", { n: done.length })}
         </h2>
         <p className="mt-1 text-sm text-muted">
           {done.length === 0
-            ? "Hay días así. Lo que quedó pendiente pasa a mañana en el último paso."
-            : `De ${total} que te habías propuesto${
-                actualMin > 0 ? ` · ${formatMinutes(actualMin)} medidas` : ""
-              }.`}
+            ? ts("nothingDoneHint")
+            : actualMin > 0
+              ? ts("outOfPlannedMeasured", { total, time: formatMinutes(actualMin) })
+              : ts("outOfPlanned", { total })}
         </p>
       </div>
 
@@ -349,19 +353,21 @@ function StepCelebrate({
       {(estimatedMin > 0 || actualMin > 0) && (
         <div className="flex flex-col gap-2.5 rounded-card border border-border bg-surface p-4 shadow-soft">
           <CompareBar
-            label="Estimaste"
+            label={ts("estimatedBar")}
             min={estimatedMin}
             max={Math.max(estimatedMin, actualMin)}
             tone="soft"
           />
           <CompareBar
-            label="Trabajaste"
+            label={ts("workedBar")}
             min={actualMin}
             max={Math.max(estimatedMin, actualMin)}
             tone="solid"
           />
-          {accuracyText && (
-            <p className="mt-0.5 text-2xs font-semibold text-warning">{accuracyText}</p>
+          {acc && (
+            <p className="mt-0.5 text-2xs font-semibold text-warning">
+              {ts(acc.key, { pct: acc.pct })}
+            </p>
           )}
         </div>
       )}
@@ -373,15 +379,15 @@ function StepCelebrate({
           <Quote className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
           <div className="min-w-0">
             <p className="text-2xs font-semibold uppercase tracking-wide text-subtle">
-              Tu intención de esta mañana
+              {ts("morningIntention")}
             </p>
             <p className="mt-1 text-sm text-fg">{intention}</p>
             <p className="mt-1.5 text-2xs font-semibold text-success">
               {done.length === 0
-                ? "Queda para mañana."
+                ? ts("intentionPending")
                 : done.length === total
-                  ? "Cumplida: salió todo."
-                  : `Avanzaste: ${done.length} de ${total}.`}
+                  ? ts("intentionDone")
+                  : ts("intentionPartial", { done: done.length, total })}
             </p>
           </div>
         </div>
@@ -390,7 +396,7 @@ function StepCelebrate({
       {sharedDone.length > 0 && (
         <div className="flex flex-col gap-2">
           <p className="text-2xs font-semibold uppercase tracking-wide text-subtle">
-            Compartidas — dejale un mimo
+            {ts("sharedDone")}
           </p>
           {sharedDone.map((t) => (
             <div
@@ -420,11 +426,12 @@ function StepReflect({
   reflection: string;
   onReflection: (r: string) => void;
 }) {
+  const ts = useTranslations("shutdown");
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-fg">¿Cómo estuvo el día?</h2>
-        <p className="mt-1 text-sm text-muted">Treinta segundos, para vos.</p>
+        <h2 className="text-xl font-bold tracking-tight text-fg">{ts("moodQuestion")}</h2>
+        <p className="mt-1 text-sm text-muted">{ts("moodHint")}</p>
       </div>
 
       <div className="flex gap-2">
@@ -433,7 +440,7 @@ function StepReflect({
             key={m.value}
             onClick={() => onMood(m.value)}
             aria-pressed={mood === m.value}
-            aria-label={m.label}
+            aria-label={ts(m.labelKey)}
             className={cn(
               "flex flex-1 cursor-pointer flex-col items-center gap-1 rounded-card border px-1 py-3 transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
               mood === m.value
@@ -444,7 +451,7 @@ function StepReflect({
             <span className="text-xl leading-none" aria-hidden>
               {m.emoji}
             </span>
-            <span className="text-2xs font-semibold">{m.label}</span>
+            <span className="text-2xs font-semibold">{ts(m.labelKey)}</span>
           </button>
         ))}
       </div>
@@ -452,7 +459,7 @@ function StepReflect({
       <textarea
         value={reflection}
         onChange={(e) => onReflection(e.target.value)}
-        placeholder="Qué salió bien, qué te trabó, qué querés cambiar mañana…"
+        placeholder={ts("reflectionPlaceholder")}
         rows={5}
         className="w-full resize-none rounded-card border border-border bg-surface px-3.5 py-3 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
       />
@@ -484,29 +491,31 @@ function StepTomorrow({
   projectedMin: number;
   capacityTarget: number;
 }) {
+  const ts = useTranslations("shutdown");
+  const tnav = useTranslations("nav");
+  const tcm = useTranslations("common");
   // Closing an old day carries its leftovers to today, not to "mañana" — so the
-  // copy has to name the day it's actually moving them to.
-  const target = relativeLabel(tomorrow, todayISO()).toLowerCase();
+  // copy has to name the day it's actually moving them to. Compared as dates:
+  // this used to lowercase the day's LABEL and test it against "hoy", which
+  // silently stopped being true the moment that label could be "Today".
+  const toToday = tomorrow === todayISO();
+  const targetName = toToday ? tcm("today") : tcm("tomorrow");
   const over = projectedMin > capacityTarget;
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-xl font-extrabold tracking-tight text-fg">
-          {target === "hoy" ? "Traé lo pendiente a hoy" : "Dejá mañana listo"}
+          {toToday ? ts("todayHeading") : ts("tomorrowHeading")}
         </h2>
         <p className="mt-1 text-sm text-muted">
-          {pending.length === 0
-            ? "No te quedó nada colgando."
-            : pending.length === 1
-              ? "Te quedó 1 tarea sin terminar. Elegí a dónde va."
-              : `Te quedaron ${pending.length} tareas sin terminar. Elegí a dónde va cada una.`}
+          {pending.length === 0 ? ts("nothingPending") : ts("pendingCount", { n: pending.length })}
         </p>
       </div>
 
       {pending.length === 0 ? (
         <p className="flex items-center gap-2 rounded-card border border-border bg-surface p-4 text-sm text-success shadow-soft">
-          <Check className="h-4 w-4 shrink-0" aria-hidden /> Cerraste todo. Que descanses.
+          <Check className="h-4 w-4 shrink-0" aria-hidden /> {ts("allClosed")}
         </p>
       ) : (
         <>
@@ -526,7 +535,7 @@ function StepTomorrow({
                   ) : null}
                   <button
                     onClick={() => onToggle(t.id)}
-                    aria-label={`Destino de ${t.title}`}
+                    aria-label={ts("destinationOf", { title: t.title })}
                     className={cn(
                       "w-20 shrink-0 cursor-pointer rounded-pill px-2.5 py-1 text-2xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
                       dest === "tomorrow"
@@ -534,7 +543,7 @@ function StepTomorrow({
                         : "bg-surface-2 text-muted",
                     )}
                   >
-                    {dest === "tomorrow" ? (target === "hoy" ? "Hoy" : "Mañana") : "Backlog"}
+                    {dest === "tomorrow" ? targetName : tnav("backlog")}
                   </button>
                 </li>
               );
@@ -550,10 +559,13 @@ function StepTomorrow({
                 : "border-border bg-surface text-muted shadow-soft",
             )}
           >
-            {target === "hoy" ? "Hoy" : "Mañana"} quedaría en{" "}
-            <strong className="font-semibold">{formatMinutes(projectedMin)}</strong> de{" "}
-            {formatMinutes(capacityTarget)}
-            {over && " — te conviene mandar algo al backlog."}
+            {ts.rich("wouldWeigh", {
+              day: targetName,
+              planned: formatMinutes(projectedMin),
+              capacity: formatMinutes(capacityTarget),
+              b: (chunks) => <strong className="font-semibold">{chunks}</strong>,
+            })}
+            {over && ts("wouldWeighOver")}
           </p>
         </>
       )}
@@ -563,7 +575,8 @@ function StepTomorrow({
 
 /**
  * One bar of the estimate-vs-actual pair. Both are drawn against the SAME
- * maximum, which is the only way the comparison means anything.
+ * maximum, which is the only way the comparison means anything. The label
+ * arrives translated from the caller, so this stays presentational.
  */
 function CompareBar({
   label,

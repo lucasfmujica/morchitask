@@ -5,14 +5,16 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { getStoredTheme, setTheme, type Theme } from "@/lib/theme";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 const OPTIONS = [
-  { value: "light" as const, label: "Claro", icon: Sun },
-  { value: "dark" as const, label: "Oscuro", icon: Moon },
-  { value: "system" as const, label: "Sistema", icon: Monitor },
+  { value: "light" as const, labelKey: "themeLight", icon: Sun },
+  { value: "dark" as const, labelKey: "themeDark", icon: Moon },
+  { value: "system" as const, labelKey: "themeSystem", icon: Monitor },
 ];
 
 export function ThemeSelector() {
+  const tr = useTranslations("settings");
   const hydrated = useHydrated();
   const [theme, setLocal] = useState<Theme>(() =>
     typeof window !== "undefined" ? getStoredTheme() : "system",
@@ -25,7 +27,7 @@ export function ThemeSelector() {
 
   return (
     <div className="grid grid-cols-3 gap-2">
-      {OPTIONS.map(({ value, label, icon: Icon }) => {
+      {OPTIONS.map(({ value, labelKey, icon: Icon }) => {
         const active = hydrated && theme === value;
         return (
           <button
@@ -40,7 +42,7 @@ export function ThemeSelector() {
             )}
           >
             <Icon className="h-5 w-5" aria-hidden />
-            {label}
+            {tr(labelKey)}
           </button>
         );
       })}

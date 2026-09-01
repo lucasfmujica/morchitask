@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy, Mail, X } from "lucide-react";
 import { useInviteActions, useInvites } from "@/lib/queries/invites";
+import { useFormatter, useTranslations } from "next-intl";
 
 /**
  * Invite one person into this space.
@@ -13,6 +14,8 @@ import { useInviteActions, useInvites } from "@/lib/queries/invites";
  * invited address.
  */
 export function InviteCard() {
+  const t = useTranslations("settings");
+  const format = useFormatter();
   const { data, isLoading } = useInvites();
   const { invite, revoke } = useInviteActions();
   const [email, setEmail] = useState("");
@@ -34,10 +37,8 @@ export function InviteCard() {
           <Mail className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-fg">Invitar a alguien</p>
-          <p className="text-xs text-muted">
-            Van a ver las tareas que marques como compartidas. Cada uno mantiene las suyas privadas.
-          </p>
+          <p className="text-sm font-medium text-fg">{t("inviteTitle")}</p>
+          <p className="text-xs text-muted">{t("inviteDesc")}</p>
         </div>
       </div>
 
@@ -54,8 +55,8 @@ export function InviteCard() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="su.mail@ejemplo.com"
-            aria-label="Mail de la persona que querés invitar"
+            placeholder={t("inviteEmailPlaceholder")}
+            aria-label={t("inviteEmailLabel")}
             className="min-w-0 flex-1 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-subtle focus:border-primary focus:outline-none"
           />
           <button
@@ -63,22 +64,18 @@ export function InviteCard() {
             disabled={invite.isPending || !email.trim()}
             className="shrink-0 cursor-pointer rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {invite.isPending ? "Enviando…" : "Invitar"}
+            {invite.isPending ? t("inviteSending") : t("inviteSend")}
           </button>
         </form>
       )}
 
       {invite.isError && (
         <p role="alert" className="text-xs text-danger">
-          {invite.error instanceof Error ? invite.error.message : "No se pudo invitar."}
+          {invite.error instanceof Error ? invite.error.message : t("inviteFailed")}
         </p>
       )}
 
-      {full && invites.length === 0 && (
-        <p className="text-xs text-muted">
-          Tu espacio ya está completo. Podés usar la app solo — compartir es opcional.
-        </p>
-      )}
+      {full && invites.length === 0 && <p className="text-xs text-muted">{t("inviteFull")}</p>}
 
       {invites.length > 0 && (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
@@ -87,23 +84,24 @@ export function InviteCard() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-fg">{i.email}</p>
                 <p className="text-xs text-subtle">
-                  Invitación pendiente · vence el{" "}
-                  {new Date(i.expires_at).toLocaleDateString("es-AR", {
-                    day: "numeric",
-                    month: "long",
+                  {t("invitePending", {
+                    date: format.dateTime(new Date(i.expires_at), {
+                      day: "numeric",
+                      month: "long",
+                    }),
                   })}
                 </p>
               </div>
               <button
                 onClick={() => copyLink(i.token)}
-                aria-label={`Copiar el link de invitación de ${i.email}`}
+                aria-label={t("inviteCopy", { email: i.email })}
                 className="shrink-0 cursor-pointer rounded-lg p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
               >
                 {copied === i.token ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </button>
               <button
                 onClick={() => revoke.mutate(i.id)}
-                aria-label={`Cancelar la invitación de ${i.email}`}
+                aria-label={t("inviteRevoke", { email: i.email })}
                 className="shrink-0 cursor-pointer rounded-lg p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
               >
                 <X className="h-4 w-4" />

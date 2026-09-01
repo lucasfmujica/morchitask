@@ -16,19 +16,23 @@ import { currentStreak, recentOccurrences } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
 import type { Channel, RecurringTemplate } from "@/lib/queries/types";
 import { EmptyState } from "@/components/ui";
+import { useTranslations } from "next-intl";
 
+/** Monday..Sunday. The letters come from the `week` catalog, the same ones the
+ *  week view's rail shows — one list, so the two can't drift. */
 const WEEKDAYS = [
-  { n: 1, l: "L" },
-  { n: 2, l: "M" },
-  { n: 3, l: "M" },
-  { n: 4, l: "J" },
-  { n: 5, l: "V" },
-  { n: 6, l: "S" },
-  { n: 7, l: "D" },
-];
+  { n: 1, key: "mon" },
+  { n: 2, key: "tue" },
+  { n: 3, key: "wed" },
+  { n: 4, key: "thu" },
+  { n: 5, key: "fri" },
+  { n: 6, key: "sat" },
+  { n: 7, key: "sun" },
+] as const;
 const ESTIMATES = [15, 30, 45, 60, 90];
 
 export function RoutinesView() {
+  const t = useTranslations("routines");
   const routinesQ = useRoutines();
   const channelsQ = useChannels();
   const streaksQ = useRoutineStreaks();
@@ -51,10 +55,8 @@ export function RoutinesView() {
           <Repeat className="h-5 w-5" aria-hidden />
         </span>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">Rutinas</h1>
-          <p className="text-sm text-muted">
-            Tareas que se crean solas cada día (o ciertos días de la semana).
-          </p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+          <p className="text-sm text-muted">{t("subtitle")}</p>
         </div>
       </header>
 
@@ -64,8 +66,8 @@ export function RoutinesView() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Nueva rutina (ej. Meditar 10 min)…"
-          aria-label="Nueva rutina"
+          placeholder={t("newPlaceholder")}
+          aria-label={t("newLabel")}
           className="h-8 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
         <button
@@ -73,16 +75,12 @@ export function RoutinesView() {
           disabled={!title.trim()}
           className="h-8 shrink-0 cursor-pointer rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
         >
-          Agregar
+          {t("add")}
         </button>
       </div>
 
       {routines.length === 0 ? (
-        <EmptyState
-          icon={Repeat}
-          title="Todavía no tenés rutinas"
-          hint="Una rutina genera su tarea sola los días que elijas — ideal para lo que repetís sin pensar."
-        />
+        <EmptyState icon={Repeat} title={t("emptyTitle")} hint={t("emptyHint")} />
       ) : (
         <ul className="flex flex-col gap-3">
           {routines.map((r) => (
@@ -108,6 +106,9 @@ function RoutineRow({
   channels: Channel[];
   completed?: Set<string>;
 }) {
+  const t = useTranslations("routines");
+  const tt = useTranslations("tasks");
+  const tw = useTranslations("week");
   const update = useUpdateRoutine();
   const remove = useDeleteRoutine();
   const patch = (p: Parameters<typeof update.mutate>[0]["patch"]) =>
@@ -149,11 +150,11 @@ function RoutineRow({
             if (v && v !== routine.title) patch({ title: v });
           }}
           className="min-w-0 flex-1 bg-transparent text-base font-medium text-fg outline-none"
-          aria-label="Título de la rutina"
+          aria-label={t("titleLabel")}
         />
         {streak > 0 && (
           <span
-            title={`${streak} ${streak === 1 ? "día" : "días"} seguidos`}
+            title={t("streak", { n: streak })}
             className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning tabular-nums"
           >
             🔥 {streak}
@@ -168,11 +169,11 @@ function RoutineRow({
               : "text-subtle hover:text-muted",
           )}
         >
-          {routine.time_estimate_min ? formatMinutes(routine.time_estimate_min) : "+ tiempo"}
+          {routine.time_estimate_min ? formatMinutes(routine.time_estimate_min) : tt("addTime")}
         </button>
         <button
           onClick={() => remove.mutate(routine.id)}
-          aria-label="Eliminar rutina"
+          aria-label={t("delete")}
           className="shrink-0 cursor-pointer text-muted transition-colors hover:text-danger"
         >
           <Trash2 className="h-4 w-4" aria-hidden />
@@ -182,8 +183,8 @@ function RoutineRow({
       <div className="flex flex-wrap items-center gap-2">
         <Seg
           options={[
-            { value: "daily", label: "Diaria" },
-            { value: "weekly", label: "Semanal" },
+            { value: "daily", label: t("freqDaily") },
+            { value: "weekly", label: t("freqWeekly") },
           ]}
           value={routine.freq}
           onChange={(v) => patch({ freq: v })}
@@ -203,7 +204,7 @@ function RoutineRow({
                     : "bg-surface-2 text-muted hover:bg-border",
                 )}
               >
-                {d.l}
+                {tw(`weekdayInitials.${d.key}`)}
               </button>
             ))}
           </div>
@@ -213,7 +214,7 @@ function RoutineRow({
           onClick={() => patch({ paused: !routine.paused })}
           className="ml-auto cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2"
         >
-          {routine.paused ? "Reanudar" : "Pausar"}
+          {routine.paused ? t("resume") : t("pause")}
         </button>
       </div>
 
@@ -221,7 +222,10 @@ function RoutineRow({
         <div
           className="flex flex-wrap gap-1"
           role="img"
-          aria-label={`Últimas ${history.length} veces: ${history.filter((c) => c.done).length} completadas`}
+          aria-label={t("history", {
+            n: history.length,
+            done: history.filter((c) => c.done).length,
+          })}
         >
           {history.map((c) => (
             <span
@@ -240,7 +244,7 @@ function RoutineRow({
         <div className="flex flex-wrap gap-1.5">
           <Chip
             active={!routine.channel_id}
-            label="Sin categoría"
+            label={tt("noCategory")}
             onClick={() => patch({ channel_id: null })}
           />
           {channels.map((c) => (

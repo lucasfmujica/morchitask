@@ -1,286 +1,115 @@
-# Ship Studio Project
+# Morchitask
 
-This is a Next.js 14+ project with Tailwind CSS. You're helping a **non-developer** build a website. Keep explanations simple and jargon-free.
+PWA de planificación diaria estilo Sunsama: ritual matutino → time-blocking → cierre del día. Está en producción y la usan dos personas todos los días, así que **romper algo tiene costo real**.
 
----
-
-## Environment: Ship Studio App
-
-You are running inside the **Ship Studio app**, which handles the development environment automatically.
-
-**Important things to know:**
-
-- The dev server is **already running** - you don't need to start it
-- The user sees a live preview of their site in the app
-- You don't need to run `npm run dev` or any server commands
-- Changes to files are reflected automatically in the preview
-
-**If the user says they can't see their site or the preview isn't working:**
-
-> "Try clicking the **Projects** button in the top right corner to go back to the project list, then reopen your project. This restarts the preview."
+La interfaz está en español y en inglés. Los comentarios y los mensajes de commit, en inglés.
 
 ---
 
-## FIRST: Check for Onboarding
+## Stack
 
-**Before doing anything else**, check if `SITE.md` exists.
+| Capa       | Qué                                                              |
+| ---------- | ---------------------------------------------------------------- |
+| Framework  | Next.js 16 (App Router, RSC, Server Actions)                     |
+| UI         | React 19, TypeScript, Tailwind CSS v4                            |
+| Datos      | Neon Postgres + Drizzle ORM                                      |
+| Auth       | Auth.js v5 (`next-auth`) + adapter de Drizzle, sesiones en la DB |
+| Cliente    | TanStack Query (optimista) + Zustand                             |
+| i18n       | next-intl, catálogos en `messages/`                              |
+| PWA / push | Serwist + web-push (VAPID)                                       |
+| Tests      | Vitest, con pglite para los que tocan la base                    |
 
-- If `SITE.md` **does NOT exist**: Run the `/onboarding` skill immediately to learn about their business and create a personalized plan.
-- If `SITE.md` **exists**: Read it to understand the project before making changes.
-
----
-
-## Your Skills
-
-You have specialized skills in `.claude/skills/`. **Use them constantly:**
-
-| Skill                     | When to Use                                  | Invocable      |
-| ------------------------- | -------------------------------------------- | -------------- |
-| **onboarding**            | New project setup, no SITE.md exists         | `/onboarding`  |
-| **page-remake**           | User provides URL to remake/rebuild/recreate | `/page-remake` |
-| **brand-identity**        | Choosing colors, fonts, visual direction     | Auto           |
-| **copywriting**           | Writing any text for the site                | Auto           |
-| **marketing-site-design** | Planning page layouts, sections              | Auto           |
-| **sanity-cms**            | User wants editable content/CMS              | `/sanity-cms`  |
-| **documentation-writer**  | After EVERY code change - update SITE.md     | Auto           |
-| **react-nextjs-expert**   | Writing any React/Next.js code               | Auto           |
-| **frontend-design**       | Creating any visual component                | Auto           |
-| **animations**            | Adding micro-interactions and motion         | Auto           |
-| **react-best-practices**  | Performance optimization                     | Auto           |
-
-### Workflow for Every Build Task
-
-1. Check `SITE.md` for brand personality and preferences
-2. Use `marketing-site-design` to plan section architecture
-3. Use `brand-identity` to select colors/fonts (follow design principles)
-4. Use `copywriting` to write specific, human-sounding text
-5. Use `frontend-design` + `react-nextjs-expert` for implementation
-6. Use `documentation-writer` to update SITE.md after changes
+`proxy.ts` en la raíz es el middleware (Next 16 lo renombró).
 
 ---
 
-## Human-First Design Principles
+## Lo que hay que saber antes de tocar
 
-Great design feels intentional and distinctive. These guidelines help create sites that stand out and feel memorable.
+### 1. El aislamiento entre usuarios vive en el código, no en la base
 
-### The Goal
+Esta app **no tiene Row-Level Security**. La tenía con Supabase y se perdió al migrar a Neon. Hoy el aislamiento es que **cada query lleva `householdId`**, que sale de la sesión.
 
-Sites should feel:
+Eso significa que **una query sin `householdId` es una fuga de datos**, no un bug de UX. No la va a atrapar el tipado ni ningún otro test, porque todos los demás corren contra un solo tenant.
 
-- **Intentional** - Every choice has a reason
-- **Distinctive** - Not a copy of common patterns
-- **Memorable** - Something visitors remember
-- **Human** - Warm and approachable
+- Toda mutación va en `lib/actions/*` y arranca con `requireSession()`.
+- Toda lectura va en `lib/db/queries/*` y recibe `householdId` como parámetro.
+- `lib/db/queries/isolation.test.ts` levanta un Postgres real y verifica que A nunca lea una fila de B. **Si agregás una query nueva, sumala ahí.**
 
-### Typography Guidance
+### 2. Los strings van al catálogo, siempre
 
-Common fonts like Inter, Roboto, and system fonts work well but are everywhere. For distinction, explore alternatives:
+Nada de texto visible hardcodeado. Va a `messages/es.json` y `messages/en.json`, con **las mismas claves en los dos**.
 
-**Modern & Clean:**
+```tsx
+const t = useTranslations("tasks"); // client component
+const t = await getTranslations("tasks"); // server component / server action
+```
 
-- Space Grotesk + DM Sans
-- Outfit + Source Sans 3
-- Sora + Nunito
+- Convención de nombres: `t` para el namespace principal del archivo, `tt` para `tasks`, `tcm` para `common`, `tnav` para `nav`.
+- **Una frase es un mensaje completo.** No armes oraciones concatenando pedazos alrededor de un `<span>` ni de un ternario: el orden de las palabras y dónde cae el énfasis cambian entre idiomas. Para markup, `t.rich`. Para contar cosas, plurales ICU.
+- Un módulo de `lib/` que no es componente **no puede usar el hook**: que devuelva una clave (mirá `lib/priority.ts`, `lib/shutdown.ts`) o que reciba el texto por parámetro.
+- Dos reglas de lint rechazan texto suelto en JSX y en atributos. Lo que el lint no ve —un literal adentro de una expresión— lo encuentra `npm run i18n:scan`. **Correlo antes de dar por terminado un cambio con texto.**
 
-**Elegant & Refined:**
+### 3. Las fechas se rompen en silencio
 
-- Playfair Display + Lato
-- Cormorant Garamond + Montserrat
-- Fraunces + Work Sans
+`lib/date.ts` es aritmética de calendario, sin idioma. `lib/date-labels.ts` es lo que convierte una fecha en palabras.
 
-**Warm & Approachable:**
+No alcanza con cambiar el locale de date-fns: los patrones llevan gramática adentro (`"EEEE d 'de' MMMM"` en inglés da _"Monday 27 de July"_). Y **nunca compares una fecha contra una etiqueta** — había un bug así: comparaba contra el string `"hoy"` y en inglés nunca daba verdadero. Comparás fechas.
 
-- Poppins + Nunito Sans
-- Quicksand + Open Sans
-- Comfortaa + Mulish
+### 4. Las migraciones van contra la rama `dev` de Neon
 
-These aren't rules—they're starting points. The right font depends on the brand.
-
-### Color Guidance
-
-**Think twice about these common defaults:**
-
-- `#3B82F6` (Tailwind blue-500) as primary accent - it's everywhere
-- Purple-to-blue gradients on white backgrounds - very common
-- Pure black `#000000` on pure white `#FFFFFF` - can feel harsh
-
-**Consider instead:**
-
-- Off-black (`#1C1917`) on off-white (`#FAFAF9`) for softer contrast
-- Custom accent colors that reflect the brand's personality
-- The 60-30-10 rule: 60% dominant, 30% secondary, 10% accent
-
-### Layout Guidance
-
-**Common patterns to use thoughtfully:**
-
-- 3-column feature grids with generic icons - try alternatives like 2-column, asymmetric, or bento layouts
-- Centered everything - vary alignment for visual interest
-- Equal spacing throughout - vary spacing for rhythm
-
-**Background patterns that feel dated:**
-
-- Abstract blob SVGs
-- Wave section dividers
-- Gradient mesh backgrounds
-
-Alternatives: geometric shapes, grain textures, solid colors with intentional variation, or high-quality photography.
-
-### Writing Guidance
-
-**Overused words to consider alternatives for:**
-revolutionize, leverage, synergy, cutting-edge, seamless, empower, game-changer, next-generation, best-in-class, world-class, unlock, elevate, transform, streamline, robust, scalable, innovative, disrupt, holistic, ecosystem, paradigm, optimize, dynamic, curated, bespoke
-
-**Instead:** Be specific. Use numbers. Focus on outcomes. Write like a human talking to another human.
+No contra `main`, que está vacía. `npm run db:generate` para crearlas, `npm run db:migrate` para aplicarlas.
 
 ---
 
-## CRITICAL: Maintain Documentation
-
-**You MUST keep documentation updated.** This is essential for non-technical users.
-
-### Files to Maintain
-
-1. **`SITE.md`** - The main documentation file. Update EVERY time you make changes:
-
-   ```markdown
-   # [Site Name]
-
-   > [One-sentence tagline]
-
-   ## Brand Identity
-
-   - Personality: [from onboarding]
-   - Colors: [what we're using]
-   - Fonts: [what we're using]
-
-   ## Pages
-
-   - **Homepage** (`/`) - [description of what's on it]
-   - **About** (`/about`) - [description]
-
-   ## Components
-
-   - **Navbar** - [what it contains, how to customize]
-   - **Footer** - [what it contains]
-
-   ## Recent Changes
-
-   - [Date]: Added hero section with [description]
-   - [Date]: Created contact page
-
-   ## How to Customize
-
-   - To change colors: [simple instructions]
-   - To add a new page: [simple instructions]
-   ```
-
-2. **Create `SITE.md` immediately** if it doesn't exist (via onboarding).
-
-3. **Update `SITE.md` after EVERY change** - no exceptions.
-
-4. **Use simple language** - Say "the main page" not "the root route". Say "the navigation bar at the top" not "the header component".
-
----
-
-## Project Structure
+## Estructura
 
 ```
-app/
-├── layout.tsx       # The wrapper around all pages (has <html>, <body>)
-├── page.tsx         # Homepage - EDIT THIS for the main page
-├── globals.css      # Global styles + Tailwind
-└── [folders]/page.tsx  # Other pages (about/, contact/, etc.)
-components/          # Reusable pieces (Navbar, Footer, etc.) - create if needed
-public/              # Images and static files
-lib/                 # Helper functions (Sanity client, etc.)
-sanity/              # CMS configuration (if added via /sanity-cms)
+app/(app)/          Pantallas autenticadas (today, day, week, month, plan,
+                    shutdown, backlog, metas, routines, focus, settings, resumen)
+app/(auth)/login    Entrada
+app/api/            Auth.js, calendar, crons, tasks, attachments
+components/         Agrupados por feature (day/, week/, tasks/, ui/ …)
+lib/actions/        Server Actions — toda mutación
+lib/db/             Schema de Drizzle + queries
+lib/queries/        Hooks de TanStack Query que envuelven las actions
+lib/stores/         Zustand (timers activos, detalle de tarea, paleta)
+lib/*.ts            Lógica pura, cada una con su .test.ts al lado
+messages/           es.json / en.json
+drizzle/migrations/ Migraciones
 ```
 
 ---
 
-## Rules for Building
+## Antes de dar algo por terminado
 
-### DO:
+```bash
+npm run typecheck && npx eslint . && npm test && npm run build
+npm run i18n:scan     # si tocaste algo con texto
+npm run e2e           # si tocaste rutas, proxy.ts, headers o el manifest
+```
 
-- Run `/onboarding` for new projects without SITE.md
-- Check SITE.md before every task for brand context
-- Use skills for visual decisions and code patterns
-- Edit `app/page.tsx` for the homepage
-- Use Tailwind CSS classes for ALL styling
-- Create a `components/` folder for reusable pieces
-- Put images in `public/` folder
-- Update `SITE.md` after every change
-- Explain what you did in simple terms
-- Make intentional, distinctive design choices
+El build local necesita `DATABASE_URL` seteada (sirve cualquier string con forma de URL de Postgres; no se conecta).
 
-### DON'T:
+El E2E levanta la app solo, contra una base inalcanzable a propósito: cubre lo que ve alguien deslogueado (protección de rutas, idioma, headers, manifest). Todo lo que necesita sesión **no** está cubierto — haría falta un Postgres real _y_ el proxy HTTP de Neon delante, porque `lib/db/client.ts` habla el protocolo de Neon, no pg pelado. Dentro de un contenedor corriendo como root hace falta `PLAYWRIGHT_CHROMIUM_PATH` y `PLAYWRIGHT_NO_SANDBOX=1`.
 
-- NEVER create `.html` files - this is React/Next.js
-- NEVER create separate `.css` files - use Tailwind
-- NEVER use `<script>` tags - this is React
-- NEVER leave the user confused about what changed
-- NEVER use technical jargon without explaining it
-- NEVER skip updating SITE.md
+Otras cosas que valen:
+
+- **Los tests son la red, usala.** Hay 399. Si arreglás un bug, escribí el test que lo hubiera atrapado.
+- **Verificá que una regla nueva realmente atrape lo que dice atrapar** metiendo la violación a propósito una vez. Una regla de lint que no corre se ve idéntica a una que pasa.
+- Hay pre-commit con Husky + lint-staged: formatea y lintea lo que está en stage.
 
 ---
 
-## File-Based Routing
+## Convenciones
 
-Each folder in `app/` becomes a page:
-
-- `app/page.tsx` → Homepage (yoursite.com)
-- `app/about/page.tsx` → About page (yoursite.com/about)
-- `app/contact/page.tsx` → Contact page (yoursite.com/contact)
-- `app/pricing/page.tsx` → Pricing page (yoursite.com/pricing)
+- **Estilos**: solo tokens semánticos (`bg-surface`, `text-muted`, `border-border`). La paleta cruda de Tailwind (`bg-blue-500`) está prohibida por lint — no responde al tema. Si falta un token, agregalo en `app/globals.css`.
+- **Comentarios**: explicá _por qué_, no _qué_. Los que más valen son los que cuentan qué se rompió antes y por eso el código está así.
+- **`components/ui/`** es la base compartida (Button, EmptyState, Toaster…). Fijate si ya existe antes de crear uno nuevo.
 
 ---
 
-## Example: Creating a New Page
+## Cosas que NO son texto de interfaz
 
-If the user asks for an "About" page:
+Las categorías por defecto (`Trabajo`, `Hogar`, `Personal`) son **filas en la base**, sembradas por usuario en `lib/household-provisioning.ts`. Quien ya las tiene se las queda: renombrarlas al cambiar de idioma sería editarle los datos a alguien. Solo se siembran en el idioma del alta.
 
-1. Check `SITE.md` for brand personality
-2. Use `marketing-site-design` skill to plan sections
-3. Use `brand-identity` skill for visual consistency
-4. Create `app/about/page.tsx` using `react-nextjs-expert` patterns
-5. Write copy using `copywriting` skill guidelines
-6. **Update `SITE.md`** using `documentation-writer` skill
-7. Tell the user: "I created an About page. You can see it by going to /about in the preview."
-
----
-
-## After Every Task
-
-1. Make the requested changes (using your skills, following design principles)
-2. Update `SITE.md` with what changed
-3. Tell the user what you did in plain English
-4. Let them know how to see the changes
-
----
-
-## Adding CMS (When Requested)
-
-When the user wants to edit content themselves, run the `/sanity-cms` skill. This will:
-
-1. Set up Sanity CMS in the project
-2. Create schemas for editable content
-3. Connect the frontend to fetch CMS data
-4. Give them a friendly editing dashboard
-
-The `.mcp.json` file is already configured for Sanity. User authenticates via OAuth when first using Sanity tools.
-
----
-
-## Remember
-
-The user is NOT a developer. They're using Ship Studio to build a website without coding knowledge. Your job is to:
-
-1. **Onboard them properly** (if no SITE.md)
-2. **Build what they ask for** (using your skills)
-3. **Make it feel distinctive and intentional** (not generic)
-4. **Keep everything documented** so they understand their site
-5. **Explain things simply**
-6. **Make them feel confident** about their project
-
-**Always use your skills. Always follow design principles. Always update SITE.md.**
+`app/manifest.ts` queda en español a propósito: es uno por origen y no hay prefijos de idioma en las rutas. Está anotado en el archivo.

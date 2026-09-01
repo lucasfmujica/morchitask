@@ -37,8 +37,10 @@ import {
 } from "@/lib/spotify/player";
 import { useAudio } from "@/lib/stores/audio";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function SpotifyPlayer() {
+  const t = useTranslations("focus");
   const connected = useSpotifyConnected();
   const setSource = useAudio((s) => s.setSource);
   const setAudioPlaying = useAudio((s) => s.setPlaying);
@@ -87,16 +89,14 @@ export function SpotifyPlayer() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-fg">Spotify</p>
-            <p className="text-xs text-muted">
-              Reproducí tus playlists mientras te concentrás. Necesitás Spotify Premium.
-            </p>
+            <p className="text-xs text-muted">{t("spotifyPitch")}</p>
           </div>
         </div>
         <button
           onClick={connectSpotify}
           className="w-fit cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
         >
-          Conectar Spotify
+          {t("spotifyConnect")}
         </button>
       </div>
     );
@@ -106,8 +106,9 @@ export function SpotifyPlayer() {
     return (
       <PlayerShell>
         <p className="text-sm text-muted">
-          Tu cuenta de Spotify no es <span className="font-medium text-fg">Premium</span>. La
-          reproducción dentro de la app solo funciona con Premium.
+          {t.rich("spotifyNotPremium", {
+            b: (chunks) => <span className="font-medium text-fg">{chunks}</span>,
+          })}
         </p>
       </PlayerShell>
     );
@@ -117,14 +118,14 @@ export function SpotifyPlayer() {
     return (
       <PlayerShell>
         <p className="text-sm text-muted">
-          No pudimos conectar con Spotify. Probá{" "}
+          {t("spotifyErrorBefore")}
           <button
             onClick={connectSpotify}
             className="cursor-pointer font-medium text-primary underline"
           >
-            reconectar
+            {t("spotifyReconnect")}
           </button>
-          .
+          {t("spotifyErrorAfter")}
         </p>
       </PlayerShell>
     );
@@ -145,7 +146,8 @@ export function SpotifyPlayer() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-fg">
-            {snap.track?.name ?? (snap.status === "loading" ? "Conectando…" : "Elegí una canción")}
+            {snap.track?.name ??
+              (snap.status === "loading" ? t("spotifyConnecting") : t("spotifyPickTrack"))}
           </p>
           <p className="truncate text-xs text-muted">{snap.track?.artists ?? ""}</p>
         </div>
@@ -154,7 +156,7 @@ export function SpotifyPlayer() {
       <div className="flex items-center justify-center gap-2">
         <button
           onClick={() => spotifyPrevious()}
-          aria-label="Anterior"
+          aria-label={t("spotifyPrev")}
           className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-fg"
         >
           <SkipBack className="h-5 w-5" aria-hidden />
@@ -164,7 +166,7 @@ export function SpotifyPlayer() {
             setSource("spotify");
             void toggleSpotifyPlay();
           }}
-          aria-label={snap.paused ? "Reproducir" : "Pausar"}
+          aria-label={snap.paused ? t("spotifyPlay") : t("spotifyPause")}
           className="inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-primary text-on-primary shadow-soft transition-colors hover:bg-primary-hover"
         >
           {snap.paused ? (
@@ -175,7 +177,7 @@ export function SpotifyPlayer() {
         </button>
         <button
           onClick={() => spotifyNext()}
-          aria-label="Siguiente"
+          aria-label={t("spotifyNext")}
           className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-fg"
         >
           <SkipForward className="h-5 w-5" aria-hidden />
@@ -195,7 +197,7 @@ export function SpotifyPlayer() {
             setVol(v);
             void setSpotifyVolume(v);
           }}
-          aria-label="Volumen de Spotify"
+          aria-label={t("spotifyVolume")}
           className="h-1.5 w-full cursor-pointer"
           style={{ accentColor: "var(--color-primary)" }}
         />
@@ -210,14 +212,14 @@ export function SpotifyPlayer() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar canción o artista…"
-          aria-label="Buscar canción o artista"
+          placeholder={t("spotifySearchPlaceholder")}
+          aria-label={t("spotifySearch")}
           className="h-10 w-full rounded-xl border border-border bg-surface pl-9 pr-9 text-sm text-fg shadow-soft outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-focus"
         />
         {search && (
           <button
             onClick={() => setSearch("")}
-            aria-label="Limpiar búsqueda"
+            aria-label={t("spotifyClearSearch")}
             className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-fg"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -229,7 +231,7 @@ export function SpotifyPlayer() {
         <TrackList
           tracks={searchQ.data ?? []}
           loading={searchQ.isLoading}
-          empty="No encontramos canciones."
+          empty={t("spotifyNoTracks")}
           currentName={snap.track?.name}
           onPick={(t) => claimAndPlay(() => playSpotifyUris([t.uri]))}
         />
@@ -248,7 +250,7 @@ export function SpotifyPlayer() {
             <TrackList
               tracks={playlistTracksQ.data ?? []}
               loading={playlistTracksQ.isLoading}
-              empty="Esta playlist no tiene canciones."
+              empty={t("spotifyEmptyPlaylist")}
               currentName={snap.track?.name}
               onPick={(t) => claimAndPlay(() => playSpotifyContext(selectedPlaylist.uri, t.uri))}
             />
@@ -281,10 +283,11 @@ function TrackList({
   currentName?: string;
   onPick: (t: SpotifyTrack) => void;
 }) {
+  const t = useTranslations("focus");
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-surface p-3 text-sm text-subtle">
-        Cargando canciones…
+        {t("spotifyLoadingTracks")}
       </div>
     );
   }
@@ -350,6 +353,7 @@ function PlaylistPicker({
   selectedId: string | null;
   onPick: (pl: SpotifyPlaylist) => void;
 }) {
+  const t = useTranslations("focus");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
@@ -384,7 +388,7 @@ function PlaylistPicker({
       >
         <ListMusic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-fg">
-          {picked ? picked.name : "Elegí una playlist…"}
+          {picked ? picked.name : t("spotifyPickPlaylist")}
         </span>
         <ChevronDown
           className={cn("h-4 w-4 shrink-0 text-muted transition-transform", open && "rotate-180")}
@@ -402,9 +406,11 @@ function PlaylistPicker({
             transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
             className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-64 origin-bottom overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-card"
           >
-            {loading && <li className="px-2.5 py-2 text-sm text-subtle">Cargando playlists…</li>}
+            {loading && (
+              <li className="px-2.5 py-2 text-sm text-subtle">{t("spotifyLoadingPlaylists")}</li>
+            )}
             {!loading && playlists.length === 0 && (
-              <li className="px-2.5 py-2 text-sm text-subtle">No encontramos playlists.</li>
+              <li className="px-2.5 py-2 text-sm text-subtle">{t("spotifyNoPlaylists")}</li>
             )}
             {playlists.map((pl) => {
               const active = pl.id === selectedId;

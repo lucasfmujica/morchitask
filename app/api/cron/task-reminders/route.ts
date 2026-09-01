@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
+import { getTranslations } from "next-intl/server";
 import {
   deleteSubscriptions,
   dueTaskReminders,
   markRemindersSent,
+  profileLocales,
   profileNotificationPrefs,
   subscriptionsForProfiles,
 } from "@/lib/db/queries/cron";
 import { isAuthorizedCron } from "@/lib/cron-auth";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/locale";
 
-/** Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
+/**
+ * Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
  * haven't been sent yet, and pushes the owner (if they enabled task reminders).
- * Triggered every ~5 minutes via Upstash QStash, configured to send
- * `x-cron-secret` as a custom header (see migration plan Fase 5). */
+ *
+ * **Scheduled outside this repo.** Unlike `daily-plan`, this one is NOT in
+ * `vercel.json`: it needs to run every ~5 minutes and Vercel's Hobby plan caps
+ * crons at daily, so it's driven by an external Upstash QStash schedule that
+ * sends `x-cron-secret` as a custom header. Two consequences worth knowing:
+ * nothing in the repo will tell you if that schedule stops, and adding it to
+ * `vercel.json` on Pro without deleting the QStash one would fire every
+ * reminder twice.
+ */
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) return new Response("forbidden", { status: 401 });
 
@@ -32,7 +43,15 @@ export async function GET(req: Request) {
   );
 
   const owners = [...new Set(dueTasks.map((t) => t.owner_id))];
-  const subs = await subscriptionsForProfiles(owners);
+  const [subs, locales] = await Promise.all([subscriptionsForProfiles(owners), profileLocales()]);
+
+  // Only the body is ours; the title is the task, which is whatever the person
+  // typed. One lookup per language rather than per reminder.
+  const bodies = new Map<Locale, string>();
+  for (const locale of LOCALES) {
+    const t = await getTranslations({ locale, namespace: "push" });
+    bodies.set(locale, t("reminderBody"));
+  }
   const subsByOwner = new Map<string, typeof subs>();
   for (const s of subs) {
     const list = subsByOwner.get(s.profile_id) ?? [];
@@ -47,7 +66,7 @@ export async function GET(req: Request) {
       if (!wantsReminders.has(t.owner_id)) return; // opted out — still marked sent below
       const payload = JSON.stringify({
         title: t.title,
-        body: "Es hora de tu tarea ⏰",
+        body: bodies.get(locales.get(t.owner_id) ?? DEFAULT_LOCALE)!,
         url: t.planned_date ? `/day/${t.planned_date}` : "/today",
       });
       for (const s of subsByOwner.get(t.owner_id) ?? []) {

@@ -3,6 +3,7 @@
 import { useChannels } from "@/lib/queries/channels";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /**
  * Horizontal category filter that sits at the top of the Day / Week views (in
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
  * category; "Todas" clears the filter. Hidden when you have no categories yet.
  */
 export function ChannelFilterBar() {
+  const t = useTranslations("tasks");
   const channels = useChannels().data ?? [];
   const { selected, toggle, clear } = useChannelFilter();
 
@@ -19,7 +21,7 @@ export function ChannelFilterBar() {
   return (
     <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <Chip active={selected.size === 0} onClick={clear}>
-        Todas
+        {t("allCategories")}
       </Chip>
       {channels.map((c) => {
         const active = selected.has(c.id);

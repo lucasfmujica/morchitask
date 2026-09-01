@@ -6,11 +6,12 @@ import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import type { Channel, Task } from "@/lib/queries/types";
 import { formatMinutes } from "@/lib/format";
-import { ageLabel } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { CollapsibleSection } from "@/components/ui";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
+import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /** The 3px category rail, shared by both section row types. */
 function Rail({ channel }: { channel?: Channel }) {
@@ -40,6 +41,7 @@ export function DoneSection({
   channelsById: Map<string, Channel>;
   defaultOpen?: boolean;
 }) {
+  const tt = useTranslations("tasks");
   const toggle = useToggleTask();
   const openDetail = useTaskDetail((s) => s.open);
   const toast = useToast();
@@ -71,8 +73,8 @@ export function DoneSection({
               checked
               onToggle={() => {
                 toggle.mutate(task);
-                toast("Marcada como pendiente", {
-                  label: "Deshacer",
+                toast(tt("markedPending"), {
+                  label: tt("undo"),
                   run: () => toggle.mutate({ ...task, status: "todo" } as Task),
                 });
               }}
@@ -114,6 +116,9 @@ export function UnscheduledSection({
   channelsById: Map<string, Channel>;
   defaultOpen?: boolean;
 }) {
+  const tt = useTranslations("tasks");
+  const td = useTranslations("day");
+  const labels = useDateLabels();
   const backlogQ = useBacklogTasks();
   const move = useMoveTaskToDate();
   const openDetail = useTaskDetail((s) => s.open);
@@ -127,7 +132,7 @@ export function UnscheduledSection({
   function bringToDay(task: Task) {
     move.mutate({ task, toDate: date, sortOrder: orderForAppend([]) });
     toast(`"${task.title}" va para hoy`, {
-      label: "Deshacer",
+      label: tt("undo"),
       run: () =>
         move.mutate({
           task: { ...task, planned_date: date },
@@ -144,7 +149,7 @@ export function UnscheduledSection({
       defaultOpen={defaultOpen}
       label={
         <>
-          Sin agendar · {tasks.length} del backlog
+          {td("unscheduledCount", { n: tasks.length })}
           {estimatedMin > 0 && ` · ${formatMinutes(estimatedMin)}`}
         </>
       }
@@ -164,7 +169,7 @@ export function UnscheduledSection({
               <span className="block truncate text-sm text-fg">{task.title}</span>
               <span className="block truncate text-2xs text-muted">
                 {channel ? `#${channel.name} · ` : ""}
-                {ageLabel(task.created_at)}
+                {labels.ageLabel(task.created_at)}
               </span>
             </button>
             {task.time_estimate_min ? (
@@ -176,7 +181,7 @@ export function UnscheduledSection({
               onClick={() => bringToDay(task)}
               className="shrink-0 cursor-pointer rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
-              + Hoy
+              {td("plusToday")}
             </button>
           </div>
         );

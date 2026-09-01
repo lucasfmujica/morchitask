@@ -10,6 +10,7 @@ import { formatClock } from "@/lib/format";
 import { EASE_OUT } from "@/lib/motion";
 import type { Task } from "@/lib/queries/types";
 import { useGlobalTimers, type RunningTimer } from "@/components/tasks/use-task-timer";
+import { useTranslations } from "next-intl";
 
 /** How many pills fit comfortably before the stack starts eating the phone. */
 const VISIBLE = 3;
@@ -21,6 +22,7 @@ const VISIBLE = 3;
  * one. Tapping a title opens that task. Sits above the mobile bottom nav.
  */
 export function TimerBar() {
+  const t = useTranslations("tasks");
   const { timers, count, stop, stopAll } = useGlobalTimers();
   const [expanded, setExpanded] = useState(false);
   const qc = useQueryClient();
@@ -50,7 +52,7 @@ export function TimerBar() {
             className="pointer-events-auto inline-flex h-8 cursor-pointer items-center gap-1 rounded-pill border border-border bg-surface px-3.5 text-xs font-semibold text-danger shadow-card transition-colors hover:bg-danger/10"
           >
             <Pause className="h-3.5 w-3.5" aria-hidden />
-            Detener todo ({count})
+            {t("stopAll", { n: count })}
           </motion.button>
         )}
 
@@ -81,11 +83,11 @@ export function TimerBar() {
             </button>
             <button
               onClick={() => stop(timer.taskId)}
-              aria-label={`Detener cronómetro de ${timer.title}`}
+              aria-label={t("stopTimerFor", { title: timer.title })}
               className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-pill bg-danger/10 px-3 text-xs font-semibold text-danger transition-colors hover:bg-danger/15"
             >
               <Pause className="h-3.5 w-3.5" aria-hidden />
-              Detener
+              {t("stop")}
             </button>
           </motion.div>
         ))}
@@ -100,7 +102,7 @@ export function TimerBar() {
             onClick={() => setExpanded(true)}
             className="pointer-events-auto cursor-pointer rounded-pill border border-border bg-surface px-3 py-1 text-xs font-medium text-muted shadow-card transition-colors hover:text-fg"
           >
-            +{hidden} más
+            {t("andMore", { n: hidden })}
           </motion.button>
         )}
       </AnimatePresence>

@@ -8,7 +8,7 @@ import {
   formatBytes,
   isImage,
   MAX_ATTACHMENT_BYTES,
-  rejectionReason,
+  rejectionKey,
 } from "@/lib/attachments";
 import {
   useAttachments,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/queries/attachments";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /**
  * Files attached to a task: photos, PDFs, documents.
@@ -27,6 +28,8 @@ import { cn } from "@/lib/utils";
  * anything this sheet could show in 300 pixels.
  */
 export function TaskAttachments({ taskId }: { taskId: string }) {
+  const t = useTranslations("tasks");
+  const tcm = useTranslations("common");
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const { data: files = [] } = useAttachments(taskId);
@@ -42,7 +45,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
   function send(list: FileList | File[]) {
     setError(null);
     for (const file of Array.from(list)) {
-      const reason = rejectionReason(file);
+      const reason = rejectionKey(file);
       if (reason) {
         setError(`${file.name}: ${reason}`);
         continue;
@@ -62,7 +65,9 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
   }
 
   const nameOf = (userId: string) =>
-    userId === me?.id ? "Vos" : (profiles.find((p) => p.id === userId)?.display_name ?? "Alguien");
+    userId === me?.id
+      ? tcm("you")
+      : (profiles.find((p) => p.id === userId)?.display_name ?? t("someone"));
 
   return (
     <div className="flex flex-col gap-2">
@@ -118,7 +123,9 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           </span>
-          <span className="min-w-0 flex-1 truncate text-sm text-muted">Subiendo {name}…</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted">
+            {t("uploading", { name })}
+          </span>
         </div>
       ))}
 
@@ -144,7 +151,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         )}
       >
         <Paperclip className="h-4 w-4" aria-hidden />
-        {dragging ? "Soltá el archivo acá" : "Agregar archivo"}
+        {dragging ? t("dropFile") : t("addFile")}
       </button>
 
       <input
@@ -167,7 +174,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         uploading.length === 0 && (
           <span className="flex items-center gap-1.5 text-2xs text-subtle">
             <ImageIcon className="h-3 w-3" aria-hidden />
-            Fotos, PDFs o documentos, hasta {formatBytes(MAX_ATTACHMENT_BYTES)} cada uno.
+            {t("attachmentsHint", { max: formatBytes(MAX_ATTACHMENT_BYTES) })}
           </span>
         )
       )}

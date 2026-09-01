@@ -1,13 +1,7 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/reactions";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 export async function getReactions(taskId: string) {
   const { householdId } = await requireSession();
@@ -15,11 +9,11 @@ export async function getReactions(taskId: string) {
 }
 
 export async function addReaction(taskId: string, emoji: string) {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
   await data.addReaction(householdId, taskId, userId, emoji);
 }
 
 export async function removeReaction(id: string) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   await data.removeReaction(householdId, id);
 }

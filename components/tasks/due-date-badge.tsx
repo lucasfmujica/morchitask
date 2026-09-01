@@ -1,8 +1,10 @@
 "use client";
 
 import { CalendarClock } from "lucide-react";
-import { dueLabel, dueTone, todayISO } from "@/lib/date";
+import { dueTone, todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 const TONE_STYLES = {
   overdue: "bg-danger/10 text-danger",
@@ -13,6 +15,8 @@ const TONE_STYLES = {
 /** Small pill showing a task's due date, coloured by urgency:
  *  red if overdue, amber if due today/tomorrow, grey otherwise. */
 export function DueDateBadge({ dueDate, className }: { dueDate: string; className?: string }) {
+  const t = useTranslations("tasks");
+  const labels = useDateLabels();
   const today = todayISO();
   const tone = dueTone(dueDate, today);
   return (
@@ -22,10 +26,10 @@ export function DueDateBadge({ dueDate, className }: { dueDate: string; classNam
         TONE_STYLES[tone],
         className,
       )}
-      title={tone === "overdue" ? "Tarea vencida" : "Vence"}
+      title={tone === "overdue" ? t("overdue") : t("due")}
     >
       <CalendarClock className="h-3 w-3" aria-hidden />
-      {dueLabel(dueDate, today)}
+      {labels.dueLabel(dueDate, today)}
     </span>
   );
 }

@@ -1,6 +1,5 @@
 import { addDays as fnsAddDays, addMonths as fnsAddMonths, format, parseISO } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { es } from "date-fns/locale";
 
 /** A calendar day as "YYYY-MM-DD" (matches Postgres `date`). */
 export type DayISO = string;
@@ -45,59 +44,9 @@ export function weekRange(day: DayISO, weekStartsOn: 0 | 1 = 1): DayISO[] {
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
-/** "Hoy" / "Mañana" / "Ayer", otherwise a friendly Spanish date. */
-export function relativeLabel(day: DayISO, today: DayISO): string {
-  if (day === today) return "Hoy";
-  if (day === addDays(today, 1)) return "Mañana";
-  if (day === addDays(today, -1)) return "Ayer";
-  return format(parseISO(day), "EEEE d 'de' MMMM", { locale: es });
-}
-
-/** "Hoy" / "Ayer" / "27 jul" — short enough for a dense list of days, and
- *  unambiguous across months (unlike a bare weekday). */
-export function compactDayLabel(day: DayISO, today: DayISO): string {
-  if (day === today) return "Hoy";
-  if (day === addDays(today, -1)) return "Ayer";
-  if (day === addDays(today, 1)) return "Mañana";
-  return format(parseISO(day), "d MMM", { locale: es });
-}
-
-/** "Lunes 23 de junio" — capitalized weekday + day + month. */
-export function fullDayLabel(day: DayISO): string {
-  const raw = format(parseISO(day), "EEEE d 'de' MMMM", { locale: es });
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
-}
-
-/** Short weekday + day, e.g. "lun 23" — for week/month headers. */
-export function shortDayLabel(day: DayISO): string {
-  return format(parseISO(day), "EEE d", { locale: es });
-}
-
-/** "23 jun – 29 jun" for a week's first..last day. */
-export function weekRangeLabel(week: DayISO[]): string {
-  const a = format(parseISO(week[0]), "d MMM", { locale: es });
-  const b = format(parseISO(week[week.length - 1]), "d MMM", { locale: es });
-  return `${a} – ${b}`;
-}
-
-/** Heading for a day inside the week view: "Hoy"/"Mañana"/"Ayer" or "Lun 23". */
-export function weekDayHeading(day: DayISO, today: DayISO): string {
-  if (day === today) return "Hoy";
-  if (day === addDays(today, 1)) return "Mañana";
-  if (day === addDays(today, -1)) return "Ayer";
-  const s = format(parseISO(day), "EEE d", { locale: es });
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 /** Shift a calendar day by `n` months (day-of-month clamped). */
 export function addMonths(day: DayISO, n: number): DayISO {
   return format(fnsAddMonths(parseISO(day), n), "yyyy-MM-dd");
-}
-
-/** "Junio 2026" for the month containing `day`. */
-export function monthLabel(day: DayISO): string {
-  const s = format(parseISO(day), "MMMM yyyy", { locale: es });
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /** The "YYYY-MM" month part — for same-month comparisons. */
@@ -147,23 +96,6 @@ export function ageInDays(createdAt: string, today: DayISO = todayISO()): number
     0,
     Math.round((parseISO(today).getTime() - parseISO(created).getTime()) / 86_400_000),
   );
-}
-
-export function ageLabel(createdAt: string, today: DayISO = todayISO()): string {
-  const days = ageInDays(createdAt, today);
-  if (days === 0) return "hoy";
-  if (days === 1) return "ayer";
-  if (days < 30) return `hace ${days} días`;
-  const months = Math.round(days / 30);
-  return months === 1 ? "hace un mes" : `hace ${months} meses`;
-}
-
-/** Compact label for a due-date badge: "Hoy" / "Mañana" / "Ayer" or "5 jul". */
-export function dueLabel(due: DayISO, today: DayISO): string {
-  if (due === today) return "Hoy";
-  if (due === addDays(today, 1)) return "Mañana";
-  if (due === addDays(today, -1)) return "Ayer";
-  return format(parseISO(due), "d MMM", { locale: es });
 }
 
 // ------------------------------------------------------------ time-blocking

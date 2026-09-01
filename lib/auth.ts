@@ -5,6 +5,11 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { accounts, profiles, sessions, users, verificationTokens } from "@/lib/db/schema";
 import { provisionNewUser } from "@/lib/household-provisioning";
+import { setLocaleCookie } from "@/lib/actions/locale";
+import { toLocale } from "@/lib/locale";
+import { resolveAccess } from "@/lib/billing";
+import { billingFacts } from "@/lib/db/queries/subscriptions";
+import { isBillingEnabled } from "@/lib/billing-config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -32,12 +37,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ session, user }) {
       const [profile] = await db
-        .select({ householdId: profiles.household_id })
+        .select({ householdId: profiles.household_id, locale: profiles.locale })
         .from(profiles)
         .where(eq(profiles.id, user.id));
 
       session.user.id = user.id;
       session.householdId = profile?.householdId ?? null;
+      session.locale = toLocale(profile?.locale);
+
+      // Resolved here so the proxy can gate on it without a database round trip
+      // of its own — it runs on every request, including every asset that slips
+      // through the matcher. One extra query on a callback that was already
+      // hitting the database is the cheap version of that.
+      //
+      // Two cases fall through to "open": no household, which means provisioning
+      // has not finished, and billing switched off, which means there is nowhere
+      // to pay yet. Bouncing a brand-new sign-up to a paywall a millisecond
+      // before their trial row exists — or to one with no checkout behind it —
+      // is worse than a day of free use.
+      const facts =
+        isBillingEnabled() && profile?.householdId ? await billingFacts(profile.householdId) : null;
+      session.access = facts
+        ? resolveAccess(facts)
+        : {
+            allowed: true,
+            source: "none",
+            until: null,
+            trialDaysLeft: null,
+            paymentFailing: false,
+          };
       return session;
     },
     /**
@@ -48,6 +76,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * returns a refresh_token on every sign-in, so persist it ourselves.
      */
     async signIn({ user, account }) {
+      // Re-point the rendering cookie at whatever this account chose, and
+      // refresh its expiry. This is what makes the preference travel: sign in
+      // on a new phone and the column, not that browser, decides the language.
+      if (user.id) {
+        const [profile] = await db
+          .select({ locale: profiles.locale })
+          .from(profiles)
+          .where(eq(profiles.id, user.id));
+        // Never block a sign-in over a display preference.
+        await setLocaleCookie(toLocale(profile?.locale)).catch(() => {});
+      }
+
       if (account?.provider === "google" && account.refresh_token && user.id) {
         await db
           .update(accounts)

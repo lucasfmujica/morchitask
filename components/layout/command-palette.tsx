@@ -32,6 +32,7 @@ import { EASE_OUT_EXPO, SPRING_SOFT } from "@/lib/motion";
 import { Kbd, Skeleton } from "@/components/ui";
 import { PaletteTaskRow } from "./palette-task-row";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 const NAV_ICONS: Record<string, typeof CalendarCheck> = {
   today: CalendarCheck,
@@ -48,6 +49,7 @@ const NAV_ICONS: Record<string, typeof CalendarCheck> = {
 };
 
 export function CommandPalette() {
+  const tp = useTranslations("palette");
   const isOpen = useCommandPalette((s) => s.isOpen);
   const close = useCommandPalette((s) => s.close);
 
@@ -72,7 +74,7 @@ export function CommandPalette() {
             transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
-            aria-label="Buscar y acciones rápidas"
+            aria-label={tp("label")}
           >
             {/* Keyed by mount: state resets fresh every time the palette opens. */}
             <PaletteBody close={close} />
@@ -84,6 +86,8 @@ export function CommandPalette() {
 }
 
 function PaletteBody({ close }: { close: () => void }) {
+  const tp = useTranslations("palette");
+  const tn = useTranslations("nav");
   const router = useRouter();
   const qc = useQueryClient();
   const create = useCreateTask();
@@ -108,19 +112,21 @@ function PaletteBody({ close }: { close: () => void }) {
       close();
     };
     return [
-      { id: "today", label: "Ir a Hoy", run: go("/today") },
-      { id: "week", label: "Ir a Semana", run: go("/week") },
-      { id: "month", label: "Ir a Mes", run: go("/month") },
-      { id: "plan", label: "Planificar el día", run: go(`/plan/${today}`) },
-      { id: "shutdown", label: "Cerrar el día", run: go(`/shutdown/${today}`) },
-      { id: "backlog", label: "Ir a Backlog", run: go("/backlog") },
-      { id: "routines", label: "Ir a Rutinas", run: go("/routines") },
-      { id: "metas", label: "Ir a Metas", run: go("/metas") },
-      { id: "focus", label: "Ir a Foco", run: go("/focus") },
-      { id: "resumen", label: "Ir a Resumen", run: go("/resumen") },
-      { id: "settings", label: "Ir a Ajustes", run: go("/settings") },
+      { id: "today", label: tp("goTo", { view: tn("today") }), run: go("/today") },
+      { id: "week", label: tp("goTo", { view: tn("week") }), run: go("/week") },
+      { id: "month", label: tp("goTo", { view: tn("month") }), run: go("/month") },
+      { id: "plan", label: tn("plan"), run: go(`/plan/${today}`) },
+      { id: "shutdown", label: tn("shutdown"), run: go(`/shutdown/${today}`) },
+      { id: "backlog", label: tp("goTo", { view: tn("backlog") }), run: go("/backlog") },
+      { id: "routines", label: tp("goTo", { view: tn("routines") }), run: go("/routines") },
+      { id: "metas", label: tp("goTo", { view: tn("goals") }), run: go("/metas") },
+      { id: "focus", label: tp("goTo", { view: tn("focus") }), run: go("/focus") },
+      { id: "resumen", label: tp("goTo", { view: tn("summary") }), run: go("/resumen") },
+      { id: "settings", label: tp("goTo", { view: tn("settings") }), run: go("/settings") },
     ];
-  }, [router, close]);
+    // tp/tn belong here: without them the labels would keep the language they
+    // were built in, so switching to English left a Spanish palette behind.
+  }, [router, close, tp, tn]);
 
   // Recents resolve against whatever task data is already cached. Ids that no
   // longer resolve (deleted, or on a day never loaded) simply drop out.
@@ -226,8 +232,8 @@ function PaletteBody({ close }: { close: () => void }) {
             setSelected(0);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Buscar una tarea o escribir una nueva…"
-          aria-label="Buscar tarea o acción"
+          placeholder={tp("placeholder")}
+          aria-label={tp("inputLabel")}
           role="combobox"
           aria-expanded
           aria-controls="palette-list"
@@ -240,7 +246,7 @@ function PaletteBody({ close }: { close: () => void }) {
         ref={listRef}
         id="palette-list"
         role="listbox"
-        aria-label="Resultados"
+        aria-label={tp("results")}
         className="min-h-0 flex-1 overflow-y-auto p-1.5"
       >
         {showSkeleton ? (
@@ -251,13 +257,13 @@ function PaletteBody({ close }: { close: () => void }) {
           </div>
         ) : flat.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-muted">
-            Sin resultados para «{query.trim()}»
+            {tp("empty", { query: query.trim() })}
           </p>
         ) : (
           sections.map((section) => (
-            <div key={section.id} role="group" aria-label={section.heading}>
+            <div key={section.id} role="group" aria-label={tp(section.headingKey)}>
               <p className="px-3 pt-2 pb-1 text-2xs font-semibold uppercase tracking-wide text-subtle">
-                {section.heading}
+                {tp(section.headingKey)}
               </p>
               {section.items.map((item) => {
                 index += 1;
@@ -297,13 +303,13 @@ function PaletteBody({ close }: { close: () => void }) {
       <div className="flex shrink-0 items-center gap-3 border-t border-border px-3 py-2 text-2xs text-subtle">
         <span className="flex items-center gap-1">
           <Kbd>↑</Kbd>
-          <Kbd>↓</Kbd> navegar
+          <Kbd>↓</Kbd> {tp("navigate")}
         </span>
         <span className="flex items-center gap-1">
-          <Kbd>⏎</Kbd> abrir
+          <Kbd>⏎</Kbd> {tp("openItem")}
         </span>
         <span className="ml-auto flex items-center gap-1">
-          <Kbd>esc</Kbd> cerrar
+          <Kbd>esc</Kbd> {tp("closeItem")}
         </span>
       </div>
     </>
@@ -317,6 +323,8 @@ function PaletteRowContent({
   item: PaletteItem;
   channelsById: Map<string, Channel>;
 }) {
+  const tp = useTranslations("palette");
+  const tcm = useTranslations("common");
   if (item.kind === "task") {
     return (
       <PaletteTaskRow
@@ -330,8 +338,8 @@ function PaletteRowContent({
     return (
       <>
         <Plus className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">Crear tarea: «{item.title}»</span>
-        <span className="shrink-0 text-2xs text-subtle">Hoy</span>
+        <span className="min-w-0 flex-1 truncate">{tp("createTask", { title: item.title })}</span>
+        <span className="shrink-0 text-2xs text-subtle">{tcm("today")}</span>
       </>
     );
   }

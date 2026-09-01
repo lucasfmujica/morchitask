@@ -19,7 +19,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 (time-blocking) con una agenda visual por horas. Vos y Sofi comparten el mismo espacio.
 
 - ✅ Diseño base (colores, fuente, modo claro/oscuro) + PWA instalable
-- ✅ Base de datos con login, hogar compartido, canales y tareas (con seguridad por fila)
+- ✅ Base de datos con login, hogar compartido, canales y tareas (cada espacio aislado del resto, verificado con un test que levanta una base de verdad)
 - ✅ Login con Google (requiere una configuración tuya — ver `docs/GOOGLE_SETUP.md`)
 - ✅ Vista del **Día**: agregar, completar, editar, borrar, **reordenar arrastrando**
 - ✅ Vista **Semana** (estilo Sunsama): el **mini-calendario** y el **filtro por categorías** viven en la **barra lateral única** (como Sunsama), así las columnas de días usan **todo el ancho**; cada día es una **tarjeta** con una **barra de carga** (cuánto planeaste contra tu capacidad, no cuánto tildaste) y los días ya cerrados se pueden plegar
@@ -33,8 +33,11 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 
 ## Páginas
 
-- **/** — redirige a "Hoy".
+- **/** — la **portada pública**: qué es la app, el ritual y el precio. Si ya entraste, te lleva a "Hoy".
+- **/pricing** — el precio, qué incluye y por qué no hay plan gratis.
+- **/privacy** y **/terms** — política de privacidad y términos. Google los pide para verificar la app.
 - **/login** — entrar con Google.
+- **/billing** — tu plan: los días de prueba que te quedan, los dos planes, y el acceso a la tarjeta y las facturas.
 - **/today** y **/day/AAAA-MM-DD** — la vista del Día (con pestañas **Lista** y **Agenda**).
 - **/plan/AAAA-MM-DD** — **planificar el día** (ritual de la mañana): poné tu foco del día, traé lo que quedó de ayer o del backlog, ajustá duraciones y mirá la **capacidad del día**.
 - **/week** y **/week/AAAA-MM-DD** — la semana. El **mini-calendario** y el **filtro de categorías** están en la **barra lateral** (en compu), no en una segunda columna, así los días ocupan todo el ancho. Cada día es una **tarjeta** con su **barra de carga** ("6h 45m de 6h"), y cada tarjeta de tarea muestra su carril de categoría, la hora y la duración.
@@ -152,6 +155,16 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-09-01: **Morchitask ya se puede cobrar.** Hay una pantalla nueva, **Ajustes → Plan**, con el estado de tu cuenta y los dos planes: US$10 por mes o US$80 por año. Quien se registra arranca con **14 días de prueba sin tarjeta**; cuando faltan tres días aparece un aviso arriba de todas las pantallas, y si la prueba se termina sin suscripción la app queda bloqueada salvo Ajustes y las páginas legales — porque ahí es justo donde tenés que poder **exportar tus datos o borrar la cuenta**, y esconder eso detrás de un pago sería mentir. Tres decisiones que importan: si la tarjeta falla **no se corta el acceso**, se sigue usando dos semanas mientras el banco reintenta (una tarjeta vencida es la razón menos deliberada de dejar de pagar); si cancelás, tenés acceso hasta terminar el período que ya pagaste; y **tu cuenta y la de Sofi quedan marcadas como "sin cobro"**, para siempre, sin vencimiento. El pago lo maneja Polar, que factura, cobra el IVA europeo y deposita — así no hace falta abrir una empresa, y los datos de la tarjeta nunca pasan por acá.
+
+- 2026-09-01: **El lunes ya aparecen las tareas del viernes.** Antes no: al abrir Hoy la app solo miraba **el día anterior**, y el lunes eso es un domingo vacío, así que lo del viernes quedaba en una fecha que la vista de Hoy no muestra y parecía borrado. Lo mismo pasaba con un feriado o volviendo de vacaciones. Ahora, al abrir Hoy (o Semana), **lo pendiente de cualquier día anterior se trae solo**, y un cartel te dice cuántas trajo y de cuándo, con un botón de **deshacer** que devuelve cada tarea a su día exacto. Pasa una sola vez por día, en todos tus dispositivos: si deshacés, no vuelve a insistir hasta mañana. Y si compartís el espacio, esto es solo tuyo — las tareas de la otra persona no se mueven.
+
+- 2026-08-26: **Ya podés llevarte tus datos, y borrar la cuenta.** En Ajustes, abajo de todo, hay una sección nueva: **Tus datos**. Con **Descargar** te bajás un archivo con todo lo tuyo —tareas, notas, categorías, metas, rutinas, comentarios y los tiempos que mediste—; con **Borrar cuenta** se va todo, para siempre, sin copia guardada. El borrado pide que escribas una palabra en vez de un simple "¿estás seguro?", porque un botón de confirmar se aprieta sin leer. Dos cosas que importan: si compartís el espacio con alguien, **lo de esa persona queda intacto** (sus tareas siguen ahí, sin tu nombre), y si eras la última persona del espacio, el espacio se va con vos. Esto no es un extra: la política de privacidad ya prometía las dos cosas, así que hasta hoy decía algo que no era cierto.
+
+- 2026-08-26: **La app dejó de ser privada: ya tiene portada, precio y legales.** Hasta ayer no existía ninguna página que pudiera ver alguien sin cuenta — entrabas y te mandaba al login. Ahora hay cuatro páginas públicas: la **portada** (el ritual de la mañana, el día, el cierre, y una sección honesta de lo que la app **no** hace), **el precio** (US$10 por mes o US$80 por año, 14 días de prueba sin tarjeta, con la comparación contra Sunsama), y la **política de privacidad** y los **términos**, que Google exige para verificar el acceso al calendario. Las legales están marcadas como borrador a propósito: cubren lo que Google pide, pero conviene que las lea un abogado antes de cobrarle a alguien. Además, la primera vez que alguien entra, la app le habla en **el idioma de su navegador** en vez de asumir español.
+
+- 2026-08-25: **La app ya está preparada para hablar otro idioma.** Todavía se ve exactamente igual —todo sigue en español y nada cambió de lugar—, pero por dentro quedó armada para que agregar inglés sea llenar una lista de textos en vez de tocar cada pantalla. Lo que sí cambió por dentro: la parte que convierte una fecha en palabras ("Lunes 23 de junio", "hace 3 meses") se separó del resto, porque en inglés no alcanza con traducir palabra por palabra — se escribe al revés ("Monday, June 23") y los plurales funcionan distinto. Se comprobó que las fechas en español salen idénticas a antes en 400 días seguidos, uno por uno. El idioma se va a poder elegir en Ajustes y queda guardado en tu cuenta, así que te sigue si entrás desde otro dispositivo.
 
 - 2026-08-25: **Dos arreglos de seguridad y las defensas del navegador.** (1) En un celular compartido, si una persona se registraba en el navegador donde antes estaba la otra, las notificaciones seguían llegándole a la primera — ahora la suscripción pasa a quien se registró último, que es como debía ser desde el principio en una app pensada para dos. (2) Cancelar las notificaciones borraba la suscripción sin verificar que fuera tuya. (3) La app ahora manda las cabeceras estándar que le piden al navegador que la proteja (no dejarse meter dentro de otra web, no adivinar tipos de archivo, forzar HTTPS, y bloquear cámara/micrófono/ubicación, que la app nunca usa). Hay además una política de contenido en modo "solo avisar": está puesta pero todavía no bloquea nada, para poder revisar que no rompa nada antes de activarla.
 

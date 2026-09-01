@@ -76,7 +76,7 @@ export const verificationTokens = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// App tables — ported 1:1 from lib/supabase/database.types.ts.
+// App tables — ported 1:1 from the Supabase schema this replaced.
 // google_credentials is dropped: the Google refresh token now lives on
 // `accounts` (provider = "google"), populated automatically by the adapter.
 //
@@ -93,6 +93,26 @@ export const households = pgTable("households", {
   name: text("name").notNull().default("Mi hogar"),
   timezone: text("timezone").notNull().default("America/Argentina/Buenos_Aires"),
   week_starts_on: smallint("week_starts_on").notNull().default(1),
+  /**
+   * When this household's free trial runs out. Set once, at sign-up.
+   *
+   * On the household and not on the profile because the space is what is being
+   * sold: someone invited into an existing space is not starting their own
+   * trial, and should not get a second fourteen days by being invited.
+   */
+  trial_ends_at: timestamp("trial_ends_at", { withTimezone: true, mode: "string" }),
+  /**
+   * An account that is never charged and never asked to pay. `'comp'` is the
+   * only value the code recognises — anything else is treated as no override,
+   * so a typo locks nobody in for free.
+   *
+   * Exists for the two accounts that predate billing, and for the handful of
+   * lifetime accounts the launch plan gives away. Deliberately separate from
+   * `subscriptions`: a comp is not a subscription with a weird status, it is
+   * the absence of one, and mixing them would put fake rows in the revenue
+   * reports.
+   */
+  plan_override: text("plan_override"),
   created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
@@ -101,6 +121,48 @@ export const households = pgTable("households", {
     .defaultNow()
     .$onUpdateFn(touchUpdatedAt),
 });
+
+/**
+ * What the payment provider says about this household, mirrored locally.
+ *
+ * A mirror and not a source of truth: Polar owns the subscription, this row is
+ * a cache so that deciding whether to open the app is one local read instead of
+ * an HTTP call on the critical path of every request. Which means it can be
+ * stale, and `lib/billing.ts` is written to expect that — see the webhook grace
+ * period there.
+ *
+ * One row per household, not per user: the space is the thing being sold, and
+ * the second person in a shared space is included rather than billed.
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    household_id: uuid("household_id")
+      .primaryKey()
+      .references(() => households.id, { onDelete: "cascade" }),
+    /** Named rather than assumed, so a future move off Polar is a migration and
+     *  not an archaeology exercise. */
+    provider: text("provider").notNull().default("polar"),
+    provider_subscription_id: text("provider_subscription_id").notNull().unique(),
+    provider_customer_id: text("provider_customer_id").notNull(),
+    /** Polar's vocabulary, mirrored verbatim — see SUBSCRIPTION_STATUSES in
+     *  lib/billing.ts. Stored as text so an unfamiliar status from a future
+     *  provider version lands in the row instead of failing the webhook. */
+    status: text("status").notNull(),
+    /** "month" or "year". Display only; the price lives in lib/pricing.ts. */
+    recurring_interval: text("recurring_interval"),
+    current_period_end: timestamp("current_period_end", { withTimezone: true, mode: "string" }),
+    cancel_at_period_end: boolean("cancel_at_period_end").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(touchUpdatedAt),
+  },
+  (t) => [index("subscriptions_customer_idx").on(t.provider_customer_id)],
+);
 
 /**
  * A standing invitation to join a household.
@@ -152,6 +214,9 @@ export const profiles = pgTable(
       .notNull()
       .references(() => households.id),
     display_name: text("display_name").notNull().default("Sin nombre"),
+    /** Interface language. The cookie that renders each request is a copy of
+     *  this; the column is what makes the choice follow you to another device. */
+    locale: text("locale").notNull().default("es"),
     color: text("color").notNull().default("#0d9488"),
     avatar_url: text("avatar_url"),
     capacity_target_min: integer("capacity_target_min"),
@@ -253,6 +318,18 @@ export const dailyNotes = pgTable(
     capacity_min: integer("capacity_min"),
     end_target_min: integer("end_target_min"),
     plan_completed_at: timestamp("plan_completed_at", { withTimezone: true, mode: "string" }),
+    /**
+     * When this day's leftovers were swept forward from earlier days.
+     *
+     * The sweep is automatic, so it needs a memory: without this it would run
+     * again on every visit and undo would be pointless — whatever you sent back
+     * would return the moment you reopened Today. Set once per person per day,
+     * and deliberately NOT cleared by undo, since undo means "not today".
+     *
+     * On `daily_notes` rather than on the profile because it is a fact about a
+     * day, and the unique (owner_id, note_date) already makes it one per day.
+     */
+    carried_over_at: timestamp("carried_over_at", { withTimezone: true, mode: "string" }),
     shutdown_completed_at: timestamp("shutdown_completed_at", {
       withTimezone: true,
       mode: "string",

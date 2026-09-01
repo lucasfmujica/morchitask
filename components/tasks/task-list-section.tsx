@@ -6,6 +6,7 @@ import type { PriorityKey } from "@/lib/priority";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { SortableTaskList } from "@/components/dnd/sortable-task-list";
 import { EmptyState, SkeletonList } from "@/components/ui";
+import { useTranslations } from "next-intl";
 
 export function TaskListSection({
   tasks,
@@ -43,6 +44,7 @@ export function TaskListSection({
   /** A drag is in progress (reveals empty-group strips). */
   dragging?: boolean;
 }) {
+  const t = useTranslations("tasks");
   if (isLoading) return <SkeletonList />;
   if (tasks.length === 0)
     return (
@@ -52,7 +54,7 @@ export function TaskListSection({
         hint={emptyHint}
         action={emptyAction}
         kbd="N"
-        kbdHint="para una nueva tarea"
+        kbdHint={t("kbdNewTask")}
       />
     );
 

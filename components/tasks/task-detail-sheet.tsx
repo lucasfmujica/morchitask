@@ -25,20 +25,18 @@ import {
 import { useAttachments } from "@/lib/queries/attachments";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { orderForAppend } from "@/lib/ordering";
-import { NO_PRIORITY_LABEL, PRIORITY_DOT, PRIORITY_LABEL, TASK_PRIORITIES } from "@/lib/priority";
 import {
-  DEFAULT_TIMEZONE,
-  addDays,
-  blockInstant,
-  dueLabel,
-  timeInTimeZone,
-  todayISO,
-} from "@/lib/date";
+  NO_PRIORITY_LABEL_KEY,
+  PRIORITY_DOT,
+  PRIORITY_LABEL_KEY,
+  TASK_PRIORITIES,
+} from "@/lib/priority";
+import { DEFAULT_TIMEZONE, addDays, blockInstant, timeInTimeZone, todayISO } from "@/lib/date";
 import {
   REMINDER_OFFSETS,
   offsetFromRemindAt,
   remindAtFromBlock,
-  reminderOffsetLabel,
+  reminderOffsetLabelKey,
 } from "@/lib/reminders";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
@@ -57,6 +55,8 @@ import { TaskReactions } from "./task-reactions";
 import { TaskComments } from "./task-comments";
 import { TaskTimeBreakdown } from "./task-time-breakdown";
 import { useTaskTimer } from "./use-task-timer";
+import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /**
  * The sheet is opened with a snapshot of the task, but edits go to the React
@@ -79,6 +79,7 @@ function useLiveTask(snapshot: Task): Task {
 }
 
 export function TaskDetailSheet() {
+  const tt = useTranslations("tasks");
   const openTask = useTaskDetail((s) => s.openTask);
   const close = useTaskDetail((s) => s.close);
 
@@ -100,7 +101,7 @@ export function TaskDetailSheet() {
             exit={{ opacity: 0, y: 24 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             role="dialog"
-            aria-label="Detalle de tarea"
+            aria-label={tt("detailTitle")}
           >
             <TaskDetailContent key={openTask.id} task={openTask} onClose={close} />
           </motion.aside>
@@ -111,6 +112,11 @@ export function TaskDetailSheet() {
 }
 
 function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: () => void }) {
+  const tc = useTranslations("common");
+  const tch = useTranslations("channels");
+  const tcm = useTranslations("common");
+  const tt = useTranslations("tasks");
+  const labels = useDateLabels();
   // Live row from the cache so chips/toggles reflect edits instantly.
   const task = useLiveTask(snapshot);
   const update = useUpdateTask();
@@ -206,12 +212,12 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           onChange={(e) => setTitle(e.target.value)}
           onBlur={saveTitle}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          aria-label="Título de la tarea"
+          aria-label={tt("titleLabel")}
           className="min-w-0 flex-1 bg-transparent text-lg font-bold text-fg outline-none"
         />
         <button
           onClick={onClose}
-          aria-label="Cerrar"
+          aria-label={tc("close")}
           className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
         >
           <X className="h-5 w-5" aria-hidden />
@@ -220,7 +226,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
       {/* Assign */}
       {profiles.length > 1 && (
-        <Field label="Responsable">
+        <Field label={tt("owner")}>
           <div className="flex flex-wrap gap-1.5">
             {profiles.map((p) => (
               <button
@@ -235,7 +241,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                 )}
               >
                 <OwnerAvatar profile={p} size={16} />
-                {p.id === me?.id ? "Vos" : p.display_name}
+                {p.id === me?.id ? tt("you") : p.display_name}
               </button>
             ))}
           </div>
@@ -244,7 +250,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
       {/* Share */}
       {partner && (
-        <Field label="Compartir">
+        <Field label={tt("share")}>
           <button
             onClick={() => update.mutate({ task, patch: { shared: !task.shared } })}
             aria-pressed={task.shared}
@@ -264,30 +270,30 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               />
             </span>
             <span className="text-fg">
-              {task.shared ? `${partner.display_name} también la ve` : "Solo la ves vos"}
+              {task.shared ? `${partner.display_name} también la ve` : tt("privateNote")}
             </span>
           </button>
         </Field>
       )}
 
       {/* Scheduled day — move the task to another day without dragging */}
-      <Field label="Programada para">
+      <Field label={tt("scheduledFor")}>
         <div className="flex flex-wrap items-center gap-1.5">
           <Chip
             active={task.planned_date === today}
-            label="Hoy"
+            label={tcm("today")}
             onClick={() => reschedule(today)}
           />
           <Chip
             active={task.planned_date === tomorrow}
-            label="Mañana"
+            label={tcm("tomorrow")}
             onClick={() => reschedule(tomorrow)}
           />
           <DateChip
             label={
               task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
-                ? dueLabel(task.planned_date, today)
-                : "Otro día"
+                ? labels.dueLabel(task.planned_date, today)
+                : tt("otherDay")
             }
             active={
               !!task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
@@ -299,28 +305,28 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
       </Field>
 
       {/* Due date — a deadline, independent of the day it's planned for */}
-      <Field label="Vence">
+      <Field label={tt("dueLabel")}>
         <div className="flex flex-wrap items-center gap-1.5">
           <Chip
             active={!task.due_date}
-            label="Sin fecha"
+            label={tt("noDate")}
             onClick={() => update.mutate({ task, patch: { due_date: null } })}
           />
           <Chip
             active={task.due_date === today}
-            label="Hoy"
+            label={tcm("today")}
             onClick={() => update.mutate({ task, patch: { due_date: today } })}
           />
           <Chip
             active={task.due_date === tomorrow}
-            label="Mañana"
+            label={tcm("tomorrow")}
             onClick={() => update.mutate({ task, patch: { due_date: tomorrow } })}
           />
           <DateChip
             label={
               task.due_date && task.due_date !== today && task.due_date !== tomorrow
-                ? dueLabel(task.due_date, today)
-                : "Otra fecha"
+                ? labels.dueLabel(task.due_date, today)
+                : tt("otherDate")
             }
             active={!!task.due_date && task.due_date !== today && task.due_date !== tomorrow}
             value={task.due_date ?? today}
@@ -330,11 +336,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
       </Field>
 
       {/* Channel */}
-      <Field label="Categoría">
+      <Field label={tt("category")}>
         <div className="flex flex-wrap items-center gap-1.5">
           <Chip
             active={!task.channel_id}
-            label="Sin categoría"
+            label={tt("noCategory")}
             onClick={() => update.mutate({ task, patch: { channel_id: null } })}
           />
           {channels.map((c) => (
@@ -369,8 +375,8 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                     setAddingChannel(false);
                   }
                 }}
-                placeholder="Nombre…"
-                aria-label="Nueva categoría"
+                placeholder={tt("categoryNamePlaceholder")}
+                aria-label={tch("newLabel")}
                 className="w-24 bg-transparent text-xs font-medium text-primary placeholder:text-primary/50 outline-none"
               />
             </span>
@@ -380,25 +386,25 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-pill border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-primary hover:text-primary"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
-              Nueva
+              {tcm("new")}
             </button>
           )}
         </div>
       </Field>
 
       {/* Priority — drives where the task sits in the Day and Week lists. */}
-      <Field label="Prioridad">
+      <Field label={tt("priority")}>
         <div className="flex flex-wrap gap-1.5">
           <Chip
             active={!task.priority}
-            label={NO_PRIORITY_LABEL}
+            label={tt(NO_PRIORITY_LABEL_KEY)}
             onClick={() => update.mutate({ task, patch: { priority: null } })}
           />
           {TASK_PRIORITIES.map((p) => (
             <Chip
               key={p}
               active={task.priority === p}
-              label={PRIORITY_LABEL[p]}
+              label={tt(PRIORITY_LABEL_KEY[p])}
               color={PRIORITY_DOT[p]}
               onClick={() => update.mutate({ task, patch: { priority: p } })}
             />
@@ -407,11 +413,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
       </Field>
 
       {/* Estimate */}
-      <Field label="Estimación">
+      <Field label={tt("estimate2")}>
         <div className="flex flex-wrap gap-1.5">
           <Chip
             active={!task.time_estimate_min}
-            label="Ninguna"
+            label={tt("none")}
             onClick={() => update.mutate({ task, patch: { time_estimate_min: null } })}
           />
           {TIME_ESTIMATES.map((m) => (
@@ -426,17 +432,17 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
       </Field>
 
       {/* Reminder */}
-      <Field label="Recordatorio">
+      <Field label={tt("reminder")}>
         <ReminderControl task={task} update={update} />
       </Field>
 
       {/* Time tracking */}
-      <Field label="Tiempo">
+      <Field label={tt("time")}>
         <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3.5 py-3">
           <div className="flex items-baseline gap-6">
             <div className="flex flex-col">
               <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
-                Real
+                {tt("actualTime")}
               </span>
               {timer.running ? (
                 <span className="text-lg font-bold tabular-nums text-primary">
@@ -452,14 +458,14 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                     if (e.key === "Enter") e.currentTarget.blur();
                     if (e.key === "Escape") setEditingReal(false);
                   }}
-                  placeholder="ej. 1h 30m"
-                  aria-label="Tiempo real"
+                  placeholder={tt("timePlaceholder")}
+                  aria-label={tt("realTime")}
                   className="w-24 border-b border-primary bg-transparent text-lg font-bold tabular-nums text-fg outline-none placeholder:text-base placeholder:font-normal placeholder:text-subtle"
                 />
               ) : (
                 <button
                   onClick={startEditReal}
-                  title="Cargar el tiempo a mano"
+                  title={tt("logTimeManually")}
                   className="cursor-pointer text-left text-lg font-bold tabular-nums text-fg underline decoration-dotted decoration-from-font underline-offset-4 transition-colors hover:text-primary"
                 >
                   {task.actual_time_min ? formatDuration(task.actual_time_min * 60) : "—"}
@@ -468,7 +474,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             </div>
             <div className="flex flex-col">
               <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
-                Estimado
+                {tt("estimatedTime")}
               </span>
               <span className="text-lg font-bold tabular-nums text-muted">
                 {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "—"}
@@ -487,11 +493,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           >
             {timer.running ? (
               <>
-                <Pause className="h-4 w-4" aria-hidden /> Detener
+                <Pause className="h-4 w-4" aria-hidden /> {tt("stop")}
               </>
             ) : (
               <>
-                <Play className="h-4 w-4" aria-hidden /> Empezar
+                <Play className="h-4 w-4" aria-hidden /> {tt("startTimerShort")}
               </>
             )}
           </button>
@@ -501,11 +507,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
       {/* Objective */}
       {(objectivesQ.data ?? []).length > 0 && (
-        <Field label="Meta">
+        <Field label={tt("goal")}>
           <div className="flex flex-wrap gap-1.5">
             <Chip
               active={!task.objective_id}
-              label="Ninguna"
+              label={tt("none")}
               onClick={() => update.mutate({ task, patch: { objective_id: null } })}
             />
             {(objectivesQ.data ?? []).map((o) => (
@@ -521,12 +527,12 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
       )}
 
       {/* Description */}
-      <Field label="Descripción">
+      <Field label={tt("description")}>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onBlur={saveNotes}
-          placeholder="Agregar una descripción…"
+          placeholder={tt("descriptionPlaceholder")}
           rows={3}
           className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
@@ -556,14 +562,14 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               value={newSub}
               onChange={(e) => setNewSub(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addSub()}
-              placeholder="Agregar un ítem…"
-              aria-label="Nuevo ítem del checklist"
+              placeholder={tt("checklistPlaceholder")}
+              aria-label={tt("newChecklistItem")}
               className="min-w-0 flex-1 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
             />
             <button
               onClick={addSub}
               disabled={!newSub.trim()}
-              aria-label="Agregar ítem"
+              aria-label={tt("addChecklistItem")}
               className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-primary text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
@@ -579,14 +585,14 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
       {/* Kudos — celebrate a finished shared task */}
       {partner && task.shared && task.status === "done" && (
-        <Field label="Reacciones">
+        <Field label={tt("reactions")}>
           <TaskReactions taskId={task.id} />
         </Field>
       )}
 
       {/* Comments — discussion on a shared task */}
       {partner && task.shared && (
-        <Field label="Comentarios">
+        <Field label={tt("comments")}>
           <TaskComments taskId={task.id} />
         </Field>
       )}
@@ -600,7 +606,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
       >
         <Trash2 className="h-4 w-4" aria-hidden />
-        Eliminar tarea
+        {tt("deleteTask")}
       </button>
     </div>
   );
@@ -615,6 +621,7 @@ function ReminderControl({
   task: Task;
   update: ReturnType<typeof useUpdateTask>;
 }) {
+  const tt = useTranslations("tasks");
   const hasBlock = !!task.block_start;
   const currentOffset = offsetFromRemindAt(task.block_start, task.remind_at);
   const customTime =
@@ -641,26 +648,22 @@ function ReminderControl({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-1.5">
-        <Chip active={!task.remind_at} label="Sin recordatorio" onClick={clear} />
+        <Chip active={!task.remind_at} label={tt("noReminder")} onClick={clear} />
         {REMINDER_OFFSETS.map((o) => (
           <Chip
             key={o}
             active={task.remind_at != null && currentOffset === o}
-            label={reminderOffsetLabel(o)}
+            label={tt(reminderOffsetLabelKey(o), { n: o })}
             disabled={!hasBlock}
             onClick={() => setOffset(o)}
           />
         ))}
       </div>
-      {!hasBlock && (
-        <p className="text-xs text-subtle">
-          Programá un horario en la agenda para avisarte antes de empezar.
-        </p>
-      )}
+      {!hasBlock && <p className="text-xs text-subtle">{tt("reminderNeedsBlock")}</p>}
       {task.planned_date && (
         <div className="flex items-center gap-2 text-sm text-muted">
-          <span>o a una hora:</span>
-          <TimePicker value={customTime} onChange={setCustom} placeholder="Elegir" />
+          <span>{tt("orAtATime")}</span>
+          <TimePicker value={customTime} onChange={setCustom} placeholder={tt("pick")} />
         </div>
       )}
     </div>
@@ -668,12 +671,12 @@ function ReminderControl({
 }
 
 /** A chip that opens the native date picker. Styled like {@link Chip} so it
- *  sits inline with the quick "Hoy / Mañana" options.
+ *  sits inline with the quick tt("todayTomorrow") options.
  *
  *  We open the picker with `showPicker()` on click instead of relying on the
  *  browser to open it when a stretched, transparent date input is clicked — on
  *  desktop that only focuses the field (the calendar opens from the hidden
- *  native icon), so "Otro día" appeared to do nothing. */
+ *  native icon), so tt("otherDay") appeared to do nothing. */
 function DateChip({
   label,
   value,
@@ -685,6 +688,7 @@ function DateChip({
   active: boolean;
   onChange: (date: string) => void;
 }) {
+  const tt = useTranslations("tasks");
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openPicker() {
@@ -703,7 +707,7 @@ function DateChip({
     <button
       type="button"
       onClick={openPicker}
-      aria-label="Elegir fecha"
+      aria-label={tt("pickDate")}
       className={cn(
         "relative inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
         active
@@ -748,6 +752,7 @@ function ChecklistItemRow({
   onAssign: (assigneeId: string | null) => void;
   onDelete: () => void;
 }) {
+  const tt = useTranslations("tasks");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(sub.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -780,7 +785,7 @@ function ChecklistItemRow({
               setEditing(false);
             }
           }}
-          aria-label="Editar ítem"
+          aria-label={tt("editItem")}
           className="min-w-0 flex-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
       ) : (
@@ -789,7 +794,7 @@ function ChecklistItemRow({
             setDraft(sub.title);
             setEditing(true);
           }}
-          title="Tocá para editar"
+          title={tt("tapToEdit")}
           className={cn(
             "min-w-0 flex-1 cursor-text break-words text-left text-sm leading-snug",
             sub.done ? "text-subtle line-through" : "text-fg",
@@ -804,8 +809,8 @@ function ChecklistItemRow({
         <div className="relative shrink-0">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label={assignee ? `Asignado a ${assignee.display_name}` : "Asignar a alguien"}
-            title={assignee ? `Asignado a ${assignee.display_name}` : "Asignar a alguien"}
+            aria-label={assignee ? `Asignado a ${assignee.display_name}` : tt("assignTo")}
+            title={assignee ? `Asignado a ${assignee.display_name}` : tt("assignTo")}
             className={cn(
               "flex h-7 w-7 items-center justify-center rounded-full transition-opacity",
               assignee
@@ -840,7 +845,7 @@ function ChecklistItemRow({
                   >
                     <OwnerAvatar profile={p} size={18} />
                     <span className="min-w-0 flex-1 truncate">
-                      {p.id === meId ? "Vos" : p.display_name}
+                      {p.id === meId ? tt("you") : p.display_name}
                     </span>
                     {sub.assignee_id === p.id && (
                       <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
@@ -858,7 +863,7 @@ function ChecklistItemRow({
                     className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-dashed border-border"
                     aria-hidden
                   />
-                  <span className="min-w-0 flex-1 truncate">Sin asignar</span>
+                  <span className="min-w-0 flex-1 truncate">{tt("unassigned")}</span>
                   {!sub.assignee_id && (
                     <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                   )}
@@ -871,7 +876,7 @@ function ChecklistItemRow({
 
       <button
         onClick={onDelete}
-        aria-label="Eliminar ítem"
+        aria-label={tt("deleteItem")}
         className="-m-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-danger/10 hover:text-danger group-hover:opacity-100 touch:opacity-100"
       >
         <Trash2 className="h-3.5 w-3.5" aria-hidden />

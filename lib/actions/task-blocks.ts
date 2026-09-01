@@ -1,13 +1,7 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/task-blocks";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId };
-}
 
 export async function getBlocksForDate(date: string) {
   const { householdId } = await requireSession();
@@ -15,16 +9,16 @@ export async function getBlocksForDate(date: string) {
 }
 
 export async function createBlock(taskId: string, startISO: string, endISO: string) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   return data.createBlock(householdId, taskId, startISO, endISO);
 }
 
 export async function updateBlock(id: string, startISO: string, endISO: string) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   return data.updateBlock(householdId, id, startISO, endISO);
 }
 
 export async function deleteBlock(id: string) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   await data.deleteBlock(householdId, id);
 }

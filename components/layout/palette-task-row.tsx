@@ -2,9 +2,11 @@
 
 import type { MatchRange } from "@/lib/palette";
 import type { Channel, Task } from "@/lib/queries/types";
-import { relativeLabel, todayISO } from "@/lib/date";
+import { todayISO } from "@/lib/date";
 import { PRIORITY_RAIL } from "@/components/tasks/priority-badge";
 import { cn } from "@/lib/utils";
+import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /**
  * One task result inside the ⌘K palette.
@@ -23,8 +25,12 @@ export function PaletteTaskRow({
   channel?: Channel;
   ranges: MatchRange[];
 }) {
+  const labels = useDateLabels();
+  const tn = useTranslations("nav");
   const done = task.status === "done";
-  const where = task.planned_date ? relativeLabel(task.planned_date, todayISO()) : "Backlog";
+  const where = task.planned_date
+    ? labels.relativeLabel(task.planned_date, todayISO())
+    : tn("backlog");
 
   return (
     <span className="flex min-w-0 flex-1 items-center gap-2.5">

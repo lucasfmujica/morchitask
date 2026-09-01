@@ -36,6 +36,7 @@ import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { TaskCard } from "@/components/tasks/task-card";
 import { SwipeToComplete } from "@/components/tasks/swipe-to-complete";
 import { createTaskCollision } from "./collision";
+import { useTranslations } from "next-intl";
 
 const NO_SUBTASKS: Subtask[] = [];
 
@@ -201,6 +202,7 @@ function SortableRow({
   owner?: Profile;
   subtasks?: Subtask[];
 }) {
+  const t = useTranslations("tasks");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { task },
@@ -237,7 +239,7 @@ function SortableRow({
     >
       <button
         {...(coarse ? handle : {})}
-        aria-label="Reordenar o arrastrar al calendario"
+        aria-label={t("reorderOrDrag")}
         tabIndex={coarse ? 0 : -1}
         className="flex w-5 shrink-0 cursor-grab touch-none items-center justify-center text-subtle/60 transition-colors hover:text-muted active:cursor-grabbing"
       >

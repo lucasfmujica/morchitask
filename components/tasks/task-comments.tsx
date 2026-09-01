@@ -6,9 +6,12 @@ import { useAddComment, useComments, useDeleteComment } from "@/lib/queries/comm
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { cn } from "@/lib/utils";
 import { OwnerAvatar } from "./owner-avatar";
+import { useTranslations } from "next-intl";
 
 /** Comment thread on a task — both household members can read and post. */
 export function TaskComments({ taskId }: { taskId: string }) {
+  const t = useTranslations("tasks");
+  const tcm = useTranslations("common");
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const { data: comments = [] } = useComments(taskId);
@@ -37,14 +40,14 @@ export function TaskComments({ taskId }: { taskId: string }) {
                 </span>
                 <div className="min-w-0 flex-1 rounded-xl rounded-tl-sm bg-surface-2 px-3 py-2">
                   <p className="text-xs font-semibold text-muted">
-                    {mine ? "Vos" : (author?.display_name ?? "Alguien")}
+                    {mine ? tcm("you") : (author?.display_name ?? t("someone"))}
                   </p>
                   <p className="break-words text-sm text-fg">{c.body}</p>
                 </div>
                 {mine && (
                   <button
                     onClick={() => remove.mutate(c.id)}
-                    aria-label="Eliminar comentario"
+                    aria-label={t("deleteComment")}
                     className="-m-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-danger/10 hover:text-danger group-hover:opacity-100 touch:opacity-100"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -61,8 +64,8 @@ export function TaskComments({ taskId }: { taskId: string }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="Escribí un comentario…"
-          aria-label="Nuevo comentario"
+          placeholder={t("commentPlaceholder")}
+          aria-label={t("newComment")}
           className="min-w-0 flex-1 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
         <button
@@ -72,7 +75,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
             "h-7 shrink-0 cursor-pointer rounded-md bg-primary px-2.5 text-xs font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40",
           )}
         >
-          Enviar
+          {tcm("send")}
         </button>
       </div>
     </div>

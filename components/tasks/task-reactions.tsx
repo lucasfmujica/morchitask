@@ -4,12 +4,14 @@ import { useMe } from "@/lib/queries/profiles";
 import { REACTION_EMOJIS, useReactions, useToggleReaction } from "@/lib/queries/reactions";
 import type { TaskReaction } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /**
  * Kudos bar for a shared task: tap an emoji to add/remove your reaction.
  * Each chip shows the emoji and how many people reacted with it.
  */
 export function TaskReactions({ taskId, size = "md" }: { taskId: string; size?: "sm" | "md" }) {
+  const t = useTranslations("tasks");
   const me = useMe().data;
   const { data: reactions = [] } = useReactions(taskId);
   const toggle = useToggleReaction(taskId);
@@ -32,7 +34,7 @@ export function TaskReactions({ taskId, size = "md" }: { taskId: string; size?: 
             key={emoji}
             onClick={() => toggle.mutate({ emoji, mine: c?.mine })}
             aria-pressed={active}
-            aria-label={`Reaccionar ${emoji}`}
+            aria-label={t("react", { emoji })}
             className={cn(
               "inline-flex cursor-pointer items-center gap-1 rounded-full border transition-colors",
               size === "sm" ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm",

@@ -1,14 +1,9 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/daily-notes";
 import type { DailyNotePatch } from "@/lib/db/queries/daily-notes";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 export async function getDailyNote(date: string) {
   const session = await auth();
@@ -23,11 +18,11 @@ export async function getShutdownDays(from: string, to: string) {
 }
 
 export async function upsertDailyNote(date: string, patch: DailyNotePatch) {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
   return data.upsertDailyNote(householdId, userId, date, patch);
 }
 
 export async function rolloverIncomplete(from: string, to: string) {
-  const { userId } = await requireSession();
+  const { userId } = await requireWriteAccess();
   return data.rolloverIncomplete(userId, from, to);
 }

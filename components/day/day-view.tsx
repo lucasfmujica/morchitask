@@ -40,12 +40,13 @@ import { orderForAppend } from "@/lib/ordering";
 import { resolveCapacity } from "@/lib/capacity";
 import { useToast } from "@/lib/stores/toast";
 import { useMediaQuery } from "@/lib/use-media-query";
-import { rolloverIncomplete } from "@/lib/queries/daily-notes";
+import { carryOverdueNow } from "@/lib/actions/carryover";
+import { carryoverKeys, useOverdueCount } from "@/lib/queries/carryover";
 import { addDays, todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
-import { CarryoverPrompt } from "./carryover-prompt";
+import { CarryoverNotice } from "./carryover-notice";
 import { PastDayNotice } from "./past-day-notice";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
@@ -59,6 +60,7 @@ import { Button } from "@/components/ui";
 import { CapacityBar } from "./capacity-bar";
 import { DoneSection, UnscheduledSection } from "./day-sections";
 import { useAgendaScheduling } from "./use-agenda-scheduling";
+import { useTranslations } from "next-intl";
 
 type Mode = "list" | "agenda";
 
@@ -71,6 +73,10 @@ const dayCollision = createTaskCollision({
 });
 
 export function DayView({ date }: { date: string }) {
+  const t = useTranslations("day");
+  const tt = useTranslations("tasks");
+  const tcm = useTranslations("common");
+  const tnav = useTranslations("nav");
   const [mode, setMode] = useState<Mode>("list");
   const qc = useQueryClient();
 
@@ -98,8 +104,9 @@ export function DayView({ date }: { date: string }) {
   const move = useMoveTaskToDate();
   const toast = useToast();
   const backlogCount = useBacklogTasks().data?.length ?? 0;
-  // Yesterday's leftovers, so the empty state can offer them by the count.
-  const yesterdayQ = useTasksForDate(addDays(date, -1));
+  // Everything still unfinished on earlier days, so the empty state can offer
+  // it by the count. Not just yesterday: on a Monday that is an empty Sunday.
+  const overdueQ = useOverdueCount(date);
   const [carrying, setCarrying] = useState(false);
   // The backlog section starts open where there's room for it.
   const wideScreen = useMediaQuery("(min-width: 1024px)");
@@ -183,13 +190,19 @@ export function DayView({ date }: { date: string }) {
     reorder.mutate({ task, sortOrder, priority });
   }
 
-  /** Empty-day shortcut: pull everything yesterday didn't finish into today. */
-  async function bringYesterday() {
+  /**
+   * Empty-day shortcut: pull in everything earlier days didn't finish.
+   *
+   * Deliberately skips the once-a-day claim the automatic sweep uses — this one
+   * was asked for, so it should work even on a day already swept (for instance
+   * after undoing it, or after something landed on a past date since).
+   */
+  async function bringOverdue() {
     setCarrying(true);
     try {
-      await rolloverIncomplete(addDays(date, -1), date);
-      qc.invalidateQueries({ queryKey: taskKeys.date(addDays(date, -1)) });
-      qc.invalidateQueries({ queryKey: taskKeys.date(date) });
+      await carryOverdueNow(date);
+      qc.invalidateQueries({ queryKey: taskKeys.all });
+      qc.invalidateQueries({ queryKey: carryoverKeys.overdue(date) });
     } finally {
       setCarrying(false);
     }
@@ -199,8 +212,8 @@ export function DayView({ date }: { date: string }) {
   function handleMoveOverflow(task: Task) {
     const tomorrow = addDays(date, 1);
     move.mutate({ task, toDate: tomorrow, sortOrder: orderForAppend([]) });
-    toast(`"${task.title}" va para mañana`, {
-      label: "Deshacer",
+    toast(t("movedToTomorrow", { title: task.title }), {
+      label: tt("undo"),
       run: () =>
         move.mutate({
           task: { ...task, planned_date: tomorrow },
@@ -259,9 +272,7 @@ export function DayView({ date }: { date: string }) {
   const doneCount = tasks.filter((t) => t.status === "done").length;
   // Everything ticked off — a finished day, not an empty one.
   const allDone = doneTasks.length > 0 && visibleTasks.length === 0;
-  const yesterdayPending = yesterdayQ.data?.filter(
-    (t) => t.owner_id === me?.id && t.status === "todo",
-  ).length;
+  const overduePending = overdueQ.data ?? 0;
 
   return (
     <div className="flex max-w-3xl flex-col gap-4 lg:max-w-5xl">
@@ -274,16 +285,16 @@ export function DayView({ date }: { date: string }) {
           <>
             <Link
               href={`/plan/${date}`}
-              aria-label="Planificar el día"
+              aria-label={t("planDay")}
               className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors hover:bg-accent hover:text-on-accent"
             >
               <Sun className="h-5 w-5" aria-hidden />
             </Link>
-            {/* Desktop only: on a phone "Cerrar" is in the bottom nav, and the
+            {/* Desktop only: on a phone t("shutdown") is in the bottom nav, and the
                 header is deliberately down to two actions. */}
             <Link
               href={`/shutdown/${date}`}
-              aria-label="Cerrar el día"
+              aria-label={t("shutdownDay")}
               className="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-fg md:flex"
             >
               <Moon className="h-5 w-5" aria-hidden />
@@ -293,7 +304,7 @@ export function DayView({ date }: { date: string }) {
       />
 
       <PastDayNotice date={date} />
-      {date === todayISO() && <CarryoverPrompt date={date} />}
+      {date === todayISO() && <CarryoverNotice date={date} />}
 
       {/* Category filter at the top (mirrors the sidebar list, shared state). */}
       <ChannelFilterBar />
@@ -323,7 +334,7 @@ export function DayView({ date }: { date: string }) {
         </div>
         {tasks.length > 0 && (
           <span className="ml-auto text-xs font-semibold text-muted">
-            {doneCount} de {tasks.length} hechas
+            {t("doneOfTotal", { done: doneCount, total: tasks.length })}
           </span>
         )}
       </div>
@@ -354,46 +365,40 @@ export function DayView({ date }: { date: string }) {
               // Three different "nothing here": a filter that matches nothing,
               // a day you finished, and a day you haven't filled. They used to
               // be one message — and now that finished tasks leave the list, a
-              // fully-done day would have read "Tu día está en blanco" with
+              // fully-done day would have read t("emptyDay") with
               // "traé más trabajo" buttons right above its own 13 hechas.
-              emptyTitle={
-                filtering
-                  ? "Nada en esta categoría"
-                  : allDone
-                    ? "Terminaste todo"
-                    : "Tu día está en blanco"
-              }
+              emptyTitle={filtering ? t("emptyCategory") : allDone ? t("allDone") : t("emptyDay")}
               emptyHint={
                 filtering
-                  ? "No hay tareas de las categorías elegidas para hoy."
+                  ? t("noTasksInCategory")
                   : allDone
-                    ? `${doneCount} ${doneCount === 1 ? "tarea hecha" : "tareas hechas"}. Cerrá el día cuando quieras.`
-                    : emptyHint(yesterdayPending, backlogCount)
+                    ? t("doneCount", { n: doneCount })
+                    : emptyHint(overduePending, backlogCount, t, tcm("listJoin"))
               }
               emptyIcon={allDone && !filtering ? Check : Sparkles}
               emptyAction={
                 filtering ? undefined : allDone ? (
                   <Link href={`/shutdown/${date}`}>
-                    <Button size="sm">Cerrar el día</Button>
+                    <Button size="sm">{t("shutdownDay")}</Button>
                   </Link>
                 ) : (
                   <div className="flex flex-wrap items-center justify-center gap-2">
-                    {!!yesterdayPending && (
-                      <Button size="sm" onClick={bringYesterday} disabled={carrying}>
-                        Traer {yesterdayPending} de ayer
+                    {!!overduePending && (
+                      <Button size="sm" onClick={bringOverdue} disabled={carrying}>
+                        {t("bringOverdue", { n: overduePending })}
                       </Button>
                     )}
                     {backlogCount > 0 && (
                       <Link href="/backlog">
                         <Button variant="secondary" size="sm">
                           <Inbox className="h-4 w-4" aria-hidden />
-                          Abrir backlog ({backlogCount})
+                          {t("openBacklog", { n: backlogCount })}
                         </Button>
                       </Link>
                     )}
                     <Link href={`/plan/${date}`}>
                       <Button variant="ghost" size="sm">
-                        Planificar
+                        {tnav("plan")}
                       </Button>
                     </Link>
                   </div>
@@ -408,7 +413,7 @@ export function DayView({ date }: { date: string }) {
           </div>
           <div className={cn("lg:block", mode === "agenda" ? "block" : "hidden")}>
             <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-subtle lg:block">
-              Agenda · arrastrá una tarea a una hora
+              {t("agendaHint")}
             </p>
             <AgendaView
               date={date}
@@ -437,15 +442,24 @@ export function DayView({ date }: { date: string }) {
 }
 
 /** The empty day, with the two places work can come from, counted. */
-function emptyHint(yesterdayPending: number | undefined, backlogCount: number): string {
+/** Takes the translator rather than calling the hook: this is a plain helper,
+ *  and hooks may only run inside components. */
+function emptyHint(
+  overduePending: number,
+  backlogCount: number,
+  t: ReturnType<typeof useTranslations<"day">>,
+  join: string,
+): string {
   const parts: string[] = [];
-  if (yesterdayPending) parts.push(`${yesterdayPending} quedaron de ayer`);
-  if (backlogCount) parts.push(`${backlogCount} esperan en el backlog`);
-  if (parts.length === 0) return "Elegí unas pocas cosas para hoy y planificá con calma.";
-  return `${parts.join(" y ")}. Traé dos o tres.`;
+  if (overduePending) parts.push(t("hintOverdue", { n: overduePending }));
+  if (backlogCount) parts.push(t("hintBacklog", { n: backlogCount }));
+  if (parts.length === 0) return t("planHint");
+  // The connector is language too: " y " / " and ".
+  return t("hintTail", { parts: parts.join(join) });
 }
 
 function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  const t = useTranslations("day");
   return (
     <div className="flex w-fit gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
       {(["list", "agenda"] as const).map((m) => (
@@ -458,7 +472,7 @@ function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
             mode === m ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
           )}
         >
-          {m === "list" ? "Lista" : "Agenda"}
+          {m === "list" ? t("tabList") : t("tabAgenda")}
         </button>
       ))}
     </div>

@@ -17,6 +17,7 @@ import type { Task } from "@/lib/queries/types";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
+import { useTranslations } from "next-intl";
 
 export { DEFAULT_CAPACITY_MIN };
 
@@ -54,6 +55,7 @@ export function CapacityBar({
   onMoveOverflow?: (task: Task) => void;
   className?: string;
 }) {
+  const t = useTranslations("day");
   if (targetMin <= 0) return null;
 
   const { pct, over, near, overByMin } = capacityState(plannedMin, targetMin);
@@ -77,7 +79,7 @@ export function CapacityBar({
       }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-fg">Capacidad del día</span>
+        <span className="text-xs font-semibold text-fg">{t("capacity")}</span>
         <span
           className={cn(
             "flex items-center gap-1.5 text-xs font-semibold",
@@ -135,16 +137,15 @@ export function CapacityBar({
         <div className="mt-2 flex items-center gap-2">
           <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-danger" aria-hidden />
           <p className="min-w-0 flex-1 text-xs leading-[17px] text-fg">
-            Te pasaste {formatMinutes(overByMin)}.
-            {suggestion?.task ? (
-              <>
-                {" "}
-                Mové <span className="font-semibold">{suggestion.task.title}</span> a mañana y
-                entrás justo.
-              </>
-            ) : (
-              " Sacá algo o movelo a mañana."
-            )}
+            {t("overBy", { over: formatMinutes(overByMin) })}{" "}
+            {/* One message per case, not a shared prefix plus a glued tail:
+                the emphasised word moves in another language. */}
+            {suggestion?.task
+              ? t.rich("overMoveSuggestion", {
+                  title: suggestion.task.title,
+                  b: (chunks) => <span className="font-semibold">{chunks}</span>,
+                })
+              : t("overGeneric")}
           </p>
           {suggestion?.task && onMoveOverflow && (
             <Button
@@ -153,14 +154,15 @@ export function CapacityBar({
               className="shrink-0"
               onClick={() => onMoveOverflow(suggestion.task!)}
             >
-              Mover {formatMinutes(suggestion.task.time_estimate_min ?? overByMin)}
+              {t("moveAmount", {
+                time: formatMinutes(suggestion.task.time_estimate_min ?? overByMin),
+              })}
             </Button>
           )}
         </div>
       ) : (
         <p className="mt-1.5 text-xs text-muted">
-          Te quedan {formatMinutes(targetMin - plannedMin)} libres · {pendingCount}{" "}
-          {pendingCount === 1 ? "pendiente" : "pendientes"}
+          {t("leftOver", { time: formatMinutes(targetMin - plannedMin), n: pendingCount })}
         </p>
       )}
     </div>
@@ -172,6 +174,8 @@ export function CapacityBar({
  * half-hour steps. Each step saves immediately; the check just collapses it.
  */
 function CapacityTarget({ value, onChange }: { value: number; onChange: (min: number) => void }) {
+  const t = useTranslations("day");
+  const tb = useTranslations("backlog");
   const [editing, setEditing] = useState(false);
 
   if (!editing) {
@@ -179,7 +183,7 @@ function CapacityTarget({ value, onChange }: { value: number; onChange: (min: nu
       <button
         type="button"
         onClick={() => setEditing(true)}
-        title="Ajustar la capacidad de hoy"
+        title={t("adjustCapacity")}
         className="cursor-pointer rounded tabular-nums underline decoration-dotted decoration-from-font underline-offset-2 transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         {formatMinutes(value)}
@@ -197,7 +201,7 @@ function CapacityTarget({ value, onChange }: { value: number; onChange: (min: nu
         type="button"
         onClick={() => step(-CAPACITY_STEP_MIN)}
         disabled={value <= CAPACITY_MIN_MIN}
-        aria-label="Bajar capacidad"
+        aria-label={t("lowerCapacity")}
         className={btn}
       >
         <Minus className="h-3 w-3" aria-hidden />
@@ -209,7 +213,7 @@ function CapacityTarget({ value, onChange }: { value: number; onChange: (min: nu
         type="button"
         onClick={() => step(CAPACITY_STEP_MIN)}
         disabled={value >= CAPACITY_MAX_MIN}
-        aria-label="Subir capacidad"
+        aria-label={t("raiseCapacity")}
         className={btn}
       >
         <Plus className="h-3 w-3" aria-hidden />
@@ -217,7 +221,7 @@ function CapacityTarget({ value, onChange }: { value: number; onChange: (min: nu
       <button
         type="button"
         onClick={() => setEditing(false)}
-        aria-label="Listo"
+        aria-label={tb("doneEstimating")}
         className={cn(btn, "bg-primary-soft text-primary hover:bg-primary/15")}
       >
         <Check className="h-3 w-3" aria-hidden />

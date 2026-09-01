@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { EASE_OUT } from "@/lib/motion";
+import { useTranslations } from "next-intl";
 
 export function TaskCheckbox({
   checked,
@@ -15,6 +16,7 @@ export function TaskCheckbox({
   size?: "sm" | "md";
   label?: string;
 }) {
+  const t = useTranslations("tasks");
   const box = size === "sm" ? "h-4 w-4" : "h-5 w-5";
   const tick = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
 
@@ -23,7 +25,7 @@ export function TaskCheckbox({
       type="button"
       onClick={onToggle}
       aria-pressed={checked}
-      aria-label={label ?? (checked ? "Marcar como pendiente" : "Completar tarea")}
+      aria-label={label ?? (checked ? t("markPending") : t("complete"))}
       whileTap={{ scale: 0.82 }}
       transition={{ duration: 0.12 }}
       className={cn(
