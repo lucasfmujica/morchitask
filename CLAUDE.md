@@ -113,3 +113,13 @@ Otras cosas que valen:
 Las categorías por defecto (`Trabajo`, `Hogar`, `Personal`) son **filas en la base**, sembradas por usuario en `lib/household-provisioning.ts`. Quien ya las tiene se las queda: renombrarlas al cambiar de idioma sería editarle los datos a alguien. Solo se siembran en el idioma del alta.
 
 `app/manifest.ts` queda en español a propósito: es uno por origen y no hay prefijos de idioma en las rutas. Está anotado en el archivo.
+
+---
+
+## Marketing
+
+Leer `DESIGN.md` y `COPY.md` antes de tocar `/` o `/pricing`.
+Usar la skill `morchitask-landing`.
+La landing reusa el chrome del producto. No inventa una marca paralela.
+Prohibido: Inter, purple, cards 2×2, mockup notebook+phone, banda dark, em dash.
+No tomar la landing actual como referencia visual.
