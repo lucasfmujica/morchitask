@@ -66,3 +66,38 @@ test.describe("price", () => {
     await expect(page.getByText("$80").first()).toBeVisible();
   });
 });
+
+test.describe("what the public pages ship", () => {
+  /**
+   * The landing used to serialize the whole 29 KB catalog into its HTML — the
+   * wording of the shutdown ritual, the Pomodoro timer and the settings screen,
+   * sent to someone who had not signed up and could not reach any of them.
+   *
+   * This asserts the trimming rather than the byte count: a size threshold would
+   * drift with every copy change, while a namespace that has no business on a
+   * public page either is there or is not.
+   */
+  // Taken verbatim from messages/es.json so the assertion cannot pass by
+  // looking for a string that was never there in the first place.
+  const PRIVATE_STRINGS = [
+    "Guardar y ver mañana", // shutdown
+    "¡Bloque de foco completado!", // focus
+    "Elegí un archivo de imagen", // settings
+    "Ajustar la capacidad de hoy", // day
+  ];
+
+  for (const path of ["/", "/pricing", "/privacy", "/terms", "/login"]) {
+    test(`${path} does not carry the app's private namespaces`, async ({ request }) => {
+      const html = await (await request.get(path)).text();
+      for (const s of PRIVATE_STRINGS) {
+        expect(html, `${path} should not ship "${s}"`).not.toContain(s);
+      }
+    });
+  }
+
+  test("the landing still has the words it is supposed to have", async ({ request }) => {
+    // The other half of the assertion above: trimming to nothing would pass it.
+    const html = await (await request.get("/")).text();
+    expect(html).toContain("Tres momentos");
+  });
+});
