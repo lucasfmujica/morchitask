@@ -51,7 +51,7 @@ import { DROP_ANIMATION } from "@/lib/motion";
 import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { createTaskCollision } from "@/components/dnd/collision";
-import { CarryoverPrompt } from "@/components/day/carryover-prompt";
+import { CarryoverNotice } from "@/components/day/carryover-notice";
 import { DayLoadBar } from "./day-progress-bar";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
@@ -203,9 +203,10 @@ export function WeekView({ date }: { date: string }) {
       {/* Category filter at the top (mirrors the sidebar list, shared state). */}
       <ChannelFilterBar />
 
-      {/* When you're looking at the current week, offer to pull yesterday's
-          unfinished tasks into today right from here. */}
-      {thisWeek && <CarryoverPrompt date={today} />}
+      {/* On the current week, the sweep of earlier days' leftovers happens here
+          too — whichever of Week and Day you open first does it, and the other
+          finds it already done. */}
+      {thisWeek && <CarryoverNotice date={today} />}
 
       {/* Day columns now span the full width — the calendar and category filter
           moved into the sidebar. `min-w-0` keeps the day strip scrolling inside

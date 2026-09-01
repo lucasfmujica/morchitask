@@ -40,12 +40,13 @@ import { orderForAppend } from "@/lib/ordering";
 import { resolveCapacity } from "@/lib/capacity";
 import { useToast } from "@/lib/stores/toast";
 import { useMediaQuery } from "@/lib/use-media-query";
-import { rolloverIncomplete } from "@/lib/queries/daily-notes";
+import { carryOverdueNow } from "@/lib/actions/carryover";
+import { carryoverKeys, useOverdueCount } from "@/lib/queries/carryover";
 import { addDays, todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { DateNavigator } from "@/components/layout/date-navigator";
 import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
-import { CarryoverPrompt } from "./carryover-prompt";
+import { CarryoverNotice } from "./carryover-notice";
 import { PastDayNotice } from "./past-day-notice";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { TaskListSection } from "@/components/tasks/task-list-section";
@@ -103,8 +104,9 @@ export function DayView({ date }: { date: string }) {
   const move = useMoveTaskToDate();
   const toast = useToast();
   const backlogCount = useBacklogTasks().data?.length ?? 0;
-  // Yesterday's leftovers, so the empty state can offer them by the count.
-  const yesterdayQ = useTasksForDate(addDays(date, -1));
+  // Everything still unfinished on earlier days, so the empty state can offer
+  // it by the count. Not just yesterday: on a Monday that is an empty Sunday.
+  const overdueQ = useOverdueCount(date);
   const [carrying, setCarrying] = useState(false);
   // The backlog section starts open where there's room for it.
   const wideScreen = useMediaQuery("(min-width: 1024px)");
@@ -188,13 +190,19 @@ export function DayView({ date }: { date: string }) {
     reorder.mutate({ task, sortOrder, priority });
   }
 
-  /** Empty-day shortcut: pull everything yesterday didn't finish into today. */
-  async function bringYesterday() {
+  /**
+   * Empty-day shortcut: pull in everything earlier days didn't finish.
+   *
+   * Deliberately skips the once-a-day claim the automatic sweep uses — this one
+   * was asked for, so it should work even on a day already swept (for instance
+   * after undoing it, or after something landed on a past date since).
+   */
+  async function bringOverdue() {
     setCarrying(true);
     try {
-      await rolloverIncomplete(addDays(date, -1), date);
-      qc.invalidateQueries({ queryKey: taskKeys.date(addDays(date, -1)) });
-      qc.invalidateQueries({ queryKey: taskKeys.date(date) });
+      await carryOverdueNow(date);
+      qc.invalidateQueries({ queryKey: taskKeys.all });
+      qc.invalidateQueries({ queryKey: carryoverKeys.overdue(date) });
     } finally {
       setCarrying(false);
     }
@@ -264,9 +272,7 @@ export function DayView({ date }: { date: string }) {
   const doneCount = tasks.filter((t) => t.status === "done").length;
   // Everything ticked off — a finished day, not an empty one.
   const allDone = doneTasks.length > 0 && visibleTasks.length === 0;
-  const yesterdayPending = yesterdayQ.data?.filter(
-    (t) => t.owner_id === me?.id && t.status === "todo",
-  ).length;
+  const overduePending = overdueQ.data ?? 0;
 
   return (
     <div className="flex max-w-3xl flex-col gap-4 lg:max-w-5xl">
@@ -298,7 +304,7 @@ export function DayView({ date }: { date: string }) {
       />
 
       <PastDayNotice date={date} />
-      {date === todayISO() && <CarryoverPrompt date={date} />}
+      {date === todayISO() && <CarryoverNotice date={date} />}
 
       {/* Category filter at the top (mirrors the sidebar list, shared state). */}
       <ChannelFilterBar />
@@ -367,7 +373,7 @@ export function DayView({ date }: { date: string }) {
                   ? t("noTasksInCategory")
                   : allDone
                     ? t("doneCount", { n: doneCount })
-                    : emptyHint(yesterdayPending, backlogCount, t, tcm("listJoin"))
+                    : emptyHint(overduePending, backlogCount, t, tcm("listJoin"))
               }
               emptyIcon={allDone && !filtering ? Check : Sparkles}
               emptyAction={
@@ -377,9 +383,9 @@ export function DayView({ date }: { date: string }) {
                   </Link>
                 ) : (
                   <div className="flex flex-wrap items-center justify-center gap-2">
-                    {!!yesterdayPending && (
-                      <Button size="sm" onClick={bringYesterday} disabled={carrying}>
-                        {t("bringYesterday", { n: yesterdayPending })}
+                    {!!overduePending && (
+                      <Button size="sm" onClick={bringOverdue} disabled={carrying}>
+                        {t("bringOverdue", { n: overduePending })}
                       </Button>
                     )}
                     {backlogCount > 0 && (
@@ -439,13 +445,13 @@ export function DayView({ date }: { date: string }) {
 /** Takes the translator rather than calling the hook: this is a plain helper,
  *  and hooks may only run inside components. */
 function emptyHint(
-  yesterdayPending: number | undefined,
+  overduePending: number,
   backlogCount: number,
   t: ReturnType<typeof useTranslations<"day">>,
   join: string,
 ): string {
   const parts: string[] = [];
-  if (yesterdayPending) parts.push(t("hintYesterday", { n: yesterdayPending }));
+  if (overduePending) parts.push(t("hintOverdue", { n: overduePending }));
   if (backlogCount) parts.push(t("hintBacklog", { n: backlogCount }));
   if (parts.length === 0) return t("planHint");
   // The connector is language too: " y " / " and ".

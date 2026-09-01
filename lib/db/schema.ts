@@ -256,6 +256,18 @@ export const dailyNotes = pgTable(
     capacity_min: integer("capacity_min"),
     end_target_min: integer("end_target_min"),
     plan_completed_at: timestamp("plan_completed_at", { withTimezone: true, mode: "string" }),
+    /**
+     * When this day's leftovers were swept forward from earlier days.
+     *
+     * The sweep is automatic, so it needs a memory: without this it would run
+     * again on every visit and undo would be pointless — whatever you sent back
+     * would return the moment you reopened Today. Set once per person per day,
+     * and deliberately NOT cleared by undo, since undo means "not today".
+     *
+     * On `daily_notes` rather than on the profile because it is a fact about a
+     * day, and the unique (owner_id, note_date) already makes it one per day.
+     */
+    carried_over_at: timestamp("carried_over_at", { withTimezone: true, mode: "string" }),
     shutdown_completed_at: timestamp("shutdown_completed_at", {
       withTimezone: true,
       mode: "string",

@@ -41,6 +41,7 @@ const B = {
 const TODAY = "2026-08-25";
 
 let tasksQueries: typeof import("./tasks");
+let carryoverQueries: typeof import("./carryover");
 
 beforeAll(async () => {
   for (const file of readdirSync(MIGRATIONS_DIR)
@@ -62,6 +63,7 @@ beforeAll(async () => {
   }
 
   tasksQueries = await import("./tasks");
+  carryoverQueries = await import("./carryover");
 
   // One private task and one *shared* task each. Shared matters: it is the one
   // case where a task legitimately crosses between people, so it is the most
@@ -137,6 +139,36 @@ describe("household isolation", () => {
       (t) => t.id === victim.id,
     );
     expect(after?.status).toBe("todo");
+  });
+
+  it("the carry-over sweep never picks up another household's rows", async () => {
+    // Dated into the past so both households have something sweepable, then
+    // swept as A: B's task must still be sitting where it was.
+    await client.exec(`update tasks set planned_date = '2026-08-01'`);
+
+    const moved = await carryoverQueries.sweepOverdue(A.household, A.user, TODAY);
+    expect(moved.length).toBeGreaterThan(0);
+
+    const stillPast = await client.query<{ n: number }>(
+      `select count(*)::int as n from tasks where owner_id = '${B.user}' and planned_date = '2026-08-01'`,
+    );
+    expect(stillPast.rows[0].n).toBe(2);
+
+    await client.exec(`update tasks set planned_date = '${TODAY}'`);
+  });
+
+  it("undoing a carry-over cannot be aimed across households", async () => {
+    const [victim] = await tasksQueries.tasksForDate(B.household, B.user, TODAY);
+    const restored = await carryoverQueries.restoreCarried(A.household, A.user, TODAY, [
+      { id: victim.id, from: "2026-01-01" },
+    ]);
+    expect(restored).toBe(0);
+  });
+
+  it("overdueCount never counts another household's rows", async () => {
+    await client.exec(`update tasks set planned_date = '2026-08-01'`);
+    expect(await carryoverQueries.overdueCount(A.household, A.user, TODAY)).toBe(2);
+    await client.exec(`update tasks set planned_date = '${TODAY}'`);
   });
 
   it("a cross-household delete leaves the row alone", async () => {
