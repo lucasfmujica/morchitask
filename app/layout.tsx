@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
-import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
@@ -63,9 +62,12 @@ export default async function RootLayout({
     <html lang={locale} className={dmSans.variable}>
       <body className="bg-bg text-fg antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-        <NextIntlClientProvider>
-          <Providers>{children}</Providers>
-        </NextIntlClientProvider>
+        {/* No message provider here on purpose. Mounted this high it has no
+            route to scope itself to, so it serializes the whole catalog into
+            every page — including the landing, where a stranger downloaded the
+            wording of the Pomodoro timer before deciding to sign up. Each route
+            group mounts its own with the namespaces it uses. */}
+        <Providers>{children}</Providers>
         <AgentationProvider />
       </body>
     </html>
