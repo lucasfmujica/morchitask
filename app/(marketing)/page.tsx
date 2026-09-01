@@ -73,24 +73,61 @@ export default async function LandingPage() {
   return (
     <>
       {/* ── 1. The fold ─────────────────────────────────────────────
-          One typographic axis, then the day itself at real scale. The
-          capacity bar has to be in here: it is the only visual signature
-          this page gets, and it is the whole argument in one gesture. */}
-      <section>
-        <div className="mx-auto w-full max-w-5xl px-5 pt-16 pb-16 sm:pt-24 sm:pb-20">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-extrabold tracking-tight text-balance text-fg sm:text-5xl lg:text-6xl">
-              {t("heroTitle")}
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">{t("heroSubtitle")}</p>
-            <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-3">
-              {cta}
-              {priceNote}
-            </div>
-          </div>
+          Split: the ritual on the left, the day itself on the right, running
+          off the right edge of the viewport at a size you can actually read.
+          The product gets the larger half on purpose — this is a planner, and
+          the only honest argument for one is what a planned day looks like.
 
-          <div className="mt-14 sm:mt-16">
-            <TodayFrame />
+          The capacity bar has to be in here. It is the single visual
+          signature this page is allowed, and it is the whole pitch in one
+          gesture: teal up to the budget, hatched red past it. */}
+      {/* `isolate` is load-bearing: the wash below sits at a negative z-index,
+          and without a stacking context here it paints behind the layout's own
+          `bg-bg` wrapper and disappears entirely. */}
+      <section className="relative isolate overflow-hidden">
+        {/* Atmosphere, not a band. Peach off the top corner where the day
+            sits, a breath of mint under it. The soft tints alone are a hair
+            away from the canvas, so each wash is the token itself over a low
+            mix of the colour it comes from — enough to feel warm, never enough
+            to read as a colour, and it follows the theme in both directions. */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            background:
+              "radial-gradient(62% 58% at 80% 4%, color-mix(in srgb, var(--accent) 10%, var(--accent-soft)), transparent 62%), radial-gradient(52% 50% at 56% 88%, color-mix(in srgb, var(--primary) 8%, var(--primary-soft)), transparent 64%)",
+          }}
+          aria-hidden
+        />
+
+        <div className="mx-auto w-full max-w-5xl px-5 pt-14 pb-16 sm:pt-20 sm:pb-24">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+            <div>
+              {/* Three moments, three lines. Separate sentences rather than one
+                  string with breaks in it: where a line lands is a typographic
+                  decision, and a translation gets to make its own. The size is
+                  capped so the longest of them ("Planificá la mañana.") holds
+                  its line inside the column instead of wrapping to five. */}
+              <h1 className="text-[2rem] leading-[1.12] font-extrabold tracking-tight text-fg sm:text-4xl lg:text-[2.5rem]">
+                <span className="block">{t("heroTitlePlan")}</span>
+                <span className="block">{t("heroTitleSchedule")}</span>
+                <span className="block">{t("heroTitleClose")}</span>
+              </h1>
+              <p className="mt-6 text-base leading-relaxed text-muted">{t("heroSubtitle")}</p>
+              <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-3">
+                {cta}
+                {priceNote}
+              </div>
+            </div>
+
+            {/* Sized to land exactly on the right edge of the viewport rather
+                than to a round number: the column starts at half the gutter
+                plus the text column, so `50vw + 2.25rem` reaches the edge at
+                every width and the day is always a little over half the
+                screen. A frame cut 30px short of the edge reads as a bug; one
+                that meets it reads as the app, docked. */}
+            <div className="lg:w-[calc(50vw+2.25rem)]">
+              <TodayFrame />
+            </div>
           </div>
         </div>
       </section>

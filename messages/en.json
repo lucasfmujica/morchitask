@@ -609,7 +609,9 @@
   "marketing": {
     "navPricing": "Pricing",
     "navSignIn": "Sign in",
-    "heroTitle": "Plan the morning. Close the night.",
+    "heroTitlePlan": "Plan the morning.",
+    "heroTitleSchedule": "Schedule the day.",
+    "heroTitleClose": "Close the night.",
     "heroSubtitle": "Pick a few things, put them on the calendar, shut it down. Morchitask is that ritual. Nothing else.",
     "heroCta": "Try it free for 14 days",
     "heroCtaNote": "No card.",

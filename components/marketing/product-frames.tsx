@@ -31,6 +31,10 @@ const FEEDBACK_MIN = 180;
 const REVIEW_MIN = 45;
 const PLANNED_MIN = CHESS_MIN + FEEDBACK_MIN + REVIEW_MIN;
 
+/** The afternoon strip in the fold's agenda column: 13:00 through 18:00. */
+const MINI_HOURS = [13, 14, 15, 16, 17, 18];
+const MINI_HOUR_PX = 30;
+
 /** Clock strings are data, not language: one place, so no literal lands in JSX. */
 const CLOCK = {
   endAt: "18:00",
@@ -303,6 +307,57 @@ export async function TodayFrame() {
                   {gap.at} {"·"} {formatMinutes(gap.min)}
                 </span>
               ))}
+            </div>
+          </div>
+
+          {/* The afternoon, cropped. In the real screen this column IS the
+              agenda, so leaving it as two small cards left a third of the fold
+              empty at the size the landing shows it. It also lets the fold say
+              the same thing twice, which is the point: the bar says the day is
+              45 minutes over, and down here the block that does not fit runs
+              off the bottom of the day. */}
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-card border border-border bg-surface px-3 pt-2.5 shadow-soft">
+            <div className="relative" style={{ height: `${MINI_HOURS.length * MINI_HOUR_PX}px` }}>
+              {MINI_HOURS.map((h, i) => (
+                <div
+                  key={h}
+                  className="absolute right-0 left-0 flex items-start gap-2"
+                  style={{ top: `${i * MINI_HOUR_PX}px` }}
+                >
+                  <span className="w-8 shrink-0 -translate-y-1.5 text-right text-2xs tabular-nums text-subtle">
+                    {String(h).padStart(2, "0")}
+                    {":00"}
+                  </span>
+                  <span className="h-px flex-1 bg-border" aria-hidden />
+                </div>
+              ))}
+
+              <div
+                className="absolute right-0 left-10 overflow-hidden rounded-lg border-l-[3px] border-accent bg-accent-soft px-2 py-1"
+                style={{ top: `${0.5 * MINI_HOUR_PX}px`, height: `${MINI_HOUR_PX}px` }}
+              >
+                <p className="truncate text-2xs font-semibold text-fg">{tm("frameEventSync")}</p>
+              </div>
+
+              <div
+                className="absolute right-0 left-10 flex items-center"
+                style={{ top: `${3.783 * MINI_HOUR_PX}px` }}
+              >
+                <span className="h-1.5 w-1.5 -translate-x-0.5 rounded-full bg-accent" aria-hidden />
+                <span className="h-px flex-1 bg-accent" aria-hidden />
+              </div>
+
+              <div
+                className="absolute right-0 left-10 overflow-hidden rounded-lg border-l-[3px] px-2 py-1"
+                style={{
+                  top: `${4.5 * MINI_HOUR_PX}px`,
+                  height: `${2 * MINI_HOUR_PX}px`,
+                  borderColor: "var(--danger)",
+                  background: "color-mix(in srgb, var(--danger) 9%, var(--surface))",
+                }}
+              >
+                <p className="truncate text-2xs font-semibold text-fg">{tm("frameTaskFeedback")}</p>
+              </div>
             </div>
           </div>
         </div>
