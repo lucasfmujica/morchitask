@@ -25,11 +25,11 @@ import { cn } from "@/lib/utils";
  */
 
 /** The day the frames depict: 6h 45m planned against a 6h budget. */
-const CAPACITY_MIN = DEFAULT_CAPACITY_MIN;
+export const CAPACITY_MIN = DEFAULT_CAPACITY_MIN;
 const CHESS_MIN = 180;
 const FEEDBACK_MIN = 180;
 const REVIEW_MIN = 45;
-const PLANNED_MIN = CHESS_MIN + FEEDBACK_MIN + REVIEW_MIN;
+export const PLANNED_MIN = CHESS_MIN + FEEDBACK_MIN + REVIEW_MIN;
 
 /** The afternoon strip in the fold's agenda column: 13:00 through 18:00. */
 const MINI_HOURS = [13, 14, 15, 16, 17, 18];
@@ -46,9 +46,41 @@ const CLOCK = {
 } as const;
 
 /**
- * A recreated screen. Borders and elevation are a Week card's, deliberately:
- * a landing frame that floats on a shadow the product never uses reads as a
- * mockup of the app rather than the app.
+ * The bezel that turns a screenshot into an object: a soft outer frame with its
+ * own radius one step up, and a three-stop shadow ramp instead of the single
+ * resting shadow a list card uses.
+ *
+ * This is the one DESIGN.md rule the marketing pages break on purpose. "The
+ * minimum shadow a Week card uses" is right for a card sitting in a list and
+ * wrong for the only images on the page: without elevation the frames read as
+ * screenshots pasted onto a document rather than as the product.
+ */
+export function Bezel({
+  children,
+  lift = "md",
+}: {
+  children: React.ReactNode;
+  lift?: "md" | "lg";
+}) {
+  return (
+    <div
+      className="rounded-2xl border border-border/70 p-2"
+      style={{
+        background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))",
+        boxShadow:
+          lift === "lg"
+            ? "0 1px 2px rgb(var(--shadow-color) / calc(0.05 * var(--shadow-strength))), 0 10px 28px rgb(var(--shadow-color) / calc(0.08 * var(--shadow-strength))), 0 40px 80px rgb(var(--shadow-color) / calc(0.10 * var(--shadow-strength)))"
+            : "0 1px 2px rgb(var(--shadow-color) / calc(0.04 * var(--shadow-strength))), 0 8px 22px rgb(var(--shadow-color) / calc(0.06 * var(--shadow-strength))), 0 24px 48px rgb(var(--shadow-color) / calc(0.07 * var(--shadow-strength)))",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A recreated screen. Its own border stays a Week card's; the elevation is the
+ * bezel's job, so a frame can also be used bare where one is not wanted.
  */
 function Frame({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -78,7 +110,7 @@ type CategoryKey = keyof typeof CATEGORY;
  * much it is. Same geometry as `components/day/capacity-bar.tsx`, minus the
  * animation, which would need a client bundle for a bar that never changes.
  */
-function CapacityMeter({
+export function CapacityMeter({
   plannedMin,
   targetMin,
   height = "h-2",
