@@ -15,7 +15,15 @@ import { expect, test } from "@playwright/test";
  */
 
 /** Every authenticated route, sampled across the route groups. */
-const PRIVATE_ROUTES = ["/today", "/backlog", "/settings", "/metas", "/focus", "/routines"];
+const PRIVATE_ROUTES = [
+  "/today",
+  "/backlog",
+  "/settings",
+  "/metas",
+  "/focus",
+  "/routines",
+  "/billing",
+];
 
 test.describe("route protection", () => {
   for (const route of PRIVATE_ROUTES) {
@@ -166,5 +174,41 @@ test.describe("PWA", () => {
     // the install prompt gets HTML instead of JSON and silently stops working.
     const response = await request.get("/manifest.webmanifest", { maxRedirects: 0 });
     expect(response.status()).toBe(200);
+  });
+});
+
+test.describe("the payment webhook", () => {
+  /**
+   * The one unauthenticated endpoint that writes.
+   *
+   * It must not be behind the login redirect — the payment provider is not a
+   * browser, and a 307 to /login would be recorded as a successful delivery
+   * while the subscription never lands. It also must not accept anything: with
+   * no secret configured it refuses outright, the same fail-closed rule the
+   * cron routes have.
+   */
+  test("is reachable without a session, and still refuses the request", async ({ request }) => {
+    const response = await request.post("/api/webhooks/polar", {
+      data: { type: "subscription.active" },
+      failOnStatusCode: false,
+      maxRedirects: 0,
+    });
+
+    expect(response.status(), "a redirect here would silently lose payments").not.toBe(307);
+    // 503 without a secret, 403 with one and a bad signature. Never 2xx, and
+    // never a redirect.
+    expect([403, 503]).toContain(response.status());
+  });
+
+  test("never accepts an unsigned payload", async ({ request }) => {
+    const response = await request.post("/api/webhooks/polar", {
+      data: {
+        type: "subscription.active",
+        data: { id: "sub_forged", status: "active", customerId: "cus_forged" },
+      },
+      failOnStatusCode: false,
+      maxRedirects: 0,
+    });
+    expect(response.ok()).toBe(false);
   });
 });

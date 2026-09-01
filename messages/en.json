@@ -520,7 +520,10 @@
     "deleteConfirmAction": "Delete forever",
     "deleteCancel": "Cancel",
     "deleting": "Deleting…",
-    "deleteFailed": "Couldn't delete the account. Try again."
+    "deleteFailed": "Couldn't delete the account. Try again.",
+    "billing": "Plan",
+    "billingTitle": "Plan and billing",
+    "billingDesc": "Your subscription, card and invoices."
   },
   "goals": {
     "title": "Goals",
@@ -705,5 +708,34 @@
     "tS7Body": "You can leave any time by deleting your account. If we ever had to shut the service down, we'd give at least 30 days' notice and you could export everything.",
     "tS8Title": "Governing law",
     "tS8Body": "Governed by the laws of the Argentine Republic."
+  },
+  "billing": {
+    "title": "Plan and billing",
+    "choosePlan": "Pick a plan",
+    "manageTitle": "Your subscription",
+    "managePlan": "Manage plan and card",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perMonth": "per month",
+    "perYear": "per year",
+    "yearlySaving": "Save {pct}%",
+    "subscribe": "Subscribe",
+    "checkoutFailed": "Couldn't open checkout. Try again in a minute.",
+    "trialLeft": "{n, plural, =0 {Your trial ends today.} =1 {1 day left in your trial.} other {# days left in your trial.}}",
+    "trialBody": "No card until you decide to stay.",
+    "activeTitle": "Subscription active",
+    "activeBody": "Thanks for backing this.",
+    "renewsOn": "Renews on {date}.",
+    "endingOn": "Cancelled — you have access until {date}.",
+    "pastDueTitle": "We couldn't charge your card",
+    "pastDueBody": "You can keep using the app while we retry. Update the card so it doesn't stop.",
+    "lockedTitle": "Your trial has ended",
+    "lockedBody": "Your data is still here and nothing gets deleted. You can export it or delete the account from Settings at any time.",
+    "compTitle": "This account is never charged",
+    "compBody": "Full access, no expiry.",
+    "notConfigured": "Billing isn't configured in this environment yet.",
+    "navBilling": "Plan and billing",
+    "trialWarning": "{n, plural, =0 {Your trial ends today.} =1 {1 day left in your trial.} other {# days left in your trial.}}",
+    "trialWarningCta": "See plans"
   }
 }

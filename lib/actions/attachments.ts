@@ -2,15 +2,9 @@
 
 import { del } from "@vercel/blob";
 import { isAllowedType, isBlobUrlFor, isValidAttachmentPath } from "@/lib/attachments";
-import { auth } from "@/lib/auth";
+import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/attachments";
 import type { NewAttachment } from "@/lib/queries/types";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 export async function getAttachments(taskId: string) {
   const { householdId } = await requireSession();
@@ -27,7 +21,7 @@ export async function getAttachments(taskId: string) {
  * uploaded to this task.
  */
 export async function addAttachment(taskId: string, file: NewAttachment) {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
 
   if (!isValidAttachmentPath(file.pathname, taskId)) throw new Error("invalid path");
   if (!isBlobUrlFor(file.url, file.pathname)) throw new Error("invalid url");
@@ -44,7 +38,7 @@ export async function addAttachment(taskId: string, file: NewAttachment) {
 
 /** Remove an attachment — the row and the stored file, in that order. */
 export async function deleteAttachment(id: string) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   const row = await data.deleteAttachment(householdId, id);
   if (!row) return;
   // Best effort: if Blob is unreachable the row is already gone, and a stray

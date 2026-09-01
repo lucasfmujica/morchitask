@@ -3,6 +3,7 @@ import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { channels, householdInvites, households, profiles } from "@/lib/db/schema";
 import { DEFAULT_LOCALE, localeFromAcceptLanguage } from "@/lib/locale";
+import { trialEndFrom } from "@/lib/billing";
 
 const DEFAULT_CHANNELS = [
   { name: "Trabajo", color: "#0d9488", icon: "briefcase" },
@@ -69,8 +70,17 @@ export async function provisionNewUser(user: {
 }): Promise<string> {
   const invited = await claimInvite(user.email);
 
+  // The trial belongs to the space, and only a new space gets one: joining
+  // someone else's on an invite means joining whatever they are already paying
+  // (or trialing), not starting a second fourteen days of your own.
   const householdId =
-    invited ?? (await db.insert(households).values({}).returning({ id: households.id }))[0].id;
+    invited ??
+    (
+      await db
+        .insert(households)
+        .values({ trial_ends_at: trialEndFrom() })
+        .returning({ id: households.id })
+    )[0].id;
 
   await db.insert(profiles).values({
     id: user.id,

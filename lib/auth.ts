@@ -7,6 +7,9 @@ import { accounts, profiles, sessions, users, verificationTokens } from "@/lib/d
 import { provisionNewUser } from "@/lib/household-provisioning";
 import { setLocaleCookie } from "@/lib/actions/locale";
 import { toLocale } from "@/lib/locale";
+import { resolveAccess } from "@/lib/billing";
+import { billingFacts } from "@/lib/db/queries/subscriptions";
+import { isBillingEnabled } from "@/lib/billing-config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -41,6 +44,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.id = user.id;
       session.householdId = profile?.householdId ?? null;
       session.locale = toLocale(profile?.locale);
+
+      // Resolved here so the proxy can gate on it without a database round trip
+      // of its own — it runs on every request, including every asset that slips
+      // through the matcher. One extra query on a callback that was already
+      // hitting the database is the cheap version of that.
+      //
+      // Two cases fall through to "open": no household, which means provisioning
+      // has not finished, and billing switched off, which means there is nowhere
+      // to pay yet. Bouncing a brand-new sign-up to a paywall a millisecond
+      // before their trial row exists — or to one with no checkout behind it —
+      // is worse than a day of free use.
+      const facts =
+        isBillingEnabled() && profile?.householdId ? await billingFacts(profile.householdId) : null;
+      session.access = facts
+        ? resolveAccess(facts)
+        : {
+            allowed: true,
+            source: "none",
+            until: null,
+            trialDaysLeft: null,
+            paymentFailing: false,
+          };
       return session;
     },
     /**

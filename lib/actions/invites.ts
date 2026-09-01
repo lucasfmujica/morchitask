@@ -1,16 +1,10 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { auth } from "@/lib/auth";
+import { requireSession } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/invites";
 import { isValidEmail } from "@/lib/email";
 import { getTranslations } from "next-intl/server";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 export async function listInvites() {
   const { householdId } = await requireSession();

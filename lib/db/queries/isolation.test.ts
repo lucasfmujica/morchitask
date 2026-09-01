@@ -42,6 +42,7 @@ const TODAY = "2026-08-25";
 
 let tasksQueries: typeof import("./tasks");
 let carryoverQueries: typeof import("./carryover");
+let subscriptionQueries: typeof import("./subscriptions");
 
 beforeAll(async () => {
   for (const file of readdirSync(MIGRATIONS_DIR)
@@ -64,6 +65,7 @@ beforeAll(async () => {
 
   tasksQueries = await import("./tasks");
   carryoverQueries = await import("./carryover");
+  subscriptionQueries = await import("./subscriptions");
 
   // One private task and one *shared* task each. Shared matters: it is the one
   // case where a task legitimately crosses between people, so it is the most
@@ -169,6 +171,26 @@ describe("household isolation", () => {
     await client.exec(`update tasks set planned_date = '2026-08-01'`);
     expect(await carryoverQueries.overdueCount(A.household, A.user, TODAY)).toBe(2);
     await client.exec(`update tasks set planned_date = '${TODAY}'`);
+  });
+
+  it("billing facts are read per household, never pooled", async () => {
+    // A only has a subscription because B does not: the join has to keep them
+    // apart, or one household's payment would unlock the other.
+    await subscriptionQueries.upsertSubscription({
+      householdId: A.household,
+      providerSubscriptionId: "sub_a",
+      providerCustomerId: "cus_a",
+      status: "active",
+      recurringInterval: "month",
+      currentPeriodEnd: "2027-01-01T00:00:00.000Z",
+      cancelAtPeriodEnd: false,
+    });
+
+    expect((await subscriptionQueries.billingFacts(A.household))?.subscription?.status).toBe(
+      "active",
+    );
+    expect((await subscriptionQueries.billingFacts(B.household))?.subscription).toBeNull();
+    expect(await subscriptionQueries.getSubscription(B.household)).toBeNull();
   });
 
   it("a cross-household delete leaves the row alone", async () => {

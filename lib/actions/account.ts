@@ -1,14 +1,8 @@
 "use server";
 
 import { del } from "@vercel/blob";
-import { auth } from "@/lib/auth";
+import { requireSession } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/account";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 /**
  * Your data, as one JSON file.

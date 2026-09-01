@@ -1,14 +1,8 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/carryover";
 import type { CarriedTask } from "@/lib/db/queries/carryover";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 export type { CarriedTask };
 
@@ -28,7 +22,7 @@ export type { CarriedTask };
  * else's data.
  */
 export async function sweepOverdueToToday(today: string): Promise<CarriedTask[]> {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
 
   // Claim first, sweep second. The other order would let two tabs both sweep
   // and only one record it, and the loser's rows would be counted twice.
@@ -40,7 +34,7 @@ export async function sweepOverdueToToday(today: string): Promise<CarriedTask[]>
 /** Sends a sweep back where it came from. Deliberately leaves the day marked as
  *  swept: undo means "not today", not "ask me again on the next page load". */
 export async function undoCarryover(today: string, moves: CarriedTask[]) {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
   return data.restoreCarried(householdId, userId, today, moves);
 }
 
@@ -54,6 +48,6 @@ export async function countOverdue(today: string) {
 /** The manual version of the sweep, for the button. Skips the once-a-day claim
  *  on purpose — this one was asked for. */
 export async function carryOverdueNow(today: string): Promise<CarriedTask[]> {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
   return data.sweepOverdue(householdId, userId, today);
 }

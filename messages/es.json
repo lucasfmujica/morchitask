@@ -520,7 +520,10 @@
     "deleteConfirmAction": "Borrar para siempre",
     "deleteCancel": "Cancelar",
     "deleting": "Borrando…",
-    "deleteFailed": "No se pudo borrar la cuenta. Probá de nuevo."
+    "deleteFailed": "No se pudo borrar la cuenta. Probá de nuevo.",
+    "billing": "Plan",
+    "billingTitle": "Plan y pago",
+    "billingDesc": "Tu suscripción, la tarjeta y las facturas."
   },
   "goals": {
     "title": "Metas",
@@ -705,5 +708,34 @@
     "tS7Body": "Podés irte cuando quieras borrando la cuenta. Si tuviéramos que cerrar el servicio, avisamos con al menos 30 días y podés exportar todo.",
     "tS8Title": "Ley aplicable",
     "tS8Body": "Se rige por las leyes de la República Argentina."
+  },
+  "billing": {
+    "title": "Plan y pago",
+    "choosePlan": "Elegí un plan",
+    "manageTitle": "Tu suscripción",
+    "managePlan": "Administrar plan y tarjeta",
+    "monthly": "Mensual",
+    "yearly": "Anual",
+    "perMonth": "por mes",
+    "perYear": "por año",
+    "yearlySaving": "Ahorrás {pct}%",
+    "subscribe": "Suscribirme",
+    "checkoutFailed": "No se pudo abrir el pago. Probá de nuevo en un minuto.",
+    "trialLeft": "{n, plural, =0 {Tu prueba termina hoy.} =1 {Te queda 1 día de prueba.} other {Te quedan # días de prueba.}}",
+    "trialBody": "No pedimos tarjeta hasta que decidas seguir.",
+    "activeTitle": "Suscripción activa",
+    "activeBody": "Gracias por bancar esto.",
+    "renewsOn": "Se renueva el {date}.",
+    "endingOn": "Cancelada: tenés acceso hasta el {date}.",
+    "pastDueTitle": "No pudimos cobrar tu tarjeta",
+    "pastDueBody": "Seguís usando la app mientras lo reintentamos. Actualizá la tarjeta para que no se corte.",
+    "lockedTitle": "Se terminó tu prueba",
+    "lockedBody": "Tus datos siguen acá y no se borra nada. Desde Ajustes podés exportarlos o borrar la cuenta cuando quieras.",
+    "compTitle": "Tu cuenta no se cobra",
+    "compBody": "Acceso completo, sin vencimiento.",
+    "notConfigured": "El cobro todavía no está configurado en este entorno.",
+    "navBilling": "Plan y pago",
+    "trialWarning": "{n, plural, =0 {Tu prueba termina hoy.} =1 {Te queda 1 día de prueba.} other {Te quedan # días de prueba.}}",
+    "trialWarningCta": "Ver planes"
   }
 }

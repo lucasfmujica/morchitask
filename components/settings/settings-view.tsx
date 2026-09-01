@@ -20,6 +20,8 @@ import { InviteCard } from "./invite-card";
 import { NotificationsCard } from "./notifications-card";
 import { LanguageSelector } from "./language-selector";
 import { DangerZone } from "./danger-zone";
+import Link from "next/link";
+import { CreditCard } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function SettingsView() {
@@ -248,6 +250,24 @@ export function SettingsView() {
       {/* Notifications */}
       <Section title={t("notifications")}>
         <NotificationsCard />
+      </Section>
+
+      {/* Plan and billing live on their own page — this is the way in. Not a
+          card with the price on it: that number belongs in one place, and
+          duplicating it here is how the two drift apart. */}
+      <Section title={t("billing")}>
+        <Link
+          href="/billing"
+          className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 transition-colors hover:bg-surface-2"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+            <CreditCard className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-fg">{t("billingTitle")}</p>
+            <p className="text-xs text-muted">{t("billingDesc")}</p>
+          </div>
+        </Link>
       </Section>
 
       {/* Data rights. Last, because it is where you leave — and visible,

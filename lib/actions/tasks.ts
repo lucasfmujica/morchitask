@@ -1,17 +1,11 @@
 "use server";
 
 import { del } from "@vercel/blob";
-import { auth } from "@/lib/auth";
+import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as attachments from "@/lib/db/queries/attachments";
 import * as data from "@/lib/db/queries/tasks";
 import { isTaskPriority, type PriorityKey } from "@/lib/priority";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 /** The patch reaches `db.update().set()` verbatim, so reject a bogus priority
  *  here rather than relying on the CHECK constraint to raise a 500. */
@@ -22,24 +16,24 @@ function assertPriority(priority: PriorityKey | undefined) {
 }
 
 export async function createTask(input: NewTask) {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
   assertPriority(input.priority);
   return data.insertTask(householdId, userId, input);
 }
 
 export async function toggleTask(taskId: string, done: boolean) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   return data.toggleTaskDone(householdId, taskId, done);
 }
 
 export async function updateTask(taskId: string, patch: TaskPatch) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   assertPriority(patch.priority);
   return data.updateTask(householdId, taskId, patch);
 }
 
 export async function setActualTime(taskId: string, actualMin: number) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   await data.setActualTime(householdId, taskId, actualMin);
 }
 
@@ -50,7 +44,7 @@ export async function setActualTime(taskId: string, actualMin: number) {
  * in what.
  */
 export async function logTaskTime(taskId: string, segments: { day: string; minutes: number }[]) {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
   const clean = segments.filter(
     (s) => /^\d{4}-\d{2}-\d{2}$/.test(s.day) && Number.isFinite(s.minutes) && s.minutes > 0,
   );
@@ -59,7 +53,7 @@ export async function logTaskTime(taskId: string, segments: { day: string; minut
 
 /** Correct by hand how long *I* worked on a task on one day. */
 export async function setTaskDayTime(taskId: string, day: string, minutes: number) {
-  const { householdId, userId } = await requireSession();
+  const { householdId, userId } = await requireWriteAccess();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error("invalid day");
   // Same 24h ceiling the duration parser uses — a day can't hold more.
   const clean = Number.isFinite(minutes) ? Math.min(Math.max(minutes, 0), 24 * 60) : 0;
@@ -73,7 +67,7 @@ export async function getTaskTimeEntries(taskId: string) {
 }
 
 export async function setTaskActiveSince(taskId: string, active: boolean) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   await data.setActiveSince(householdId, taskId, active);
 }
 
@@ -81,7 +75,7 @@ export async function setTaskActiveSince(taskId: string, active: boolean) {
  * so the client can clean them up — the calendar write goes out from the
  * browser through `/api/calendar/blocks`, not from here. */
 export async function deleteTask(taskId: string) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
   // Attachment rows cascade with the task, but the stored files don't — read
   // their paths while the rows still exist, then delete the blobs afterwards.
@@ -105,7 +99,7 @@ export async function moveTaskToDate(
   sortOrder: number,
   priority?: PriorityKey,
 ) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   assertPriority(priority);
   const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
   await data.deleteTaskBlocks(householdId, taskId);
@@ -114,7 +108,7 @@ export async function moveTaskToDate(
 }
 
 export async function reorderTask(taskId: string, sortOrder: number, priority?: PriorityKey) {
-  const { householdId } = await requireSession();
+  const { householdId } = await requireWriteAccess();
   assertPriority(priority);
   await data.reorderTask(householdId, taskId, sortOrder, priority);
 }
