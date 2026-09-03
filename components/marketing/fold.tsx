@@ -47,7 +47,7 @@ export async function Fold() {
       />
 
       <div className="mx-auto w-full max-w-5xl px-5 pt-16 pb-20 sm:pt-24 sm:pb-28">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)]">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
           <div>
             <p className="flex items-center gap-3 text-2xs font-semibold tracking-[0.16em] text-muted uppercase">
               <span className="h-px w-7 shrink-0 bg-accent" aria-hidden />
@@ -56,15 +56,21 @@ export async function Fold() {
 
             {/* Three moments, three lines. Separate sentences rather than one
                 string with breaks in it: where a line lands is a typographic
-                decision, and a translation gets to make its own. Capped at
-                2.5rem so the longest of them holds its line in both. */}
-            <h1 className="mt-6 text-[2.125rem] leading-[1.05] font-extrabold tracking-[-0.034em] text-fg sm:text-[2.5rem]">
+                decision, and a translation gets to make its own.
+
+                2.875rem is not a taste call, it is the ceiling two constraints
+                leave: the longest line ("Planificá la mañana.") measures 448px
+                at this size, and the frame beside it only clears half the
+                viewport while this column plus its gap stay under 492px. Going
+                bigger means the product drops below half the screen — 56px puts
+                it at 42%, 64px at 37%. */}
+            <h1 className="mt-6 text-[2.125rem] leading-[1.04] font-extrabold tracking-[-0.035em] text-fg sm:text-[2.5rem] lg:text-[2.875rem]">
               <span className="block">{t("heroTitlePlan")}</span>
               <span className="block">{t("heroTitleSchedule")}</span>
               <span className="block">{t("heroTitleClose")}</span>
             </h1>
 
-            <p className="mt-6 max-w-[24rem] text-base leading-[1.65] text-muted">
+            <p className="mt-6 max-w-[25rem] text-[1.0625rem] leading-[1.6] text-muted">
               {t("heroSubtitle")}
             </p>
 
@@ -109,7 +115,7 @@ export async function Fold() {
               starts at half the gutter plus the text column, so `50vw + 2.25rem`
               meets the edge at every width and the day is always a little over
               half the screen. A frame cut short of the edge reads as a bug. */}
-          <div className="lg:w-[calc(50vw+2.25rem)]">
+          <div className="lg:w-[calc(50vw+0.25rem)]">
             <Bezel lift="lg">
               <TodayFrame />
             </Bezel>

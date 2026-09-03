@@ -69,7 +69,7 @@ export default async function LandingPage() {
   ];
 
   const heading =
-    "text-[1.75rem] leading-[1.15] font-extrabold tracking-[-0.03em] text-fg sm:text-[2.125rem]";
+    "text-[2rem] leading-[1.1] font-extrabold tracking-[-0.032em] text-fg sm:text-[2.5rem]";
 
   return (
     <>
@@ -80,10 +80,12 @@ export default async function LandingPage() {
           and no step numbers: the headings already say morning, day, night,
           and a numbered list would be decoration on top of that. */}
       <section className="border-t border-border bg-surface">
-        <div className="mx-auto w-full max-w-5xl px-5 pt-20 sm:pt-28">
+        <div className="reveal mx-auto w-full max-w-5xl px-5 pt-20 sm:pt-28">
           <Rule />
           <h2 className={`max-w-2xl text-balance ${heading}`}>{t("ritualTitle")}</h2>
-          <p className="mt-4 max-w-xl text-base leading-[1.65] text-muted">{t("ritualSubtitle")}</p>
+          <p className="mt-5 max-w-xl text-[1.0625rem] leading-[1.6] text-muted">
+            {t("ritualSubtitle")}
+          </p>
         </div>
 
         {moments.map((moment, i) => {
@@ -97,7 +99,7 @@ export default async function LandingPage() {
               <h3 className="text-xl leading-[1.2] font-extrabold tracking-[-0.028em] text-fg sm:text-2xl">
                 {moment.title}
               </h3>
-              <p className="mt-4 text-base leading-[1.65] text-muted">{moment.body}</p>
+              <p className="mt-5 text-[1.0625rem] leading-[1.6] text-muted">{moment.body}</p>
             </div>
           );
           const frame = (
@@ -107,7 +109,7 @@ export default async function LandingPage() {
           );
 
           return (
-            <div key={moment.title} className="mx-auto w-full max-w-5xl px-5 py-14 sm:py-16">
+            <div key={moment.title} className="reveal mx-auto w-full max-w-5xl px-5 py-14 sm:py-16">
               <div
                 className={`grid items-center gap-10 lg:gap-14 ${
                   frameFirst
@@ -126,14 +128,14 @@ export default async function LandingPage() {
           Back to the canvas, and the strip runs past the text column:
           five days only prove the point when all five are on the screen. */}
       <section className="border-t border-border py-20 sm:py-28">
-        <div className="mx-auto w-full max-w-5xl px-5">
+        <div className="reveal mx-auto w-full max-w-5xl px-5">
           <div className="max-w-2xl">
             <Rule />
             <h2 className={`text-balance ${heading}`}>{t("weekTitle")}</h2>
-            <p className="mt-4 text-base leading-[1.65] text-muted">{t("weekSubtitle")}</p>
+            <p className="mt-5 text-[1.0625rem] leading-[1.6] text-muted">{t("weekSubtitle")}</p>
           </div>
         </div>
-        <div className="mt-12 w-full px-5">
+        <div className="reveal mt-12 w-full px-5">
           <WeekStrip />
         </div>
       </section>
@@ -144,11 +146,13 @@ export default async function LandingPage() {
           the part that matters, but the page stops being a stack. */}
       <section className="border-t border-border bg-surface">
         <div className="mx-auto w-full max-w-5xl px-5 py-20 sm:py-28">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:gap-16">
+          <div className="reveal grid gap-10 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:gap-16">
             <div className="lg:sticky lg:top-24 lg:self-start">
               <Rule />
               <h2 className={`text-balance ${heading}`}>{t("honestTitle")}</h2>
-              <p className="mt-4 text-base leading-[1.65] text-muted">{t("honestSubtitle")}</p>
+              <p className="mt-5 text-[1.0625rem] leading-[1.6] text-muted">
+                {t("honestSubtitle")}
+              </p>
             </div>
             <ul className="divide-y divide-border border-t border-border">
               {limits.map((limit) => (
@@ -181,10 +185,12 @@ export default async function LandingPage() {
           aria-hidden
         />
 
-        <div className="mx-auto w-full max-w-5xl px-5 py-20 sm:py-28">
+        <div className="reveal mx-auto w-full max-w-5xl px-5 py-20 sm:py-28">
           <Rule />
           <h2 className={`max-w-2xl text-balance ${heading}`}>{t("compareTitle")}</h2>
-          <p className="mt-5 max-w-2xl text-base leading-[1.7] text-muted">{t("compareBody")}</p>
+          <p className="mt-5 max-w-2xl text-[1.0625rem] leading-[1.7] text-muted">
+            {t("compareBody")}
+          </p>
           <Link
             href="/pricing"
             className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:underline"
@@ -195,7 +201,9 @@ export default async function LandingPage() {
 
           <div className="mt-16 max-w-3xl border-t border-border pt-16">
             <h2 className={`text-balance ${heading}`}>{t("finalTitle")}</h2>
-            <p className="mt-5 max-w-xl text-base leading-[1.7] text-muted">{t("finalBody")}</p>
+            <p className="mt-5 max-w-xl text-[1.0625rem] leading-[1.7] text-muted">
+              {t("finalBody")}
+            </p>
             <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-4">
               <Link
                 href="/login"

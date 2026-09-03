@@ -269,7 +269,7 @@ export async function TodayFrame() {
         </div>
       </div>
 
-      <div className="grid gap-5 px-5 pt-4 pb-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <div className="grid gap-5 px-5 pt-4 pb-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div>
           <div className="rounded-card border border-border bg-surface px-4 py-3 text-base text-subtle shadow-soft">
             {tt("addPlaceholder")}
@@ -317,11 +317,11 @@ export async function TodayFrame() {
           </p>
 
           <div className="flex items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2.5 shadow-soft">
-            <span className="text-sm text-muted">{td("endAt")}</span>
+            <span className="shrink-0 text-sm text-muted">{td("endAt")}</span>
             <span className="rounded-lg bg-surface-2 px-2 py-1 text-sm font-semibold tabular-nums text-fg">
               {CLOCK.endAt}
             </span>
-            <span className="rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-on-primary">
+            <span className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap text-on-primary">
               {td("autoSchedule")}
             </span>
           </div>
