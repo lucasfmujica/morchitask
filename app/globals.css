@@ -352,6 +352,44 @@ body {
   }
 }
 
+/* ============================================================
+   MARKETING: SCROLL REVEAL
+   ============================================================
+   The landing had no motion at all, which is a large part of why a calm page
+   reads as a flat one. This is the whole of it: a section rises and fades as it
+   enters, driven by scroll position rather than by a timer.
+
+   Deliberately pure CSS. A client component with an IntersectionObserver would
+   ship JavaScript to the one page where weight actually costs conversions, and
+   the marketing layout goes out of its way not to (see its comment). Browsers
+   without scroll-driven animations get the content, already visible, and so
+   does anyone who asked for less motion — which is why the keyframes only ever
+   run inside both guards.
+   ============================================================ */
+@keyframes marketing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: marketing-rise linear both;
+      animation-timeline: view();
+      /* Finished well before the element reaches the middle of the screen:
+         copy that is still fading while you are trying to read it is worse
+         than copy that never moved. */
+      animation-range: entry 4% cover 22%;
+    }
+  }
+}
+
 /* Respect reduced-motion globally */
 @media (prefers-reduced-motion: reduce) {
   *,

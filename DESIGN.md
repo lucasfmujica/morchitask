@@ -24,11 +24,25 @@ Calma, fría, intencional. Papel de oficina limpio, no SaaS neon. Quietud alrede
 - Barra de capacidad overflow: rojo rayado + copy en naranja/rojo
 - Tipografía: DM Sans. Nunca Inter, Arial, Geist, ni system-ui como voz de marca.
 - Radio: el de la app (cards de día, chips). No subir el radius en marketing para que "se vea más friendly".
-- Sombra: la mínima que ya usa una card de Semana. Nada de mockup flotando con shadow-2xl.
+- Sombra: en producto, la mínima que ya usa una card de Semana. En marketing, los frames de producto van en un **bisel** (`Bezel` en `components/marketing/product-frames.tsx`): marco exterior suave, radio un paso mayor y una rampa de sombra de tres paradas. La sombra de reposo es correcta para una card dentro de una lista y equivocada para las únicas imágenes de la landing: sin elevación se leen como capturas pegadas en un documento. Sigue prohibido el mockup flotando con `shadow-2xl` y el device chrome.
 
 ## Firma visual (una sola)
 
 La barra de capacidad del día. Verde cuando entra. Roja y rayada cuando te pasaste. Esa barra es el único gesto que la landing puede poner en el fold. No hay segunda firma (no hay patrón geométrico, no hay gradiente, no hay ilustración).
+
+Va dos veces en el fold a propósito: como elemento real de la página debajo del CTA, a tamaño hero, y adentro del frame de Hoy. Primero el concepto, después lo mismo adentro del producto. La de la página usa `capacityState` igual que la app, no una imagen.
+
+## Vocabulario de marketing
+
+Tres marcas se repiten en las cinco superficies. Están definidas en `components/marketing/fold.tsx` y `page.tsx`.
+
+- **La regla de acento.** Una línea corta en naranja arriba de cada título. Evita que una columna abra en tipografía de 40px sobre nada, y ahorra los eyebrows de texto, que significarían inventar copy que `COPY.md` no tiene.
+- **El bisel.** Ver arriba.
+- **Las superficies alternan.** Canvas tibio, blanco, canvas, blanco, tibio de nuevo. Cinco slabs idénticos separados por hairlines es lo que hacía leer la página como un documento y no como algo diseñado.
+
+El canvas tibio es `color-mix(in srgb, var(--accent) 3.5%, var(--bg))` con un wash direccional anclado a la esquina que ocupa el producto. Es atmósfera, no una banda: sigue prohibida la banda oscura.
+
+Ojo con el z-index: el wash va en un negativo y **necesita `isolate` en la sección**. Sin contexto de apilado pinta detrás del `bg-bg` del layout y desaparece sin error.
 
 ## Composición de marketing
 
