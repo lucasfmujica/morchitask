@@ -1,7 +1,8 @@
 "use server";
 
-import { put } from "@vercel/blob";
+import { isBlobUrlFor } from "@/lib/attachments";
 import { auth } from "@/lib/auth";
+import { avatarSrc, isValidAvatarPath } from "@/lib/avatars";
 import * as data from "@/lib/db/queries/profiles";
 import type { ProfilePatch } from "@/lib/queries/types";
 
@@ -27,19 +28,20 @@ export async function updateMyProfile(patch: ProfilePatch) {
   return data.updateProfile(userId, patch);
 }
 
-/** Uploads a profile photo to Vercel Blob and points the profile at its URL.
- * Each upload gets a fresh name so the CDN never serves a stale image. */
-export async function uploadMyAvatar(formData: FormData) {
+/**
+ * Point the profile at a photo the browser already uploaded to Blob.
+ *
+ * Everything here arrives from the client, so nothing is trusted: the path has
+ * to be in the caller's own avatar folder and the URL has to be the private
+ * store's URL for exactly that path. What gets saved is the app's own read
+ * route (`/api/avatars/<userId>?v=…`), since the store's URLs answer 403.
+ */
+export async function saveMyAvatar(file: { url: string; pathname: string }) {
   const { userId } = await requireSession();
-  const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("no file provided");
+  if (!isValidAvatarPath(file.pathname, userId)) throw new Error("invalid path");
+  if (!isBlobUrlFor(file.url, file.pathname)) throw new Error("invalid url");
 
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const blob = await put(`avatars/${userId}/${crypto.randomUUID()}.${ext}`, file, {
-    access: "public",
-    contentType: file.type,
-  });
-
-  await data.updateProfile(userId, { avatar_url: blob.url });
-  return blob.url;
+  const src = avatarSrc(userId, file.pathname);
+  await data.updateProfile(userId, { avatar_url: src });
+  return src;
 }
