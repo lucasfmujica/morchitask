@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     "public/sw.js.map",
     "public/swe-worker*.js",
     ".shipstudio/**",
+    // Claude Design sync output (gitignored) and Claude Code session worktrees:
+    "ds-bundle/**",
+    ".claude/**",
     // Supabase Edge Functions run on Deno, not in the Next app:
     "supabase/functions/**",
   ]),
