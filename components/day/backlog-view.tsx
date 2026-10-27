@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Inbox } from "lucide-react";
 import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
-import { useBacklogTasks, useMoveTaskToDate, useUpdateTask } from "@/lib/queries/tasks";
+import { taskKeys, useBacklogTasks, useMoveTaskToDate, useUpdateTask } from "@/lib/queries/tasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import { useChannelFilter } from "@/lib/channel-filter";
@@ -45,6 +46,8 @@ export function BacklogView() {
   const unestimated = tasks.filter((t) => t.time_estimate_min == null);
   const stale = tasks.filter((t) => ageInDays(t.created_at, today) > STALE_DAYS);
   const [estimating, setEstimating] = useState(false);
+
+  useOpenSharedTask();
 
   function handleAdd(input: ComposerSubmit) {
     addFromComposer(input, tasks);
@@ -130,6 +133,39 @@ export function BacklogView() {
       )}
     </div>
   );
+}
+
+/**
+ * After "Compartir → Morchitask" the /share route redirects here with
+ * `?shared=<taskId>`: open that task and confirm it landed. The backlog may be
+ * showing a cached copy from before the share, so it's refetched first and the
+ * task is looked up in the fresh data.
+ */
+function useOpenSharedTask() {
+  const queryClient = useQueryClient();
+  const openDetail = useTaskDetail((s) => s.open);
+  const toast = useToast();
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("shared");
+    if (!id) return;
+    // Drop the param so a reload doesn't reopen the task and repeat the toast.
+    window.history.replaceState(null, "", window.location.pathname);
+    if (id === "error") {
+      toast("No se pudo guardar lo compartido. Probá con un archivo más liviano.");
+      return;
+    }
+    // No cancel-on-unmount: the param is already gone, so a dev-mode double
+    // effect would otherwise drop the share; detail and toast are global stores.
+    queryClient
+      .refetchQueries({ queryKey: taskKeys.backlog })
+      .catch(() => {})
+      .then(() => {
+        const task = queryClient.getQueryData<Task[]>(taskKeys.backlog)?.find((t) => t.id === id);
+        if (task) openDetail(task);
+        toast("Guardado en el backlog");
+      });
+  }, [queryClient, openDetail, toast]);
 }
 
 function BacklogRow({

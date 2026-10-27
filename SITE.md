@@ -121,6 +121,33 @@ ve nada. Cada archivo se sirve por `/api/attachments/[id]`, que primero comprueb
 el archivo sea de tu casa. Además el nombre original no viaja en la dirección (un archivo llamado
 "Estado de cuenta.pdf" no pone ese título en ninguna URL).
 
+### Compartir desde otras apps → Morchitask
+
+Desde cualquier app (Chrome, Instagram, Fotos, WhatsApp…) tocá **Compartir** y elegí
+**Morchitask**. Lo que mandaste queda como una tarea nueva en el **Backlog**, y la app se abre ahí
+con esa tarea a la vista para que le pongas día, categoría o tiempo.
+
+- **Un link**: el título de la página pasa a ser el nombre de la tarea y el link queda en las notas.
+- **Un texto**: el texto es el nombre (si es muy largo se corta, y el texto entero queda en las
+  notas).
+- **Fotos o PDFs**: quedan adjuntos en **Archivos** (hasta 5 por vez). Si solo compartiste
+  archivos, la tarea se llama _"Archivo compartido"_ — renombrala.
+- Límite real: lo compartido tiene que pesar **menos de ~4 MB en total** (es el tope del servidor,
+  más chico que los 10 MB del botón "Agregar archivo"). Si te pasás, el teléfono muestra una página
+  de error y no se crea nada: en ese caso adjuntalo desde la tarea. Los archivos de un tipo que no
+  se acepta (por ejemplo un video) se saltean sin aviso; la tarea se crea igual.
+
+**Dónde funciona**:
+
+- **Android** (Chrome): funciona, pero solo con Morchitask **instalada** en la pantalla de inicio
+  ("Agregar a la pantalla principal"). Después de instalarla puede tardar un rato en aparecer en el
+  menú de Compartir.
+- **iPhone**: Safari todavía no deja que las apps web aparezcan en el menú de Compartir, así que
+  ahí **no va a aparecer** aunque la tengas instalada. Si Apple lo habilita en una versión futura
+  de iOS, va a andar solo, sin cambiar nada.
+- **Computadora**: Chrome/Edge con la app instalada lo muestran en algunos sistemas; no es lo
+  principal.
+
 ## Componentes
 
 - **components/ui/** — la "caja de herramientas" visual reusable: `Button`, `Card`, `Input`, `Badge`.
@@ -171,6 +198,12 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - 2026-10-27: **Escribir la tarea ya la agenda.** En la cajita de "Agregar una tarea…" (en Hoy y en el Backlog) podés escribir todo de una: _"pagar la luz mañana 18hs 30m !alta #casa"_ crea "pagar la luz" para mañana, con un bloque en la agenda a las 18:00, 30 minutos estimados, prioridad Alta y la categoría Casa. Mientras escribís aparecen burbujitas abajo (**Mañana · 18:00 · 30m · Alta · Casa**) con lo que se va a usar; la **×** de cada una lo descarta y esas palabras quedan en el título. Lo que entiende: **días** (`hoy`, `mañana`, `pasado mañana`, `viernes` / `el lunes` → el próximo, `15/11`, `el 15`), **hora** (`18hs`, `18:30`, `a las 9`, `9am`/`9pm`), **duración** (`30m`, `45min`, `1h`, `1h30`, `2 horas`), **prioridad** (`!alta`, `!media`, `!baja`) y **categoría** (`#` + el nombre, sin importar mayúsculas ni tildes; alcanza con el principio si no se confunde con otra). Para no equivocarse, "a la mañana" no es "mañana", y un número suelto ("500 pesos") no es una duración. Si tocás a mano la prioridad o la categoría en los botones de abajo, eso gana sobre lo escrito. Si la tarea cae en otro día distinto al que estás mirando, aparece un aviso con **Deshacer** que la devuelve acá.
 
   Por detrás: el lector es `lib/quick-add.ts` (19 tests en `lib/quick-add.test.ts`), la cajita es `components/tasks/task-composer.tsx` (4 tests nuevos) y lo que pasa al apretar Enter vive en `components/tasks/use-composer-create.ts`, compartido por Hoy y Backlog. No hay cambios en la base de datos.
+
+- 2026-10-27: **"Compartir → Morchitask"**. Desde otra app podés mandar un link, un texto, fotos o
+  PDFs a Morchitask y queda como tarea en el Backlog (ver "Compartir desde otras apps"). Anda en
+  Android con la app instalada; en iPhone no aparece porque iOS todavía no lo permite. Por detrás:
+  `share_target` en `app/manifest.ts`, la ruta `app/share/route.ts` y la regla de cómo se arma el
+  título/notas en `lib/share.ts` (con tests). Falta probarlo en un teléfono real.
 
 - 2026-10-27: **Las rutinas ahora pueden repetirse una vez por mes o "cada tantos" días/semanas.** En Rutinas, además de **Diaria** y **Semanal** hay **Mensual**, y al lado un contador **"cada [1] semana"** que se sube con el **+**. Ejemplos: _"el 10 de cada mes"_ para pagar el alquiler, _"cada 2 semanas los lunes"_ para cortar el pasto, _"cada 3 días"_ para regar. Si elegís un día que no existe en todos los meses (29, 30) cae el último día de los meses más cortos; la opción **"último día"** es siempre el final del mes. Las cuentas arrancan desde el día en que creaste la rutina, y las rachas 🔥 entienden estas repeticiones nuevas (una rutina mensual suma una por mes, no se "corta" los días en que no tocaba).
 

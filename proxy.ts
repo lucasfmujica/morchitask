@@ -5,7 +5,9 @@ import { auth } from "@/lib/auth";
 // connect flow (/auth/spotify, /auth/spotify/callback) — kept public like the
 // original app so a cookie hiccup during the cross-domain OAuth redirect back
 // from Spotify can't bounce an already-signed-in user to /login mid-flow.
-const PUBLIC_PREFIXES = ["/login", "/api/auth", "/auth"];
+// `/share` checks the session itself: the proxy's redirect would re-POST the
+// share to /login, the route's own answers with a plain GET.
+const PUBLIC_PREFIXES = ["/login", "/api/auth", "/auth", "/share"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
