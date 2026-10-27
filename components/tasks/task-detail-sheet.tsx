@@ -50,6 +50,7 @@ import {
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Profile, Subtask, Task } from "@/lib/queries/types";
+import { ChecklistAiSuggest } from "./checklist-ai-suggest";
 import { TaskAttachments } from "./task-attachments";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
@@ -569,6 +570,8 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
             </button>
           </div>
+
+          <ChecklistAiSuggest task={task} notes={notes} subtasks={subtasks} />
         </div>
       </Field>
 
