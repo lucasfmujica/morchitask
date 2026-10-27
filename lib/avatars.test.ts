@@ -80,10 +80,8 @@ describe("isAllowedAvatarType / avatarRejectionReason", () => {
   });
   it("explains why a file can't be used", () => {
     expect(avatarRejectionReason({ type: "image/png", size: 1000 })).toBeNull();
-    expect(avatarRejectionReason({ type: "application/pdf", size: 1000 })).toMatch(/imagen/);
-    expect(avatarRejectionReason({ type: "image/png", size: MAX_AVATAR_BYTES + 1 })).toMatch(
-      /pesada/,
-    );
-    expect(avatarRejectionReason({ type: "image/png", size: 0 })).toMatch(/vacía/);
+    expect(avatarRejectionReason({ type: "application/pdf", size: 1000 })).toBe("notImage");
+    expect(avatarRejectionReason({ type: "image/png", size: MAX_AVATAR_BYTES + 1 })).toBe("tooBig");
+    expect(avatarRejectionReason({ type: "image/png", size: 0 })).toBe("empty");
   });
 });

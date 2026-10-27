@@ -1,5 +1,5 @@
 {
-  "id": "bfcb844e-4bef-4d65-8cc1-7b82d25ba9c3",
+  "id": "3b75f74b-321b-439d-b1ca-1a02e5efbcdf",
   "prevId": "43300025-5819-4bfc-9a55-c5245f6132af",
   "version": "7",
   "dialect": "postgresql",
@@ -339,6 +339,126 @@
           "name": "daily_notes_owner_id_note_date_unique",
           "nullsNotDistinct": false,
           "columns": ["owner_id", "note_date"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.household_invites": {
+      "name": "household_invites",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "household_id": {
+          "name": "household_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invited_by": {
+          "name": "invited_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "household_invites_email_idx": {
+          "name": "household_invites_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"household_invites\".\"accepted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "household_invites_household_idx": {
+          "name": "household_invites_household_idx",
+          "columns": [
+            {
+              "expression": "household_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "household_invites_household_id_households_id_fk": {
+          "name": "household_invites_household_id_households_id_fk",
+          "tableFrom": "household_invites",
+          "tableTo": "households",
+          "columnsFrom": ["household_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "household_invites_invited_by_profiles_id_fk": {
+          "name": "household_invites_invited_by_profiles_id_fk",
+          "tableFrom": "household_invites",
+          "tableTo": "profiles",
+          "columnsFrom": ["invited_by"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "household_invites_token_unique": {
+          "name": "household_invites_token_unique",
+          "nullsNotDistinct": false,
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -752,19 +872,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "repeat_every": {
-          "name": "repeat_every",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "month_day": {
-          "name": "month_day",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
-        },
         "time_estimate_min": {
           "name": "time_estimate_min",
           "type": "integer",
@@ -855,20 +962,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "recurring_freq_check": {
-          "name": "recurring_freq_check",
-          "value": "\"recurring_templates\".\"freq\" in ('daily', 'weekly', 'monthly')"
-        },
-        "recurring_repeat_every_check": {
-          "name": "recurring_repeat_every_check",
-          "value": "\"recurring_templates\".\"repeat_every\" between 1 and 52"
-        },
-        "recurring_month_day_check": {
-          "name": "recurring_month_day_check",
-          "value": "\"recurring_templates\".\"month_day\" is null or \"recurring_templates\".\"month_day\" between 1 and 31"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.session": {

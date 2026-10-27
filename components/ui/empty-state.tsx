@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Kbd } from "./kbd";
+import { useTranslations } from "next-intl";
 
 /**
  * The "nothing here yet" card.
@@ -22,12 +23,13 @@ export function EmptyState({
   icon: LucideIcon;
   title: string;
   hint: string;
-  /** Optional keyboard tip, e.g. kbd="N" kbdHint="para una nueva tarea". */
+  /** Optional keyboard tip, e.g. kbd="N" with a translated `kbdHint`. */
   kbd?: string;
   kbdHint?: string;
   action?: ReactNode;
   className?: string;
 }) {
+  const t = useTranslations("common");
   return (
     <div
       className={cn(
@@ -45,7 +47,11 @@ export function EmptyState({
       {action}
       {kbd && (
         <p className="mt-1 text-xs text-subtle">
-          Tip: apretá <Kbd>{kbd}</Kbd> {kbdHint}
+          {t.rich("kbdTip", {
+            key: kbd,
+            hint: kbdHint ?? "",
+            kbd: (chunks: ReactNode) => <Kbd>{chunks}</Kbd>,
+          })}
         </p>
       )}
     </div>

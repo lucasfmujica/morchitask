@@ -161,7 +161,64 @@
    Exposes semantic tokens as utilities: bg-bg, bg-surface, text-fg,
    text-muted, bg-primary, border-border, ring-focus, etc.
    ============================================================ */
+/* ============================================================
+   LAYER 3 — shadcn/ui COMPATIBILITY ALIASES
+   ============================================================
+   shadcn's components reference their own variable names. Rather than paste a
+   second palette in and maintain two sources of truth, these alias shadcn's
+   names onto the semantic tokens above. Consequences worth knowing:
+
+   - A shadcn component dropped into this app inherits the REAL brand — teal
+     primary, not shadcn's near-black `neutral` base — so the landing looks
+     like the product it is selling.
+   - Dark mode needs no second block. These point at `--bg`, `--fg`, … which
+     already flip; the aliases follow for free.
+
+   One mapping is deliberately NOT the obvious one. In shadcn, `--accent` is the
+   subtle hover background for menu and command items, not a brand accent. This
+   app's `--accent` is an orange CTA colour. Wiring them together would turn
+   every dropdown hover orange, so shadcn's `accent` points at `--surface-2`,
+   which is what it actually means there.
+   ============================================================ */
+:root {
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--surface);
+  --card-foreground: var(--fg);
+  --popover: var(--surface);
+  --popover-foreground: var(--fg);
+  --primary-foreground: var(--on-primary);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--fg);
+  --muted-foreground: var(--muted);
+  /* See the note above: hover surface, not brand. */
+  --accent-shadcn: var(--surface-2);
+  --accent-foreground: var(--fg);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--on-danger);
+  --input: var(--border);
+  --ring: var(--focus);
+}
+
 @theme inline {
+  /* shadcn/ui names, so its components' class strings resolve. Same values as
+     the tokens below — these are aliases, not a second palette. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);

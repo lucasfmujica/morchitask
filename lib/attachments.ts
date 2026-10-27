@@ -130,12 +130,19 @@ export function formatBytes(bytes: number): string {
   return `${mb < 10 ? Math.round(mb * 10) / 10 : Math.round(mb)} MB`;
 }
 
-/** Why a file can't be uploaded, in words the person can act on — or null. */
-export function rejectionReason(file: { type: string; size: number }): string | null {
-  if (!isAllowedType(file.type)) return "Ese tipo de archivo no se puede adjuntar.";
-  if (file.size > MAX_ATTACHMENT_BYTES) {
-    return `El archivo es muy pesado (máx. ${formatBytes(MAX_ATTACHMENT_BYTES)}).`;
-  }
-  if (file.size === 0) return "El archivo está vacío.";
+/**
+ * Why a file can't be uploaded, as a catalog key — or null when it can.
+ *
+ * A key rather than a sentence: this runs in the upload path, which has no
+ * translator, and the size message needs the limit interpolated anyway. The
+ * caller passes `{ max: formatBytes(MAX_ATTACHMENT_BYTES) }`.
+ */
+export function rejectionKey(file: {
+  type: string;
+  size: number;
+}): "rejectType" | "rejectSize" | "rejectEmpty" | null {
+  if (!isAllowedType(file.type)) return "rejectType";
+  if (file.size > MAX_ATTACHMENT_BYTES) return "rejectSize";
+  if (file.size === 0) return "rejectEmpty";
   return null;
 }

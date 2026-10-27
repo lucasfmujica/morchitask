@@ -8,16 +8,19 @@ import { syncBlockCalendar } from "@/lib/queries/calendar";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import { orderForAppend } from "@/lib/ordering";
-import { DEFAULT_TIMEZONE, addDays, blockInstant, fullDayLabel, todayISO } from "@/lib/date";
+import { useLocale, useTranslations } from "next-intl";
+import { DEFAULT_TIMEZONE, addDays, blockInstant, todayISO } from "@/lib/date";
+import { useDateLabels } from "@/lib/use-date-labels";
 import type { Task } from "@/lib/queries/types";
 import { minutesToHHMM } from "@/components/day/use-agenda-scheduling";
 import type { ComposerSubmit } from "./task-composer";
 
-/** "hoy" / "mañana" / "el viernes 30 de octubre" — for "va para …". */
-function dayPhrase(day: string, today: string): string {
-  if (day === today) return "hoy";
-  if (day === addDays(today, 1)) return "mañana";
-  return `el ${fullDayLabel(day).toLowerCase()}`;
+/** Which phrase "va para …" uses — the catalog turns it into words. */
+function dayKind(day: string | null, today: string): "today" | "tomorrow" | "backlog" | "day" {
+  if (day === null) return "backlog";
+  if (day === today) return "today";
+  if (day === addDays(today, 1)) return "tomorrow";
+  return "day";
 }
 
 /**
@@ -37,6 +40,9 @@ export function useComposerCreate(viewDate: string | null) {
   const openDetail = useTaskDetail((s) => s.open);
   const toast = useToast();
   const connected = !!useMe().data?.google_calendar_connected;
+  const t = useTranslations("tasks");
+  const locale = useLocale();
+  const labels = useDateLabels();
 
   return function add(input: ComposerSubmit, viewTasks: Task[]) {
     const today = todayISO();
@@ -89,17 +95,27 @@ export function useComposerCreate(viewDate: string | null) {
             openDetail(task);
             return;
           }
-          toast(`"${task.title}" va para ${target ? dayPhrase(target, today) : "el backlog"}`, {
-            label: "Deshacer",
-            // Back to where it would have gone without the date — moving also
-            // drops the block it got from "18hs".
-            run: () =>
-              move.mutate({
-                task,
-                toDate: viewDate,
-                sortOrder: orderForAppend(viewTasks.map((t) => t.sort_order)),
-              }),
-          });
+          const day = target ? labels.fullDayLabel(target) : "";
+          toast(
+            t("quickAddGoesTo", {
+              title: task.title,
+              kind: dayKind(target, today),
+              // Mid-sentence in Spanish ("va para el viernes…"); English keeps
+              // its capitalized weekday.
+              day: locale === "es" ? day.toLowerCase() : day,
+            }),
+            {
+              label: t("undo"),
+              // Back to where it would have gone without the date — moving also
+              // drops the block it got from "18hs".
+              run: () =>
+                move.mutate({
+                  task,
+                  toDate: viewDate,
+                  sortOrder: orderForAppend(viewTasks.map((t) => t.sort_order)),
+                }),
+            },
+          );
         },
       },
     );

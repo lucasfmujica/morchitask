@@ -7,6 +7,7 @@ import { getSoundscape } from "@/lib/audio/soundscapes";
 import { cn } from "@/lib/utils";
 import { FocusSoundPlayer } from "./focus-sound-player";
 import { SpotifyPlayer } from "./spotify-player";
+import { useTranslations } from "next-intl";
 
 type Tab = "sounds" | "spotify";
 
@@ -19,6 +20,7 @@ type Tab = "sounds" | "spotify";
  * playing and whether it follows the block; the panel is one tap away.
  */
 export function FocusAudioPanel() {
+  const t = useTranslations("focus");
   const [tab, setTab] = useState<Tab>("sounds");
   const [open, setOpen] = useState(false);
 
@@ -27,10 +29,11 @@ export function FocusAudioPanel() {
   const soundscape = getSoundscape(useAudio((s) => s.soundscapeId));
   const autoStart = useAudio((s) => s.autoStartWithFocus);
 
-  const title = source === "spotify" ? "Spotify" : (soundscape?.label ?? "Sonidos de fondo");
+  const title =
+    source === "spotify" ? "Spotify" : soundscape ? t(soundscape.labelKey) : t("audioTitle");
   const subtitle = [
-    autoStart ? "Arranca con el bloque" : "Manual",
-    source === "spotify" ? "Spotify conectado" : "Spotify apagado",
+    autoStart ? t("audioAuto") : t("audioManual"),
+    source === "spotify" ? t("spotifyOn") : t("spotifyOff"),
   ].join(" · ");
 
   return (
@@ -59,7 +62,7 @@ export function FocusAudioPanel() {
           <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
             {(
               [
-                ["sounds", "Sonidos"],
+                ["sounds", t("tabSounds")],
                 ["spotify", "Spotify"],
               ] as const
             ).map(([value, label]) => (

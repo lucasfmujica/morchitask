@@ -10,8 +10,10 @@ import {
   useUpdateChannel,
 } from "@/lib/queries/channels";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function ChannelsManager() {
+  const t = useTranslations("settings");
   const channels = useChannels().data ?? [];
   const create = useCreateChannel();
   const update = useUpdateChannel();
@@ -42,11 +44,11 @@ export function ChannelsManager() {
                 if (v && v !== c.name) update.mutate({ id: c.id, patch: { name: v } });
               }}
               className="flex-1 bg-transparent text-sm font-medium text-fg outline-none"
-              aria-label="Nombre de la categoría"
+              aria-label={t("categoryName")}
             />
             <button
               onClick={() => remove.mutate(c.id)}
-              aria-label={`Borrar categoría ${c.name}`}
+              aria-label={t("deleteCategory", { name: c.name })}
               className="cursor-pointer text-muted transition-colors hover:text-danger"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
@@ -57,7 +59,7 @@ export function ChannelsManager() {
               <button
                 key={color}
                 onClick={() => update.mutate({ id: c.id, patch: { color } })}
-                aria-label={`Color ${color}`}
+                aria-label={t("colorSwatch", { color })}
                 className="h-5 w-5 cursor-pointer rounded-full transition-transform hover:scale-110"
                 style={{
                   backgroundColor: color,
@@ -78,8 +80,8 @@ export function ChannelsManager() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Nueva categoría…"
-          aria-label="Nueva categoría"
+          placeholder={t("newCategoryPlaceholder")}
+          aria-label={t("newCategory")}
           className="h-8 flex-1 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
         <button
@@ -90,7 +92,7 @@ export function ChannelsManager() {
             !name.trim() && "opacity-40",
           )}
         >
-          Agregar
+          {t("add")}
         </button>
       </div>
     </div>

@@ -40,10 +40,12 @@ import { MobileRitualIcons, SidebarRituals } from "./ritual-nav";
 import { SidebarChannels } from "./sidebar-channels";
 import { SignOutButton } from "./sign-out-button";
 import { TimerBar } from "./timer-bar";
+import { useTranslations } from "next-intl";
 
 type NavItem = {
   href: string;
-  label: string;
+  /** A key into the `nav` catalog, resolved at render — not the words. */
+  labelKey: string;
   icon: typeof CalendarCheck;
   match: (p: string) => boolean;
 };
@@ -52,19 +54,29 @@ type NavItem = {
 const PLAN_NAV: NavItem[] = [
   {
     href: "/today",
-    label: "Hoy",
+    labelKey: "today",
     icon: CalendarCheck,
     match: (p) => p === "/today" || p.startsWith("/day"),
   },
-  { href: "/week", label: "Semana", icon: CalendarRange, match: (p) => p.startsWith("/week") },
-  { href: "/month", label: "Mes", icon: CalendarDays, match: (p) => p.startsWith("/month") },
+  { href: "/week", labelKey: "week", icon: CalendarRange, match: (p) => p.startsWith("/week") },
+  { href: "/month", labelKey: "month", icon: CalendarDays, match: (p) => p.startsWith("/month") },
 ];
 const TOOL_NAV: NavItem[] = [
-  { href: "/focus", label: "Foco", icon: Timer, match: (p) => p.startsWith("/focus") },
-  { href: "/backlog", label: "Backlog", icon: Inbox, match: (p) => p.startsWith("/backlog") },
-  { href: "/routines", label: "Rutinas", icon: Repeat, match: (p) => p.startsWith("/routines") },
-  { href: "/metas", label: "Metas", icon: Target, match: (p) => p.startsWith("/metas") },
-  { href: "/resumen", label: "Resumen", icon: BarChart3, match: (p) => p.startsWith("/resumen") },
+  { href: "/focus", labelKey: "focus", icon: Timer, match: (p) => p.startsWith("/focus") },
+  { href: "/backlog", labelKey: "backlog", icon: Inbox, match: (p) => p.startsWith("/backlog") },
+  {
+    href: "/routines",
+    labelKey: "routines",
+    icon: Repeat,
+    match: (p) => p.startsWith("/routines"),
+  },
+  { href: "/metas", labelKey: "goals", icon: Target, match: (p) => p.startsWith("/metas") },
+  {
+    href: "/resumen",
+    labelKey: "summary",
+    icon: BarChart3,
+    match: (p) => p.startsWith("/resumen"),
+  },
 ];
 
 /**
@@ -83,7 +95,7 @@ function bottomNav(today: string): NavItem[] {
     TOOL_NAV[3], // Metas
     {
       href: `/shutdown/${today}`,
-      label: "Cerrar",
+      labelKey: "shutdown",
       icon: Moon,
       match: (p) => p.startsWith("/shutdown"),
     },
@@ -99,6 +111,7 @@ function isRitualRoute(pathname: string) {
 }
 
 export function AppChrome({ children }: { children: ReactNode }) {
+  const tn = useTranslations("nav");
   const pathname = usePathname();
   const ritual = isRitualRoute(pathname);
 
@@ -156,7 +169,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
             )}
           >
             <div className="flex">
-              {bottomNav(todayISO()).map(({ href, label, icon: Icon, match }) => {
+              {bottomNav(todayISO()).map(({ href, labelKey, icon: Icon, match }) => {
                 const active = match(pathname);
                 return (
                   <Link
@@ -169,7 +182,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     )}
                   >
                     <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 2} aria-hidden />
-                    {label}
+                    {tn(labelKey)}
                   </Link>
                 );
               })}
@@ -189,11 +202,12 @@ export function AppChrome({ children }: { children: ReactNode }) {
 }
 
 function MobileMenuButton() {
+  const tc = useTranslations("chrome");
   const openMobile = useSidebar((s) => s.openMobile);
   return (
     <button
       onClick={openMobile}
-      aria-label="Abrir menú"
+      aria-label={tc("openMenu")}
       className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
     >
       <Menu className="h-5 w-5" aria-hidden />
@@ -203,11 +217,12 @@ function MobileMenuButton() {
 
 /** Opens the ⌘K palette from the mobile top bar — a phone has no ⌘K. */
 function SearchButton() {
+  const tcm = useTranslations("common");
   const open = useCommandPalette((s) => s.open);
   return (
     <button
       onClick={open}
-      aria-label="Buscar"
+      aria-label={tcm("search")}
       className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
     >
       <Search className="h-5 w-5" aria-hidden />
@@ -217,15 +232,16 @@ function SearchButton() {
 
 /** The same palette, discoverable on desktop — nobody finds ⌘K on their own. */
 function SidebarSearchButton() {
+  const tcm = useTranslations("common");
   const open = useCommandPalette((s) => s.open);
   return (
     <button
       onClick={open}
-      aria-label="Buscar"
+      aria-label={tcm("search")}
       className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
     >
       <Search className="h-[18px] w-[18px] shrink-0" aria-hidden />
-      <span className="flex-1 text-left">Buscar</span>
+      <span className="flex-1 text-left">{tcm("search")}</span>
       <Kbd>⌘K</Kbd>
     </button>
   );
@@ -238,6 +254,7 @@ function DesktopSidebar({
   pathname: string;
   forceCollapsed?: boolean;
 }) {
+  const tc = useTranslations("chrome");
   const collapsed = useSidebar((s) => s.collapsed) || forceCollapsed;
   const toggleCollapsed = useSidebar((s) => s.toggleCollapsed);
 
@@ -247,8 +264,8 @@ function DesktopSidebar({
     return (
       <button
         onClick={toggleCollapsed}
-        aria-label="Mostrar menú"
-        title="Mostrar menú"
+        aria-label={tc("showMenu")}
+        title={tc("showMenu")}
         className="sticky top-0 z-20 mt-3 ml-2 hidden h-9 w-9 shrink-0 items-center justify-center self-start rounded-lg border border-border bg-surface text-muted shadow-soft transition-colors hover:bg-surface-2 hover:text-fg md:flex"
       >
         <PanelLeft className="h-5 w-5" aria-hidden />
@@ -275,6 +292,8 @@ function SidebarBody({
   onToggleCollapsed?: () => void;
   onNavigate?: () => void;
 }) {
+  const tc = useTranslations("chrome");
+  const tn = useTranslations("nav");
   const channelsQ = useChannels();
   const me = useMe().data;
   const household = useHousehold().data;
@@ -297,8 +316,8 @@ function SidebarBody({
           {onToggleCollapsed && (
             <button
               onClick={onToggleCollapsed}
-              aria-label="Ocultar menú"
-              title="Ocultar menú"
+              aria-label={tc("hideMenu")}
+              title={tc("hideMenu")}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
             >
               <PanelLeftClose className="h-5 w-5" aria-hidden />
@@ -307,7 +326,7 @@ function SidebarBody({
           {onNavigate && (
             <button
               onClick={onNavigate}
-              aria-label="Cerrar menú"
+              aria-label={tc("closeMenu")}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
             >
               <X className="h-5 w-5" aria-hidden />
@@ -351,7 +370,7 @@ function SidebarBody({
           href="/settings"
           onClick={onNavigate}
           aria-current={onSettings ? "page" : undefined}
-          title="Ajustes"
+          title={tn("settings")}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors",
             onSettings ? "bg-primary-soft" : "hover:bg-surface-2",
@@ -360,7 +379,7 @@ function SidebarBody({
           <OwnerAvatar profile={me ?? undefined} size={32} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-fg">{me?.display_name ?? "…"}</p>
-            <p className="truncate text-xs text-subtle">{household?.name || "Tu espacio"}</p>
+            <p className="truncate text-xs text-subtle">{household?.name || tc("yourSpace")}</p>
           </div>
           <Settings
             className={cn("h-4 w-4 shrink-0", onSettings ? "text-primary" : "text-subtle")}
@@ -376,13 +395,14 @@ function SidebarBody({
 /** Slide-in sidebar for mobile — same contents as the desktop panel, opened via
  *  the hamburger in the top bar. */
 function MobileSidebarDrawer({ pathname }: { pathname: string }) {
+  const tc = useTranslations("chrome");
   const mobileOpen = useSidebar((s) => s.mobileOpen);
   const closeMobile = useSidebar((s) => s.closeMobile);
   if (!mobileOpen) return null;
   return (
     <div className="fixed inset-0 z-40 md:hidden">
       <button
-        aria-label="Cerrar menú"
+        aria-label={tc("closeMenu")}
         onClick={closeMobile}
         className="absolute inset-0 h-full w-full cursor-default bg-scrim backdrop-blur-sm"
       />
@@ -402,6 +422,7 @@ function SidebarLink({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const tn = useTranslations("nav");
   const active = item.match(pathname);
   const Icon = item.icon;
   return (
@@ -417,7 +438,7 @@ function SidebarLink({
       )}
     >
       <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.4 : 2} aria-hidden />
-      {item.label}
+      {tn(item.labelKey)}
     </Link>
   );
 }

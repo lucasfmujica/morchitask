@@ -3,10 +3,11 @@
 import { useToggleTask } from "@/lib/queries/tasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Task } from "@/lib/queries/types";
-import { priorityLabel } from "@/lib/priority";
+import { priorityLabelKey } from "@/lib/priority";
 import { cn } from "@/lib/utils";
 import { PRIORITY_RAIL } from "./priority-badge";
 import { TaskCheckbox } from "./task-checkbox";
+import { useTranslations } from "next-intl";
 
 /** A lightweight task row for dense views (week / agenda). Toggle + read;
  *  full editing lives in the Day view. */
@@ -19,6 +20,7 @@ export function CompactTaskRow({
   channel?: Channel;
   owner?: Profile;
 }) {
+  const t = useTranslations("tasks");
   const toggle = useToggleTask();
   const openDetail = useTaskDetail((s) => s.open);
   const done = task.status === "done";
@@ -29,7 +31,7 @@ export function CompactTaskRow({
       {task.priority && !done && (
         <span
           className={cn("h-4 w-0.5 shrink-0 rounded-full", PRIORITY_RAIL[task.priority])}
-          title={`Prioridad ${priorityLabel(task.priority).toLowerCase()}`}
+          title={t("priorityTitle", { level: t(priorityLabelKey(task.priority)) })}
           aria-hidden
         />
       )}

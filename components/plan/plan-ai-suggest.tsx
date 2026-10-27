@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { suggestDayPlan } from "@/lib/actions/ai";
 import type { BusyRange } from "@/lib/scheduling";
@@ -43,6 +44,8 @@ export function PlanAiSuggest({
   capacityLeftMin: number;
   endTargetMin: number | null | undefined;
 }) {
+  const t = useTranslations("ai");
+  const tt = useTranslations("tasks");
   const me = useMe().data;
   const connected = !!me?.google_calendar_connected;
   const calendarQ = useCalendarEvents(date, connected);
@@ -117,12 +120,11 @@ export function PlanAiSuggest({
         toMin,
         capacityLeftMin: Math.max(0, Math.round(capacityLeftMin)),
       });
-      if (!res.ok) setError(res.error);
-      else if (res.data.blocks.length === 0)
-        setError("No encontré huecos para agendar nada más hoy.");
+      if (!res.ok) setError(t(`errors.${res.error}`));
+      else if (res.data.blocks.length === 0) setError(t("planNoRoom"));
       else setProposal(res.data);
     } catch {
-      setError("No pudimos hablar con Claude ahora. Probá de nuevo en un rato.");
+      setError(t("errors.api"));
     } finally {
       setLoading(false);
     }
@@ -143,16 +145,12 @@ export function PlanAiSuggest({
         if (connected) syncBlockCalendar({ action: "upsert", blockId: block.id }).catch(() => {});
       }
       setProposal(null);
-      toast(`Agendé ${created.length} ${created.length === 1 ? "bloque" : "bloques"}`, {
-        label: "Deshacer",
+      toast(t("planApplied", { n: created.length }), {
+        label: tt("undo"),
         run: () => created.forEach(removeBlock),
       });
     } catch {
-      setError(
-        created.length
-          ? `Se agendaron ${created.length} y falló el resto. Revisá la agenda.`
-          : "No se pudo aplicar el plan. Probá de nuevo.",
-      );
+      setError(created.length ? t("planPartial", { n: created.length }) : t("planFailed"));
       setProposal(null);
     } finally {
       setApplying(false);
@@ -165,11 +163,8 @@ export function PlanAiSuggest({
         <div className="flex items-start gap-2.5">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0 flex-1">
-            <h2 className="text-xs font-bold text-fg">Planificar con IA</h2>
-            <p className="mt-0.5 text-xs text-muted">
-              Claude propone en qué orden y a qué hora hacer {pending.length}{" "}
-              {pending.length === 1 ? "tarea" : "tareas"} sin hora. Vos decidís si se aplica.
-            </p>
+            <h2 className="text-xs font-bold text-fg">{t("planTitle")}</h2>
+            <p className="mt-0.5 text-xs text-muted">{t("planHint", { n: pending.length })}</p>
           </div>
         </div>
         <Button
@@ -184,7 +179,7 @@ export function PlanAiSuggest({
           ) : (
             <Sparkles className="h-4 w-4" aria-hidden />
           )}
-          {loading ? "Armando la agenda…" : "Proponer horarios"}
+          {loading ? t("planLoading") : t("planAsk")}
         </Button>
         {error && (
           <p role="alert" className="mt-2 text-xs text-danger">
@@ -199,10 +194,10 @@ export function PlanAiSuggest({
     <section className="rounded-2xl border border-accent/40 bg-surface p-4 shadow-soft">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-accent" aria-hidden />
-        <h2 className="flex-1 text-xs font-bold text-fg">Propuesta de Claude</h2>
+        <h2 className="flex-1 text-xs font-bold text-fg">{t("proposal")}</h2>
         <button
           onClick={() => setProposal(null)}
-          aria-label="Descartar propuesta"
+          aria-label={t("dismiss")}
           className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
         >
           <X className="h-3.5 w-3.5" aria-hidden />
@@ -221,14 +216,12 @@ export function PlanAiSuggest({
       </ol>
       {proposal.skippedTaskIds.length > 0 && (
         <p className="mt-2 text-2xs text-subtle">
-          {proposal.skippedTaskIds.length === 1
-            ? "1 tarea no entró en el día."
-            : `${proposal.skippedTaskIds.length} tareas no entraron en el día.`}
+          {t("planSkipped", { n: proposal.skippedTaskIds.length })}
         </p>
       )}
       <Button onClick={apply} disabled={applying} className="mt-3 w-full" size="sm">
         {applying && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-        Aplicar
+        {t("planApply")}
       </Button>
     </section>
   );

@@ -11,6 +11,12 @@ export default defineConfig({
     // Playwright e2e specs live in /e2e and use their own runner. Claude Code
     // session worktrees (.claude/worktrees) are other checkouts of this repo.
     exclude: ["**/node_modules/**", "**/e2e/**", "**/.next/**", ".claude/**"],
+    // Four test files each boot a full Postgres (pglite, WASM) in `beforeAll`
+    // and replay every migration into it. Vitest runs files in parallel, so on
+    // a loaded machine that setup can exceed the 10s default and the file gets
+    // reported as skipped rather than failed — which reads like nothing ran.
+    // The work is legitimately slow; give it room instead of chasing a flake.
+    hookTimeout: 30_000,
   },
   resolve: {
     alias: {

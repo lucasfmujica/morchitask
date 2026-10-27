@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, Plus, Sparkles, X } from "lucide-react";
 import { suggestChecklist } from "@/lib/actions/ai";
 import { useCreateSubtask } from "@/lib/queries/subtasks";
@@ -21,6 +22,7 @@ export function ChecklistAiSuggest({
   notes: string;
   subtasks: Subtask[];
 }) {
+  const t = useTranslations("ai");
   const createSub = useCreateSubtask(task.id);
   const [items, setItems] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +37,11 @@ export function ChecklistAiSuggest({
         notes: notes.slice(0, 4000),
         existing: subtasks.slice(0, 50).map((s) => s.title.slice(0, 300)),
       });
-      if (!res.ok) setError(res.error);
-      else if (res.data.length === 0) setError("Claude no encontró pasos para agregar.");
+      if (!res.ok) setError(t(`errors.${res.error}`));
+      else if (res.data.length === 0) setError(t("breakdownEmpty"));
       else setItems(res.data);
     } catch {
-      setError("No pudimos hablar con Claude ahora. Probá de nuevo en un rato.");
+      setError(t("errors.api"));
     } finally {
       setLoading(false);
     }
@@ -50,7 +52,7 @@ export function ChecklistAiSuggest({
     // orderForAppend steps by 1000; space a batch the same way so the
     // optimistic list and the saved order agree.
     titles.forEach((title, i) => createSub.mutate({ title, sortOrder: base + i * 1000 }));
-    const left = (items ?? []).filter((t) => !titles.includes(t));
+    const left = (items ?? []).filter((item) => !titles.includes(item));
     setItems(left.length ? left : null);
   }
 
@@ -67,7 +69,7 @@ export function ChecklistAiSuggest({
           ) : (
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
           )}
-          {loading ? "Pensando pasos…" : "Desglosar con IA"}
+          {loading ? t("breakdownLoading") : t("breakdown")}
         </button>
         {error && (
           <p role="alert" className="text-xs text-danger">
@@ -82,22 +84,22 @@ export function ChecklistAiSuggest({
     <div className="mt-1.5 rounded-lg border border-accent/30 bg-accent-soft/50 p-2">
       <div className="mb-1 flex items-center gap-1.5 px-1">
         <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
-        <p className="flex-1 text-xs font-semibold text-accent">Propuesta de Claude</p>
+        <p className="flex-1 text-xs font-semibold text-accent">{t("proposal")}</p>
         <button
           onClick={() => setItems(null)}
-          aria-label="Descartar propuesta"
+          aria-label={t("dismiss")}
           className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface hover:text-fg"
         >
           <X className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
       <ul className="flex flex-col">
-        {items.map((t) => (
-          <li key={t} className="flex items-center gap-2 rounded-md px-1 py-1">
-            <span className="min-w-0 flex-1 text-sm text-fg">{t}</span>
+        {items.map((item) => (
+          <li key={item} className="flex items-center gap-2 rounded-md px-1 py-1">
+            <span className="min-w-0 flex-1 text-sm text-fg">{item}</span>
             <button
-              onClick={() => add([t])}
-              aria-label={`Agregar "${t}"`}
+              onClick={() => add([item])}
+              aria-label={t("addOne", { item })}
               className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-primary hover:bg-primary/12"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
@@ -109,7 +111,7 @@ export function ChecklistAiSuggest({
         onClick={() => add(items)}
         className="mt-1 w-full cursor-pointer rounded-md bg-primary py-1.5 text-xs font-bold text-on-primary transition-colors hover:bg-primary-hover"
       >
-        Agregar {items.length === 1 ? "el paso" : `los ${items.length}`}
+        {t("addAll", { n: items.length })}
       </button>
     </div>
   );

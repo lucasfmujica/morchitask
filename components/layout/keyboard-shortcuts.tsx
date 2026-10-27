@@ -7,19 +7,23 @@ import { addDays, addMonths, todayISO } from "@/lib/date";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { Kbd } from "@/components/ui";
+import { useTranslations } from "next-intl";
 
 const DATE_RE = /(\d{4}-\d{2}-\d{2})/;
 
-const SHORTCUTS: { keys: string[]; label: string }[] = [
-  { keys: ["⌘", "K"], label: "Buscar tareas / ir a una vista" },
-  { keys: ["N"], label: "Nueva tarea" },
-  { keys: ["←", "→"], label: "Día / semana / mes anterior y siguiente" },
-  { keys: ["T"], label: "Ir a hoy" },
-  { keys: ["?"], label: "Mostrar / ocultar esta ayuda" },
+/** `labelKey`, not a label: the words come from the catalog at render time.
+ *  Named to avoid colliding with React's `key` prop on the list below. */
+const SHORTCUTS: { keys: string[]; labelKey: string }[] = [
+  { keys: ["⌘", "K"], labelKey: "palette" },
+  { keys: ["N"], labelKey: "newTask" },
+  { keys: ["←", "→"], labelKey: "navigate" },
+  { keys: ["T"], labelKey: "goToday" },
+  { keys: ["?"], labelKey: "toggleHelp" },
 ];
 
 /** Global keyboard shortcuts (mounted once in the app shell). */
 export function KeyboardShortcuts() {
+  const t = useTranslations("shortcuts");
   const pathname = usePathname();
   const router = useRouter();
   const [showHelp, setShowHelp] = useState(false);
@@ -104,13 +108,13 @@ export function KeyboardShortcuts() {
             transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
-            aria-label="Atajos de teclado"
+            aria-label={t("title")}
           >
-            <h2 className="mb-3 text-sm font-bold tracking-tight text-fg">Atajos de teclado</h2>
+            <h2 className="mb-3 text-sm font-bold tracking-tight text-fg">{t("heading")}</h2>
             <ul className="flex flex-col gap-2.5">
               {SHORTCUTS.map((s) => (
-                <li key={s.label} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-muted">{s.label}</span>
+                <li key={s.labelKey} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-muted">{t(s.labelKey)}</span>
                   <span className="flex shrink-0 gap-1">
                     {s.keys.map((k) => (
                       <Kbd key={k} className="text-fg">

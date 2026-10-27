@@ -3,9 +3,11 @@
 import { Bell, Clock } from "lucide-react";
 import { usePushNotifications } from "@/lib/queries/push";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /** Toggles for push: the daily "plan your day" reminder + per-task reminders. */
 export function NotificationsCard() {
+  const t = useTranslations("settings");
   const { supported, enabled, busy, prefs, enable, disable, setTaskReminders } =
     usePushNotifications();
 
@@ -13,25 +15,21 @@ export function NotificationsCard() {
     <div className="flex flex-col divide-y divide-border rounded-xl border border-border bg-surface">
       <Row
         icon={<Bell className="h-5 w-5" aria-hidden />}
-        title="Recordatorio diario"
-        desc={
-          supported
-            ? "Un aviso a las 8:00 para planificar tu día."
-            : "Instalá la app (Compartir → Agregar a inicio) para activar las notificaciones."
-        }
+        title={t("dailyReminder")}
+        desc={supported ? t("dailyReminderDesc") : t("dailyReminderUnsupported")}
         on={enabled && prefs.dailyPlan !== false}
         disabled={!supported || busy}
         onToggle={() => (enabled && prefs.dailyPlan !== false ? disable() : enable())}
-        label="recordatorio diario"
+        label={t("dailyReminderLabel")}
       />
       <Row
         icon={<Clock className="h-5 w-5" aria-hidden />}
-        title="Recordatorios de tareas"
-        desc="Un aviso cuando empieza una tarea con horario (o a la hora que elijas)."
+        title={t("taskReminders")}
+        desc={t("taskRemindersDesc")}
         on={!!prefs.taskReminders}
         disabled={!supported || busy}
         onToggle={() => setTaskReminders(!prefs.taskReminders)}
-        label="recordatorios de tareas"
+        label={t("taskRemindersLabel")}
       />
     </div>
   );
@@ -54,6 +52,7 @@ function Row({
   onToggle: () => void;
   label: string;
 }) {
+  const t = useTranslations("settings");
   return (
     <div className="flex items-center gap-3 p-3">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
@@ -67,7 +66,7 @@ function Row({
         onClick={onToggle}
         disabled={disabled}
         aria-pressed={on}
-        aria-label={on ? `Desactivar ${label}` : `Activar ${label}`}
+        aria-label={on ? t("turnOff", { what: label }) : t("turnOn", { what: label })}
         className="shrink-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span

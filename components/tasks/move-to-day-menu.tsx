@@ -6,9 +6,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CalendarArrowUp, Check } from "lucide-react";
 import { taskKeys, useMoveTaskToDate } from "@/lib/queries/tasks";
 import { orderForAppend } from "@/lib/ordering";
-import { addDays, fullDayLabel, todayISO, type DayISO } from "@/lib/date";
+import { addDays, todayISO, type DayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
+import { useDateLabels } from "@/lib/use-date-labels";
+import { useTranslations } from "next-intl";
 
 /** sort_order that appends the task to the end of `date`'s list, read from the
  *  cache. Falls back to a high value when that day isn't loaded yet. */
@@ -23,6 +25,9 @@ function useAppendOrder() {
 /** Quick reschedule options + a free date picker. Lets you move a task to
  *  another day without dragging — works on the Day view and on mobile. */
 export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "left" | "right" }) {
+  const t = useTranslations("tasks");
+  const tcm = useTranslations("common");
+  const labels = useDateLabels();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -51,9 +56,9 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
   }
 
   const options: { label: string; date: DayISO }[] = [
-    { label: "Hoy", date: today },
-    { label: "Mañana", date: tomorrow },
-    { label: "Próx. lunes", date: nextMonday },
+    { label: tcm("today"), date: today },
+    { label: tcm("tomorrow"), date: tomorrow },
+    { label: t("nextMonday"), date: nextMonday },
   ];
 
   return (
@@ -69,8 +74,8 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Mover a otro día"
-        title="Mover a otro día"
+        aria-label={t("moveToDay")}
+        title={t("moveToDay")}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
@@ -95,7 +100,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
             )}
           >
             <p className="px-2 pt-1 pb-0.5 text-2xs font-semibold uppercase tracking-wide text-subtle">
-              Mover a
+              {t("moveTo")}
             </p>
             {options.map((o) => {
               const active = o.date === task.planned_date;
@@ -112,7 +117,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
                 >
                   <span className="flex min-w-0 flex-col">
                     <span>{o.label}</span>
-                    <span className="text-2xs text-subtle">{fullDayLabel(o.date)}</span>
+                    <span className="text-2xs text-subtle">{labels.fullDayLabel(o.date)}</span>
                   </span>
                   {active && <Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />}
                 </button>
@@ -137,7 +142,7 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
               }}
               className="relative mt-0.5 flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg transition-colors hover:bg-surface-2"
             >
-              <span>Otra fecha…</span>
+              <span>{t("otherDate")}</span>
               <input
                 ref={dateInputRef}
                 id={dateInputId}

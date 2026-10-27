@@ -1,19 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
-  ageLabel,
   dayISOInTimeZone,
   addDays,
   addMonths,
   weekRange,
-  relativeLabel,
-  fullDayLabel,
   monthGrid,
   monthOf,
   blockInstant,
   timeInTimeZone,
   minutesFromMidnight,
   dueTone,
-  dueLabel,
   carryOverTarget,
 } from "./date";
 
@@ -73,18 +69,6 @@ describe("dueTone", () => {
   });
 });
 
-describe("dueLabel", () => {
-  const today = "2026-06-26";
-  it("uses relative words for adjacent days", () => {
-    expect(dueLabel(today, today)).toBe("Hoy");
-    expect(dueLabel("2026-06-27", today)).toBe("Mañana");
-    expect(dueLabel("2026-06-25", today)).toBe("Ayer");
-  });
-  it("falls back to a compact day + month label", () => {
-    expect(dueLabel("2026-07-05", today)).toBe("5 jul");
-  });
-});
-
 describe("weekRange", () => {
   it("returns 7 consecutive days starting on Monday and includes the day", () => {
     const week = weekRange("2026-06-24", 1);
@@ -94,23 +78,6 @@ describe("weekRange", () => {
     for (let i = 1; i < week.length; i++) {
       expect(week[i]).toBe(addDays(week[i - 1], 1));
     }
-  });
-});
-
-describe("relativeLabel", () => {
-  it("labels today, tomorrow and yesterday", () => {
-    expect(relativeLabel("2026-06-22", "2026-06-22")).toBe("Hoy");
-    expect(relativeLabel("2026-06-23", "2026-06-22")).toBe("Mañana");
-    expect(relativeLabel("2026-06-21", "2026-06-22")).toBe("Ayer");
-  });
-  it("falls back to a Spanish date otherwise", () => {
-    expect(relativeLabel("2026-06-30", "2026-06-22")).toMatch(/junio/);
-  });
-});
-
-describe("fullDayLabel", () => {
-  it("capitalizes the weekday", () => {
-    expect(fullDayLabel("2026-06-24")).toMatch(/^[A-ZÁÉÍÓÚ]/);
   });
 });
 
@@ -151,29 +118,5 @@ describe("monthGrid", () => {
     for (let i = 1; i < flat.length; i++) {
       expect(flat[i]).toBe(addDays(flat[i - 1], 1));
     }
-  });
-});
-
-describe("ageLabel", () => {
-  const today = "2026-08-23";
-  const at = (day: string) => `${day}T12:00:00.000Z`;
-
-  it("names the first two days rather than counting them", () => {
-    expect(ageLabel(at("2026-08-23"), today)).toBe("hoy");
-    expect(ageLabel(at("2026-08-22"), today)).toBe("ayer");
-  });
-
-  it("counts days up to a month", () => {
-    expect(ageLabel(at("2026-08-11"), today)).toBe("hace 12 días");
-    expect(ageLabel(at("2026-07-27"), today)).toBe("hace 27 días");
-  });
-
-  it("switches to months past that", () => {
-    expect(ageLabel(at("2026-07-14"), today)).toBe("hace un mes");
-    expect(ageLabel(at("2026-05-26"), today)).toBe("hace 3 meses");
-  });
-
-  it("never reports a negative age for a future timestamp", () => {
-    expect(ageLabel(at("2026-08-30"), today)).toBe("hoy");
   });
 });

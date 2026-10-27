@@ -19,7 +19,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 (time-blocking) con una agenda visual por horas. Vos y Sofi comparten el mismo espacio.
 
 - ✅ Diseño base (colores, fuente, modo claro/oscuro) + PWA instalable
-- ✅ Base de datos con login, hogar compartido, canales y tareas (con seguridad por fila)
+- ✅ Base de datos con login, hogar compartido, canales y tareas (cada espacio aislado del resto, verificado con un test que levanta una base de verdad)
 - ✅ Login con Google (requiere una configuración tuya — ver `docs/GOOGLE_SETUP.md`)
 - ✅ Vista del **Día**: agregar, completar, editar, borrar, **reordenar arrastrando**
 - ✅ Vista **Semana** (estilo Sunsama): el **mini-calendario** y el **filtro por categorías** viven en la **barra lateral única** (como Sunsama), así las columnas de días usan **todo el ancho**; cada día es una **tarjeta** con una **barra de carga** (cuánto planeaste contra tu capacidad, no cuánto tildaste) y los días ya cerrados se pueden plegar
@@ -33,8 +33,11 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 
 ## Páginas
 
-- **/** — redirige a "Hoy".
+- **/** — la **portada pública**: qué es la app, el ritual y el precio. Si ya entraste, te lleva a "Hoy".
+- **/pricing** — el precio, qué incluye y por qué no hay plan gratis.
+- **/privacy** y **/terms** — política de privacidad y términos. Google los pide para verificar la app.
 - **/login** — entrar con Google.
+- **/billing** — tu plan: los días de prueba que te quedan, los dos planes, y el acceso a la tarjeta y las facturas.
 - **/today** y **/day/AAAA-MM-DD** — la vista del Día (con pestañas **Lista** y **Agenda**).
 - **/plan/AAAA-MM-DD** — **planificar el día** (ritual de la mañana): poné tu foco del día, traé lo que quedó de ayer o del backlog, ajustá duraciones y mirá la **capacidad del día**.
 - **/week** y **/week/AAAA-MM-DD** — la semana. El **mini-calendario** y el **filtro de categorías** están en la **barra lateral** (en compu), no en una segunda columna, así los días ocupan todo el ancho. Cada día es una **tarjeta** con su **barra de carga** ("6h 45m de 6h"), y cada tarjeta de tarea muestra su carril de categoría, la hora y la duración.
@@ -181,6 +184,13 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 ## Cambios recientes
 
+- 2026-10-27: **Se juntaron dos líneas de trabajo.** Las seis mejoras de hoy (rutinas mensuales, revisión semanal, foto de perfil, escribir la tarea en lenguaje natural, compartir desde el celular y las ayudas con IA) se hicieron sobre una versión vieja de la app, mientras en GitHub ya estaban la traducción al inglés, el cobro, la portada y las invitaciones. Ahora está todo junto. Lo que cambió para que encajen:
+
+  - **Todo lo nuevo también está en inglés.** Los textos viven en `messages/es.json` y `messages/en.json` (grupos nuevos `review` y `ai`, más claves en `routines`, `tasks`, `backlog`, `settings` y `nav`). Las ayudas con IA le piden a Claude que conteste en el idioma de la persona, y las tareas creadas al compartir sin texto se titulan en ese idioma ("Archivo compartido" / "Shared file").
+  - **Lo que no se tradujo:** escribir la tarea en lenguaje natural sigue entendiendo solo español ("mañana 18hs"). En inglés la cajita funciona igual, pero "tomorrow 6pm" queda como parte del título.
+  - **Los cambios de la base se renumeraron:** de `0005`/`0006` pasaron a `0009_routine_recurrence` y `0010_weekly_notes`, después de los cuatro de GitHub (invitaciones, idioma, arrastre de pendientes, cobro). La base de producción ya tenía los once aplicados; los archivos ahora coinciden con ella y no queda nada pendiente.
+  - Las reglas de la foto de perfil y de la IA devuelven un **código** ("tooBig", "limit"…) en vez de una frase en español, y la pantalla lo traduce — el mismo criterio que ya usaban los adjuntos.
+
 - 2026-10-27: **Nuevo ritual: la revisión semanal.** En la barra lateral, debajo de Planificar y Cerrar día, está **"Revisión semanal"** (también desde ⌘K). Se ilumina del **viernes a la tarde al lunes a la mañana**; en el celular el ícono aparece arriba solo en esos días. Son tres pasos, igual que Cerrar el día:
 
   1. **Cómo fue** — cuántas tareas terminaste de las que tenías, cuántos días cerraste, tu mejor día, lo estimado contra lo real, cómo quedaron tus metas de la semana, y dos preguntas para vos: _¿qué salió bien?_ y _¿qué cambiarías?_
@@ -189,7 +199,7 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
   Al terminar te lleva a la semana nueva. Si la hacés de lunes a jueves, revisa la semana que **ya terminó**; de viernes a domingo, la que estás cerrando. La página es `/review`.
 
-  Por detrás: tabla nueva `weekly_notes` (`drizzle/migrations/0006_weekly_notes.sql`, una fila por persona y semana), pantalla en `components/review/review-view.tsx` y las cuentas en `lib/review.ts` (8 tests). Migración aplicada en producción el 2026-10-27. De paso, los tests ya no corren dos veces cuando hay sesiones de Claude trabajando en paralelo (`vitest.config.ts` ignora `.claude/`).
+  Por detrás: tabla nueva `weekly_notes` (`drizzle/migrations/0010_weekly_notes.sql`, una fila por persona y semana), pantalla en `components/review/review-view.tsx` y las cuentas en `lib/review.ts` (8 tests). Migración aplicada en producción el 2026-10-27. De paso, los tests ya no corren dos veces cuando hay sesiones de Claude trabajando en paralelo (`vitest.config.ts` ignora `.claude/`).
 
 - 2026-10-27: **Ya se puede subir la foto de perfil de nuevo.** En Ajustes, tocar tu foto (el ícono de la cámara) fallaba siempre: el código intentaba guardar la foto como "pública" en un almacenamiento que es privado, y además pasaba el archivo por un camino que no acepta más de 1 MB. Ahora la foto viaja directo desde el navegador al almacenamiento privado (igual que los adjuntos de las tareas, hasta 5 MB, solo imágenes) y la app la muestra a través de su propia dirección, `/api/avatars/<id>`, que solo responde a alguien con sesión iniciada en tu mismo espacio. Las fotos de Google siguen funcionando y **"Quitar foto"** también. Sin cambios en la base de datos.
 
@@ -216,7 +226,25 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 - 2026-10-27: **Las rutinas ahora pueden repetirse una vez por mes o "cada tantos" días/semanas.** En Rutinas, además de **Diaria** y **Semanal** hay **Mensual**, y al lado un contador **"cada [1] semana"** que se sube con el **+**. Ejemplos: _"el 10 de cada mes"_ para pagar el alquiler, _"cada 2 semanas los lunes"_ para cortar el pasto, _"cada 3 días"_ para regar. Si elegís un día que no existe en todos los meses (29, 30) cae el último día de los meses más cortos; la opción **"último día"** es siempre el final del mes. Las cuentas arrancan desde el día en que creaste la rutina, y las rachas 🔥 entienden estas repeticiones nuevas (una rutina mensual suma una por mes, no se "corta" los días en que no tocaba).
 
-  Por detrás: dos columnas nuevas en las rutinas (`repeat_every`, `month_day`) y una versión nueva de la función de la base que genera las tareas de cada día (`drizzle/migrations/0005_routine_recurrence.sql`). La misma regla vive en `isExpectedOccurrence` (`lib/streaks.ts`, 8 tests nuevos) para las rachas: si se cambia una hay que cambiar la otra. Migración aplicada en producción el 2026-10-27.
+  Por detrás: dos columnas nuevas en las rutinas (`repeat_every`, `month_day`) y una versión nueva de la función de la base que genera las tareas de cada día (`drizzle/migrations/0009_routine_recurrence.sql`). La misma regla vive en `isExpectedOccurrence` (`lib/streaks.ts`, 8 tests nuevos) para las rachas: si se cambia una hay que cambiar la otra. Migración aplicada en producción el 2026-10-27.
+
+- 2026-09-01: **Morchitask ya se puede cobrar.** Hay una pantalla nueva, **Ajustes → Plan**, con el estado de tu cuenta y los dos planes: US$10 por mes o US$80 por año. Quien se registra arranca con **14 días de prueba sin tarjeta**; cuando faltan tres días aparece un aviso arriba de todas las pantallas, y si la prueba se termina sin suscripción la app queda bloqueada salvo Ajustes y las páginas legales — porque ahí es justo donde tenés que poder **exportar tus datos o borrar la cuenta**, y esconder eso detrás de un pago sería mentir. Tres decisiones que importan: si la tarjeta falla **no se corta el acceso**, se sigue usando dos semanas mientras el banco reintenta (una tarjeta vencida es la razón menos deliberada de dejar de pagar); si cancelás, tenés acceso hasta terminar el período que ya pagaste; y **tu cuenta y la de Sofi quedan marcadas como "sin cobro"**, para siempre, sin vencimiento. El pago lo maneja Polar, que factura, cobra el IVA europeo y deposita — así no hace falta abrir una empresa, y los datos de la tarjeta nunca pasan por acá.
+
+- 2026-09-01: **El lunes ya aparecen las tareas del viernes.** Antes no: al abrir Hoy la app solo miraba **el día anterior**, y el lunes eso es un domingo vacío, así que lo del viernes quedaba en una fecha que la vista de Hoy no muestra y parecía borrado. Lo mismo pasaba con un feriado o volviendo de vacaciones. Ahora, al abrir Hoy (o Semana), **lo pendiente de cualquier día anterior se trae solo**, y un cartel te dice cuántas trajo y de cuándo, con un botón de **deshacer** que devuelve cada tarea a su día exacto. Pasa una sola vez por día, en todos tus dispositivos: si deshacés, no vuelve a insistir hasta mañana. Y si compartís el espacio, esto es solo tuyo — las tareas de la otra persona no se mueven.
+
+- 2026-08-26: **Ya podés llevarte tus datos, y borrar la cuenta.** En Ajustes, abajo de todo, hay una sección nueva: **Tus datos**. Con **Descargar** te bajás un archivo con todo lo tuyo —tareas, notas, categorías, metas, rutinas, comentarios y los tiempos que mediste—; con **Borrar cuenta** se va todo, para siempre, sin copia guardada. El borrado pide que escribas una palabra en vez de un simple "¿estás seguro?", porque un botón de confirmar se aprieta sin leer. Dos cosas que importan: si compartís el espacio con alguien, **lo de esa persona queda intacto** (sus tareas siguen ahí, sin tu nombre), y si eras la última persona del espacio, el espacio se va con vos. Esto no es un extra: la política de privacidad ya prometía las dos cosas, así que hasta hoy decía algo que no era cierto.
+
+- 2026-08-26: **La app dejó de ser privada: ya tiene portada, precio y legales.** Hasta ayer no existía ninguna página que pudiera ver alguien sin cuenta — entrabas y te mandaba al login. Ahora hay cuatro páginas públicas: la **portada** (el ritual de la mañana, el día, el cierre, y una sección honesta de lo que la app **no** hace), **el precio** (US$10 por mes o US$80 por año, 14 días de prueba sin tarjeta, con la comparación contra Sunsama), y la **política de privacidad** y los **términos**, que Google exige para verificar el acceso al calendario. Las legales están marcadas como borrador a propósito: cubren lo que Google pide, pero conviene que las lea un abogado antes de cobrarle a alguien. Además, la primera vez que alguien entra, la app le habla en **el idioma de su navegador** en vez de asumir español.
+
+- 2026-08-25: **La app ya está preparada para hablar otro idioma.** Todavía se ve exactamente igual —todo sigue en español y nada cambió de lugar—, pero por dentro quedó armada para que agregar inglés sea llenar una lista de textos en vez de tocar cada pantalla. Lo que sí cambió por dentro: la parte que convierte una fecha en palabras ("Lunes 23 de junio", "hace 3 meses") se separó del resto, porque en inglés no alcanza con traducir palabra por palabra — se escribe al revés ("Monday, June 23") y los plurales funcionan distinto. Se comprobó que las fechas en español salen idénticas a antes en 400 días seguidos, uno por uno. El idioma se va a poder elegir en Ajustes y queda guardado en tu cuenta, así que te sigue si entrás desde otro dispositivo.
+
+- 2026-08-25: **Dos arreglos de seguridad y las defensas del navegador.** (1) En un celular compartido, si una persona se registraba en el navegador donde antes estaba la otra, las notificaciones seguían llegándole a la primera — ahora la suscripción pasa a quien se registró último, que es como debía ser desde el principio en una app pensada para dos. (2) Cancelar las notificaciones borraba la suscripción sin verificar que fuera tuya. (3) La app ahora manda las cabeceras estándar que le piden al navegador que la proteja (no dejarse meter dentro de otra web, no adivinar tipos de archivo, forzar HTTPS, y bloquear cámara/micrófono/ubicación, que la app nunca usa). Hay además una política de contenido en modo "solo avisar": está puesta pero todavía no bloquea nada, para poder revisar que no rompa nada antes de activarla.
+
+- 2026-08-25: **Ya podés invitar a alguien a tu espacio.** En Ajustes hay una sección nueva, "Tu espacio", donde escribís el mail de la persona y le generás una invitación. Como todavía no mandamos mails automáticos, copiás el link con el botón y se lo pasás por donde ya hablen. Cuando esa persona se registre con ese mail, entra directo a tu espacio. Detalles: la invitación vence a los 7 días, se usa una sola vez, la podés cancelar cuando quieras, y si volvés a invitar al mismo mail se reemplaza la anterior en vez de acumularse. Un espacio admite dos personas.
+
+- 2026-08-25: **Cada cuenta nueva ahora tiene su propio espacio.** Antes, cualquier persona que se registrara entraba automáticamente al espacio más viejo que existiera — o sea, al de Lucas y Sofi, con todas sus tareas a la vista. Era la razón principal por la que la app no se podía abrir a nadie más. Ahora la única forma de entrar al espacio de otra persona es que te inviten a tu dirección de mail, y esa invitación se puede usar una sola vez y vence a los 7 días. También se cerró un agujero en los avisos automáticos: si faltaba una configuración del servidor, cualquiera podía disparar notificaciones a todos los usuarios. Se agregaron 20 pruebas automáticas que corren contra una base de datos real para que ninguna de las dos cosas pueda volver sin que alguien se entere.
+
+- 2026-08-25: Nuevo comando `node scripts/paso-0-metricas.mjs`. Contesta, con los datos que ya están en la base, si la app realmente retiene: cuántos días la usó cada persona, si el uso se sostiene o va cayendo semana a semana, y —lo más importante— cuántas veces se completó el **ritual** de planificar y cerrar el día. Es de solo lectura. Ver "Cómo saber si la app retiene" más abajo.
 
 - 2026-08-23: **Rediseño completo de las pantallas del ritual diario** (viene del bundle `design_handoff_morchitask_1a`, hecho en Claude Design). Cambió cómo se ve y se usa casi todo, sin tocar la base de datos ni sumar librerías nuevas. Lo grande:
 
@@ -368,3 +396,19 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - 2026-06-22: Fase 2 — vistas Semana y Mes, y time-blocking (pestaña Agenda con línea de tiempo por horas).
 - 2026-06-22: Fase 1 — login con Google, hogar compartido, vista del Día (agregar/completar/editar/borrar/reordenar) y Backlog.
 - 2026-06-22: Fase 0 — fundación. Diseño base, PWA instalable, base de datos Supabase nueva ("Morchitask"), librería de componentes y tests automáticos.
+
+## Cómo saber si la app retiene
+
+Antes de invertir en salir a vender, hay una pregunta que se contesta con los datos que ya existen: **¿alguien vuelve todos los días, y hace el ritual completo o solo carga tareas?**
+
+Para responderla:
+
+```bash
+node scripts/paso-0-metricas.mjs
+```
+
+Necesita `DATABASE_URL` en `.env.local` (la misma que ya usás para las migraciones). Es de solo lectura — no modifica nada.
+
+Te muestra, por persona: cuántos días usó la app de verdad, si el uso se sostiene o va cayendo semana a semana, cuántas veces completó el ritual de planificar y cerrar el día, y cuántas tareas creó y terminó cada mes. Al final da una lectura en castellano de lo que significan esos números.
+
+**Lo importante es la sección del ritual.** Si alguien carga tareas todos los días pero casi nunca cierra el día, lo que le gusta de la app es la lista de tareas, no el ritual — y eso cambia por completo cómo habría que presentarla.

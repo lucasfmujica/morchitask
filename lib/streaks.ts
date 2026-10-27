@@ -32,7 +32,7 @@ export type Recurrence = {
 
 /**
  * Whether `day` is a day the routine is supposed to run. Mirrors the SQL in
- * `ensure_day_materialized` (drizzle/migrations/0005) — keep both in sync.
+ * `ensure_day_materialized` (drizzle/migrations/0009) — keep both in sync.
  */
 export function isExpectedOccurrence(rule: Recurrence, day: DayISO): boolean {
   const every = Math.max(1, rule.repeat_every ?? 1);

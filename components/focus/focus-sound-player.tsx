@@ -7,8 +7,10 @@ import { SOUNDSCAPES, getSoundscape, type Soundscape } from "@/lib/audio/soundsc
 import * as engine from "@/lib/audio/engine";
 import { useAudio } from "@/lib/stores/audio";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function FocusSoundPlayer() {
+  const t = useTranslations("focus");
   const soundscapeId = useAudio((s) => s.soundscapeId);
   const playing = useAudio((s) => s.playing);
   const volume = useAudio((s) => s.volume);
@@ -72,7 +74,7 @@ export function FocusSoundPlayer() {
       <div className="flex items-center gap-3">
         <button
           onClick={onToggle}
-          aria-label={isPlaying ? "Pausar sonido" : "Reproducir sonido"}
+          aria-label={isPlaying ? t("pauseSound") : t("playSound")}
           className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-on-primary shadow-soft transition-colors hover:bg-primary-hover"
         >
           {isPlaying ? (
@@ -98,14 +100,14 @@ export function FocusSoundPlayer() {
           step={0.01}
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
-          aria-label="Volumen"
+          aria-label={t("volume")}
           className="h-1.5 w-full cursor-pointer"
           style={{ accentColor: "var(--color-primary)" }}
         />
       </div>
 
       <label className="flex cursor-pointer items-center justify-between gap-3 px-1 text-sm">
-        <span className="text-muted">Empezar con el foco</span>
+        <span className="text-muted">{t("startWithFocus")}</span>
         <button
           type="button"
           role="switch"
@@ -138,6 +140,7 @@ function SoundscapePicker({
   available: Record<string, boolean>;
   onChange: (id: string) => void;
 }) {
+  const t = useTranslations("focus");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
@@ -167,7 +170,7 @@ function SoundscapePicker({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Elegí un sonido"
+        aria-label={t("pickSound")}
         className={cn(
           "flex w-full cursor-pointer items-center gap-2.5 rounded-xl border bg-surface px-3.5 py-2.5 text-left text-sm shadow-soft transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
           open ? "border-primary" : "border-border hover:bg-surface-2",
@@ -176,10 +179,10 @@ function SoundscapePicker({
         {selected ? (
           <>
             <selected.icon className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-fg">{selected.label}</span>
+            <span className="min-w-0 flex-1 truncate text-fg">{t(selected.labelKey)}</span>
           </>
         ) : (
-          <span className="min-w-0 flex-1 truncate text-muted">Elegí un sonido…</span>
+          <span className="min-w-0 flex-1 truncate text-muted">{t("pickSoundPrompt")}</span>
         )}
         <ChevronDown
           className={cn("h-4 w-4 shrink-0 text-muted transition-transform", open && "rotate-180")}
@@ -223,10 +226,10 @@ function SoundscapePicker({
                       aria-hidden
                     />
                     <span className={cn("min-w-0 flex-1 truncate", active && "font-medium")}>
-                      {s.label}
+                      {t(s.labelKey)}
                     </span>
                     {locked && (
-                      <span className="shrink-0 text-xs text-subtle">Agregá el archivo</span>
+                      <span className="shrink-0 text-xs text-subtle">{t("soundMissingFile")}</span>
                     )}
                     {active && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
                   </button>

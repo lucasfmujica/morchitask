@@ -3,17 +3,19 @@
 import { useMemo, useState } from "react";
 import { Plus, SlidersHorizontal, X } from "lucide-react";
 import type { Channel } from "@/lib/queries/types";
-import { todayISO, weekDayHeading } from "@/lib/date";
+import { todayISO } from "@/lib/date";
+import { useDateLabels } from "@/lib/use-date-labels";
 import { formatMinutes } from "@/lib/format";
 import { parseQuickAdd, type QuickAddKind, type QuickAddMatch } from "@/lib/quick-add";
 import {
-  NO_PRIORITY_LABEL,
+  NO_PRIORITY_LABEL_KEY,
   PRIORITY_DOT,
-  PRIORITY_LABEL,
+  PRIORITY_LABEL_KEY,
   TASK_PRIORITIES,
   type PriorityKey,
 } from "@/lib/priority";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export type ComposerSubmit = {
   title: string;
@@ -33,6 +35,8 @@ export function TaskComposer({
   channels: Channel[];
   onSubmit: (input: ComposerSubmit) => void;
 }) {
+  const t = useTranslations("tasks");
+  const labels = useDateLabels();
   const [title, setTitle] = useState("");
   const [channelId, setChannelId] = useState<string | null>(null);
   const [priority, setPriority] = useState<PriorityKey>(null);
@@ -62,13 +66,13 @@ export function TaskComposer({
   function previewLabel(m: QuickAddMatch): string {
     switch (m.kind) {
       case "date":
-        return weekDayHeading(parsed.plannedDate!, today);
+        return labels.weekDayHeading(parsed.plannedDate!, today);
       case "time":
         return parsed.time!;
       case "estimate":
         return formatMinutes(parsed.estimateMin!);
       case "priority":
-        return PRIORITY_LABEL[parsed.priority!];
+        return t(PRIORITY_LABEL_KEY[parsed.priority!]);
       case "channel":
         return channels.find((c) => c.id === parsed.channelId)?.name ?? m.text;
     }
@@ -103,7 +107,7 @@ export function TaskComposer({
         <button
           onClick={submit}
           disabled={!title.trim()}
-          aria-label="Agregar tarea"
+          aria-label={t("add")}
           className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-primary text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
         >
           <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
@@ -118,15 +122,15 @@ export function TaskComposer({
           onKeyDown={(e) => {
             if (e.key === "Enter") submit();
           }}
-          placeholder="Agregar una tarea…"
-          aria-label="Nueva tarea"
+          placeholder={t("addPlaceholder")}
+          aria-label={t("newTask")}
           className="h-8 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
         <button
           onClick={() => setShowChips((v) => !v)}
           aria-expanded={chipsOpen}
-          aria-label="Categoría y prioridad"
-          title="Categoría y prioridad"
+          aria-label={t("categoryAndPriority")}
+          title={t("categoryAndPriority")}
           className={cn(
             "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors",
             chipsOpen ? "bg-surface-2 text-fg" : "text-subtle hover:bg-surface-2 hover:text-muted",
@@ -164,7 +168,7 @@ export function TaskComposer({
                 <button
                   type="button"
                   onClick={() => setIgnored((prev) => new Set(prev).add(m.kind))}
-                  aria-label={`Ignorar ${label}`}
+                  aria-label={t("quickAddIgnore", { label })}
                   className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-primary/15"
                 >
                   <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
@@ -178,7 +182,7 @@ export function TaskComposer({
       {chipsOpen && channels.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
           <ChannelChip
-            label="Sin categoría"
+            label={t("noCategory")}
             active={effectiveChannel === null}
             onClick={() => {
               setChannelId(null);
@@ -204,7 +208,7 @@ export function TaskComposer({
       {chipsOpen && (
         <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
           <ChannelChip
-            label={NO_PRIORITY_LABEL}
+            label={t(NO_PRIORITY_LABEL_KEY)}
             active={effectivePriority === null}
             onClick={() => {
               setPriority(null);
@@ -214,7 +218,7 @@ export function TaskComposer({
           {TASK_PRIORITIES.map((p) => (
             <ChannelChip
               key={p}
-              label={PRIORITY_LABEL[p]}
+              label={t(PRIORITY_LABEL_KEY[p])}
               color={PRIORITY_DOT[p]}
               active={effectivePriority === p}
               onClick={() => {

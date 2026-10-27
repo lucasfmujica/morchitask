@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui";
+import { useTranslations } from "next-intl";
 
 function GoogleIcon() {
   return (
@@ -16,6 +17,7 @@ function GoogleIcon() {
 }
 
 export function LoginForm() {
+  const t = useTranslations("auth");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +28,7 @@ export function LoginForm() {
       await signIn("google", { redirectTo: "/today" });
       // On success the browser is redirected to Google, so no further UI needed.
     } catch {
-      setError("No pudimos iniciar sesión. Intentá de nuevo.");
+      setError(t("signInFailed"));
       setLoading(false);
     }
   }
@@ -41,7 +43,7 @@ export function LoginForm() {
         className="w-full border border-border bg-surface"
       >
         <GoogleIcon />
-        {loading ? "Conectando…" : "Continuar con Google"}
+        {loading ? t("connecting") : t("continueWithGoogle")}
       </Button>
       {error && (
         <p role="alert" className="text-sm text-danger">

@@ -88,10 +88,16 @@ export function avatarPathFromSrc(src: string | null | undefined, userId: string
   return isValidAvatarPath(pathname, userId) ? pathname : null;
 }
 
-/** Why a photo can't be used, in words the person can act on — or null. */
-export function avatarRejectionReason(file: { type: string; size: number }): string | null {
-  if (!isAllowedAvatarType(file.type)) return "Elegí un archivo de imagen (foto).";
-  if (file.size > MAX_AVATAR_BYTES) return "La imagen es muy pesada (máx. 5 MB).";
-  if (file.size === 0) return "La imagen está vacía.";
+export type AvatarRejection = "notImage" | "tooBig" | "empty";
+
+/** Why a photo can't be used — or null. A code, not words: the screen turns
+ *  it into the person's language (`settings.avatar*` in messages/). */
+export function avatarRejectionReason(file: {
+  type: string;
+  size: number;
+}): AvatarRejection | null {
+  if (!isAllowedAvatarType(file.type)) return "notImage";
+  if (file.size > MAX_AVATAR_BYTES) return "tooBig";
+  if (file.size === 0) return "empty";
   return null;
 }

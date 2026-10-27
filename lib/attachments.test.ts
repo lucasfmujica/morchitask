@@ -10,7 +10,7 @@ import {
   isInlineViewable,
   isValidAttachmentPath,
   MAX_ATTACHMENT_BYTES,
-  rejectionReason,
+  rejectionKey,
 } from "./attachments";
 
 const TASK = "6f1a0a5e-6a2a-4c1e-9b1e-1d2c3b4a5e6f";
@@ -150,18 +150,19 @@ describe("formatBytes", () => {
   });
 });
 
-describe("rejectionReason", () => {
+describe("rejectionKey", () => {
   it("passes a normal photo", () => {
-    expect(rejectionReason({ type: "image/jpeg", size: 3 * 1024 * 1024 })).toBeNull();
+    expect(rejectionKey({ type: "image/jpeg", size: 3 * 1024 * 1024 })).toBeNull();
   });
-  it("names the size limit when the file is too big", () => {
-    const reason = rejectionReason({ type: "image/jpeg", size: MAX_ATTACHMENT_BYTES + 1 });
-    expect(reason).toContain("10 MB");
+  it("flags an oversized file, leaving the limit to the message", () => {
+    // The size itself is interpolated by the catalog, so the key is all this
+    // module owes the caller.
+    expect(rejectionKey({ type: "image/jpeg", size: MAX_ATTACHMENT_BYTES + 1 })).toBe("rejectSize");
   });
   it("rejects a type that isn't allowed", () => {
-    expect(rejectionReason({ type: "application/x-msdownload", size: 10 })).toMatch(/tipo/);
+    expect(rejectionKey({ type: "application/x-msdownload", size: 10 })).toBe("rejectType");
   });
   it("rejects an empty file", () => {
-    expect(rejectionReason({ type: "image/png", size: 0 })).toMatch(/vac/);
+    expect(rejectionKey({ type: "image/png", size: 0 })).toBe("rejectEmpty");
   });
 });

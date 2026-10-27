@@ -14,6 +14,7 @@ import { formatMinutes } from "@/lib/format";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { FocusAudioPanel } from "./focus-audio-panel";
+import { useTranslations } from "next-intl";
 
 type Mode = "focus" | "break";
 const DURATION: Record<Mode, number> = { focus: 25 * 60, break: 5 * 60 };
@@ -26,8 +27,14 @@ function mmss(total: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-/** A short chime + a system notification when a focus block ends (best-effort). */
-function notifyFocusDone() {
+/**
+ * A short chime + a system notification when a focus block ends (best-effort).
+ *
+ * The two strings arrive as arguments: this is a plain function, not a
+ * component, so it has no translator of its own — and a rules-of-hooks
+ * violation here would be silent, since the whole body is inside a try/catch.
+ */
+function notifyFocusDone(title: string, body: string) {
   try {
     const Ctx =
       window.AudioContext ??
@@ -50,13 +57,14 @@ function notifyFocusDone() {
     // audio not available — ignore
   }
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-    new Notification("¡Bloque de foco completado! 🍅", {
-      body: "Tomate un respiro de 5 minutos.",
-    });
+    new Notification(title, { body });
   }
 }
 
 export function FocusTimer() {
+  const t = useTranslations("focus");
+  const tt = useTranslations("tasks");
+  const tnav = useTranslations("nav");
   const qc = useQueryClient();
   const today = todayISO();
   const tasksQ = useTasksForDate(today);
@@ -92,12 +100,12 @@ export function FocusTimer() {
     setRunning(false);
     if (mode === "focus") {
       setCompleted((c) => c + 1);
-      notifyFocusDone();
+      notifyFocusDone(t("blockDoneTitle"), t("blockDoneBody"));
       // Stop the background sound alongside the end chime.
       if (audioAutoStart && audioSource === "soundscape") setAudioPlaying(false);
     }
     if (mode === "focus" && taskId) {
-      const task = tasks.find((t) => t.id === taskId);
+      const task = tasks.find((candidate) => candidate.id === taskId);
       if (task) {
         setActualTimeAction(task.id, (task.actual_time_min ?? 0) + DURATION.focus / 60).then(() =>
           qc.invalidateQueries({ queryKey: taskKeys.date(today) }),
@@ -105,6 +113,7 @@ export function FocusTimer() {
       }
     }
   }, [
+    t,
     secondsLeft,
     running,
     mode,
@@ -154,19 +163,19 @@ export function FocusTimer() {
   const selectedChannel = channels.find((c) => c.id === selected?.channel_id);
   const status = running
     ? mode === "focus"
-      ? "Concentrate"
-      : "Respirá"
+      ? t("statusFocus")
+      : t("statusBreak")
     : secondsLeft < total
-      ? "En pausa"
-      : "Listo para arrancar";
+      ? t("statusPaused")
+      : t("statusIdle");
 
   /** Tick the block's task off without leaving the timer. */
   function finishTask() {
     if (!selected) return;
     toggle.mutate(selected);
     setTaskId("");
-    toast(`"${selected.title}" hecha`, {
-      label: "Deshacer",
+    toast(t("taskDone", { title: selected.title }), {
+      label: tt("undo"),
       run: () => toggle.mutate({ ...selected, status: "done" } as Task),
     });
   }
@@ -185,7 +194,7 @@ export function FocusTimer() {
                 mode === m ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
               )}
             >
-              {m === "focus" ? "Foco" : "Descanso"}
+              {m === "focus" ? tnav("focus") : t("break")}
             </button>
           ))}
         </div>
@@ -223,7 +232,10 @@ export function FocusTimer() {
             <span className="text-sm text-muted">{status}</span>
             {mode === "focus" && (
               <span className="mt-1 rounded-pill bg-surface-2 px-2.5 py-0.5 text-2xs font-semibold text-muted">
-                Bloque {Math.min(completed + 1, BLOCKS_PER_SET)} de {BLOCKS_PER_SET}
+                {t("blockOf", {
+                  n: Math.min(completed + 1, BLOCKS_PER_SET),
+                  total: BLOCKS_PER_SET,
+                })}
               </span>
             )}
           </div>
@@ -263,14 +275,14 @@ export function FocusTimer() {
           <button
             onClick={reset}
             className="inline-flex h-11 w-11 cursor-pointer items-center justify-center justify-self-end rounded-full border border-border text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-            aria-label="Reiniciar"
+            aria-label={t("reset")}
           >
             <RotateCcw className="h-5 w-5" aria-hidden />
           </button>
           <button
             onClick={toggleRun}
             className="inline-flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-primary text-on-primary shadow-card transition-colors hover:bg-primary-hover"
-            aria-label={running ? "Pausar" : "Empezar"}
+            aria-label={running ? t("pause") : t("start")}
           >
             {running ? (
               <Pause className="h-7 w-7" aria-hidden />
@@ -282,12 +294,12 @@ export function FocusTimer() {
           <button
             onClick={finishTask}
             disabled={!selected}
-            aria-label="Terminar tarea"
-            title="Terminar tarea"
+            aria-label={t("finishTask")}
+            title={t("finishTask")}
             className="inline-flex h-11 cursor-pointer items-center gap-1.5 justify-self-start rounded-full border border-border px-3.5 text-xs font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-default disabled:opacity-40"
           >
             <Check className="h-4 w-4" aria-hidden />
-            Terminar
+            {t("finish")}
           </button>
         </div>
 
@@ -306,7 +318,7 @@ export function FocusTimer() {
             ))}
           </span>
           <span className="text-2xs font-semibold tabular-nums text-muted">
-            {completed} de {BLOCKS_PER_SET}
+            {t("setProgress", { done: completed, total: BLOCKS_PER_SET })}
           </span>
         </div>
 
@@ -322,12 +334,13 @@ export function FocusTimer() {
 
 /** How far the day's tracked time has got you against your own estimate. */
 function TaskProgress({ task }: { task: Task }) {
+  const t = useTranslations("focus");
   const actual = task.actual_time_min ?? 0;
   const estimate = task.time_estimate_min;
   if (!estimate) {
     return (
       <p className="mt-1.5 text-2xs text-subtle">
-        {actual > 0 ? `${formatMinutes(actual)} trabajadas · sin estimar` : "Sin estimar"}
+        {actual > 0 ? t("workedUnestimated", { time: formatMinutes(actual) }) : t("unestimated")}
       </p>
     );
   }
@@ -343,7 +356,10 @@ function TaskProgress({ task }: { task: Task }) {
         ))}
       </span>
       <span className="text-2xs tabular-nums text-muted">
-        {formatMinutes(actual)} de {formatMinutes(estimate)} estimada
+        {t("workedOfEstimate", {
+          actual: formatMinutes(actual),
+          estimate: formatMinutes(estimate),
+        })}
       </span>
     </div>
   );
@@ -364,16 +380,17 @@ function FocusSidebar({
   onPick: (id: string) => void;
   channels: Channel[];
 }) {
-  const estimatedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
-  const actualMin = tasks.reduce((s, t) => s + (t.actual_time_min ?? 0), 0);
+  const t = useTranslations("focus");
+  const estimatedMin = tasks.reduce((sum, task) => sum + (task.time_estimate_min ?? 0), 0);
+  const actualMin = tasks.reduce((sum, task) => sum + (task.actual_time_min ?? 0), 0);
   const max = Math.max(estimatedMin, actualMin, 1);
 
   return (
     <aside className="flex flex-col gap-3 lg:sticky lg:top-6">
       <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-soft">
-        <h2 className="text-xs font-bold text-fg">Cola de foco</h2>
+        <h2 className="text-xs font-bold text-fg">{t("queue")}</h2>
         {tasks.length === 0 ? (
-          <p className="mt-2 text-2xs text-subtle">No te queda nada pendiente para hoy.</p>
+          <p className="mt-2 text-2xs text-subtle">{t("queueEmpty")}</p>
         ) : (
           <ul className="mt-2.5 flex flex-col gap-1.5">
             {tasks.slice(0, 6).map((t) => {
@@ -411,12 +428,12 @@ function FocusSidebar({
 
       {(estimatedMin > 0 || actualMin > 0) && (
         <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-soft">
-          <h2 className="text-xs font-bold text-fg">Estimado vs. real hoy</h2>
+          <h2 className="text-xs font-bold text-fg">{t("estimateVsActual")}</h2>
           <div className="mt-2.5 flex flex-col gap-2">
             {(
               [
-                ["Estimado", estimatedMin, "bg-primary/45"],
-                ["Real", actualMin, "bg-primary"],
+                [t("estimatedBar"), estimatedMin, "bg-primary/45"],
+                [t("actualBar"), actualMin, "bg-primary"],
               ] as const
             ).map(([label, value, tone]) => (
               <div key={label}>
@@ -452,6 +469,7 @@ function TaskPicker({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const t = useTranslations("focus");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
@@ -481,7 +499,7 @@ function TaskPicker({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Tarea en la que te concentrás"
+        aria-label={t("pickTask")}
         className={cn(
           "flex w-full cursor-pointer items-center gap-2.5 rounded-xl border bg-surface px-3.5 py-2.5 text-left text-sm shadow-soft transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
           open ? "border-primary" : "border-border hover:bg-surface-2",
@@ -502,7 +520,7 @@ function TaskPicker({
             )}
           </>
         ) : (
-          <span className="min-w-0 flex-1 truncate text-muted">¿En qué te concentrás?</span>
+          <span className="min-w-0 flex-1 truncate text-muted">{t("pickTaskPrompt")}</span>
         )}
         <ChevronDown
           className={cn("h-4 w-4 shrink-0 text-muted transition-transform", open && "rotate-180")}
@@ -535,13 +553,13 @@ function TaskPicker({
                   className="h-2.5 w-2.5 shrink-0 rounded-full border border-border"
                   aria-hidden
                 />
-                <span className="min-w-0 flex-1 truncate">Sin tarea</span>
+                <span className="min-w-0 flex-1 truncate">{t("noTask")}</span>
                 {!value && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
               </button>
             </li>
 
             {tasks.length === 0 && (
-              <li className="px-2.5 py-2 text-sm text-subtle">No tenés tareas para hoy.</li>
+              <li className="px-2.5 py-2 text-sm text-subtle">{t("noTasksToday")}</li>
             )}
 
             {tasks.map((t) => {

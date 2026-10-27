@@ -1,23 +1,15 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { and, asc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import {
-  accounts,
-  channels,
-  households,
-  profiles,
-  sessions,
-  users,
-  verificationTokens,
-} from "@/lib/db/schema";
-
-const DEFAULT_CHANNELS = [
-  { name: "Trabajo", color: "#0d9488", icon: "briefcase" },
-  { name: "Hogar", color: "#ea580c", icon: "home" },
-  { name: "Personal", color: "#7c3aed", icon: "sparkles" },
-];
+import { accounts, profiles, sessions, users, verificationTokens } from "@/lib/db/schema";
+import { provisionNewUser } from "@/lib/household-provisioning";
+import { setLocaleCookie } from "@/lib/actions/locale";
+import { toLocale } from "@/lib/locale";
+import { resolveAccess } from "@/lib/billing";
+import { billingFacts } from "@/lib/db/queries/subscriptions";
+import { isBillingEnabled } from "@/lib/billing-config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -45,12 +37,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ session, user }) {
       const [profile] = await db
-        .select({ householdId: profiles.household_id })
+        .select({ householdId: profiles.household_id, locale: profiles.locale })
         .from(profiles)
         .where(eq(profiles.id, user.id));
 
       session.user.id = user.id;
       session.householdId = profile?.householdId ?? null;
+      session.locale = toLocale(profile?.locale);
+
+      // Resolved here so the proxy can gate on it without a database round trip
+      // of its own — it runs on every request, including every asset that slips
+      // through the matcher. One extra query on a callback that was already
+      // hitting the database is the cheap version of that.
+      //
+      // Two cases fall through to "open": no household, which means provisioning
+      // has not finished, and billing switched off, which means there is nowhere
+      // to pay yet. Bouncing a brand-new sign-up to a paywall a millisecond
+      // before their trial row exists — or to one with no checkout behind it —
+      // is worse than a day of free use.
+      const facts =
+        isBillingEnabled() && profile?.householdId ? await billingFacts(profile.householdId) : null;
+      session.access = facts
+        ? resolveAccess(facts)
+        : {
+            allowed: true,
+            source: "none",
+            until: null,
+            trialDaysLeft: null,
+            paymentFailing: false,
+          };
       return session;
     },
     /**
@@ -61,6 +76,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * returns a refresh_token on every sign-in, so persist it ourselves.
      */
     async signIn({ user, account }) {
+      // Re-point the rendering cookie at whatever this account chose, and
+      // refresh its expiry. This is what makes the preference travel: sign in
+      // on a new phone and the column, not that browser, decides the language.
+      if (user.id) {
+        const [profile] = await db
+          .select({ locale: profiles.locale })
+          .from(profiles)
+          .where(eq(profiles.id, user.id));
+        // Never block a sign-in over a display preference.
+        await setLocaleCookie(toLocale(profile?.locale)).catch(() => {});
+      }
+
       if (account?.provider === "google" && account.refresh_token && user.id) {
         await db
           .update(accounts)
@@ -82,39 +109,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     /**
      * Ported from Supabase's `handle_new_user` trigger. Fires exactly once,
-     * right after the Adapter inserts a brand-new user row. This app is
-     * permanently a 2-person household — every new sign-in joins whichever
-     * household already exists (creating one with default channels only the
-     * very first time, i.e. never in practice post-migration).
+     * right after the Adapter inserts a brand-new user row.
+     *
+     * Every new account gets a household of its own. The only way into someone
+     * else's is a standing invite addressed to this email — an explicit act by
+     * someone already inside.
+     *
+     * This used to join whichever household was oldest, on the assumption that
+     * there would only ever be one. That assumption held for exactly two users;
+     * a third sign-up would have landed inside their data.
      */
     async createUser({ user }) {
       if (!user.id) return;
-
-      let [household] = await db
-        .select({ id: households.id })
-        .from(households)
-        .orderBy(asc(households.created_at))
-        .limit(1);
-
-      if (!household) {
-        [household] = await db.insert(households).values({}).returning({ id: households.id });
-        await db.insert(channels).values(
-          DEFAULT_CHANNELS.map((c, i) => ({
-            household_id: household.id,
-            owner_id: user.id!,
-            name: c.name,
-            color: c.color,
-            icon: c.icon,
-            sort_order: i,
-          })),
-        );
-      }
-
-      await db.insert(profiles).values({
+      await provisionNewUser({
         id: user.id,
-        household_id: household.id,
-        display_name: user.name ?? user.email?.split("@")[0] ?? "",
-        avatar_url: user.image ?? null,
+        email: user.email,
+        name: user.name,
+        image: user.image,
       });
     },
   },

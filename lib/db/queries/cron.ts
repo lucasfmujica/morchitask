@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { profiles, pushSubscriptions, tasks } from "@/lib/db/schema";
 import type { NotificationPrefs } from "@/lib/queries/types";
+import { toLocale } from "@/lib/locale";
 
 /**
  * System-wide reads/writes for the cron jobs (daily plan push, task reminders).
@@ -15,6 +16,19 @@ export async function profileNotificationPrefs() {
     .select({ id: profiles.id, prefs: profiles.notification_prefs })
     .from(profiles);
   return new Map(rows.map((r) => [r.id, r.prefs as NotificationPrefs]));
+}
+
+/**
+ * Everyone's chosen language, for the crons.
+ *
+ * A push is the one place the server picks words for someone else with no
+ * request of theirs to read a cookie from, so the column is the only source
+ * there is. Returned as a map so a sweep over every household costs one query,
+ * not one per recipient.
+ */
+export async function profileLocales() {
+  const rows = await db.select({ id: profiles.id, locale: profiles.locale }).from(profiles);
+  return new Map(rows.map((r) => [r.id, toLocale(r.locale)]));
 }
 
 export async function subscriptionsForProfiles(profileIds: string[]) {

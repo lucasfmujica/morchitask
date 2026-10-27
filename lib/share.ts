@@ -38,7 +38,14 @@ function clip(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
 }
 
-export function buildSharedTask(input: SharedInput): SharedTask {
+/** Titles for shares with no words of their own — the route passes them in
+ *  the person's language; these are the Spanish defaults. */
+export type ShareFallbackTitles = { filesOnly: string; empty: string };
+
+export function buildSharedTask(
+  input: SharedInput,
+  fallbacks: ShareFallbackTitles = { filesOnly: FILES_ONLY_TITLE, empty: EMPTY_SHARE_TITLE },
+): SharedTask {
   const title = oneLine(input.title);
   const text = (input.text ?? "").trim();
   const url = oneLine(input.url);
@@ -48,8 +55,8 @@ export function buildSharedTask(input: SharedInput): SharedTask {
   const taskTitle = source
     ? clip(source, MAX_SHARED_TITLE)
     : (input.fileCount ?? 0) > 0
-      ? FILES_ONLY_TITLE
-      : EMPTY_SHARE_TITLE;
+      ? fallbacks.filesOnly
+      : fallbacks.empty;
 
   // Notes keep whatever the title didn't already say in full: the text when it
   // wasn't the title (or got cut short), and the link unless it's already in

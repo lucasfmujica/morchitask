@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
+import { getLocale, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
 import { Providers } from "./providers";
@@ -11,9 +12,17 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-export const metadata: Metadata = {
+/**
+ * `description` is the one piece of metadata that is prose, so it follows the
+ * reader's language. The rest is the product's name, which does not.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth");
+  return { ...metadata, description: t("appDescription") };
+}
+
+const metadata: Metadata = {
   title: "Morchitask",
-  description: "Planificá tu día con calma. Una app de productividad para organizarse juntos.",
   applicationName: "Morchitask",
   appleWebApp: {
     capable: true,
@@ -40,15 +49,24 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // `lang` has to follow the chosen language, not sit on "es": screen readers
+  // pick pronunciation from it, and so does the browser's translate prompt.
+  const locale = await getLocale();
+
   return (
-    <html lang="es" className={dmSans.variable}>
+    <html lang={locale} className={dmSans.variable}>
       <body className="bg-bg text-fg antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* No message provider here on purpose. Mounted this high it has no
+            route to scope itself to, so it serializes the whole catalog into
+            every page — including the landing, where a stranger downloaded the
+            wording of the Pomodoro timer before deciding to sign up. Each route
+            group mounts its own with the namespaces it uses. */}
         <Providers>{children}</Providers>
         <AgentationProvider />
       </body>

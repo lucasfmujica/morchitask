@@ -24,7 +24,7 @@ export function useDisconnectSpotify() {
 // A short-lived access token for the Web Playback SDK / Web API, cached in memory.
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-/** Get a valid Spotify access token (from the edge function), cached until ~1 min before expiry. */
+/** Get a valid Spotify access token (via `/api/spotify/token`), cached until ~1 min before expiry. */
 export async function getSpotifyAccessToken(): Promise<string | null> {
   if (cachedToken && cachedToken.expiresAt - 60_000 > Date.now()) return cachedToken.token;
   const res = await fetch("/api/spotify/token", { method: "POST" });

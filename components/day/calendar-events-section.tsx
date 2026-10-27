@@ -6,6 +6,7 @@ import { useMe } from "@/lib/queries/profiles";
 import { useCalendarEvents } from "@/lib/queries/calendar";
 import { DEFAULT_TIMEZONE, minutesFromMidnight, timeInTimeZone } from "@/lib/date";
 import type { Task } from "@/lib/queries/types";
+import { useTranslations } from "next-intl";
 
 const TZ = DEFAULT_TIMEZONE;
 
@@ -16,6 +17,7 @@ const TZ = DEFAULT_TIMEZONE;
  * represents them). Purely informational: no toggling, editing or dragging.
  */
 export function CalendarEventsSection({ date, tasks }: { date: string; tasks: Task[] }) {
+  const t = useTranslations("day");
   const connected = !!useMe().data?.google_calendar_connected;
   const calendarQ = useCalendarEvents(date, connected);
 
@@ -41,7 +43,7 @@ export function CalendarEventsSection({ date, tasks }: { date: string; tasks: Ta
     <section className="flex flex-col gap-1.5">
       <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-subtle">
         <CalendarClock className="h-3.5 w-3.5" aria-hidden />
-        De tu calendario
+        {t("fromCalendar")}
       </h2>
       <ul className="flex flex-col gap-1.5">
         {events.map((e) => {
@@ -60,7 +62,7 @@ export function CalendarEventsSection({ date, tasks }: { date: string; tasks: Ta
               <span className="min-w-0 flex-1 truncate text-sm text-muted">{e.title}</span>
               <span className="shrink-0 text-xs tabular-nums text-subtle">
                 {e.allDay
-                  ? "todo el día"
+                  ? t("allDayEvent")
                   : e.start
                     ? `${timeInTimeZone(e.start, TZ)}${e.end ? `–${timeInTimeZone(e.end, TZ)}` : ""}`
                     : ""}

@@ -11,6 +11,7 @@ import { DueDateBadge } from "./due-date-badge";
 import { MoveToDayMenu } from "./move-to-day-menu";
 import { OwnerAvatar } from "./owner-avatar";
 import type { useTaskTimer } from "./use-task-timer";
+import { useTranslations } from "next-intl";
 
 const TZ = DEFAULT_TIMEZONE;
 
@@ -51,6 +52,7 @@ export function TaskMetaRow({
   onDelete: () => void;
   className?: string;
 }) {
+  const t = useTranslations("tasks");
   return (
     <div className={cn("flex min-w-0 items-center gap-2 text-2xs text-muted", className)}>
       {/* When and what. */}
@@ -66,14 +68,14 @@ export function TaskMetaRow({
       {vis.due && task.due_date && <DueDateBadge dueDate={task.due_date} />}
       {vis.note &&
         (vis.iconOnly ? (
-          <StickyNote className="h-3 w-3 shrink-0 text-subtle" aria-label="Tiene notas" />
+          <StickyNote className="h-3 w-3 shrink-0 text-subtle" aria-label={t("hasNotes")} />
         ) : (
-          <span className="shrink-0 text-subtle">· nota</span>
+          <span className="shrink-0 text-subtle">{t("noteBadge")}</span>
         ))}
       {vis.objective && task.objective_id && (
         <ObjectiveBadge objectiveId={task.objective_id} iconOnly={vis.iconOnly} />
       )}
-      {vis.shared && <Users className="h-3 w-3 shrink-0 text-primary" aria-label="Compartida" />}
+      {vis.shared && <Users className="h-3 w-3 shrink-0 text-primary" aria-label={t("shared")} />}
       {vis.assignedBy && assignedBy && (
         <span className="shrink-0" title={`Te la asignó ${assignedBy.display_name}`}>
           <OwnerAvatar profile={assignedBy} size={14} />
@@ -90,7 +92,7 @@ export function TaskMetaRow({
           (timer.running ? (
             <button
               onClick={timer.toggle}
-              aria-label="Detener cronómetro"
+              aria-label={t("stopTimer")}
               className="inline-flex cursor-pointer items-center gap-1 rounded-pill bg-primary-soft px-1.5 py-0.5 font-semibold tabular-nums text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
               <Pause className="h-3 w-3" aria-hidden />
@@ -99,7 +101,7 @@ export function TaskMetaRow({
           ) : (
             <button
               onClick={timer.toggle}
-              aria-label="Iniciar cronómetro"
+              aria-label={t("startTimer")}
               className={cn(
                 "inline-flex cursor-pointer items-center gap-1 rounded-pill px-1 py-0.5 font-semibold transition-opacity focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
                 task.actual_time_min
@@ -116,7 +118,7 @@ export function TaskMetaRow({
         {vis.deleteButton && (
           <button
             onClick={onDelete}
-            aria-label="Eliminar tarea"
+            aria-label={t("delete")}
             className="cursor-pointer rounded text-muted opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none group-hover:opacity-100 touch:opacity-100"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden />

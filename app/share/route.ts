@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import { NextResponse, type NextRequest } from "next/server";
-import { attachmentPath, rejectionReason } from "@/lib/attachments";
+import { getTranslations } from "next-intl/server";
+import { attachmentPath, rejectionKey } from "@/lib/attachments";
 import { auth } from "@/lib/auth";
 import { addAttachment } from "@/lib/db/queries/attachments";
 import { backlogTasks, insertTask, updateTask } from "@/lib/db/queries/tasks";
@@ -48,15 +49,21 @@ export async function POST(req: NextRequest) {
 
   const files = form
     .getAll("files")
-    .filter((f): f is File => f instanceof File && rejectionReason(f) === null)
+    .filter((f): f is File => f instanceof File && rejectionKey(f) === null)
     .slice(0, MAX_SHARED_FILES);
 
-  const { title, notes } = buildSharedTask({
-    title: field(form, "title"),
-    text: field(form, "text"),
-    url: field(form, "url"),
-    fileCount: files.length,
-  });
+  // The request's own language (cookie, then Accept-Language) — the same
+  // rule every rendered page uses.
+  const t = await getTranslations("backlog");
+  const { title, notes } = buildSharedTask(
+    {
+      title: field(form, "title"),
+      text: field(form, "text"),
+      url: field(form, "url"),
+      fileCount: files.length,
+    },
+    { filesOnly: t("sharedFilesOnlyTitle"), empty: t("sharedEmptyTitle") },
+  );
 
   const backlog = await backlogTasks(householdId, userId);
   const task = await insertTask(householdId, userId, {

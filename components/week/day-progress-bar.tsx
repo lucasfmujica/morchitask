@@ -5,6 +5,7 @@ import { formatMinutes } from "@/lib/format";
 import { capacityState } from "@/lib/capacity";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /**
  * How LOADED a day is, per column in the Week view.
@@ -30,6 +31,7 @@ export function DayLoadBar({
   measuredMin?: number;
   closed?: boolean;
 }) {
+  const t = useTranslations("week");
   const { pct, over, overByMin } = capacityState(plannedMin, capacityMin);
   const empty = plannedMin === 0;
   // While over, the fill stops at the budget and the mark shows where that was
@@ -63,11 +65,11 @@ export function DayLoadBar({
         )}
       >
         {closed
-          ? `${formatMinutes(measuredMin || plannedMin)} · cerrado`
+          ? t("closed", { time: formatMinutes(measuredMin || plannedMin) })
           : empty
-            ? "Sin carga"
-            : `${formatMinutes(plannedMin)} de ${formatMinutes(capacityMin)}${
-                over ? ` · +${formatMinutes(overByMin)}` : ""
+            ? t("noLoad")
+            : `${t("loadOf", { planned: formatMinutes(plannedMin), capacity: formatMinutes(capacityMin) })}${
+                over ? t("over", { over: formatMinutes(overByMin) }) : ""
               }`}
       </p>
     </div>

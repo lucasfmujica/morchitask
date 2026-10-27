@@ -3,14 +3,9 @@
 import { isBlobUrlFor } from "@/lib/attachments";
 import { auth } from "@/lib/auth";
 import { avatarSrc, isValidAvatarPath } from "@/lib/avatars";
+import { requireSession } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/profiles";
 import type { ProfilePatch } from "@/lib/queries/types";
-
-async function requireSession() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
-}
 
 export async function getMyProfile() {
   const session = await auth();

@@ -17,9 +17,17 @@ import { useHousehold, useUpdateHouseholdName } from "@/lib/queries/households";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { ThemeSelector } from "./theme-selector";
 import { ChannelsManager } from "./channels-manager";
+import { InviteCard } from "./invite-card";
 import { NotificationsCard } from "./notifications-card";
+import { LanguageSelector } from "./language-selector";
+import { DangerZone } from "./danger-zone";
+import Link from "next/link";
+import { CreditCard } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function SettingsView() {
+  const t = useTranslations("settings");
+  const tcm = useTranslations("common");
   const qc = useQueryClient();
   const me = useMe().data;
   const updateProfile = useUpdateMyProfile();
@@ -39,12 +47,18 @@ export function SettingsView() {
     setAvatarError(null);
     const reason = avatarRejectionReason(file);
     if (reason) {
-      setAvatarError(reason);
+      setAvatarError(
+        reason === "notImage"
+          ? t("avatarNotImage")
+          : reason === "tooBig"
+            ? t("avatarTooBig", { max: "5 MB" })
+            : t("avatarEmpty"),
+      );
       return;
     }
     uploadAvatar.mutate(
       { file, userId: me.id },
-      { onError: () => setAvatarError("No se pudo subir la foto. Probá de nuevo.") },
+      { onError: () => setAvatarError(t("avatarFailed")) },
     );
   }
 
@@ -65,18 +79,18 @@ export function SettingsView() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-extrabold tracking-tight text-fg">Ajustes</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
 
       {/* Profile */}
-      <Section title="Tu perfil">
+      <Section title={t("profile")}>
         <div className="flex items-center gap-3">
           {/* Avatar with a camera badge to upload a photo */}
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
             disabled={uploadAvatar.isPending}
-            aria-label="Cambiar tu foto"
-            title="Cambiar tu foto"
+            aria-label={t("changePhoto")}
+            title={t("changePhoto")}
             className="group relative shrink-0 cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
           >
             <OwnerAvatar profile={me ?? undefined} size={44} />
@@ -103,8 +117,8 @@ export function SettingsView() {
               const v = e.target.value.trim();
               if (v && v !== me?.display_name) updateProfile.mutate({ display_name: v });
             }}
-            placeholder="Tu nombre"
-            aria-label="Tu nombre"
+            placeholder={t("yourName")}
+            aria-label={t("yourName")}
             className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
           />
         </div>
@@ -115,7 +129,7 @@ export function SettingsView() {
               onClick={() => updateProfile.mutate({ avatar_url: null })}
               className="cursor-pointer text-xs font-medium text-muted transition-colors hover:text-danger"
             >
-              Quitar foto
+              {t("removePhoto")}
             </button>
           )}
           {avatarError && <span className="text-xs text-danger">{avatarError}</span>}
@@ -123,7 +137,7 @@ export function SettingsView() {
       </Section>
 
       {/* Shared space */}
-      <Section title="Tu espacio">
+      <Section title={t("space")}>
         <input
           key={household?.id}
           defaultValue={household?.name ?? ""}
@@ -131,27 +145,31 @@ export function SettingsView() {
             const v = e.target.value.trim();
             if (v && v !== household?.name) updateHouseholdName.mutate(v);
           }}
-          placeholder="Nombre de tu espacio"
-          aria-label="Nombre de tu espacio"
+          placeholder={t("spaceName")}
+          aria-label={t("spaceName")}
           className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
-        <p className="text-xs text-muted">
-          Es el nombre del espacio que compartís con tu pareja (aparece en la barra lateral).
-        </p>
+        <p className="text-xs text-muted">{t("spaceHint")}</p>
       </Section>
 
       {/* Theme */}
-      <Section title="Apariencia">
+      <Section title={t("appearance")}>
         <ThemeSelector />
       </Section>
 
+      {/* Language */}
+      <Section title={t("language")}>
+        <LanguageSelector />
+        <p className="text-xs text-muted">{t("languageHint")}</p>
+      </Section>
+
       {/* Channels */}
-      <Section title="Categorías">
+      <Section title={t("categories")}>
         <ChannelsManager />
       </Section>
 
       {/* Integrations */}
-      <Section title="Integraciones">
+      <Section title={t("integrations")}>
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 sm:flex-row sm:items-center">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
@@ -159,28 +177,26 @@ export function SettingsView() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-fg">Google Calendar</p>
-              <p className="text-xs text-muted">
-                Ver tus eventos y mandar tus bloques de tarea al calendario (2 vías).
-              </p>
+              <p className="text-xs text-muted">{t("calendarPitch")}</p>
             </div>
           </div>
           {connected ? (
             <div className="flex flex-wrap items-center gap-2 pl-12 sm:shrink-0 sm:pl-0">
               <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
-                <Check className="h-3 w-3" aria-hidden /> Conectado
+                <Check className="h-3 w-3" aria-hidden /> {t("connected")}
               </span>
               <button
                 onClick={connectCalendar}
                 className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-                title="Volvé a conectar para activar la sincronización en dos vías"
+                title={t("reconnectHint")}
               >
-                Reconectar
+                {t("reconnect")}
               </button>
               <button
                 onClick={disconnectCalendar}
                 className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-danger"
               >
-                Desconectar
+                {t("disconnect")}
               </button>
             </div>
           ) : (
@@ -188,7 +204,7 @@ export function SettingsView() {
               onClick={connectCalendar}
               className="ml-12 w-fit cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover sm:ml-0 sm:shrink-0"
             >
-              Conectar
+              {t("connect")}
             </button>
           )}
         </div>
@@ -200,15 +216,13 @@ export function SettingsView() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-fg">Spotify</p>
-              <p className="text-xs text-muted">
-                Reproducí tus playlists en la pantalla de Foco. Requiere Spotify Premium.
-              </p>
+              <p className="text-xs text-muted">{t("spotifyPitch")}</p>
             </div>
           </div>
           {spotifyConnected ? (
             <div className="flex flex-wrap items-center gap-2 pl-12 sm:shrink-0 sm:pl-0">
               <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
-                <Check className="h-3 w-3" aria-hidden /> Conectado
+                <Check className="h-3 w-3" aria-hidden /> {t("connected")}
               </span>
               <button
                 onClick={() =>
@@ -216,7 +230,7 @@ export function SettingsView() {
                 }
                 className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-danger"
               >
-                Desconectar
+                {t("disconnect")}
               </button>
             </div>
           ) : (
@@ -224,15 +238,44 @@ export function SettingsView() {
               onClick={connectSpotify}
               className="ml-12 w-fit cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover sm:ml-0 sm:shrink-0"
             >
-              Conectar
+              {t("connect")}
             </button>
           )}
         </div>
       </Section>
 
+      {/* Sharing */}
+      <Section title={t("space")}>
+        <InviteCard />
+      </Section>
+
       {/* Notifications */}
-      <Section title="Notificaciones">
+      <Section title={t("notifications")}>
         <NotificationsCard />
+      </Section>
+
+      {/* Plan and billing live on their own page — this is the way in. Not a
+          card with the price on it: that number belongs in one place, and
+          duplicating it here is how the two drift apart. */}
+      <Section title={t("billing")}>
+        <Link
+          href="/billing"
+          className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 transition-colors hover:bg-surface-2"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+            <CreditCard className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-fg">{t("billingTitle")}</p>
+            <p className="text-xs text-muted">{t("billingDesc")}</p>
+          </div>
+        </Link>
+      </Section>
+
+      {/* Data rights. Last, because it is where you leave — and visible,
+          because the privacy policy says it is here. */}
+      <Section title={t("yourData")}>
+        <DangerZone />
       </Section>
 
       <button
@@ -240,7 +283,7 @@ export function SettingsView() {
         className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
       >
         <LogOut className="h-4 w-4" aria-hidden />
-        Cerrar sesión
+        {tcm("signOut")}
       </button>
     </div>
   );

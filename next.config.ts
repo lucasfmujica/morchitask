@@ -1,8 +1,15 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
+import createNextIntlPlugin from "next-intl/plugin";
+import { securityHeaders } from "./lib/security-headers";
+
+// Points next-intl at i18n/request.ts, which resolves the language per request.
+const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
 };
 
 // Serwist injects a `webpack` config to build the service worker. Next 16's dev
@@ -14,5 +21,5 @@ const isDev = process.env.NODE_ENV === "development";
 // Only construct/apply Serwist for the production build. Calling withSerwistInit
 // in dev (Turbopack) emits a noisy warning, so we skip it entirely.
 export default isDev
-  ? nextConfig
-  : withSerwistInit({ swSrc: "app/sw.ts", swDest: "public/sw.js" })(nextConfig);
+  ? withNextIntl(nextConfig)
+  : withNextIntl(withSerwistInit({ swSrc: "app/sw.ts", swDest: "public/sw.js" })(nextConfig));

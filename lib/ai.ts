@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/locale";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import {
   BreakdownOutput,
@@ -38,16 +39,27 @@ function getClient(): Anthropic {
   return client;
 }
 
-const BREAKDOWN_SYSTEM = `Sos un asistente de productividad. Te paso una tarea (título y notas) y la desglosás en un checklist de pasos concretos.
+/** How each language is named to Claude, so it answers in the reader's one. */
+const ANSWER_IN: Record<Locale, string> = {
+  es: "Español rioplatense",
+  en: "English (even though these instructions are in Spanish)",
+};
+
+const breakdownSystem = (
+  locale: Locale,
+) => `Sos un asistente de productividad. Te paso una tarea (título y notas) y la desglosás en un checklist de pasos concretos.
 
 - Entre 3 y 8 pasos, en el orden en que se harían.
 - Cada paso empieza con un verbo en infinitivo ("Llamar a…", "Comparar…") y entra en una línea (máx. ~80 caracteres).
-- Español rioplatense, sin numerar ni usar viñetas.
+- Idioma: ${ANSWER_IN[locale]}. Sin numerar ni usar viñetas.
 - No repitas pasos que ya estén en el checklist actual.
 - Si la tarea es muy simple, devolvé solo los pasos que realmente aporten.`;
 
 /** Break a task down into checklist items. Returns 0–8 cleaned items. */
-export async function breakdownTask(input: BreakdownInput): Promise<string[]> {
+export async function breakdownTask(
+  input: BreakdownInput,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<string[]> {
   const anthropic = getClient();
   const existing = input.existing.length
     ? `\n\nChecklist actual:\n${input.existing.map((t) => `- ${t}`).join("\n")}`
@@ -58,7 +70,7 @@ export async function breakdownTask(input: BreakdownInput): Promise<string[]> {
     anthropic.messages.parse({
       model: BREAKDOWN_MODEL,
       max_tokens: 2000,
-      system: BREAKDOWN_SYSTEM,
+      system: breakdownSystem(locale),
       output_config: { effort: "low", format: zodOutputFormat(BreakdownOutput) },
       messages: [{ role: "user", content: `Tarea: ${input.title}${notes}${existing}` }],
     }),
@@ -67,17 +79,22 @@ export async function breakdownTask(input: BreakdownInput): Promise<string[]> {
   return cleanBreakdown(res.parsed_output.items, input.existing);
 }
 
-const PLAN_SYSTEM = `Sos un asistente que arma la agenda del día. Te paso las tareas pendientes (con su índice y los minutos que faltan agendar), los horarios ya ocupados, la ventana disponible y la capacidad de la persona.
+const planSystem = (
+  locale: Locale,
+) => `Sos un asistente que arma la agenda del día. Te paso las tareas pendientes (con su índice y los minutos que faltan agendar), los horarios ya ocupados, la ventana disponible y la capacidad de la persona.
 
 Proponé bloques de tiempo:
 - Un bloque por tarea como máximo; "task" es el índice de la tarea, "start" la hora de inicio en formato HH:MM (24 h), "durationMin" los minutos.
 - Nunca pises un horario ocupado ni salgas de la ventana.
 - No superes la capacidad que queda; si no entra todo, dejá afuera lo menos importante.
 - Poné lo que más requiere foco temprano, agrupá lo corto y dejá 5–10 min de aire entre bloques largos cuando haya lugar.
-- En "note" explicá el criterio en una frase corta, en español rioplatense.`;
+- En "note" explicá el criterio en una frase corta. Idioma de "note": ${ANSWER_IN[locale]}.`;
 
 /** Ask Claude for a schedule and return only what fits without overlaps. */
-export async function planDay(input: PlanInput): Promise<PlanProposal> {
+export async function planDay(
+  input: PlanInput,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<PlanProposal> {
   const anthropic = getClient();
   const pending = input.tasks.filter((t) => t.remainingMin > 0);
   const { capacityLeftMin } = input;
@@ -104,7 +121,7 @@ export async function planDay(input: PlanInput): Promise<PlanProposal> {
     anthropic.messages.parse({
       model: PLAN_MODEL,
       max_tokens: 4000,
-      system: PLAN_SYSTEM,
+      system: planSystem(locale),
       output_config: { effort: "low", format: zodOutputFormat(PlanOutput) },
       messages: [{ role: "user", content: prompt }],
     }),

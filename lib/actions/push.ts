@@ -30,5 +30,5 @@ export async function subscribeToPush(sub: { endpoint: string; p256dh: string; a
 export async function unsubscribeFromPush(endpoint: string) {
   const session = await auth();
   if (!session?.user.id) throw new Error("unauthorized");
-  await data.deleteSubscription(endpoint);
+  await data.deleteSubscription(session.user.id, endpoint);
 }

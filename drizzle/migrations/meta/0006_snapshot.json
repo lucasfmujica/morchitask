@@ -1,6 +1,6 @@
 {
-  "id": "93deffe6-86fe-4d38-b967-7ff35a9a5a5c",
-  "prevId": "bfcb844e-4bef-4d65-8cc1-7b82d25ba9c3",
+  "id": "d04de40b-2755-44fe-9302-4728e0dd038c",
+  "prevId": "3b75f74b-321b-439d-b1ca-1a02e5efbcdf",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -345,6 +345,126 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.household_invites": {
+      "name": "household_invites",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "household_id": {
+          "name": "household_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invited_by": {
+          "name": "invited_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "household_invites_email_idx": {
+          "name": "household_invites_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"household_invites\".\"accepted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "household_invites_household_idx": {
+          "name": "household_invites_household_idx",
+          "columns": [
+            {
+              "expression": "household_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "household_invites_household_id_households_id_fk": {
+          "name": "household_invites_household_id_households_id_fk",
+          "tableFrom": "household_invites",
+          "tableTo": "households",
+          "columnsFrom": ["household_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "household_invites_invited_by_profiles_id_fk": {
+          "name": "household_invites_invited_by_profiles_id_fk",
+          "tableFrom": "household_invites",
+          "tableTo": "profiles",
+          "columnsFrom": ["invited_by"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "household_invites_token_unique": {
+          "name": "household_invites_token_unique",
+          "nullsNotDistinct": false,
+          "columns": ["token"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.households": {
       "name": "households",
       "schema": "",
@@ -526,6 +646,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'Sin nombre'"
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'es'"
         },
         "color": {
           "name": "color",
@@ -752,19 +879,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "repeat_every": {
-          "name": "repeat_every",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "month_day": {
-          "name": "month_day",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
-        },
         "time_estimate_min": {
           "name": "time_estimate_min",
           "type": "integer",
@@ -855,20 +969,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "recurring_freq_check": {
-          "name": "recurring_freq_check",
-          "value": "\"recurring_templates\".\"freq\" in ('daily', 'weekly', 'monthly')"
-        },
-        "recurring_repeat_every_check": {
-          "name": "recurring_repeat_every_check",
-          "value": "\"recurring_templates\".\"repeat_every\" between 1 and 52"
-        },
-        "recurring_month_day_check": {
-          "name": "recurring_month_day_check",
-          "value": "\"recurring_templates\".\"month_day\" is null or \"recurring_templates\".\"month_day\" between 1 and 31"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.session": {
@@ -2225,107 +2326,6 @@
         }
       },
       "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.weekly_notes": {
-      "name": "weekly_notes",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "household_id": {
-          "name": "household_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "week_start": {
-          "name": "week_start",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "wins": {
-          "name": "wins",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lessons": {
-          "name": "lessons",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_focus": {
-          "name": "next_focus",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "weekly_notes_household_id_households_id_fk": {
-          "name": "weekly_notes_household_id_households_id_fk",
-          "tableFrom": "weekly_notes",
-          "tableTo": "households",
-          "columnsFrom": ["household_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "weekly_notes_owner_id_profiles_id_fk": {
-          "name": "weekly_notes_owner_id_profiles_id_fk",
-          "tableFrom": "weekly_notes",
-          "tableTo": "profiles",
-          "columnsFrom": ["owner_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "weekly_notes_owner_id_week_start_unique": {
-          "name": "weekly_notes_owner_id_week_start_unique",
-          "nullsNotDistinct": false,
-          "columns": ["owner_id", "week_start"]
-        }
-      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

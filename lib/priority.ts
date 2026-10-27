@@ -18,13 +18,24 @@ export const TASK_PRIORITIES = ["high", "medium", "low"] as const;
 /** Display order of the groups: Alta → Media → Baja → Sin prioridad. */
 export const PRIORITY_GROUPS: readonly PriorityKey[] = ["high", "medium", "low", null];
 
-export const PRIORITY_LABEL: Record<TaskPriority, string> = {
-  high: "Alta",
-  medium: "Media",
-  low: "Baja",
+/**
+ * Catalog keys, not words. The labels used to live here as Spanish strings,
+ * which also baked in a convention: the badge lowercased them mid-sentence
+ * ("prioridad alta"), and English capitalizes instead ("High priority"). Both
+ * the words and that shape now come from the message catalog.
+ */
+export const PRIORITY_LABEL_KEY: Record<TaskPriority, string> = {
+  high: "priorityHigh",
+  medium: "priorityMedium",
+  low: "priorityLow",
 };
 
-export const NO_PRIORITY_LABEL = "Sin prioridad";
+export const NO_PRIORITY_LABEL_KEY = "noPriority";
+
+/** The catalog key for any priority, including "none". */
+export function priorityLabelKey(priority: PriorityKey): string {
+  return priority === null ? NO_PRIORITY_LABEL_KEY : PRIORITY_LABEL_KEY[priority];
+}
 
 /** Dot/rail colours, as CSS vars from app/globals.css (usable in inline styles). */
 export const PRIORITY_DOT: Record<TaskPriority, string> = {
@@ -42,10 +53,6 @@ export function priorityOf(task: Pick<Task, "priority">): PriorityKey {
 
 export function priorityRank(priority: PriorityKey): number {
   return priority === null ? NO_PRIORITY_RANK : RANK[priority];
-}
-
-export function priorityLabel(priority: PriorityKey): string {
-  return priority === null ? NO_PRIORITY_LABEL : PRIORITY_LABEL[priority];
 }
 
 /** Runtime guard — the value reaches `db.update().set()` from the client. */

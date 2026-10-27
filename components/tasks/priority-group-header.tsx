@@ -1,8 +1,9 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import { priorityDropId, priorityLabel, PRIORITY_DOT, type PriorityKey } from "@/lib/priority";
+import { priorityDropId, priorityLabelKey, PRIORITY_DOT, type PriorityKey } from "@/lib/priority";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /**
  * Separator above each priority group. It doubles as a drop target so you can
@@ -25,8 +26,9 @@ export function PriorityGroupHeader({
   /** Tighter styling for the narrow Week columns. */
   compact?: boolean;
 }) {
+  const t = useTranslations("tasks");
   const { setNodeRef, isOver } = useDroppable({ id: priorityDropId(scope, priority) });
-  const label = priorityLabel(priority);
+  const label = t(priorityLabelKey(priority));
 
   if (empty) {
     return (
@@ -40,7 +42,7 @@ export function PriorityGroupHeader({
             : "border-border/70 text-subtle/70",
         )}
       >
-        Soltá acá para {label}
+        {t("dropHereFor", { label })}
       </div>
     );
   }

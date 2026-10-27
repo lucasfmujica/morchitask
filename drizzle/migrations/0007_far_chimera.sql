@@ -1,0 +1,1 @@
+ALTER TABLE "daily_notes" ADD COLUMN "carried_over_at" timestamp with time zone;

@@ -40,15 +40,43 @@
     {
       "idx": 5,
       "version": "7",
-      "when": 1793138263087,
-      "tag": "0005_routine_recurrence",
+      "when": 1787674727095,
+      "tag": "0005_perfect_silvermane",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "7",
+      "when": 1787677439422,
+      "tag": "0006_complex_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788273121192,
+      "tag": "0007_far_chimera",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788273966483,
+      "tag": "0008_common_hiroim",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793138263087,
+      "tag": "0009_routine_recurrence",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
       "when": 1793138459213,
-      "tag": "0006_weekly_notes",
+      "tag": "0010_weekly_notes",
       "breakpoints": true
     }
   ]

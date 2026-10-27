@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Channel } from "@/lib/queries/types";
+import { withIntl } from "@/test/intl";
 import { TaskComposer } from "./task-composer";
 
 const channels = [
@@ -11,7 +12,7 @@ const channels = [
 
 function setup() {
   const onSubmit = vi.fn();
-  render(<TaskComposer channels={channels} onSubmit={onSubmit} />);
+  render(withIntl(<TaskComposer channels={channels} onSubmit={onSubmit} />));
   return { onSubmit, input: screen.getByRole("textbox", { name: "Nueva tarea" }) };
 }
 
