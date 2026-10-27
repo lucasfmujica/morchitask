@@ -1,4 +1,4 @@
-import { parseISO } from "date-fns";
+import { differenceInCalendarDays, getDaysInMonth, parseISO, startOfWeek } from "date-fns";
 import { addDays, type DayISO } from "@/lib/date";
 
 /**
@@ -18,17 +18,52 @@ function isoWeekday(day: DayISO): number {
   return dow === 0 ? 7 : dow;
 }
 
-/** Whether `day` is a day the routine is supposed to run. */
-export function isExpectedOccurrence(
-  freq: string,
-  weekdays: number[] | null,
-  day: DayISO,
-): boolean {
-  if (freq === "weekly") {
-    if (!weekdays || weekdays.length === 0) return false;
-    return weekdays.includes(isoWeekday(day));
+/** The recurrence fields of a routine template (see recurring_templates). */
+export type Recurrence = {
+  freq: string;
+  weekdays: number[] | null;
+  /** Every N days / weeks / months, counted from `active_from`. Default 1. */
+  repeat_every?: number | null;
+  /** Monthly: day of the month; past a short month's end → its last day. */
+  month_day?: number | null;
+  /** Anchor for "every N" and the monthly fallback day. */
+  active_from?: DayISO | null;
+};
+
+/**
+ * Whether `day` is a day the routine is supposed to run. Mirrors the SQL in
+ * `ensure_day_materialized` (drizzle/migrations/0005) — keep both in sync.
+ */
+export function isExpectedOccurrence(rule: Recurrence, day: DayISO): boolean {
+  const every = Math.max(1, rule.repeat_every ?? 1);
+  const from = rule.active_from ?? null;
+  if (from && day < from) return false;
+
+  if (rule.freq === "weekly") {
+    if (!rule.weekdays || rule.weekdays.length === 0) return false;
+    if (!rule.weekdays.includes(isoWeekday(day))) return false;
+    if (every === 1 || !from) return true;
+    const weeks = differenceInCalendarDays(weekStart(day), weekStart(from)) / 7;
+    return weeks % every === 0;
   }
-  return true; // daily (and any unknown freq) runs every day
+
+  if (rule.freq === "monthly") {
+    const d = parseISO(day);
+    const anchorDay = rule.month_day ?? (from ? parseISO(from).getDate() : 1);
+    if (d.getDate() !== Math.min(anchorDay, getDaysInMonth(d))) return false;
+    if (every === 1 || !from) return true;
+    const f = parseISO(from);
+    const months = (d.getFullYear() - f.getFullYear()) * 12 + d.getMonth() - f.getMonth();
+    return months % every === 0;
+  }
+
+  // daily (and any unknown freq) runs every day — or every N days
+  if (every === 1 || !from) return true;
+  return differenceInCalendarDays(parseISO(day), parseISO(from)) % every === 0;
+}
+
+function weekStart(day: DayISO): Date {
+  return startOfWeek(parseISO(day), { weekStartsOn: 1 });
 }
 
 /**
@@ -38,8 +73,7 @@ export function isExpectedOccurrence(
  * stable until the day actually ends.
  */
 export function currentStreak(
-  freq: string,
-  weekdays: number[] | null,
+  rule: Recurrence,
   completed: ReadonlySet<DayISO>,
   today: DayISO,
   maxLookbackDays = 366,
@@ -49,7 +83,7 @@ export function currentStreak(
   let day = today;
 
   for (let i = 0; i < maxLookbackDays; i++) {
-    if (isExpectedOccurrence(freq, weekdays, day)) {
+    if (isExpectedOccurrence(rule, day)) {
       if (completed.has(day)) {
         streak++;
       } else if (!sawExpected && day === today) {
@@ -73,8 +107,7 @@ export type OccurrenceCell = { date: DayISO; done: boolean };
  * when it's an expected day.
  */
 export function recentOccurrences(
-  freq: string,
-  weekdays: number[] | null,
+  rule: Recurrence,
   completed: ReadonlySet<DayISO>,
   today: DayISO,
   count: number,
@@ -84,7 +117,7 @@ export function recentOccurrences(
   let day = today;
 
   for (let i = 0; i < maxLookbackDays && cells.length < count; i++) {
-    if (isExpectedOccurrence(freq, weekdays, day)) {
+    if (isExpectedOccurrence(rule, day)) {
       cells.push({ date: day, done: completed.has(day) });
     }
     day = addDays(day, -1);

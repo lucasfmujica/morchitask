@@ -9,6 +9,8 @@ export type RoutineInput = Partial<
     | "notes"
     | "freq"
     | "weekdays"
+    | "repeat_every"
+    | "month_day"
     | "time_estimate_min"
     | "active_from"
     | "active_until"

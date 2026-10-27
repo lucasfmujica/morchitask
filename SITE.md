@@ -153,6 +153,10 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 
 ## Cambios recientes
 
+- 2026-10-27: **Las rutinas ahora pueden repetirse una vez por mes o "cada tantos" días/semanas.** En Rutinas, además de **Diaria** y **Semanal** hay **Mensual**, y al lado un contador **"cada [1] semana"** que se sube con el **+**. Ejemplos: _"el 10 de cada mes"_ para pagar el alquiler, _"cada 2 semanas los lunes"_ para cortar el pasto, _"cada 3 días"_ para regar. Si elegís un día que no existe en todos los meses (29, 30) cae el último día de los meses más cortos; la opción **"último día"** es siempre el final del mes. Las cuentas arrancan desde el día en que creaste la rutina, y las rachas 🔥 entienden estas repeticiones nuevas (una rutina mensual suma una por mes, no se "corta" los días en que no tocaba).
+
+  Por detrás: dos columnas nuevas en las rutinas (`repeat_every`, `month_day`) y una versión nueva de la función de la base que genera las tareas de cada día (`drizzle/migrations/0005_routine_recurrence.sql`). La misma regla vive en `isExpectedOccurrence` (`lib/streaks.ts`, 8 tests nuevos) para las rachas: si se cambia una hay que cambiar la otra. **Esta migración tiene que aplicarse a la base antes de publicar**, si no la pantalla de Rutinas falla.
+
 - 2026-08-23: **Rediseño completo de las pantallas del ritual diario** (viene del bundle `design_handoff_morchitask_1a`, hecho en Claude Design). Cambió cómo se ve y se usa casi todo, sin tocar la base de datos ni sumar librerías nuevas. Lo grande:
 
   - **La tarjeta de tarea tiene forma fija.** Un **carril de color** de 3px a la izquierda dice la categoría, y adentro hay **exactamente dos líneas**: arriba el título con la duración a la derecha; abajo la hora agendada, la categoría y el avance del checklist como **tres barritas + "2/3"**. Antes cada tarjeta medía distinto según cuántos datos tuviera; ahora todas miden igual y la lista se lee de un vistazo. **Ojo con esto:** la lista de subtareas ya **no se despliega dentro de la tarjeta** (los ítems se tildan abriendo la tarea), y la etiqueta de prioridad salió de la tarjeta porque el título del grupo ya la dice.

@@ -56,7 +56,7 @@ export function useShutdownStreak(today: string) {
   const days = useMemo(() => new Set(q.data ?? []), [q.data]);
   // A shutdown is expected every day, which is exactly what freq "daily" means
   // to `currentStreak` — no separate streak implementation needed.
-  return currentStreak("daily", null, days, today, STREAK_WINDOW_DAYS);
+  return currentStreak({ freq: "daily", weekdays: null }, days, today, STREAK_WINDOW_DAYS);
 }
 
 /** Long enough for any streak worth showing; short enough to stay one cheap query. */

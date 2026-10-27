@@ -246,6 +246,11 @@ export const recurringTemplates = pgTable(
     notes: text("notes"),
     freq: text("freq").notNull().default("daily"),
     weekdays: smallint("weekdays").array(),
+    /** "Every N" days / weeks / months, counted from `active_from`. */
+    repeat_every: smallint("repeat_every").notNull().default(1),
+    /** Monthly routines: day of the month (1–31). Past the end of a short
+     * month it lands on the last day. Null → `active_from`'s day. */
+    month_day: smallint("month_day"),
     time_estimate_min: integer("time_estimate_min"),
     active_from: date("active_from", { mode: "string" })
       .notNull()
@@ -260,7 +265,15 @@ export const recurringTemplates = pgTable(
       .defaultNow()
       .$onUpdateFn(touchUpdatedAt),
   },
-  (t) => [index("recurring_household_idx").on(t.household_id)],
+  (t) => [
+    index("recurring_household_idx").on(t.household_id),
+    check("recurring_freq_check", sql`${t.freq} in ('daily', 'weekly', 'monthly')`),
+    check("recurring_repeat_every_check", sql`${t.repeat_every} between 1 and 52`),
+    check(
+      "recurring_month_day_check",
+      sql`${t.month_day} is null or ${t.month_day} between 1 and 31`,
+    ),
+  ],
 );
 
 export const tasks = pgTable(

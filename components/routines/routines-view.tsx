@@ -53,7 +53,7 @@ export function RoutinesView() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-fg">Rutinas</h1>
           <p className="text-sm text-muted">
-            Tareas que se crean solas cada día (o ciertos días de la semana).
+            Tareas que se crean solas: cada día, ciertos días de la semana o una vez por mes.
           </p>
         </div>
       </header>
@@ -114,12 +114,15 @@ function RoutineRow({
     update.mutate({ id: routine.id, patch: p });
 
   const weekly = routine.freq === "weekly";
+  const monthly = routine.freq === "monthly";
   const days = routine.weekdays ?? [];
+  const every = routine.repeat_every ?? 1;
+  const monthDay = routine.month_day ?? Number(routine.active_from.slice(8, 10));
 
   const done = completed ?? new Set<string>();
   const today = todayISO();
-  const streak = currentStreak(routine.freq, routine.weekdays, done, today);
-  const history = recentOccurrences(routine.freq, routine.weekdays, done, today, 14);
+  const streak = currentStreak(routine, done, today);
+  const history = recentOccurrences(routine, done, today, 14);
 
   function toggleDay(n: number) {
     const next = days.includes(n) ? days.filter((d) => d !== n) : [...days, n].sort();
@@ -184,10 +187,39 @@ function RoutineRow({
           options={[
             { value: "daily", label: "Diaria" },
             { value: "weekly", label: "Semanal" },
+            { value: "monthly", label: "Mensual" },
           ]}
           value={routine.freq}
           onChange={(v) => patch({ freq: v })}
         />
+
+        <EveryStepper
+          value={every}
+          unit={UNITS[routine.freq] ?? UNITS.daily}
+          onChange={(n) => patch({ repeat_every: n })}
+        />
+
+        {monthly && (
+          <label className="flex items-center gap-1.5 text-xs text-muted">
+            el
+            <select
+              value={monthDay}
+              onChange={(e) => patch({ month_day: Number(e.target.value) })}
+              aria-label="Día del mes"
+              className="h-7 cursor-pointer rounded-lg border border-border bg-surface-2 px-1.5 text-xs font-medium text-fg outline-none"
+            >
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n === 31 ? "último día" : n}
+                </option>
+              ))}
+            </select>
+            {monthDay !== 31 && "de cada mes"}
+            {monthDay >= 29 && monthDay < 31 && (
+              <span className="text-subtle">(o el último, si el mes es más corto)</span>
+            )}
+          </label>
+        )}
 
         {weekly && (
           <div className="flex gap-1">
@@ -255,6 +287,49 @@ function RoutineRow({
         </div>
       )}
     </li>
+  );
+}
+
+const UNITS: Record<string, [string, string]> = {
+  daily: ["día", "días"],
+  weekly: ["semana", "semanas"],
+  monthly: ["mes", "meses"],
+};
+
+/** "cada [−] 2 [+] semanas" — 1 reads as the plain frequency. */
+function EveryStepper({
+  value,
+  unit,
+  onChange,
+}: {
+  value: number;
+  unit: [string, string];
+  onChange: (n: number) => void;
+}) {
+  const btn =
+    "flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-sm text-muted transition-colors hover:bg-border disabled:cursor-default disabled:opacity-30";
+  return (
+    <div className="flex items-center gap-1 text-xs text-muted">
+      cada
+      <button
+        onClick={() => onChange(value - 1)}
+        disabled={value <= 1}
+        aria-label="Menos"
+        className={btn}
+      >
+        −
+      </button>
+      <span className="min-w-4 text-center font-semibold text-fg tabular-nums">{value}</span>
+      <button
+        onClick={() => onChange(value + 1)}
+        disabled={value >= 52}
+        aria-label="Más"
+        className={btn}
+      >
+        +
+      </button>
+      {value === 1 ? unit[0] : unit[1]}
+    </div>
   );
 }
 
