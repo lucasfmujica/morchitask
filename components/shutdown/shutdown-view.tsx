@@ -565,7 +565,7 @@ function StepTomorrow({
  * One bar of the estimate-vs-actual pair. Both are drawn against the SAME
  * maximum, which is the only way the comparison means anything.
  */
-function CompareBar({
+export function CompareBar({
   label,
   min,
   max,

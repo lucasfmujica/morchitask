@@ -95,7 +95,7 @@ function bottomNav(today: string): NavItem[] {
  *  route into its own group, which would mean re-mounting every singleton this
  *  shell owns (detail sheet, timer bar, shortcuts, palette, presence). */
 function isRitualRoute(pathname: string) {
-  return pathname.startsWith("/shutdown");
+  return pathname.startsWith("/shutdown") || pathname.startsWith("/review");
 }
 
 export function AppChrome({ children }: { children: ReactNode }) {

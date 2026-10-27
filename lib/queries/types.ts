@@ -11,6 +11,7 @@ import type {
   taskComments,
   taskReactions,
   tasks,
+  weeklyNotes,
 } from "@/lib/db/schema";
 import type { PriorityKey } from "@/lib/priority";
 
@@ -21,6 +22,7 @@ export type Household = typeof households.$inferSelect;
 export type Subtask = typeof subtasks.$inferSelect;
 export type RecurringTemplate = typeof recurringTemplates.$inferSelect;
 export type DailyNote = typeof dailyNotes.$inferSelect;
+export type WeeklyNote = typeof weeklyNotes.$inferSelect;
 export type Objective = typeof objectives.$inferSelect;
 export type TaskComment = typeof taskComments.$inferSelect;
 export type TaskReaction = typeof taskReactions.$inferSelect;

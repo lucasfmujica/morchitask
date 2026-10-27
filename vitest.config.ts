@@ -8,8 +8,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
-    // Playwright e2e specs live in /e2e and use their own runner.
-    exclude: ["**/node_modules/**", "**/e2e/**", "**/.next/**"],
+    // Playwright e2e specs live in /e2e and use their own runner. Claude Code
+    // session worktrees (.claude/worktrees) are other checkouts of this repo.
+    exclude: ["**/node_modules/**", "**/e2e/**", "**/.next/**", ".claude/**"],
   },
   resolve: {
     alias: {

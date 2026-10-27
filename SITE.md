@@ -40,6 +40,7 @@ Ya se puede planificar por día, **semana y mes**, y **agendar tareas a un horar
 - **/week** y **/week/AAAA-MM-DD** — la semana. El **mini-calendario** y el **filtro de categorías** están en la **barra lateral** (en compu), no en una segunda columna, así los días ocupan todo el ancho. Cada día es una **tarjeta** con su **barra de carga** ("6h 45m de 6h"), y cada tarjeta de tarea muestra su carril de categoría, la hora y la duración.
 - **/month** y **/month/AAAA-MM-DD** — el calendario mensual.
 - **/backlog** — tareas sin fecha asignada, con la **antigüedad** de cada una y botones **+ Hoy** / **+ Mañana**.
+- **/review** — la **revisión semanal** (ritual de fin de semana): mirar la semana, repartir lo pendiente y armar la que viene.
 - **/metas** — tus **objetivos** de la semana y del mes; cada meta muestra el porcentaje, las tareas enganchadas y **las horas que le dedicaste de verdad**.
 
 ## Prioridades
@@ -152,6 +153,16 @@ Si querés mover una pantalla de "columna" a "lienzo ancho" o al revés, se camb
 - **Categorías:** son **de cada persona**. Las gestionás en Ajustes → Categorías (crear, renombrar, recolorear, borrar) y solo afectan a tu cuenta; las de tu pareja quedan intactas.
 
 ## Cambios recientes
+
+- 2026-10-27: **Nuevo ritual: la revisión semanal.** En la barra lateral, debajo de Planificar y Cerrar día, está **"Revisión semanal"** (también desde ⌘K). Se ilumina del **viernes a la tarde al lunes a la mañana**; en el celular el ícono aparece arriba solo en esos días. Son tres pasos, igual que Cerrar el día:
+
+  1. **Cómo fue** — cuántas tareas terminaste de las que tenías, cuántos días cerraste, tu mejor día, lo estimado contra lo real, cómo quedaron tus metas de la semana, y dos preguntas para vos: _¿qué salió bien?_ y _¿qué cambiarías?_
+  2. **Lo que quedó** — las tareas que no terminaste. Tocás una letra (L M M J V S D) para pasarla a ese día de la semana que viene; **lo que no toques va al backlog**, así el lunes no arranca cargado con todo lo de esta semana. Arriba ves cuánto pesaría cada día.
+  3. **La que viene** — de qué se trata la semana, sus **metas** (se crean en el momento) y **traer cosas del backlog** a días concretos, con la misma barrita de carga por día.
+
+  Al terminar te lleva a la semana nueva. Si la hacés de lunes a jueves, revisa la semana que **ya terminó**; de viernes a domingo, la que estás cerrando. La página es `/review`.
+
+  Por detrás: tabla nueva `weekly_notes` (`drizzle/migrations/0006_weekly_notes.sql`, una fila por persona y semana), pantalla en `components/review/review-view.tsx` y las cuentas en `lib/review.ts` (8 tests). **Esta migración también tiene que aplicarse antes de publicar.** De paso, los tests ya no corren dos veces cuando hay sesiones de Claude trabajando en paralelo (`vitest.config.ts` ignora `.claude/`).
 
 - 2026-10-27: **Las rutinas ahora pueden repetirse una vez por mes o "cada tantos" días/semanas.** En Rutinas, además de **Diaria** y **Semanal** hay **Mensual**, y al lado un contador **"cada [1] semana"** que se sube con el **+**. Ejemplos: _"el 10 de cada mes"_ para pagar el alquiler, _"cada 2 semanas los lunes"_ para cortar el pasto, _"cada 3 días"_ para regar. Si elegís un día que no existe en todos los meses (29, 30) cae el último día de los meses más cortos; la opción **"último día"** es siempre el final del mes. Las cuentas arrancan desde el día en que creaste la rutina, y las rachas 🔥 entienden estas repeticiones nuevas (una rutina mensual suma una por mes, no se "corta" los días en que no tocaba).
 

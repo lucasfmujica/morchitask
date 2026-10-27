@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  CalendarCheck2,
   BarChart3,
   CalendarCheck,
   CalendarDays,
@@ -39,6 +40,7 @@ const NAV_ICONS: Record<string, typeof CalendarCheck> = {
   month: CalendarDays,
   plan: Sun,
   shutdown: Moon,
+  review: CalendarCheck2,
   backlog: Inbox,
   routines: Repeat,
   metas: Target,
@@ -113,6 +115,7 @@ function PaletteBody({ close }: { close: () => void }) {
       { id: "month", label: "Ir a Mes", run: go("/month") },
       { id: "plan", label: "Planificar el día", run: go(`/plan/${today}`) },
       { id: "shutdown", label: "Cerrar el día", run: go(`/shutdown/${today}`) },
+      { id: "review", label: "Revisión semanal", run: go("/review") },
       { id: "backlog", label: "Ir a Backlog", run: go("/backlog") },
       { id: "routines", label: "Ir a Rutinas", run: go("/routines") },
       { id: "metas", label: "Ir a Metas", run: go("/metas") },

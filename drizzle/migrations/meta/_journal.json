@@ -43,6 +43,13 @@
       "when": 1793138263087,
       "tag": "0005_routine_recurrence",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793138459213,
+      "tag": "0006_weekly_notes",
+      "breakpoints": true
     }
   ]
 }

@@ -231,6 +231,35 @@ export const dailyNotes = pgTable(
   (t) => [unique().on(t.owner_id, t.note_date)],
 );
 
+/** The weekly review ritual (/review): one row per person per reviewed week. */
+export const weeklyNotes = pgTable(
+  "weekly_notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    household_id: uuid("household_id")
+      .notNull()
+      .references(() => households.id),
+    owner_id: uuid("owner_id")
+      .notNull()
+      .references(() => profiles.id),
+    /** Monday of the week being reviewed. */
+    week_start: date("week_start", { mode: "string" }).notNull(),
+    wins: text("wins"),
+    lessons: text("lessons"),
+    /** What the FOLLOWING week is about — written at the end of the review. */
+    next_focus: text("next_focus"),
+    completed_at: timestamp("completed_at", { withTimezone: true, mode: "string" }),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(touchUpdatedAt),
+  },
+  (t) => [unique().on(t.owner_id, t.week_start)],
+);
+
 export const recurringTemplates = pgTable(
   "recurring_templates",
   {

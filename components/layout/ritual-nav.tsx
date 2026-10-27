@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Moon, Sun } from "lucide-react";
+import { CalendarCheck2, Check, Moon, Sun } from "lucide-react";
 import { todayISO } from "@/lib/date";
 import { useDailyNote } from "@/lib/queries/daily-notes";
+import { useWeeklyNote } from "@/lib/queries/weekly-notes";
+import { isReviewWindow, reviewWeekFor } from "@/lib/review";
 import { cn } from "@/lib/utils";
 
 // Before this hour we nudge "Planificar"; after it, "Cerrar día". Easy to tweak.
@@ -13,7 +15,7 @@ const MORNING_UNTIL = 14;
 type Tone = "accent" | "primary";
 
 type Ritual = {
-  key: "plan" | "shutdown";
+  key: "plan" | "shutdown" | "review";
   href: string;
   base: string;
   label: string;
@@ -23,10 +25,13 @@ type Ritual = {
   emphasized: boolean;
 };
 
-/** Today's plan/shutdown state plus a time-of-day "do this now" hint. */
+/** Today's plan/shutdown state, this week's review, plus a time-of-day "do
+ *  this now" hint. */
 function useRitualStatus(): Ritual[] {
   const today = todayISO();
   const note = useDailyNote(today).data;
+  const reviewWeek = reviewWeekFor(today);
+  const weekly = useWeeklyNote(reviewWeek).data;
 
   // Compute the hour only after mount: the server renders in its own timezone,
   // so deriving emphasis during SSR would cause a hydration mismatch.
@@ -39,6 +44,7 @@ function useRitualStatus(): Ritual[] {
 
   const planDone = !!note?.plan_completed_at;
   const shutdownDone = !!note?.shutdown_completed_at;
+  const reviewDone = !!weekly?.completed_at;
 
   return [
     {
@@ -60,6 +66,16 @@ function useRitualStatus(): Ritual[] {
       tone: "primary",
       done: shutdownDone,
       emphasized: !shutdownDone && isMorning === false,
+    },
+    {
+      key: "review",
+      href: `/review/${reviewWeek}`,
+      base: "/review",
+      label: "Revisión semanal",
+      icon: CalendarCheck2,
+      tone: "accent",
+      done: reviewDone,
+      emphasized: !reviewDone && hour !== null && isReviewWindow(today, hour, MORNING_UNTIL),
     },
   ];
 }
@@ -97,7 +113,7 @@ function RitualStatus({ ritual }: { ritual: Ritual }) {
   );
 }
 
-/** Desktop sidebar: two ritual links matching the SidebarLink visual grammar. */
+/** Desktop sidebar: the ritual links matching the SidebarLink visual grammar. */
 export function SidebarRituals({ pathname }: { pathname: string }) {
   const rituals = useRitualStatus();
   return (
@@ -130,7 +146,9 @@ export function SidebarRituals({ pathname }: { pathname: string }) {
 
 /** Mobile top bar: the two rituals as compact icon buttons with a corner status badge. */
 export function MobileRitualIcons() {
-  const rituals = useRitualStatus();
+  // The top bar is tight on a phone: the weekly review only joins the two daily
+  // rituals while it's due (Friday afternoon → Monday morning).
+  const rituals = useRitualStatus().filter((r) => r.key !== "review" || r.emphasized);
   return (
     <>
       {rituals.map((r) => {
