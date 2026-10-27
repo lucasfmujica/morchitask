@@ -93,6 +93,25 @@ export function useCreateBlock(date: string) {
   });
 }
 
+/**
+ * Create a block on a day picked per call, not per hook — for the quick-add
+ * composer, where "mañana 18hs" schedules a day the current view isn't showing
+ * (and the backlog has no day at all). No optimistic insert: the task itself
+ * was only just created, so the refetch is what shows it.
+ */
+export function useCreateBlockOnDay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      date: string;
+      taskId: string;
+      startISO: string;
+      endISO: string;
+    }): Promise<TaskBlock> => createBlockAction(input.taskId, input.startISO, input.endISO),
+    onSettled: (_d, _e, input) => settleKeys(qc, input.date),
+  });
+}
+
 /** Move/resize a block (new start and/or end instants). Returns the row. */
 export function useUpdateBlock(date: string) {
   const qc = useQueryClient();

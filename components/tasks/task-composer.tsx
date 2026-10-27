@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, SlidersHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, SlidersHorizontal, X } from "lucide-react";
 import type { Channel } from "@/lib/queries/types";
+import { todayISO, weekDayHeading } from "@/lib/date";
+import { formatMinutes } from "@/lib/format";
+import { parseQuickAdd, type QuickAddKind, type QuickAddMatch } from "@/lib/quick-add";
 import {
   NO_PRIORITY_LABEL,
   PRIORITY_DOT,
@@ -17,6 +20,10 @@ export type ComposerSubmit = {
   channelId: string | null;
   timeEstimateMin: number | null;
   priority: PriorityKey;
+  /** Parsed from the text ("mañana", "el 15"). Absent = the view's own day. */
+  plannedDate?: string;
+  /** Parsed local "HH:mm" ("18hs", "a las 9") — becomes a time block. */
+  time?: string;
 };
 
 export function TaskComposer({
@@ -29,18 +36,64 @@ export function TaskComposer({
   const [title, setTitle] = useState("");
   const [channelId, setChannelId] = useState<string | null>(null);
   const [priority, setPriority] = useState<PriorityKey>(null);
+  // Manual chips win over what the text says, but only once actually touched —
+  // "Sin prioridad" picked on purpose and "never opened the chips" are both null.
+  const [channelTouched, setChannelTouched] = useState(false);
+  const [priorityTouched, setPriorityTouched] = useState(false);
+  // Parsed bits the user dismissed with ×: their words stay in the title.
+  const [ignored, setIgnored] = useState<ReadonlySet<QuickAddKind>>(new Set());
   // The chips used to be two permanently visible rows — three lines of UI for
   // a field most tasks never set. They fold behind one button, and open
   // themselves as soon as a choice is made so the state stays visible.
   const [showChips, setShowChips] = useState(false);
   const chipsOpen = showChips || channelId !== null || priority !== null;
 
+  const today = todayISO();
+  const parsed = useMemo(
+    () => parseQuickAdd(title, { today, channels, ignore: ignored }),
+    [title, today, channels, ignored],
+  );
+  const effectiveChannel = channelTouched ? channelId : (parsed.channelId ?? channelId);
+  const effectivePriority = priorityTouched ? priority : (parsed.priority ?? priority);
+  const previews = parsed.matches.filter(
+    (m) => !(m.kind === "channel" && channelTouched) && !(m.kind === "priority" && priorityTouched),
+  );
+
+  function previewLabel(m: QuickAddMatch): string {
+    switch (m.kind) {
+      case "date":
+        return weekDayHeading(parsed.plannedDate!, today);
+      case "time":
+        return parsed.time!;
+      case "estimate":
+        return formatMinutes(parsed.estimateMin!);
+      case "priority":
+        return PRIORITY_LABEL[parsed.priority!];
+      case "channel":
+        return channels.find((c) => c.id === parsed.channelId)?.name ?? m.text;
+    }
+  }
+
   function submit() {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    onSubmit({ title: trimmed, channelId, timeEstimateMin: null, priority });
+    const raw = title.trim();
+    if (!raw) return;
+    // Typing only "mañana" leaves no title — then the words ARE the title.
+    const clean = parsed.title.trim();
+    onSubmit({
+      title: clean || raw,
+      channelId: effectiveChannel,
+      timeEstimateMin: (clean && parsed.estimateMin) || null,
+      priority: effectivePriority,
+      ...(clean && parsed.plannedDate && { plannedDate: parsed.plannedDate }),
+      ...(clean && parsed.time && { time: parsed.time }),
+    });
     setTitle("");
+    setIgnored(new Set());
     setPriority(null); // the next task starts unprioritized, not sticky
+    setPriorityTouched(false);
+    // The category stays as the default for the next task, but a #tag typed
+    // there should still win — so it's no longer "touched".
+    setChannelTouched(false);
     setShowChips(false);
   }
 
@@ -58,7 +111,10 @@ export function TaskComposer({
         <input
           data-task-composer
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (!e.target.value) setIgnored(new Set());
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") submit();
           }}
@@ -80,20 +136,65 @@ export function TaskComposer({
         </button>
       </div>
 
+      {/* What the text will set — "Mañana · 18:00 · 30m · Alta". × keeps the words in the title instead. */}
+      {previews.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5 pl-10" aria-live="polite">
+          {previews.map((m) => {
+            const label = previewLabel(m);
+            const color =
+              m.kind === "channel"
+                ? channels.find((c) => c.id === parsed.channelId)?.color
+                : m.kind === "priority"
+                  ? PRIORITY_DOT[parsed.priority!]
+                  : undefined;
+            return (
+              <span
+                key={m.kind}
+                title={`Detectado: "${m.text}"`}
+                className="inline-flex items-center gap-1 rounded-pill bg-primary-soft py-0.5 pr-0.5 pl-2.5 text-xs font-medium text-primary"
+              >
+                {color && (
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: color }}
+                    aria-hidden
+                  />
+                )}
+                {label}
+                <button
+                  type="button"
+                  onClick={() => setIgnored((prev) => new Set(prev).add(m.kind))}
+                  aria-label={`Ignorar ${label}`}
+                  className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-primary/15"
+                >
+                  <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       {chipsOpen && channels.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
           <ChannelChip
             label="Sin categoría"
-            active={channelId === null}
-            onClick={() => setChannelId(null)}
+            active={effectiveChannel === null}
+            onClick={() => {
+              setChannelId(null);
+              setChannelTouched(true);
+            }}
           />
           {channels.map((c) => (
             <ChannelChip
               key={c.id}
               label={c.name}
               color={c.color}
-              active={channelId === c.id}
-              onClick={() => setChannelId(c.id)}
+              active={effectiveChannel === c.id}
+              onClick={() => {
+                setChannelId(c.id);
+                setChannelTouched(true);
+              }}
             />
           ))}
         </div>
@@ -104,16 +205,22 @@ export function TaskComposer({
         <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
           <ChannelChip
             label={NO_PRIORITY_LABEL}
-            active={priority === null}
-            onClick={() => setPriority(null)}
+            active={effectivePriority === null}
+            onClick={() => {
+              setPriority(null);
+              setPriorityTouched(true);
+            }}
           />
           {TASK_PRIORITIES.map((p) => (
             <ChannelChip
               key={p}
               label={PRIORITY_LABEL[p]}
               color={PRIORITY_DOT[p]}
-              active={priority === p}
-              onClick={() => setPriority(p)}
+              active={effectivePriority === p}
+              onClick={() => {
+                setPriority(p);
+                setPriorityTouched(true);
+              }}
             />
           ))}
         </div>
