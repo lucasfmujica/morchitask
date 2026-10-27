@@ -27,6 +27,7 @@ import { scheduledMin } from "@/lib/scheduling";
 import { blockEndMin } from "@/components/day/use-agenda-scheduling";
 import { PastDayNotice } from "@/components/day/past-day-notice";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
+import { PlanAiSuggest } from "@/components/plan/plan-ai-suggest";
 import { Button, SkeletonList } from "@/components/ui";
 
 /** Where the projection starts when the day has no blocks and hasn't begun. */
@@ -322,6 +323,14 @@ function PlanForm({
             </ul>
           </section>
         )}
+
+        <PlanAiSuggest
+          date={date}
+          tasks={mine}
+          blocksByTask={blocksByTask}
+          capacityLeftMin={Math.max(0, capacityTarget - bookedMin)}
+          endTargetMin={note?.end_target_min}
+        />
 
         <Button size="lg" onClick={startDay} className="w-full">
           {alreadyPlanned ? "Guardar y empezar" : "Empezar el día"}
