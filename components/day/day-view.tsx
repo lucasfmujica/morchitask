@@ -22,7 +22,6 @@ import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useSubtasksForDate } from "@/lib/queries/subtasks";
 import {
   useBacklogTasks,
-  useCreateTask,
   useMoveTaskToDate,
   useReorderTask,
   useTasksForDate,
@@ -30,7 +29,6 @@ import {
 } from "@/lib/queries/tasks";
 import { useBlocksForDate } from "@/lib/queries/task-blocks";
 import { ensureDayMaterialized } from "@/lib/queries/routines";
-import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { orderTasksForDisplay } from "@/lib/week-filter";
 import { parsePriorityDropId, resolveTaskDrop, type PriorityKey } from "@/lib/priority";
@@ -48,6 +46,7 @@ import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { CarryoverPrompt } from "./carryover-prompt";
 import { PastDayNotice } from "./past-day-notice";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
+import { useComposerCreate } from "@/components/tasks/use-composer-create";
 import { TaskListSection } from "@/components/tasks/task-list-section";
 import { createTaskCollision } from "@/components/dnd/collision";
 import { TaskDragPreview } from "@/components/dnd/task-drag-preview";
@@ -90,9 +89,8 @@ export function DayView({ date }: { date: string }) {
   const noteQ = useDailyNote(date);
   const upsertNote = useUpsertDailyNote(date);
   const me = useMe().data;
-  const create = useCreateTask();
+  const addFromComposer = useComposerCreate(date);
   const reorder = useReorderTask();
-  const openDetail = useTaskDetail((s) => s.open);
   const { selected } = useChannelFilter();
   const { scheduleNewBlock, moveBlock } = useAgendaScheduling(date);
   const move = useMoveTaskToDate();
@@ -164,19 +162,7 @@ export function DayView({ date }: { date: string }) {
   }
 
   function handleAdd(input: ComposerSubmit) {
-    create.mutate(
-      {
-        title: input.title,
-        plannedDate: date,
-        channelId: input.channelId,
-        timeEstimateMin: input.timeEstimateMin,
-        priority: input.priority,
-        sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
-      },
-      // Open the new task's detail right away so you can add notes, subtasks,
-      // an estimate, or complete it without hunting for the card and clicking.
-      { onSuccess: (task) => openDetail(task) },
-    );
+    addFromComposer(input, tasks);
   }
 
   function handleReorder(task: Task, sortOrder: number, priority?: PriorityKey) {

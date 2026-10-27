@@ -3,12 +3,7 @@
 import { useMemo, useState } from "react";
 import { CalendarClock, Inbox } from "lucide-react";
 import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
-import {
-  useBacklogTasks,
-  useCreateTask,
-  useMoveTaskToDate,
-  useUpdateTask,
-} from "@/lib/queries/tasks";
+import { useBacklogTasks, useMoveTaskToDate, useUpdateTask } from "@/lib/queries/tasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import { useChannelFilter } from "@/lib/channel-filter";
@@ -19,6 +14,7 @@ import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
+import { useComposerCreate } from "@/components/tasks/use-composer-create";
 import { Button, EmptyState, SkeletonList } from "@/components/ui";
 
 /** Past this, an idea isn't waiting for a slot — it's waiting for a decision. */
@@ -36,8 +32,7 @@ export function BacklogView() {
   const tasksQ = useBacklogTasks();
   const channelsQ = useChannels();
   const channelLookupQ = useChannelLookup();
-  const create = useCreateTask();
-  const openDetail = useTaskDetail((s) => s.open);
+  const addFromComposer = useComposerCreate(null);
   const { selected } = useChannelFilter();
   const today = todayISO();
 
@@ -52,19 +47,7 @@ export function BacklogView() {
   const [estimating, setEstimating] = useState(false);
 
   function handleAdd(input: ComposerSubmit) {
-    create.mutate(
-      {
-        title: input.title,
-        plannedDate: null,
-        channelId: input.channelId,
-        timeEstimateMin: input.timeEstimateMin,
-        priority: input.priority,
-        sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
-      },
-      // Open the new task's detail right away so you can flesh it out or
-      // complete it without a separate click.
-      { onSuccess: (task) => openDetail(task) },
-    );
+    addFromComposer(input, tasks);
   }
 
   return (
