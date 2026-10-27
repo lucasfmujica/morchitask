@@ -12,6 +12,7 @@ import {
   useDisconnectSpotify,
   useSpotifyConnected,
 } from "@/lib/queries/spotify";
+import { AVATAR_CONTENT_TYPES, avatarRejectionReason } from "@/lib/avatars";
 import { useHousehold, useUpdateHouseholdName } from "@/lib/queries/households";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { ThemeSelector } from "./theme-selector";
@@ -31,24 +32,20 @@ export function SettingsView() {
   const spotifyConnected = useSpotifyConnected();
   const disconnectSpotify = useDisconnectSpotify();
 
-  const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
-
   function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // let the same file be re-picked later
-    if (!file) return;
+    if (!file || !me) return;
     setAvatarError(null);
-    if (!file.type.startsWith("image/")) {
-      setAvatarError("Elegí un archivo de imagen (foto).");
+    const reason = avatarRejectionReason(file);
+    if (reason) {
+      setAvatarError(reason);
       return;
     }
-    if (file.size > MAX_AVATAR_BYTES) {
-      setAvatarError("La imagen es muy pesada (máx. 5 MB).");
-      return;
-    }
-    uploadAvatar.mutate(file, {
-      onError: () => setAvatarError("No se pudo subir la foto. Probá de nuevo."),
-    });
+    uploadAvatar.mutate(
+      { file, userId: me.id },
+      { onError: () => setAvatarError("No se pudo subir la foto. Probá de nuevo.") },
+    );
   }
 
   async function handleSignOut() {
@@ -95,7 +92,7 @@ export function SettingsView() {
           <input
             ref={fileInput}
             type="file"
-            accept="image/*"
+            accept={AVATAR_CONTENT_TYPES.join(",")}
             onChange={onPickAvatar}
             className="hidden"
           />

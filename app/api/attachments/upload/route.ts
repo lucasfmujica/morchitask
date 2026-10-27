@@ -12,7 +12,7 @@ import { taskBelongsToHousehold } from "@/lib/db/queries/attachments";
  * Issues a one-shot token so the browser can send a file straight to Vercel
  * Blob, instead of through a Server Action.
  *
- * Why not a Server Action like the avatar upload: actions cap the request body
+ * Why not a Server Action: actions cap the request body
  * at 1 MB by default and the platform caps it around 4.5 MB regardless, so a
  * 10 MB attachment could never fit. Having the browser upload directly sidesteps
  * both — the only thing that passes through this app is permission to do it.
