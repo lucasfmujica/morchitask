@@ -31,9 +31,9 @@ export function ChecklistAiSuggest({
     setError(null);
     try {
       const res = await suggestChecklist({
-        title: task.title,
-        notes,
-        existing: subtasks.map((s) => s.title),
+        title: task.title.slice(0, 300),
+        notes: notes.slice(0, 4000),
+        existing: subtasks.slice(0, 50).map((s) => s.title.slice(0, 300)),
       });
       if (!res.ok) setError(res.error);
       else if (res.data.length === 0) setError("Claude no encontró pasos para agregar.");

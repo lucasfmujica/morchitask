@@ -20,7 +20,7 @@ const usage = new Map<string, number>();
 
 const ERRORS = {
   not_configured:
-    "La IA todavía no está configurada: falta la clave ANTHROPIC_API_KEY en el servidor.",
+    "La IA todavía no está configurada: falta la clave ANTHROPIC_API_KEY en el servidor (o no es válida).",
   no_answer: "Claude no devolvió una propuesta esta vez. Probá de nuevo.",
   api: "No pudimos hablar con Claude ahora. Probá de nuevo en un rato.",
   limit: "Llegaste al límite de usos de IA por hoy. Mañana se renueva.",
