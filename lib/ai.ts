@@ -10,6 +10,7 @@ import {
   type PlanInput,
   type PlanProposal,
 } from "@/lib/ai-proposals";
+import { CaptureOutput, cleanCapture, type CaptureInput, type CapturedTask } from "@/lib/capture";
 
 /**
  * Server-only Claude client and the two prompts. The key comes from
@@ -134,6 +135,48 @@ export async function planDay(
     toMin: input.toMin,
     capacityLeftMin,
   });
+}
+
+/** Reading a dictated paragraph into tasks is extraction — the small model is plenty. */
+export const CAPTURE_MODEL = "claude-haiku-5-5";
+
+const captureSystem = (
+  locale: Locale,
+) => `Te paso lo que una persona dictó para anotar pendientes. Separalo en tareas.
+
+- Una tarea por cosa a hacer. "title" empieza con un verbo en infinitivo y no repite la fecha, la hora ni la duración.
+- "date": el día en formato AAAA-MM-DD si lo dijo ("mañana", "el jueves", "el 15"), calculado desde la fecha de hoy que te paso. Si no lo dijo, null.
+- "time": la hora en HH:MM (24 h) si dijo una ("a las diez" → 10:00; "a la tarde" sin hora → null).
+- "estimateMin": los minutos si dijo cuánto dura ("media hora" → 30). Si no, null.
+- "priority": "high" solo si dijo que es urgente o importante; si no, null.
+- "category": una de las categorías que te paso, solo si encaja claramente; si no, null.
+- No inventes tareas que no dijo. Idioma de "title": ${ANSWER_IN[locale]}.`;
+
+/** Turn a dictated paragraph into proposed tasks. Nothing is saved here. */
+export async function parseCapture(
+  input: CaptureInput,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<CapturedTask[]> {
+  const anthropic = getClient();
+  const prompt = [
+    `Hoy es ${input.today}.`,
+    `Categorías: ${input.channels.length ? input.channels.join(", ") : "(ninguna)"}`,
+    "",
+    "Lo que dictó:",
+    input.text,
+  ].join("\n");
+
+  const res = await call(() =>
+    anthropic.messages.parse({
+      model: CAPTURE_MODEL,
+      max_tokens: 4000,
+      system: captureSystem(locale),
+      output_config: { effort: "low", format: zodOutputFormat(CaptureOutput) },
+      messages: [{ role: "user", content: prompt }],
+    }),
+  );
+  if (res.stop_reason === "refusal" || !res.parsed_output) throw new AiError("no_answer");
+  return cleanCapture(res.parsed_output, { today: input.today, channels: input.channels });
 }
 
 /** Map SDK failures to our codes; a bad key reads like a missing one. */

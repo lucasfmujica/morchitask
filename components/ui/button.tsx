@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const button = cva(
   [
-    "inline-flex items-center justify-center gap-2 rounded-xl font-semibold whitespace-nowrap",
+    "inline-flex items-center justify-center gap-2 rounded-pill font-semibold whitespace-nowrap",
     "cursor-pointer select-none transition-colors duration-150",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
     "disabled:pointer-events-none disabled:opacity-50",
@@ -12,7 +12,9 @@ const button = cva(
   {
     variants: {
       variant: {
-        primary: "bg-primary text-on-primary hover:bg-primary-hover",
+        // The main action is ink, not colour: green means "it fits" everywhere else,
+        // so a green button would read as a status instead of a verb.
+        primary: "bg-fg text-bg hover:bg-fg/85",
         accent: "bg-accent text-on-accent hover:bg-accent-hover",
         secondary: "bg-surface-2 text-fg hover:bg-border",
         ghost: "bg-transparent text-fg hover:bg-surface-2",

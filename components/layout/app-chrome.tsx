@@ -274,7 +274,7 @@ function DesktopSidebar({
   }
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-surface/50 md:flex">
+    <aside className="sticky top-3 my-3 ml-3 hidden h-[calc(100dvh-1.5rem)] w-64 shrink-0 flex-col overflow-hidden rounded-2xl bg-surface-2 md:flex">
       <SidebarBody pathname={pathname} onToggleCollapsed={toggleCollapsed} />
     </aside>
   );
@@ -311,7 +311,7 @@ function SidebarBody({
       <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon.svg" alt="" className="h-8 w-8 rounded-xl shadow-soft" />
-        <span className="text-base font-extrabold tracking-tight text-fg">Morchitask</span>
+        <span className="font-display text-lg font-bold tracking-tight text-fg">Morchitask</span>
         <div className="ml-auto">
           {onToggleCollapsed && (
             <button
@@ -431,10 +431,10 @@ function SidebarLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+        "flex items-center gap-3 rounded-pill px-3.5 py-2 text-sm transition-colors",
         active
-          ? "bg-primary-soft font-semibold text-primary"
-          : "font-medium text-muted hover:bg-surface-2 hover:text-fg",
+          ? "bg-surface font-semibold text-fg shadow-soft"
+          : "font-medium text-muted hover:bg-surface/60 hover:text-fg",
       )}
     >
       <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.4 : 2} aria-hidden />

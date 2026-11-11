@@ -255,7 +255,24 @@
     "carriedUndo": "Undo",
     "carriedDismiss": "Dismiss",
     "bringOverdue": "{n, plural, =1 {Bring 1 unfinished} other {Bring # unfinished}}",
-    "hintOverdue": "{n, plural, =1 {1 still unfinished} other {# still unfinished}}"
+    "hintOverdue": "{n, plural, =1 {1 still unfinished} other {# still unfinished}}",
+    "replanButton": "Replan from now",
+    "replanTitle": "Replan the rest of the day",
+    "replanLate": "{n, plural, =1 {1 block fell behind} other {# blocks fell behind}}",
+    "replanFree": "Free from now",
+    "replanNeeded": "Still to do",
+    "replanFits": "It fits, with {time} to spare.",
+    "replanOver": "You're {time} over. What doesn't fit is below.",
+    "replanLoose": "no time",
+    "replanNothing": "Everything is already in place.",
+    "replanNoRoom": "Doesn't fit today",
+    "replanDestinationOf": "What to do with {title}",
+    "replanToTomorrow": "Tomorrow",
+    "replanToBacklog": "Backlog",
+    "replanKeep": "Keep",
+    "replanCancel": "Cancel",
+    "replanApply": "Apply",
+    "replanDone": "{moved, plural, =0 {Nothing to move} =1 {Moved 1 block} other {Moved # blocks}}{parked, plural, =0 {.} =1 { and took 1 task off the day.} other { and took # tasks off the day.}}"
   },
   "backlog": {
     "title": "Backlog",
@@ -819,5 +836,21 @@
     "planFailed": "Couldn't apply the plan. Try again.",
     "planSkipped": "{n, plural, =1 {1 task didn't fit in the day.} other {# tasks didn't fit in the day.}}",
     "planApply": "Apply"
+  },
+  "capture": {
+    "open": "Dictate several",
+    "title": "Say it all at once",
+    "close": "Close",
+    "hint": "Say or type everything together. On your phone you can use the keyboard's microphone.",
+    "placeholder": "Tomorrow at 10 call the accountant, half an hour. Thursday dentist appointment…",
+    "listen": "Listen",
+    "stop": "Stop listening",
+    "understand": "Split into tasks",
+    "reading": "Reading…",
+    "nothing": "I didn't find any tasks in what you dictated.",
+    "fallback": "I split them by sentence.",
+    "edit": "Back to the text",
+    "create": "{n, plural, =0 {Pick at least one} =1 {Create 1 task} other {Create # tasks}}",
+    "created": "{n, plural, =1 {Created 1 task.} other {Created # tasks.}}"
   }
 }

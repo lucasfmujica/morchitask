@@ -255,7 +255,24 @@
     "carriedUndo": "Deshacer",
     "carriedDismiss": "Cerrar aviso",
     "bringOverdue": "{n, plural, =1 {Traer 1 pendiente} other {Traer # pendientes}}",
-    "hintOverdue": "{n, plural, =1 {1 quedó pendiente} other {# quedaron pendientes}}"
+    "hintOverdue": "{n, plural, =1 {1 quedó pendiente} other {# quedaron pendientes}}",
+    "replanButton": "Reacomodar desde ahora",
+    "replanTitle": "Reacomodar el resto del día",
+    "replanLate": "{n, plural, =1 {1 bloque quedó atrás} other {# bloques quedaron atrás}}",
+    "replanFree": "Libre desde ahora",
+    "replanNeeded": "Te queda por hacer",
+    "replanFits": "Entra, con {time} de aire.",
+    "replanOver": "Te pasás {time}. Lo que no entra queda abajo.",
+    "replanLoose": "sin hora",
+    "replanNothing": "Ya está todo en su lugar.",
+    "replanNoRoom": "No entra hoy",
+    "replanDestinationOf": "Qué hacer con {title}",
+    "replanToTomorrow": "Mañana",
+    "replanToBacklog": "Backlog",
+    "replanKeep": "Dejar",
+    "replanCancel": "Cancelar",
+    "replanApply": "Aplicar",
+    "replanDone": "{moved, plural, =0 {Nada que mover} =1 {Reacomodé 1 bloque} other {Reacomodé # bloques}}{parked, plural, =0 {.} =1 { y saqué 1 tarea del día.} other { y saqué # tareas del día.}}"
   },
   "backlog": {
     "title": "Backlog",
@@ -819,5 +836,21 @@
     "planFailed": "No se pudo aplicar el plan. Probá de nuevo.",
     "planSkipped": "{n, plural, =1 {1 tarea no entró en el día.} other {# tareas no entraron en el día.}}",
     "planApply": "Aplicar"
+  },
+  "capture": {
+    "open": "Dictar varias",
+    "title": "Decilo de corrido",
+    "close": "Cerrar",
+    "hint": "Decí o escribí todo junto. En el celular podés usar el micrófono del teclado.",
+    "placeholder": "Mañana a las 10 llamar al contador, media hora. El jueves turno con la dentista…",
+    "listen": "Escuchar",
+    "stop": "Dejar de escuchar",
+    "understand": "Separar en tareas",
+    "reading": "Leyendo…",
+    "nothing": "No encontré tareas en lo que dictaste.",
+    "fallback": "Las separé por frases.",
+    "edit": "Volver al texto",
+    "create": "{n, plural, =0 {Elegí al menos una} =1 {Crear 1 tarea} other {Crear # tareas}}",
+    "created": "{n, plural, =1 {Creé 1 tarea.} other {Creé # tareas.}}"
   }
 }

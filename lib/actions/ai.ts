@@ -2,7 +2,8 @@
 
 import { getLocale } from "next-intl/server";
 import { auth } from "@/lib/auth";
-import { AiError, breakdownTask, planDay } from "@/lib/ai";
+import { AiError, breakdownTask, parseCapture, planDay } from "@/lib/ai";
+import { CaptureInput, type CapturedTask } from "@/lib/capture";
 import { BreakdownInput, PlanInput, consumeQuota, type PlanProposal } from "@/lib/ai-proposals";
 import { todayISO } from "@/lib/date";
 import { toLocale } from "@/lib/locale";
@@ -18,7 +19,7 @@ export type AiFailure = "not_configured" | "no_answer" | "api" | "limit" | "inva
 type Result<T> = { ok: true; data: T } | { ok: false; error: AiFailure };
 
 /** Per person, per day. Generous for real use; stops a runaway loop. */
-const DAILY_LIMIT = { breakdown: 30, plan: 10 } as const;
+const DAILY_LIMIT = { breakdown: 30, plan: 10, capture: 40 } as const;
 // Module memory: resets on cold start. A guard, not a billing control.
 const usage = new Map<string, number>();
 
@@ -61,4 +62,12 @@ export async function suggestDayPlan(input: PlanInput): Promise<Result<PlanPropo
   if (!parsed.success) return { ok: false, error: "invalid" };
   const locale = toLocale(await getLocale());
   return run("plan", () => planDay(parsed.data, locale));
+}
+
+/** Read a dictated paragraph into proposed tasks. Nothing is saved here. */
+export async function parseDictation(input: CaptureInput): Promise<Result<CapturedTask[]>> {
+  const parsed = CaptureInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const locale = toLocale(await getLocale());
+  return run("capture", () => parseCapture(parsed.data, locale));
 }

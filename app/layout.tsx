@@ -1,14 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans } from "next/font/google";
+import { Figtree, IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
 import { getLocale, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
-const dmSans = DM_Sans({
+// Figtree for the interface, Schibsted Grotesk for headings, Plex Mono for the
+// few places that show raw times. DM Sans was retired with the bento redesign.
+const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree", display: "swap" });
+const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
+  weight: ["600", "700"],
+  variable: "--font-schibsted",
+  display: "swap",
+});
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-plex-mono",
   display: "swap",
 });
 
@@ -59,7 +69,10 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={dmSans.variable}>
+    <html
+      lang={locale}
+      className={`${figtree.variable} ${schibsted.variable} ${plexMono.variable}`}
+    >
       <body className="bg-bg text-fg antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         {/* No message provider here on purpose. Mounted this high it has no

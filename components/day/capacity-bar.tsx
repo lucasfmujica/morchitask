@@ -105,7 +105,7 @@ export function CapacityBar({
         <motion.div
           className={cn(
             "absolute inset-y-0 left-0 rounded-pill",
-            over ? "rounded-r-none bg-primary" : near ? "bg-warning" : "bg-primary",
+            over ? "rounded-r-none bg-fit" : near ? "bg-warning" : "bg-fit",
           )}
           initial={false}
           animate={{ width: `${over ? targetPct : pct}%` }}

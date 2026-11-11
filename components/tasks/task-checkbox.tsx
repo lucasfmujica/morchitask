@@ -31,7 +31,7 @@ export function TaskCheckbox({
       className={cn(
         "relative flex shrink-0 cursor-pointer items-center justify-center rounded-md border-2 transition-colors",
         box,
-        checked ? "border-primary bg-primary" : "border-border-strong hover:border-primary",
+        checked ? "border-transparent bg-fit" : "border-border-strong hover:border-primary",
       )}
     >
       <motion.svg

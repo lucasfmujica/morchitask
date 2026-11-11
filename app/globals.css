@@ -51,43 +51,45 @@
      LAYER 2 — SEMANTIC TOKENS (light theme defaults)
      Components reference ONLY these (via the @theme map below).
      ============================================================ */
-  --bg: var(--gray-50);
+  --bg: #f4f5f1;
   --surface: #ffffff;
-  --surface-2: var(--gray-100);
-  --border: var(--gray-200);
-  --fg: var(--gray-900);
-  --muted: var(--gray-500);
-  --subtle: var(--gray-400);
+  --surface-2: #eceee8;
+  --border: #dcdfd6;
+  --fg: #1c1f1a;
+  --muted: #565c52;
+  --subtle: #6b7166;
 
-  --primary: var(--teal-600);
-  --primary-hover: var(--teal-700);
+  --primary: #2c7a4b;
+  --primary-hover: #23623c;
   --on-primary: #ffffff;
-  --primary-soft: var(--teal-50);
+  --primary-soft: #e1f0e6;
+  /* Light end of the "it fits" gradient (capacity bar, checks). */
+  --fit-from: #8fdca4;
 
-  --accent: var(--orange-600);
-  --accent-hover: var(--orange-700);
+  --accent: #b3400f;
+  --accent-hover: #96350c;
   --on-accent: #ffffff;
-  --accent-soft: var(--orange-50);
+  --accent-soft: #fbe6da;
 
-  --focus: var(--teal-500);
+  --focus: #2c7a4b;
   --danger: var(--red-600);
   --on-danger: #ffffff;
-  --success: var(--green-600);
+  --success: #2c7a4b;
   --warning: var(--amber-500);
 
   /* Stronger hairline than --border, for controls that must read as an outline
      on their own (unchecked checkbox, month grid dividers). */
-  --border-strong: var(--gray-300);
+  --border-strong: #b9beb1;
 
   /* Modal backdrop. A token so it flips with the theme — hardcoded gray-900/40
      stayed light-mode ink and washed out the dark theme. */
-  --scrim: rgb(17 24 39 / 0.4);
+  --scrim: rgb(28 31 26 / 0.38);
   --on-scrim: #ffffff;
 
   /* Shadow ink, as raw channels so alpha can be composed below. Light mode uses
      a blue-black; dark mode needs pure black at a higher strength or shadows
      disappear entirely against the dark surfaces. */
-  --shadow-color: 17 24 39;
+  --shadow-color: 28 31 26;
   --shadow-strength: 1;
 }
 
@@ -95,30 +97,32 @@
    Shared block applied for system preference (when no explicit class)... */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --bg: #15171b;
-    --surface: #1d2025;
-    --surface-2: #25282e;
-    --border: #30343b;
-    --fg: var(--gray-50);
-    --muted: var(--gray-400);
-    --subtle: #7a828d;
+    --bg: #121411;
+    --surface: #1a1d19;
+    --surface-2: #22261f;
+    --border: #2e332b;
+    --fg: #eceee6;
+    --muted: #a9afa2;
+    --subtle: #8e9488;
 
-    --primary: var(--teal-500);
-    --primary-hover: var(--teal-400);
-    --on-primary: #07120f;
-    --primary-soft: #0f2a26;
+    --primary: #72c99a;
+    --primary-hover: #8fd6ae;
+    --on-primary: #0b1a11;
+    --primary-soft: #16301f;
+    /* Light end of the "it fits" gradient (capacity bar, checks). */
+    --fit-from: #b6ebc4;
 
-    --accent: var(--orange-400);
-    --accent-hover: var(--orange-500);
-    --on-accent: #1a0f06;
-    --accent-soft: #2a1a0d;
+    --accent: #ff8f62;
+    --accent-hover: #ffa884;
+    --on-accent: #1a0b05;
+    --accent-soft: #3a1e12;
 
-    --focus: var(--teal-400);
+    --focus: #72c99a;
     --danger: var(--red-400);
     --on-danger: #1a0707;
-    --success: var(--green-500);
+    --success: #72c99a;
 
-    --border-strong: #454b54;
+    --border-strong: #474d42;
     --scrim: rgb(0 0 0 / 0.62);
     --shadow-color: 0 0 0;
     --shadow-strength: 2.4;
@@ -127,30 +131,32 @@
 
 /* ...and the same block for an explicit `.dark` toggle (wins over system). */
 .dark {
-  --bg: #15171b;
-  --surface: #1d2025;
-  --surface-2: #25282e;
-  --border: #30343b;
-  --fg: var(--gray-50);
-  --muted: var(--gray-400);
-  --subtle: #7a828d;
+  --bg: #121411;
+  --surface: #1a1d19;
+  --surface-2: #22261f;
+  --border: #2e332b;
+  --fg: #eceee6;
+  --muted: #a9afa2;
+  --subtle: #8e9488;
 
-  --primary: var(--teal-500);
-  --primary-hover: var(--teal-400);
-  --on-primary: #07120f;
-  --primary-soft: #0f2a26;
+  --primary: #72c99a;
+  --primary-hover: #8fd6ae;
+  --on-primary: #0b1a11;
+  --primary-soft: #16301f;
+  /* Light end of the "it fits" gradient (capacity bar, checks). */
+  --fit-from: #b6ebc4;
 
-  --accent: var(--orange-400);
-  --accent-hover: var(--orange-500);
-  --on-accent: #1a0f06;
-  --accent-soft: #2a1a0d;
+  --accent: #ff8f62;
+  --accent-hover: #ffa884;
+  --on-accent: #1a0b05;
+  --accent-soft: #3a1e12;
 
-  --focus: var(--teal-400);
+  --focus: #72c99a;
   --danger: var(--red-400);
   --on-danger: #1a0707;
-  --success: var(--green-500);
+  --success: #72c99a;
 
-  --border-strong: #454b54;
+  --border-strong: #474d42;
   --scrim: rgb(0 0 0 / 0.62);
   --shadow-color: 0 0 0;
   --shadow-strength: 2.4;
@@ -168,7 +174,7 @@
    second palette in and maintain two sources of truth, these alias shadcn's
    names onto the semantic tokens above. Consequences worth knowing:
 
-   - A shadcn component dropped into this app inherits the REAL brand — teal
+   - A shadcn component dropped into this app inherits the REAL brand: green
      primary, not shadcn's near-black `neutral` base — so the landing looks
      like the product it is selling.
    - Dark mode needs no second block. These point at `--bg`, `--fg`, … which
@@ -231,6 +237,7 @@
   --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
   --color-primary-soft: var(--primary-soft);
+  --color-fit-from: var(--fit-from);
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
@@ -246,17 +253,19 @@
   --color-scrim: var(--scrim);
   --color-on-scrim: var(--on-scrim);
 
-  --font-sans: var(--font-dm-sans);
+  --font-sans: var(--font-figtree);
+  --font-display: var(--font-schibsted);
+  --font-mono: var(--font-plex-mono);
 
   /* Radius ramp, retuned one step softer than Tailwind's defaults (6/8/12) so
      the app reads rounder without renaming 215 call sites. --radius-card is
      deliberately EQUAL to --radius-xl: the 38 `rounded-xl` and 27 `rounded-card`
      usages were always meant to be the same shape, so now they are. */
-  --radius-md: 0.5rem; /* 8px  (was 6) — inputs, small buttons */
-  --radius-lg: 0.625rem; /* 10px (was 8) — buttons, nav items */
-  --radius-xl: 0.875rem; /* 14px (was 12) — task cards */
-  --radius-2xl: 1rem; /* 16px — sheets, panels */
-  --radius-card: 0.875rem; /* 14px — same shape as rounded-xl */
+  --radius-md: 0.75rem; /* 12px: inputs, small controls */
+  --radius-lg: 0.875rem; /* 14px: nav items, menus */
+  --radius-xl: 1.25rem; /* 20px: task cards, the white card inside a well */
+  --radius-2xl: 1.5rem; /* 24px: sheets, panels, wells */
+  --radius-card: 1.25rem; /* 20px: same shape as rounded-xl */
   --radius-pill: 9999px;
 
   /* Four elevation steps. The ink comes from --shadow-color/--shadow-strength
@@ -335,9 +344,25 @@
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Headings speak in the display face; body stays in Figtree. Tabular numbers
+   everywhere because this app is mostly durations and clocks. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-schibsted), var(--font-figtree), ui-sans-serif, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* The "it fits" fill: capacity that entered, a done check, a selected chip.
+   The only gradient in the app, and it always means the same thing. */
+@utility bg-fit {
+  background-image: linear-gradient(135deg, var(--fit-from), var(--primary));
 }
 
 /* iOS Safari zooms the whole page when a focused field's font-size is under
