@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { tasksInRangeQueryOptions } from "@/lib/queries/tasks";
 import { useChannels } from "@/lib/queries/channels";
 import { useProfiles } from "@/lib/queries/profiles";
@@ -155,14 +156,15 @@ export function ResumenView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-end gap-x-3 gap-y-3 px-2 pt-1">
+      <header className="flex animate-up flex-wrap items-center gap-2.5 px-2 pt-3">
         <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-          <span className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
-            {shape.label}
-          </span>
-          <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight text-fg">
+          <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em] text-fg">
             {t("title")}
           </h1>
+          {/* Not on the canvas, whose toggle names the period. "Últimas 4"
+              doesn't say which four weeks, so the dates stay, as the quiet
+              subtitle every other screen's header has. */}
+          <p className="text-sm text-muted">{shape.label}</p>
         </div>
         <div className="-mx-1 max-w-full overflow-x-auto px-1">
           <div className="flex w-max gap-0.5 rounded-pill bg-surface-2 p-1">
@@ -172,9 +174,9 @@ export function ResumenView() {
                 onClick={() => setPeriod(p.value)}
                 aria-pressed={period === p.value}
                 className={cn(
-                  "h-9 cursor-pointer rounded-pill px-4 text-sm font-semibold transition-colors",
+                  "h-9 cursor-pointer rounded-pill px-4 text-sm font-semibold transition-colors duration-200",
                   period === p.value
-                    ? "bg-surface text-fg shadow-soft"
+                    ? "bg-surface text-fg shadow-[0_1px_3px_rgb(var(--shadow-color)/calc(0.12*var(--shadow-strength)))]"
                     : "text-muted hover:text-fg",
                 )}
               >
@@ -186,25 +188,33 @@ export function ResumenView() {
       </header>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
-        {/* The hero tile: completion is the number this screen exists for. */}
-        <section className="flex items-center gap-[18px] rounded-2xl bg-fg p-[22px] text-bg">
+        {/* The hero tile: completion is the number this screen exists for.
+            The canvas's #A9AFA2 / #CDD2C6 labels are the tile's ink at 65% and
+            80%, so they flip with it in dark mode. */}
+        <section
+          className="flex animate-up items-center gap-[18px] rounded-[28px] bg-fg p-[22px] text-bg"
+          style={{ animationDelay: "60ms" }}
+        >
           <Ring pct={overallPct} />
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="text-xs text-bg/60">{t("statDone")}</p>
-            <p className="font-display text-[40px] leading-none font-bold tracking-tight tabular-nums">
+            <p className="text-2xs text-bg/65">{t("statDone")}</p>
+            <p className="font-display text-[40px] leading-none font-bold tracking-[-0.02em] tabular-nums">
               {overall.done}
             </p>
-            <p className="text-xs text-bg/80">
+            <p className="text-2xs text-bg/80">
               {t("statDoneSub", { total: overall.total, pct: overallPct })}
             </p>
           </div>
         </section>
-        <Well className="flex flex-col justify-center gap-1 p-[22px]">
-          <p className="text-xs text-muted">{t("statPlanned")}</p>
-          <p className="font-display text-[40px] leading-none font-bold tracking-tight text-fg tabular-nums">
+        <Well
+          className="flex animate-up flex-col justify-center gap-1 rounded-[28px] p-[22px]"
+          style={{ animationDelay: "120ms" }}
+        >
+          <p className="text-2xs text-muted">{t("statPlanned")}</p>
+          <p className="font-display text-[40px] leading-none font-bold tracking-[-0.02em] text-fg tabular-nums">
             {plannedMin > 0 ? formatMinutes(plannedMin) : "—"}
           </p>
-          <p className="text-xs text-muted">
+          <p className="text-2xs text-muted">
             {accuracy.actualMin > 0
               ? t("statPlannedMeasured", { time: formatMinutes(accuracy.actualMin) })
               : t("statPlannedSub")}
@@ -213,7 +223,7 @@ export function ResumenView() {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))] gap-4">
-        <ChartCard title={period === "week" ? t("byDay") : t("byWeek")}>
+        <ChartCard title={period === "week" ? t("byDay") : t("byWeek")} delay={180}>
           <div className="flex h-[180px] items-end gap-2 sm:gap-3">
             {bars.map((b) => (
               <div
@@ -224,8 +234,10 @@ export function ResumenView() {
                 <span className="font-mono text-[11px] text-muted tabular-nums">{b.done}</span>
                 <span
                   className={cn(
-                    "w-full rounded-xl transition-[height] duration-500",
-                    b.key === bestKey ? "bg-fit" : "bg-surface-2",
+                    "w-full rounded-[12px] transition-[height] duration-[600ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+                    // Top-down on a bar, as the canvas draws it (180deg), not
+                    // the diagonal of bg-fit.
+                    b.key === bestKey ? "bg-linear-to-b from-fit-from to-primary" : "bg-surface-2",
                   )}
                   style={{ height: `${Math.max(4, maxDone > 0 ? (b.done / maxDone) * 100 : 0)}%` }}
                 />
@@ -240,30 +252,30 @@ export function ResumenView() {
         {accuracy.trackedCount > 0 && (
           <ChartCard
             title={t("estimateVsActual")}
+            delay={220}
+            gap="gap-3"
             legend={
               <>
                 <LegendSwatch className="bg-border-strong" label={t("estimatedBar")} />
-                <LegendSwatch className="bg-fit" label={t("actualBar")} />
+                <LegendSwatch className={FIT_MID} label={t("actualBar")} />
               </>
             }
           >
-            <div className="flex flex-col gap-3">
-              {accuracyRows.map((r) => (
-                <div key={r.id} className="flex flex-col gap-[5px]">
-                  <div className="flex items-baseline justify-between gap-2 text-xs">
-                    <span className="truncate font-semibold text-fg">{r.name}</span>
-                    <span className="shrink-0 font-mono text-muted tabular-nums">
-                      {t("evrValue", {
-                        estimated: formatMinutes(r.estimatedMin),
-                        actual: formatMinutes(r.actualMin),
-                      })}
-                    </span>
-                  </div>
-                  <Meter value={r.estimatedMin} max={maxAccuracyMin} tone="bg-border-strong" />
-                  <Meter value={r.actualMin} max={maxAccuracyMin} tone="bg-fit" />
+            {accuracyRows.map((r) => (
+              <div key={r.id} className="flex flex-col gap-[5px]">
+                <div className="flex items-baseline justify-between gap-2 text-2xs">
+                  <span className="truncate font-semibold text-fg">{r.name}</span>
+                  <span className="shrink-0 font-mono text-muted tabular-nums">
+                    {t("evrValue", {
+                      estimated: formatMinutes(r.estimatedMin),
+                      actual: formatMinutes(r.actualMin),
+                    })}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <Meter value={r.estimatedMin} max={maxAccuracyMin} tone="bg-border-strong" />
+                <Meter value={r.actualMin} max={maxAccuracyMin} tone={FIT_BAR} />
+              </div>
+            ))}
             <span className="mt-auto text-[11px] text-muted">
               {t("trackedCount", { n: accuracy.trackedCount })}
             </span>
@@ -272,7 +284,10 @@ export function ResumenView() {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))] gap-4">
-        <Well className="flex flex-col gap-3 p-[18px]">
+        <Well
+          className="flex animate-up flex-col gap-3 rounded-[28px] p-[18px]"
+          style={{ animationDelay: "260ms" }}
+        >
           <h2 className="text-base font-semibold text-fg">{t("byCategory")}</h2>
           {channelRows.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted">{t("byCategoryEmpty")}</p>
@@ -284,7 +299,7 @@ export function ResumenView() {
                 {channelRows.map((r) => (
                   <span
                     key={r.id}
-                    className="block h-full min-w-1 rounded-pill transition-[flex-grow] duration-500"
+                    className="block h-full min-w-1 rounded-pill transition-[flex-grow] duration-[600ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
                     style={{ flexGrow: r.min, backgroundColor: r.color }}
                   />
                 ))}
@@ -297,7 +312,7 @@ export function ResumenView() {
                     aria-hidden
                   />
                   <span className="min-w-0 flex-1 truncate font-semibold text-fg">{r.name}</span>
-                  <span className="shrink-0 font-mono text-xs text-muted tabular-nums">
+                  <span className="shrink-0 font-mono text-2xs text-muted tabular-nums">
                     {formatMinutes(r.min)}
                   </span>
                 </div>
@@ -307,18 +322,21 @@ export function ResumenView() {
         </Well>
 
         {ownerRows.length > 0 && (
-          <Well className="flex flex-col gap-3.5 p-[18px]">
+          <Well
+            className="flex animate-up flex-col gap-3.5 rounded-[28px] p-[18px]"
+            style={{ animationDelay: "300ms" }}
+          >
             <h2 className="text-base font-semibold text-fg">{t("byPerson")}</h2>
             {ownerRows.map(({ profile, stat }) => (
               <div
                 key={profile.id}
-                className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3 shadow-soft"
+                className="flex items-center gap-3 rounded-[18px] bg-surface px-3.5 py-3"
               >
                 <OwnerAvatar profile={profile} size={34} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 text-[13px]">
                     <p className="truncate font-semibold text-fg">{profile.display_name}</p>
-                    <p className="text-xs text-muted">
+                    <p className="text-2xs text-muted">
                       {t("personStats", {
                         done: stat!.done,
                         total: stat!.total,
@@ -328,7 +346,10 @@ export function ResumenView() {
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-pill bg-surface-2" aria-hidden>
                     <div
-                      className="h-full rounded-pill bg-fit transition-[width] duration-500"
+                      className={cn(
+                        "h-full rounded-pill transition-[width] duration-[600ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+                        FIT_BAR,
+                      )}
                       style={{ width: `${(stat!.done / stat!.total) * 100}%` }}
                     />
                   </div>
@@ -342,9 +363,19 @@ export function ResumenView() {
   );
 }
 
+/** The fit ramp laid along a bar (the canvas's 90deg), not bg-fit's diagonal,
+ *  which on an 8px-tall bar read as a flat colour. */
+const FIT_BAR = "bg-linear-to-r from-fit-from to-primary";
+/** Canvas #3FA266, a step between the mint and the primary green. No token
+ *  holds it yet, so it is mixed from the two that do. */
+const FIT_MID = "bg-[color-mix(in_srgb,var(--primary)_72%,var(--fit-from))]";
+
 /** Completion as a ring on the dark hero tile. The track is a tint of the
- *  card's own ink so it flips with the tile in dark mode; the arc is the same
- *  "fit" ramp as `bg-fit`, which SVG strokes can't take as a class. */
+ *  card's own ink so it flips with the tile in dark mode; the arc runs the
+ *  canvas's lighter ramp (#B6EBC4 → #3FA266), mixed from the fit tokens so it
+ *  follows the theme. It draws itself in from empty on mount (the canvas's
+ *  `ring` keyframe: 1.3s, 0.3s in); MotionConfig skips that under reduced
+ *  motion. */
 function Ring({ pct }: { pct: number }) {
   const R = 52;
   const C = 2 * Math.PI * R;
@@ -353,8 +384,18 @@ function Ring({ pct }: { pct: number }) {
       <svg viewBox="0 0 132 132" className="h-full w-full -rotate-90" aria-hidden>
         <defs>
           <linearGradient id="resumen-ring" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="var(--color-fit-from)" />
-            <stop offset="1" stopColor="var(--color-primary)" />
+            {/* As style, not the stop-color attribute: an attribute won't take
+                color-mix(), and the arc rendered as nothing. */}
+            <stop
+              offset="0"
+              style={{ stopColor: "color-mix(in srgb, var(--color-fit-from) 62%, white)" }}
+            />
+            <stop
+              offset="1"
+              style={{
+                stopColor: "color-mix(in srgb, var(--color-primary) 72%, var(--color-fit-from))",
+              }}
+            />
           </linearGradient>
         </defs>
         <circle
@@ -363,10 +404,10 @@ function Ring({ pct }: { pct: number }) {
           r={R}
           fill="none"
           stroke="var(--color-bg)"
-          strokeOpacity={0.12}
+          strokeOpacity={0.08}
           strokeWidth="13"
         />
-        <circle
+        <motion.circle
           cx="66"
           cy="66"
           r={R}
@@ -375,8 +416,9 @@ function Ring({ pct }: { pct: number }) {
           strokeWidth="13"
           strokeLinecap="round"
           strokeDasharray={C}
-          strokeDashoffset={C * (1 - Math.min(pct, 100) / 100)}
-          style={{ transition: "stroke-dashoffset 0.6s ease-out" }}
+          initial={{ strokeDashoffset: C }}
+          animate={{ strokeDashoffset: C * (1 - Math.min(pct, 100) / 100) }}
+          transition={{ duration: 1.3, delay: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
         />
       </svg>
       <span className="absolute inset-0 grid place-items-center font-display text-[22px] font-bold">
@@ -390,15 +432,20 @@ function Ring({ pct }: { pct: number }) {
 function ChartCard({
   title,
   legend,
+  delay,
+  gap = "gap-3.5",
   children,
 }: {
   title: string;
   legend?: React.ReactNode;
+  /** Entrance stagger in ms, so the cards land one after another. */
+  delay: number;
+  gap?: string;
   children: React.ReactNode;
 }) {
   return (
-    <Well>
-      <section className="flex h-full flex-col gap-3.5 rounded-xl bg-surface p-[18px] shadow-soft">
+    <Well className="animate-up rounded-[28px]" style={{ animationDelay: `${delay}ms` }}>
+      <section className={cn("flex h-full flex-col rounded-[22px] bg-surface p-[18px]", gap)}>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h2 className="mr-auto text-base font-semibold text-fg">{title}</h2>
           {legend}
@@ -422,7 +469,10 @@ function Meter({ value, max, tone }: { value: number; max: number; tone: string 
   return (
     <div className="h-2 overflow-hidden rounded-pill bg-bg" aria-hidden>
       <div
-        className={cn("h-full rounded-pill transition-[width] duration-500", tone)}
+        className={cn(
+          "h-full rounded-pill transition-[width] duration-[600ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+          tone,
+        )}
         style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }}
       />
     </div>

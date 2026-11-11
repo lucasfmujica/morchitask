@@ -66,12 +66,15 @@ export function MonthView({ date }: { date: string }) {
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-3 px-2 pt-3">
+      <header
+        className="flex animate-up flex-wrap items-center gap-2.5 px-2 pt-3"
+        style={{ animationDelay: "60ms", animationDuration: "0.6s" }}
+      >
         <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-          <span className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+          <span className="text-[11px] font-semibold tracking-[0.06em] text-muted uppercase">
             {tnav("month")}
           </span>
-          <h1 className="truncate font-display text-[32px] leading-9 font-bold tracking-tight">
+          <h1 className="m-0 truncate font-display text-[32px] font-bold tracking-[-0.02em]">
             {labels.monthLabel(date)}
           </h1>
         </div>
@@ -81,7 +84,7 @@ export function MonthView({ date }: { date: string }) {
             aria-label={t("prevMonth")}
             className={arrow}
           >
-            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
           </button>
           <button
             onClick={() => router.push(`/month/${today}`)}
@@ -91,7 +94,7 @@ export function MonthView({ date }: { date: string }) {
               // On the current month it reads as the selected segment; elsewhere
               // it's the way back.
               isThisMonth
-                ? "cursor-default bg-surface text-fg shadow-soft"
+                ? "cursor-default bg-surface text-fg shadow-[0_1px_3px_rgb(var(--shadow-color)/0.12)]"
                 : "text-fg hover:bg-surface",
             )}
           >
@@ -102,18 +105,21 @@ export function MonthView({ date }: { date: string }) {
             aria-label={t("nextMonth")}
             className={arrow}
           >
-            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
           </button>
         </div>
       </header>
 
       {/* The month is a well; each day is a white cell on it. */}
-      <section className="rounded-2xl bg-surface-2 p-1.5 sm:p-2.5">
+      <section
+        className="animate-up rounded-2xl bg-surface-2 p-1.5 sm:rounded-[28px] sm:p-2.5"
+        style={{ animationDelay: "120ms", animationDuration: "0.6s" }}
+      >
         <div className="grid grid-cols-7 gap-1 px-1 pt-1.5 pb-2.5 sm:gap-2">
           {labels.weekdayHeaders().map((w) => (
             <div
               key={w}
-              className="text-center text-2xs font-semibold tracking-[0.06em] text-muted uppercase sm:pl-2.5 sm:text-left"
+              className="text-center text-[11px] font-semibold tracking-[0.06em] text-muted uppercase sm:pl-2.5 sm:text-left"
             >
               {w}
             </div>
@@ -129,7 +135,7 @@ export function MonthView({ date }: { date: string }) {
                 <div
                   key={d}
                   aria-hidden
-                  className="min-h-[64px] rounded-lg opacity-60 ring-[1.5px] ring-border ring-inset sm:min-h-[112px] sm:rounded-xl"
+                  className="min-h-[64px] rounded-lg opacity-60 shadow-[inset_0_0_0_1.5px_var(--color-border)] sm:min-h-[112px] sm:rounded-[18px]"
                 />
               );
             }
@@ -157,10 +163,11 @@ export function MonthView({ date }: { date: string }) {
           main move; past days can only be looked at, so they get "open". */}
       <div
         aria-live="polite"
-        className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-surface py-2 pr-2 pl-5 shadow-soft sm:rounded-pill"
+        className="flex animate-up flex-wrap items-center gap-3 rounded-2xl bg-surface py-2 pr-2 pl-5 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)] sm:rounded-pill"
+        style={{ animationDelay: "220ms", animationDuration: "0.6s" }}
       >
-        <span className="mr-auto font-semibold text-fg">{labels.fullDayLabel(sel)}</span>
-        <span className="text-[13px] text-muted tabular-nums">
+        <span className="mr-auto text-sm font-semibold text-fg">{labels.fullDayLabel(sel)}</span>
+        <span className="text-xs text-muted tabular-nums">
           {!selSummary || selSummary.plannedMin === 0
             ? t("noLoad")
             : selState.over
@@ -178,14 +185,14 @@ export function MonthView({ date }: { date: string }) {
           {!selIsPast && (
             <Link
               href={sel === today ? "/today" : `/day/${sel}`}
-              className={buttonVariants({ variant: "ghost", size: "md" })}
+              className={cn(buttonVariants({ variant: "ghost", size: "md" }), "px-[18px]")}
             >
               {t("openDay")}
             </Link>
           )}
           <Link
             href={selIsPast ? `/day/${sel}` : `/plan/${sel}`}
-            className={buttonVariants({ size: "md" })}
+            className={cn(buttonVariants({ size: "md" }), "px-[18px]")}
           >
             {selIsPast ? t("openDay") : t("planThatDay")}
           </Link>
@@ -224,17 +231,21 @@ function DayCell({
       aria-label={label}
       aria-pressed={selected}
       className={cn(
-        "flex min-h-[64px] min-w-0 cursor-pointer flex-col items-center gap-1.5 rounded-lg bg-surface p-1 text-left transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-card focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none sm:min-h-[112px] sm:items-stretch sm:rounded-xl sm:p-2.5",
-        selected ? "ring-2 ring-fg ring-inset" : "shadow-soft",
-        // Past days fade so the eye lands on what's still ahead.
-        isPast && !selected && "opacity-60",
+        "flex min-h-[64px] min-w-0 cursor-pointer flex-col items-center gap-1.5 rounded-lg bg-surface p-1 text-left text-fg transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none sm:min-h-[112px] sm:items-stretch sm:rounded-[18px] sm:p-2.5",
+        selected
+          ? "shadow-[inset_0_0_0_2px_var(--color-fg)]"
+          : "shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)] hover:shadow-[0_6px_16px_rgb(var(--shadow-color)/0.08)]",
+        // Past days fade so the eye lands on what's still ahead, selected or not.
+        isPast && "opacity-60",
       )}
     >
       <span
         className={cn(
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-pill font-display text-sm font-bold tabular-nums sm:h-7 sm:w-7",
-          // Solid primary, not the fit gradient: 14px text needs the contrast.
-          isToday ? "bg-primary text-on-primary" : "text-fg",
+          // White on the mint gradient: the canvas draws it so and the user
+          // asked for it as drawn, even though the light end of the ramp
+          // gives small text less contrast than solid primary did.
+          isToday ? "bg-fit text-on-primary" : "text-fg",
         )}
       >
         {Number(day.slice(8, 10))}
@@ -246,9 +257,9 @@ function DayCell({
         <span
           key={c.key}
           className={cn(
-            "hidden min-w-0 items-center gap-[5px] self-start text-2xs font-semibold sm:flex",
+            "hidden min-w-0 items-center gap-[5px] text-[11px] font-semibold sm:flex",
             // A deadline that day wears the highlighter, as everywhere else.
-            c.deadline ? "-rotate-1 rounded-sm bg-marker px-1 text-on-marker" : "text-fg",
+            c.deadline ? "-rotate-1 rounded-[4px] bg-marker px-1 py-px text-on-marker" : "text-fg",
           )}
         >
           <span
@@ -260,7 +271,7 @@ function DayCell({
         </span>
       ))}
       {extra > 0 && (
-        <span className="hidden text-2xs text-muted sm:block">
+        <span className="hidden text-[11px] text-muted sm:block">
           {t("moreCategories", { n: extra })}
         </span>
       )}
@@ -282,16 +293,17 @@ function LoadBar({ plannedMin, capacity }: { plannedMin: number; capacity: numbe
       className="mt-auto block h-1 w-full shrink-0 overflow-hidden rounded-pill bg-surface-2"
       aria-hidden
     >
+      {/* The canvas runs this gradient at 90deg (bg-fit is 135deg), which on
+          a 4px bar is what keeps the dark end visible at the right. */}
       <span
-        className={cn(
-          "block h-full rounded-pill transition-[width] duration-300",
-          !over && "bg-fit",
-        )}
+        className="block h-full animate-fill rounded-pill transition-[width] duration-300"
         style={{
           width: `${pct}%`,
+          animationDuration: "1s",
+          animationDelay: "0.5s",
           background: over
-            ? "repeating-linear-gradient(45deg, var(--accent) 0 5px, color-mix(in srgb, var(--accent) 70%, var(--surface)) 5px 10px)"
-            : undefined,
+            ? "repeating-linear-gradient(45deg, var(--accent) 0 5px, color-mix(in srgb, var(--accent) 70%, var(--marker)) 5px 10px)"
+            : "linear-gradient(90deg, var(--fit-from), var(--primary))",
         }}
       />
     </span>

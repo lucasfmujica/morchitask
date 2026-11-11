@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useChannelLookup, useChannels, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
@@ -17,7 +16,7 @@ import { formatMinutes } from "@/lib/format";
 import type { Channel, Task } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
 import { useDateLabels } from "@/lib/use-date-labels";
-import { EASE_OUT_EXPO, SPRING_SOFT } from "@/lib/motion";
+import { SPRING_SOFT } from "@/lib/motion";
 import { Skeleton } from "@/components/ui";
 import { useComposerCreate } from "@/components/tasks/use-composer-create";
 import { PaletteTaskRow } from "./palette-task-row";
@@ -33,21 +32,22 @@ export function CommandPalette() {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-[60] flex items-start justify-center bg-scrim p-4 pt-[8dvh] sm:pt-[12dvh]"
+          className="fixed inset-0 z-[60] flex items-start justify-center bg-scrim p-4 pt-[8dvh] sm:pt-[120px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
           onClick={close}
         >
           <motion.div
             // max-h in dvh + a flex column: on a phone the on-screen keyboard
             // eats ~40% of the viewport, and a fixed vh panel would push the
             // results out of reach.
-            className="flex max-h-[80dvh] w-full max-w-[640px] flex-col gap-1.5 overflow-hidden rounded-[28px] bg-bg p-2 shadow-drag"
+            className="flex max-h-[80dvh] w-full max-w-[640px] flex-col gap-1.5 overflow-hidden rounded-[28px] bg-bg p-2 shadow-[0_24px_70px_rgb(var(--shadow-color)/0.3)]"
             initial={{ opacity: 0, scale: 0.98, y: -14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: -8 }}
-            transition={{ duration: 0.22, ease: EASE_OUT_EXPO }}
+            transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={tp("label")}
@@ -228,7 +228,20 @@ function PaletteBody({ close }: { close: () => void }) {
     <>
       {/* The input is a white pill on the paper panel: it's where you are. */}
       <div className="flex shrink-0 items-center gap-2.5 rounded-[22px] bg-surface py-1.5 pr-2 pl-[18px]">
-        <Search className="h-[18px] w-[18px] shrink-0 text-muted" aria-hidden />
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          className="shrink-0 text-muted"
+          aria-hidden
+        >
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="m10.5 10.5 3 3" />
+        </svg>
         <input
           autoFocus
           value={query}
@@ -249,7 +262,7 @@ function PaletteBody({ close }: { close: () => void }) {
         <button
           onClick={close}
           aria-label={tc("close")}
-          className="shrink-0 cursor-pointer rounded-[6px] bg-surface-2 px-[7px] py-[3px] font-mono text-2xs text-muted transition-colors hover:text-fg"
+          className="shrink-0 cursor-pointer rounded-[6px] bg-surface-2 px-[7px] py-[3px] font-mono text-[11px] leading-normal text-muted transition-colors hover:text-fg"
         >
           esc
         </button>
@@ -292,7 +305,7 @@ function PaletteBody({ close }: { close: () => void }) {
               aria-label={tp(section.headingKey)}
               className="flex flex-col gap-0.5 px-1 pt-1 pb-0.5"
             >
-              <p className="px-2.5 py-1.5 text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+              <p className="px-2.5 py-1.5 text-[11px] leading-normal font-semibold tracking-[0.06em] text-muted uppercase">
                 {tp(section.headingKey)}
               </p>
               {section.items.map((item) => {
@@ -329,7 +342,7 @@ function PaletteBody({ close }: { close: () => void }) {
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-4 border-t border-border px-3.5 pt-2 pb-1.5 text-2xs text-muted">
+      <div className="flex shrink-0 items-center gap-4 border-t border-border px-3.5 pt-2 pb-1.5 text-[11px] leading-normal text-muted">
         <span>
           <span className="font-mono">{"↑↓"}</span> {tp("navigate")}
         </span>
@@ -385,26 +398,36 @@ function CreateCard({
       onClick={onRun}
       onMouseMove={onMouseMove}
       className={cn(
-        "flex shrink-0 cursor-pointer flex-col gap-2.5 rounded-[20px] bg-surface px-3.5 py-3 text-left ring-2 transition-shadow ring-inset",
-        active ? "ring-primary/50" : "ring-transparent",
+        // Rises in as soon as there is something to create, like the canvas.
+        "flex shrink-0 animate-up cursor-pointer flex-col gap-2.5 rounded-[20px] bg-surface px-3.5 py-3 text-left ring-2 transition-shadow ring-inset [animation-duration:350ms]",
+        active ? "ring-fit-from" : "ring-transparent",
       )}
     >
-      <span className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+      <span className="text-[11px] leading-normal font-semibold tracking-[0.06em] text-muted uppercase">
         {tp("createHeading")}
       </span>
       <span className="flex items-center gap-2.5">
         {/* Green disc: creating it is the "yes, add this" of the palette. */}
         <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-fit text-on-primary">
-          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <path d="M8 3v10M3 8h10" />
+          </svg>
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">
           {tp("createTask", { title: clean || item.title })}
         </span>
-        {active && (
-          <span className="shrink-0 font-mono text-2xs text-muted" aria-hidden>
-            {"↵"}
-          </span>
-        )}
+        <span className="shrink-0 font-mono text-[11px] text-muted" aria-hidden>
+          {"↵"}
+        </span>
       </span>
       <span className="flex flex-wrap gap-1.5 pl-9">
         {/* Where it lands: the parsed day, or today like before. */}
@@ -460,7 +483,8 @@ function ParsedChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-semibold",
+        // Each chip rises in as the parser reads it out of the text.
+        "inline-flex animate-up items-center gap-1.5 rounded-pill px-2.5 py-1 text-2xs font-semibold [animation-duration:350ms]",
         className,
       )}
       style={style}

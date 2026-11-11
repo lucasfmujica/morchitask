@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mic, Plus, SlidersHorizontal, X } from "lucide-react";
+import { Mic, SlidersHorizontal, X } from "lucide-react";
 import type { Channel } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
 import { useDateLabels } from "@/lib/use-date-labels";
@@ -110,11 +110,11 @@ export function TaskComposer({
     // corners relax to a card so the extra rows don't sit inside a capsule.
     <div
       className={cn(
-        "bg-surface p-1.5 pl-4 shadow-soft transition-[border-radius] duration-150 focus-within:shadow-card",
-        previews.length > 0 || chipsOpen ? "rounded-2xl pb-3" : "rounded-[1.75rem]",
+        "bg-surface py-1.5 pr-1.5 pl-4 transition-[border-radius,box-shadow] duration-150 focus-within:shadow-tile",
+        previews.length > 0 || chipsOpen ? "rounded-[22px] pb-3" : "rounded-pill",
       )}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <input
           data-task-composer
           value={title}
@@ -127,14 +127,14 @@ export function TaskComposer({
           }}
           placeholder={t("addPlaceholder")}
           aria-label={t("newTask")}
-          className="h-9 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
+          className="h-[34px] w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
         {onDictate && (
           <button
             onClick={onDictate}
             aria-label={tc("open")}
             title={tc("open")}
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-pill text-subtle transition-colors hover:bg-surface-2 hover:text-muted"
+            className="flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-pill text-subtle transition-colors hover:bg-surface-2 hover:text-muted"
           >
             <Mic className="h-4 w-4" aria-hidden />
           </button>
@@ -145,21 +145,33 @@ export function TaskComposer({
           aria-label={t("categoryAndPriority")}
           title={t("categoryAndPriority")}
           className={cn(
-            "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-pill transition-colors",
+            "flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-pill transition-colors",
             chipsOpen ? "bg-surface-2 text-fg" : "text-subtle hover:bg-surface-2 hover:text-muted",
           )}
         >
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
         </button>
         {/* Adding is the "it fits" green: the one gradient, on the one verb
-            that puts something into the day. */}
+            that puts something into the day. Full colour even while the field
+            is empty (it just doesn't respond): at 40% it read as broken, and
+            the canvas never shows it washed out. */}
         <button
           onClick={submit}
           disabled={!title.trim()}
           aria-label={t("add")}
-          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-pill bg-fit text-on-primary shadow-soft transition-[opacity,transform] duration-150 hover:scale-105 active:scale-95 disabled:cursor-default disabled:opacity-40 disabled:hover:scale-100"
+          className="flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-pill bg-fit text-on-primary transition-transform duration-150 hover:scale-105 active:scale-95 disabled:cursor-default disabled:hover:scale-100 disabled:active:scale-100"
         >
-          <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+          <svg
+            viewBox="0 0 16 16"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <path d="M8 3v10M3 8h10" />
+          </svg>
         </button>
       </div>
 

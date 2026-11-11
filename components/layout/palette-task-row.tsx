@@ -45,7 +45,7 @@ export function PaletteTaskRow({
       >
         <Highlight text={task.title} ranges={ranges} />
       </span>
-      <span className="shrink-0 text-xs text-muted">{where}</span>
+      <span className="shrink-0 text-2xs text-muted">{where}</span>
     </span>
   );
 }

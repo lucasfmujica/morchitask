@@ -28,7 +28,10 @@ export function FocusAudioPanel() {
       <FocusSoundPlayer />
 
       <div className="flex flex-col gap-2">
-        <section className="flex items-center gap-2.5 rounded-pill bg-surface py-2 pr-2 pl-4 shadow-soft">
+        <section
+          className="flex animate-up items-center gap-2.5 rounded-pill bg-surface py-2 pr-2 pl-4 shadow-[0_1px_2px_rgb(var(--shadow-color)/calc(0.06*var(--shadow-strength)))]"
+          style={{ animationDelay: "220ms" }}
+        >
           <span
             className={cn(
               "h-2.5 w-2.5 shrink-0 rounded-full",
@@ -36,7 +39,8 @@ export function FocusAudioPanel() {
                 ? "bg-fit"
                 : connected
                   ? "bg-primary"
-                  : "bg-border-strong",
+                  : // Canvas #9AA294: between the subtle and the strong grey.
+                    "bg-[color-mix(in_srgb,var(--subtle)_45%,var(--border-strong))]",
             )}
             aria-hidden
           />
@@ -47,7 +51,7 @@ export function FocusAudioPanel() {
             onClick={connected ? () => setOpen((o) => !o) : connectSpotify}
             aria-expanded={connected ? open : undefined}
             title={connected ? undefined : t("spotifyPitch")}
-            className="h-9 shrink-0 cursor-pointer rounded-pill bg-surface-2 px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-border"
+            className="h-9 shrink-0 cursor-pointer rounded-pill bg-surface-2 px-3.5 text-2xs font-semibold text-fg transition-colors hover:bg-border"
           >
             {!connected ? t("spotifyConnect") : open ? t("spotifyClose") : t("spotifyOpen")}
           </button>

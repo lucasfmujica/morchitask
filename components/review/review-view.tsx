@@ -183,10 +183,10 @@ function WeeklyReview({
 
       <header className="flex flex-col gap-3.5">
         <div className="flex flex-col gap-0.5">
-          <span className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+          <span className="text-[11px] leading-4 font-semibold tracking-[0.06em] text-muted uppercase">
             {t("weekOf", { range: weekRangeLabel(days) })}
           </span>
-          <h1 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg md:text-[32px]">
+          <h1 className="font-display text-[28px] leading-9 font-bold tracking-[-0.02em] text-fg md:text-[32px]">
             {t("title")}
           </h1>
         </div>
@@ -238,7 +238,10 @@ function WeeklyReview({
           onClick={() => setStep(step - 1)}
           aria-hidden={step === 0}
           tabIndex={step === 0 ? -1 : undefined}
-          className={cn("px-[18px] text-muted hover:text-fg", step === 0 && "invisible")}
+          className={cn(
+            "h-[46px] px-[18px] text-sm text-muted hover:text-fg",
+            step === 0 && "invisible",
+          )}
         >
           {ts("back")}
         </Button>
@@ -246,7 +249,7 @@ function WeeklyReview({
           size="lg"
           onClick={() => (isLast ? finish() : setStep(step + 1))}
           disabled={saving}
-          className="ml-auto px-[26px]"
+          className="ml-auto h-[46px] animate-glow px-[26px] text-sm"
         >
           {isLast ? (note?.completed_at ? t("saveAndSee") : t("close")) : ts("next")}
         </Button>
@@ -273,15 +276,19 @@ function StepBar({ step, onJump }: { step: number; onJump: (i: number) => void }
             aria-current={i === step ? "step" : undefined}
             className="group flex min-w-0 cursor-pointer flex-col gap-2 rounded-md text-left focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none"
           >
-            <span
-              className={cn(
-                "block h-[5px] w-full rounded-pill transition-colors duration-300",
-                i <= step ? "bg-fg" : "bg-border group-hover:bg-border-strong",
+            {/* The ink draws in from the left when a step is reached (it only
+                mounts when lit, so moving back and forth replays it). */}
+            <span className="block h-[5px] w-full overflow-hidden rounded-pill bg-border transition-colors duration-300 group-hover:bg-border-strong max-sm:h-1">
+              {i <= step && (
+                <span
+                  className="block h-full w-full animate-seg rounded-pill bg-fg"
+                  style={{ animationDelay: i === step ? "120ms" : "0ms" }}
+                />
               )}
-            />
+            </span>
             <span
               className={cn(
-                "truncate text-xs font-semibold max-sm:hidden",
+                "truncate text-2xs font-semibold max-sm:hidden",
                 i === step ? "text-fg" : "text-muted",
               )}
             >
@@ -328,8 +335,8 @@ function StepLookBack({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg sm:text-[34px] sm:leading-10">
+      <div className="flex animate-up flex-col gap-1">
+        <h2 className="font-display text-[28px] leading-9 font-bold tracking-[-0.02em] text-fg sm:text-[34px] sm:leading-[41px]">
           {done === 0 ? t("quietWeek") : t("doneCount", { n: done })}
         </h2>
         <p className="text-sm text-muted">
@@ -344,27 +351,34 @@ function StepLookBack({
       {/* The chart takes two tracks and the closed-days tile one; on a phone
           they stack. */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-        <Well className="rounded-2xl sm:col-span-2">
+        <Well className="animate-up rounded-2xl sm:col-span-2" style={{ animationDelay: "100ms" }}>
           <DoneByDay week={week} tasks={weekTasks} meId={meId} bestDay={bestDay} />
         </Well>
-        <Well className="flex flex-col gap-2.5 rounded-2xl p-[18px]">
-          <span className="text-xs text-muted">{t("closedDays")}</span>
+        <Well
+          className="flex animate-up flex-col gap-2.5 rounded-2xl p-[18px]"
+          style={{ animationDelay: "160ms" }}
+        >
+          <span className="text-2xs text-muted">{t("closedDays")}</span>
           <span className="font-display text-[30px] leading-9 font-bold text-fg">
             {t("closedDaysValue", { n: closedCount })}
           </span>
           <div className="flex gap-1.5" aria-hidden>
-            {week.map((d) => (
+            {week.map((d, i) => (
               <span
                 key={d}
-                className={cn("h-4 w-4 rounded-pill", closedDays.has(d) ? "bg-fit" : "bg-border")}
+                className={cn(
+                  "h-4 w-4 animate-pop rounded-pill",
+                  closedDays.has(d) ? "bg-fit" : "bg-border",
+                )}
+                style={{ animationDelay: `${300 + i * 60}ms` }}
               />
             ))}
           </div>
           {bestDay && (
-            <span className="mt-auto pt-2 text-xs text-muted">
+            <span className="mt-auto pt-2 text-2xs text-muted">
               {t.rich("bestDayLine", {
                 day: weekdayName(bestDay),
-                b: (chunks) => <b className="font-semibold text-fg">{chunks}</b>,
+                b: (chunks) => <b className="font-bold text-fg">{chunks}</b>,
               })}
             </span>
           )}
@@ -372,11 +386,9 @@ function StepLookBack({
       </div>
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        <Well className="rounded-2xl">
-          <label className="flex h-full flex-col gap-2 rounded-[18px] bg-surface p-4 shadow-soft">
-            <span className="font-display text-base font-semibold text-fg">
-              {t("winsQuestion")}
-            </span>
+        <Well className="animate-up rounded-2xl" style={{ animationDelay: "220ms" }}>
+          <label className="flex h-full flex-col gap-2 rounded-[18px] bg-surface p-4">
+            <span className="font-display text-sm font-semibold text-fg">{t("winsQuestion")}</span>
             <textarea
               value={wins}
               onChange={(e) => onWins(e.target.value)}
@@ -386,9 +398,9 @@ function StepLookBack({
             />
           </label>
         </Well>
-        <Well className="rounded-2xl">
-          <label className="flex h-full flex-col gap-2 rounded-[18px] bg-surface p-4 shadow-soft">
-            <span className="font-display text-base font-semibold text-fg">
+        <Well className="animate-up rounded-2xl" style={{ animationDelay: "260ms" }}>
+          <label className="flex h-full flex-col gap-2 rounded-[18px] bg-surface p-4">
+            <span className="font-display text-sm font-semibold text-fg">
               {t("lessonsQuestion")}
             </span>
             <textarea
@@ -407,7 +419,10 @@ function StepLookBack({
           opens on the chart and the writing. */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3.5 empty:hidden">
         {hasTime && (
-          <Well className="flex flex-col gap-2.5 rounded-2xl p-[18px]">
+          <Well
+            className="flex animate-up flex-col gap-2.5 rounded-2xl p-[18px]"
+            style={{ animationDelay: "300ms" }}
+          >
             <CompareBar
               label={ts("estimatedBar")}
               min={estimatedMin}
@@ -457,8 +472,14 @@ function DoneByDay({
   return (
     <figure
       aria-label={t("perDayChart")}
-      className="flex h-[168px] items-end gap-1.5 rounded-[18px] bg-surface p-4 shadow-soft sm:gap-2.5"
+      className="flex h-[168px] items-end gap-1.5 rounded-[18px] bg-surface p-4 sm:gap-2.5"
     >
+      {/* No stock utility grows a bar upward, so this keyframe travels with
+          the chart. React hoists and dedupes it by href; the global
+          reduced-motion rule collapses it to the finished bar. */}
+      <style href="mt-grow" precedence="default">
+        {"@keyframes mt-grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}"}
+      </style>
       {week.map((d, i) => (
         <div
           key={d}
@@ -468,10 +489,13 @@ function DoneByDay({
           <span className="font-mono text-2xs text-muted">{counts[i]}</span>
           <span
             className={cn(
-              "w-full rounded-[10px] transition-[height] duration-500",
+              "w-full origin-bottom rounded-[10px] transition-[height] duration-500",
               d === bestDay ? "bg-fit" : "bg-surface-2",
             )}
-            style={{ height: `${Math.max(6, (counts[i] / max) * 100)}%` }}
+            style={{
+              height: `${Math.max(6, (counts[i] / max) * 100)}%`,
+              animation: `mt-grow 0.9s cubic-bezier(.2,.8,.2,1) ${200 + i * 70}ms both`,
+            }}
           />
           <span className="text-2xs font-semibold text-muted">
             {tw(`weekdayInitials.${DAY_KEYS[i]}`)}
@@ -493,8 +517,11 @@ function WeekGoals({ week }: { week: string[] }) {
   if (goals.length === 0) return null;
 
   return (
-    <Well className="flex flex-col gap-1.5 rounded-2xl">
-      <p className="px-2.5 pt-2.5 pb-1 font-display text-base font-semibold text-fg">
+    <Well
+      className="flex animate-up flex-col gap-1.5 rounded-2xl"
+      style={{ animationDelay: "340ms" }}
+    >
+      <p className="px-2.5 pt-2.5 pb-1 font-display text-sm font-semibold text-fg">
         {t("yourGoals")}
       </p>
       <ul className="flex flex-col gap-1.5">
@@ -504,7 +531,7 @@ function WeekGoals({ week }: { week: string[] }) {
           return (
             <li
               key={o.id}
-              className="flex items-center gap-3 rounded-[16px] bg-surface px-3.5 py-3 shadow-soft"
+              className="flex items-center gap-3 rounded-[16px] bg-surface px-3.5 py-3"
             >
               <Target className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">
@@ -512,8 +539,8 @@ function WeekGoals({ week }: { week: string[] }) {
               </span>
               <span
                 className={cn(
-                  "shrink-0 rounded-pill px-2 py-0.5 font-mono text-xs",
-                  pct === 100 ? "bg-primary text-on-primary" : "bg-surface-2 text-muted",
+                  "shrink-0 rounded-pill px-2 py-0.5 font-mono text-2xs",
+                  pct === 100 ? "bg-fit text-on-primary" : "bg-surface-2 text-muted",
                 )}
               >
                 {pct}%
@@ -545,8 +572,8 @@ function StepLeftovers({
   const t = useTranslations("review");
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg">
+      <div className="flex animate-up flex-col gap-1">
+        <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
           {t("leftoversTitle")}
         </h2>
         <p className="text-sm text-muted">
@@ -555,7 +582,7 @@ function StepLeftovers({
       </div>
 
       {leftovers.length === 0 ? (
-        <p className="flex items-center gap-3 rounded-2xl bg-surface-2 p-4 text-sm font-medium text-fg">
+        <p className="flex animate-up items-center gap-3 rounded-2xl bg-surface-2 p-4 text-sm font-medium text-fg">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-pill bg-fit text-on-primary">
             <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           </span>
@@ -597,8 +624,8 @@ function StepNextWeek({
   const t = useTranslations("review");
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex flex-col gap-2.5">
-        <h2 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg">
+      <div className="flex animate-up flex-col gap-2.5">
+        <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
           {t("nextTitle")}
         </h2>
         <label className="flex flex-col gap-2.5">
@@ -607,7 +634,7 @@ function StepNextWeek({
             value={focus}
             onChange={(e) => onFocus(e.target.value)}
             placeholder={t("focusPlaceholder")}
-            className="h-[52px] w-full rounded-pill border-0 bg-surface px-5 text-sm text-fg shadow-soft placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="h-[52px] w-full rounded-pill border-0 bg-surface px-5 text-sm text-fg shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)] placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
           />
         </label>
       </div>
@@ -615,8 +642,11 @@ function StepNextWeek({
       <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] items-start gap-3.5">
         <NextWeekGoals nextDays={nextDays} />
 
-        <Well className="flex flex-col gap-1.5 rounded-2xl">
-          <p className="px-2.5 pt-2.5 pb-1 font-display text-base font-semibold text-fg">
+        <Well
+          className="flex animate-up flex-col gap-1.5 rounded-2xl"
+          style={{ animationDelay: "160ms" }}
+        >
+          <p className="px-2.5 pt-2.5 pb-1 font-display text-sm font-semibold text-fg">
             {t("fromBacklog", { n: backlog.length })}
           </p>
           {backlog.length === 0 ? (
@@ -663,19 +693,22 @@ function NextWeekGoals({ nextDays }: { nextDays: string[] }) {
   }
 
   return (
-    <Well className="flex flex-col gap-1.5 rounded-2xl">
-      <p className="px-2.5 pt-2.5 pb-1 font-display text-base font-semibold text-fg">
+    <Well
+      className="flex animate-up flex-col gap-1.5 rounded-2xl"
+      style={{ animationDelay: "100ms" }}
+    >
+      <p className="px-2.5 pt-2.5 pb-1 font-display text-sm font-semibold text-fg">
         {t("weekGoals")}
       </p>
       {goals.map((o) => (
         <div
           key={o.id}
-          className="rounded-[16px] bg-surface px-3.5 py-3 text-sm font-semibold text-fg shadow-soft"
+          className="rounded-[16px] bg-surface px-3.5 py-3 text-sm font-semibold text-fg"
         >
           {o.title}
         </div>
       ))}
-      <div className="flex items-center gap-2 rounded-pill bg-surface py-1.5 pr-1.5 pl-4 shadow-soft">
+      <div className="flex items-center gap-2 rounded-pill bg-surface py-1.5 pr-1.5 pl-4">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -687,7 +720,7 @@ function NextWeekGoals({ nextDays }: { nextDays: string[] }) {
         <button
           onClick={add}
           disabled={!title.trim() || create.isPending}
-          className="h-[34px] shrink-0 cursor-pointer rounded-pill bg-surface-2 px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-border disabled:cursor-default disabled:opacity-50"
+          className="h-[34px] shrink-0 cursor-pointer rounded-pill bg-surface-2 px-3.5 text-2xs font-semibold text-fg transition-colors hover:bg-border disabled:cursor-default disabled:opacity-50"
         >
           {t("add")}
         </button>
@@ -718,7 +751,7 @@ function BacklogPick({
   const channel = task.channel_id ? channelsById.get(task.channel_id) : undefined;
   const [open, setOpen] = useState(false);
   return (
-    <li className="flex flex-col gap-2 rounded-[16px] bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
+    <li className="flex flex-col gap-2 rounded-[16px] bg-surface py-2.5 pr-2.5 pl-3.5">
       <div className="flex items-center gap-2.5">
         <ChannelDot color={channel?.color} />
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">
@@ -728,8 +761,8 @@ function BacklogPick({
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           className={cn(
-            "h-[30px] shrink-0 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
-            picked ? "bg-primary text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
+            "h-[30px] shrink-0 cursor-pointer rounded-pill px-3 text-2xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+            picked ? "bg-fit text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
           )}
         >
           {picked ? shortDayLabel(picked) : t("pickDay")}
@@ -763,7 +796,10 @@ function DayLoads({
 }) {
   const tw = useTranslations("week");
   return (
-    <Well className="grid grid-cols-7 gap-1.5 rounded-2xl p-3">
+    <Well
+      className="grid animate-up grid-cols-7 gap-1.5 rounded-2xl p-3"
+      style={{ animationDelay: "240ms" }}
+    >
       {days.map((d, i) => {
         const min = loads.get(d) ?? 0;
         const over = min > capacity;
@@ -840,9 +876,10 @@ function DayButtons({
           aria-pressed={picked === d}
           aria-label={fullDayLabel(d)}
           className={cn(
-            "flex h-9 w-9 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+            "flex h-9 w-9 cursor-pointer items-center justify-center rounded-pill text-2xs font-bold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+            // Picked is the canvas's white initial on the mint gradient.
             picked === d
-              ? "bg-primary text-on-primary"
+              ? "bg-fit text-on-primary"
               : onCard
                 ? "bg-surface-2 text-fg hover:bg-border"
                 : "bg-surface text-fg hover:bg-border",
@@ -869,19 +906,20 @@ function TaskDayList({
   const channelsById = useChannelLookup().data ?? EMPTY_CHANNEL_MAP;
   return (
     <ul className="flex flex-col gap-3">
-      {tasks.map((task) => {
+      {tasks.map((task, i) => {
         const channel = task.channel_id ? channelsById.get(task.channel_id) : undefined;
         return (
           <li
             key={task.id}
-            className="flex flex-wrap items-center gap-2.5 rounded-[22px] bg-surface-2 py-2 pr-2 pl-[18px]"
+            className="flex animate-up flex-wrap items-center gap-2.5 rounded-[22px] bg-surface-2 py-2 pr-2 pl-[18px]"
+            style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}
           >
             <ChannelDot color={channel?.color} />
             <span className="min-w-0 flex-[1_1_160px] truncate text-sm font-semibold text-fg">
               {task.title}
             </span>
             {task.time_estimate_min ? (
-              <span className="shrink-0 font-mono text-xs text-muted">
+              <span className="shrink-0 font-mono text-2xs text-muted">
                 {formatMinutes(task.time_estimate_min)}
               </span>
             ) : null}

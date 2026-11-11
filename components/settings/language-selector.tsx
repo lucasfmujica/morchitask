@@ -50,7 +50,9 @@ export function LanguageSelector() {
             aria-pressed={active}
             className={cn(
               "h-[38px] cursor-pointer rounded-pill px-3 text-sm font-semibold transition-colors duration-200 disabled:cursor-wait disabled:opacity-60",
-              active ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
+              active
+                ? "bg-surface text-fg shadow-[0_1px_3px_rgb(var(--shadow-color)/0.12)]"
+                : "text-muted hover:text-fg",
             )}
           >
             {t(LABEL_KEY[locale])}

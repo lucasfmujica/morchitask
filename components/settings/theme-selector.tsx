@@ -37,7 +37,9 @@ export function ThemeSelector() {
             aria-pressed={active}
             className={cn(
               "flex h-[38px] min-w-0 cursor-pointer items-center justify-center rounded-pill px-2 text-sm font-semibold transition-colors duration-200",
-              active ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
+              active
+                ? "bg-surface text-fg shadow-[0_1px_3px_rgb(var(--shadow-color)/0.12)]"
+                : "text-muted hover:text-fg",
             )}
           >
             <span className="truncate">{tr(labelKey)}</span>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Check, Minus, Plus } from "lucide-react";
 import { formatMinutes } from "@/lib/format";
 import {
@@ -14,7 +13,6 @@ import {
   DEFAULT_CAPACITY_MIN,
 } from "@/lib/capacity";
 import type { Task } from "@/lib/queries/types";
-import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
 import { useTranslations } from "next-intl";
@@ -59,33 +57,45 @@ export function CapacityBar({
   const t = useTranslations("day");
   if (targetMin <= 0) return null;
 
-  const { pct, over, near, overByMin } = capacityState(plannedMin, targetMin);
+  const { pct, over, overByMin } = capacityState(plannedMin, targetMin);
   const suggestion = capacitySuggestion(tasks, plannedMin, targetMin);
-  const pendingCount = tasks.filter((t) => t.status !== "done").length;
   // Where the budget ends, as a share of everything planned. Only meaningful
   // while over — that's the only time the bar runs past the target.
   const targetPct = over ? (targetMin / plannedMin) * 100 : 100;
 
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
+  // What's already finished, in time: the canvas closes the line with it.
+  const doneMin = tasks
+    .filter((t) => t.status === "done")
+    .reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0);
+
   return (
-    <section aria-label={t("capacity")} className={cn("rounded-2xl bg-surface-2 p-2", className)}>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl bg-surface px-5 py-4 shadow-soft">
+    <section
+      aria-label={t("capacity")}
+      className={cn("rounded-[28px] bg-surface-2 p-2", className)}
+    >
+      <div className="flex flex-wrap items-center gap-5 rounded-[22px] bg-surface px-5 py-[18px] shadow-tile">
         {/* The number is the point: how much of the day is already spoken for. */}
-        <div className="flex flex-col">
-          <span className="text-xs text-muted">{t("planned")}</span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-2xs text-muted">{t("planned")}</span>
           <span
-            className={cn("flex items-baseline gap-1.5 whitespace-nowrap", over && "text-danger")}
+            className={cn(
+              "flex items-baseline gap-1.5 whitespace-nowrap tabular-nums",
+              over && "text-accent",
+            )}
           >
             {t.rich("plannedOf", {
               planned: formatMinutes(plannedMin),
               target: formatMinutes(targetMin),
               big: (chunks) => (
-                <span className="font-display text-[28px] leading-8 font-bold tracking-tight">
+                <span className="font-display text-[30px] leading-9 font-bold tracking-[-0.02em]">
                   {chunks}
                 </span>
               ),
-              small: (chunks) => <span className="text-sm font-semibold text-muted">{chunks}</span>,
+              small: (chunks) => (
+                <span className="text-base font-semibold text-muted">{chunks}</span>
+              ),
               goal: () =>
                 onTargetChange ? (
                   <CapacityTarget value={targetMin} onChange={onTargetChange} />
@@ -96,77 +106,74 @@ export function CapacityBar({
           </span>
         </div>
 
-        <div className="flex min-w-[240px] flex-1 flex-col gap-2">
-          {/* Under budget it's one fill; over, it splits at the target and the
-              overrun is drawn outside the budget as a hatched stretch. */}
-          <div className="relative h-2.5 rounded-pill bg-surface-2">
-            <motion.div
+        <div className="flex flex-[1_1_260px] flex-col gap-2">
+          {/* Under budget it's one gradient fill that grows in on load; over,
+              it splits at the target and the overrun is drawn outside the
+              budget as the canvas's orange hatch. */}
+          <div className="relative flex h-2.5 overflow-hidden rounded-pill bg-surface-2">
+            <div
               className={cn(
-                "absolute inset-y-0 left-0 rounded-pill",
-                over ? "rounded-r-none bg-fit" : near ? "bg-warning" : "bg-fit",
+                "h-full shrink-0 animate-fill rounded-pill bg-fit transition-[width] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]",
+                over && "rounded-r-none",
               )}
-              initial={false}
-              animate={{ width: `${over ? targetPct : pct}%` }}
-              transition={{ duration: 0.4, ease: EASE_OUT }}
+              style={{ width: `${over ? targetPct : pct}%` }}
             />
             {over && (
-              <>
-                <motion.div
-                  className="absolute inset-y-0 rounded-r-pill"
-                  initial={false}
-                  animate={{ left: `${targetPct}%`, width: `${100 - targetPct}%` }}
-                  transition={{ duration: 0.4, ease: EASE_OUT }}
-                  style={{
-                    background:
-                      "repeating-linear-gradient(115deg, var(--danger) 0 4px, color-mix(in srgb, var(--danger) 55%, var(--surface)) 4px 8px)",
-                  }}
-                />
-                <span
-                  className="absolute -top-[3px] -bottom-[3px] w-[2px] bg-fg/55"
-                  style={{ left: `${targetPct}%` }}
-                  aria-hidden
-                />
-              </>
+              <div
+                className="h-full flex-1 animate-fill rounded-r-pill"
+                style={{
+                  background:
+                    "repeating-linear-gradient(45deg, var(--color-accent) 0 6px, var(--color-accent-hatch) 6px 12px)",
+                }}
+              />
             )}
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-2xs">
             {over ? (
-              <p className="min-w-0 text-fg">
-                <span className="font-semibold text-danger">
-                  {t("overBy", { over: formatMinutes(overByMin) })}
-                </span>{" "}
-                {/* One message per case, not a shared prefix plus a glued tail:
-                    the emphasised word moves in another language. */}
+              <span className="font-semibold text-accent">
+                {t("overByShort", { over: formatMinutes(overByMin) })}
+              </span>
+            ) : (
+              <span className="font-semibold text-primary">
+                {t("fitsLeft", { time: formatMinutes(targetMin - plannedMin) })}
+              </span>
+            )}
+            <span className="text-muted tabular-nums">
+              {t("doneOfTotalTime", {
+                done: doneCount,
+                total: tasks.length,
+                time: formatMinutes(doneMin),
+              })}
+            </span>
+          </div>
+          {/* Over budget the line above is a verdict; this is the next move.
+              One message per case, not a shared prefix plus a glued tail: the
+              emphasised word moves in another language. */}
+          {over && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xs text-muted">
+              <p className="min-w-0 flex-1">
                 {suggestion?.task
                   ? t.rich("overMoveSuggestion", {
                       title: suggestion.task.title,
-                      b: (chunks) => <span className="font-semibold">{chunks}</span>,
+                      b: (chunks) => <span className="font-semibold text-fg">{chunks}</span>,
                     })
                   : t("overGeneric")}
               </p>
-            ) : (
-              <p className="font-semibold text-primary">
-                {t("leftOver", { time: formatMinutes(targetMin - plannedMin), n: pendingCount })}
-              </p>
-            )}
-            <span className="text-muted tabular-nums">
-              {t("doneOfTotal", { done: doneCount, total: tasks.length })}
-            </span>
-          </div>
+              {suggestion?.task && onMoveOverflow && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => onMoveOverflow(suggestion.task!)}
+                >
+                  {t("moveAmount", {
+                    time: formatMinutes(suggestion.task.time_estimate_min ?? overByMin),
+                  })}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
-
-        {over && suggestion?.task && onMoveOverflow && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="shrink-0"
-            onClick={() => onMoveOverflow(suggestion.task!)}
-          >
-            {t("moveAmount", {
-              time: formatMinutes(suggestion.task.time_estimate_min ?? overByMin),
-            })}
-          </Button>
-        )}
       </div>
     </section>
   );

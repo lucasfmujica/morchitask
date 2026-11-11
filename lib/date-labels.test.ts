@@ -127,6 +127,13 @@ describe("monthLabel, dueLabel and ageLabel", () => {
     expect(en.dueLabel(LATER, MON)).toBe("Jul 27");
   });
 
+  it("writes the deadline tag as weekday plus numeric date, month order per locale", () => {
+    expect(es.dueTagLabel(TUE, MON)).toBe("Mañana");
+    // 2026-07-27 is a Monday.
+    expect(es.dueTagLabel(LATER, MON)).toBe("lun 27/7");
+    expect(en.dueTagLabel(LATER, MON)).toBe("Mon 7/27");
+  });
+
   /** A timestamp exactly `n` days before MON, so ages are deterministic. */
   const daysBefore = (n: number) => `${addDays(MON, -n)}T12:00:00.000Z`;
 

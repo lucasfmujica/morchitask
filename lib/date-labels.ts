@@ -26,6 +26,8 @@ type Patterns = {
   short: string;
   /** Abbreviated weekday + day: "lun 23" / "Mon 23". */
   weekday: string;
+  /** Weekday + numeric day/month for the deadline tag: "vie 13/11" / "Fri 11/13". */
+  dueTag: string;
   /** date-fns locale, for the names those patterns expand to. */
   fns: typeof es;
   /** Spanish writes days and months lowercase; English already capitalizes. */
@@ -38,6 +40,7 @@ const PATTERNS: Record<Locale, Patterns> = {
     dayMonth: "d 'de' MMMM",
     short: "d MMM",
     weekday: "EEE d",
+    dueTag: "EEE d/M",
     fns: es,
     capitalize: true,
   },
@@ -46,6 +49,7 @@ const PATTERNS: Record<Locale, Patterns> = {
     dayMonth: "MMMM d",
     short: "MMM d",
     weekday: "EEE d",
+    dueTag: "EEE M/d",
     fns: enUS,
     capitalize: false,
   },
@@ -166,6 +170,18 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
   }
 
   /**
+   * The deadline as the canvas's highlighter tag: "vie 13/11" / "Fri 11/13"
+   * (the tag uppercases it). Near days still become words, like `dueLabel`;
+   * the weekday is what you plan around, the numbers disambiguate the month.
+   */
+  function dueTagLabel(due: DayISO, today: DayISO): string {
+    if (due === today) return words.today;
+    if (due === addDays(today, -1)) return words.yesterday;
+    if (due === addDays(today, 1)) return words.tomorrow;
+    return write(due, p.dueTag).replace(".", "");
+  }
+
+  /**
    * How long something has been waiting: "hoy", "ayer", "hace 12 días",
    * "hace 3 meses".
    *
@@ -194,6 +210,7 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
     weekdayHeaders,
     monthLabel,
     dueLabel,
+    dueTagLabel,
     ageLabel,
   };
 }

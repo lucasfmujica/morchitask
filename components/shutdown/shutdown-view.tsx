@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown } from "lucide-react";
 import { taskKeys, useMoveTaskToDate, useTasksForDate } from "@/lib/queries/tasks";
-import { useMe } from "@/lib/queries/profiles";
+import { useMe, useProfiles } from "@/lib/queries/profiles";
+import { reactionKeys } from "@/lib/queries/reactions";
+import { addReaction, getReactions, removeReaction } from "@/lib/actions/reactions";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import {
   rolloverIncomplete,
@@ -13,7 +15,7 @@ import {
   useShutdownStreak,
   useUpsertDailyNote,
 } from "@/lib/queries/daily-notes";
-import type { Channel, DailyNote, Task } from "@/lib/queries/types";
+import type { Channel, DailyNote, Task, TaskReaction } from "@/lib/queries/types";
 import { carryOverTarget, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import {
@@ -32,10 +34,10 @@ import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { Confetti } from "@/components/ui/confetti";
 import { Button, SkeletonList, Well } from "@/components/ui";
-import { TaskReactions } from "@/components/tasks/task-reactions";
+import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { PastDayNotice } from "@/components/day/past-day-notice";
 import { useDateLabels } from "@/lib/use-date-labels";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 /** The step names are words, so they live in the catalog; the array holds the
  *  keys, which is also what the progress bar indexes. */
@@ -113,6 +115,9 @@ function ShutdownRitual({
   // would quietly pull an instance out of its recurrence. Neither choice means
   // what it says, so we don't offer it. The rollover sweep skips them too.
   const pending = allPending.filter((t) => !t.template_id);
+  // What the other person finished on the shared list today: the canvas thanks
+  // them by name instead of listing your own shared tasks back at you.
+  const partnerDone = tasks.filter((t) => t.shared && t.status === "done" && t.owner_id !== meId);
   // Not always `date + 1`: closing an old day carries its leftovers to today,
   // never to another past day where they'd strand out of sight.
   const tomorrow = carryOverTarget(date);
@@ -184,7 +189,7 @@ function ShutdownRitual({
           <h1 className="mr-auto font-display text-[28px] leading-9 font-bold tracking-tight text-fg md:text-[32px]">
             {ts("title")}
           </h1>
-          <span className="font-mono text-xs text-muted uppercase">
+          <span className="font-mono text-2xs text-muted uppercase">
             {labels.shortDayLabel(date)}
           </span>
         </div>
@@ -207,6 +212,7 @@ function ShutdownRitual({
           accuracy={accuracy}
           intention={note?.intention ?? null}
           streak={streak}
+          partnerDone={partnerDone}
           channelsById={channelsById}
         />
       )}
@@ -241,7 +247,10 @@ function ShutdownRitual({
           onClick={() => setStep(step - 1)}
           aria-hidden={step === 0}
           tabIndex={step === 0 ? -1 : undefined}
-          className={cn("px-[18px] text-muted hover:text-fg", step === 0 && "invisible")}
+          className={cn(
+            "h-[46px] px-[18px] text-sm text-muted hover:text-fg",
+            step === 0 && "invisible",
+          )}
         >
           {ts("back")}
         </Button>
@@ -249,7 +258,9 @@ function ShutdownRitual({
           size="lg"
           onClick={() => (isLast ? closeDay() : setStep(step + 1))}
           disabled={upsert.isPending}
-          className="ml-auto px-[26px]"
+          // The canvas CTA breathes (glow) once the screen has settled, the
+          // one moving thing left on a finished ritual.
+          className="ml-auto h-[46px] animate-glow px-[26px] text-sm"
         >
           {isLast ? (alreadyClosed ? ts("saveAndSee") : ts("title")) : ts("next")}
         </Button>
@@ -276,15 +287,20 @@ function StepBar({ step, onJump }: { step: number; onJump: (i: number) => void }
             aria-current={i === step ? "step" : undefined}
             className="group flex min-w-0 cursor-pointer flex-col gap-2 rounded-md text-left focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none"
           >
-            <span
-              className={cn(
-                "block h-[5px] w-full rounded-pill transition-colors duration-300",
-                i <= step ? "bg-fg" : "bg-border group-hover:bg-border-strong",
+            {/* The ink is a child of the track so it can draw in from the left
+                (animate-seg) the moment a step is reached, as on the canvas;
+                it mounts only when lit, so going back and forward replays it. */}
+            <span className="block h-[5px] w-full overflow-hidden rounded-pill bg-border transition-colors duration-300 group-hover:bg-border-strong max-sm:h-1">
+              {i <= step && (
+                <span
+                  className="block h-full w-full animate-seg rounded-pill bg-fg"
+                  style={{ animationDelay: i === step ? "120ms" : "0ms" }}
+                />
               )}
-            />
+            </span>
             <span
               className={cn(
-                "truncate text-xs font-semibold max-sm:hidden",
+                "truncate text-2xs font-semibold max-sm:hidden",
                 i === step ? "text-fg" : "text-muted",
               )}
             >
@@ -310,6 +326,7 @@ function StepCelebrate({
   accuracy,
   intention,
   streak,
+  partnerDone,
   channelsById,
 }: {
   done: Task[];
@@ -319,31 +336,28 @@ function StepCelebrate({
   accuracy: number | null;
   intention: string | null;
   streak: number;
+  partnerDone: Task[];
   channelsById: Map<string, Channel>;
 }) {
   const ts = useTranslations("shutdown");
   const acc = accuracyLabelKey(accuracy);
-  const sharedDone = done.filter((t) => t.shared);
   const hasTime = estimatedMin > 0 || actualMin > 0;
+  const barMax = Math.max(estimatedMin, actualMin);
 
   return (
     <div className="flex flex-col gap-3.5">
-      {/* Desktop: a green-washed card with the check beside the headline.
+      {/* Desktop: a mint-washed card with the check beside the headline.
           Phone: the card dissolves into the screen's wash and everything
-          centres under a bigger check, as in the mobile ritual. */}
-      <div className="flex flex-col items-center gap-4 pt-4 text-center sm:flex-row sm:gap-[22px] sm:rounded-[28px] sm:bg-linear-to-b sm:from-primary-soft sm:to-surface sm:to-85% sm:p-7 sm:text-left">
+          centres under a bigger check with its halos, as in the mobile ritual. */}
+      <div className="flex animate-up flex-col items-center gap-4 pt-4 text-center sm:flex-row sm:gap-[22px] sm:rounded-[28px] sm:bg-linear-to-b sm:from-[color-mix(in_srgb,var(--fit-from)_40%,var(--surface))] sm:to-surface sm:to-85% sm:p-7 sm:text-left">
         {/* The big green check only when something got done: on an empty day
             it would be congratulating you for nothing. */}
-        {done.length > 0 && (
-          <span className="grid h-[104px] w-[104px] shrink-0 place-items-center rounded-pill bg-fit text-on-primary shadow-[0_12px_28px_-6px] shadow-primary/45 sm:h-[84px] sm:w-[84px]">
-            <Check className="h-11 w-11 sm:h-[38px] sm:w-[38px]" strokeWidth={2.6} aria-hidden />
-          </span>
-        )}
+        {done.length > 0 && <CelebrationCheck />}
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="font-display text-[30px] leading-[34px] font-bold tracking-tight text-fg sm:text-[34px] sm:leading-10">
+          <h2 className="font-display text-[30px] leading-[34px] font-bold tracking-[-0.02em] text-fg sm:text-[34px] sm:leading-[41px]">
             {done.length === 0 ? ts("nothingDone") : ts("didCount", { n: done.length })}
           </h2>
-          <p className="text-[15px] text-muted sm:text-sm">
+          <p className="text-[15px] leading-[21px] text-muted sm:text-sm">
             {done.length === 0
               ? ts("nothingDoneHint")
               : actualMin > 0
@@ -355,29 +369,34 @@ function StepCelebrate({
 
       {/* The bento: estimate vs actual, the morning's intention, the streak.
           auto-fit so a missing tile (nothing tracked, no intention) lets the
-          others widen instead of leaving a hole. */}
+          others widen instead of leaving a hole. Tiles cascade in 60ms apart. */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3.5">
         {/* Estimated vs actual, as two bars against a shared scale. Two sentences
           made you do the arithmetic; two bars make the gap the thing you see —
           which is the whole feedback loop this screen exists for. */}
         {hasTime && (
-          <Well className="flex flex-col gap-2.5 rounded-2xl p-[18px]">
+          <div
+            className="flex animate-up flex-col gap-2.5 rounded-2xl bg-surface-2 p-[18px]"
+            style={{ animationDelay: "120ms" }}
+          >
             <CompareBar
               label={ts("estimatedBar")}
               min={estimatedMin}
-              max={Math.max(estimatedMin, actualMin)}
+              max={barMax}
               tone="soft"
+              delayMs={400}
             />
             <CompareBar
               label={ts("workedBar")}
               min={actualMin}
-              max={Math.max(estimatedMin, actualMin)}
+              max={barMax}
               tone="solid"
+              delayMs={600}
             />
             {acc && (
               <p
                 className={cn(
-                  "self-start rounded-pill px-2.5 py-1 text-xs font-semibold",
+                  "self-start rounded-pill px-2.5 py-1 text-2xs font-semibold",
                   acc.key === "accuracyOnTarget"
                     ? "bg-primary-soft text-primary"
                     : "bg-accent-soft text-accent",
@@ -386,58 +405,40 @@ function StepCelebrate({
                 {ts(acc.key, { pct: acc.pct })}
               </p>
             )}
-          </Well>
+          </div>
         )}
 
         {/* The morning's intention, closing the loop it opened in /plan — with
           the day's result attached, so it reads as answered rather than filed. */}
         {intention && (
-          <Well className="flex flex-col gap-2 rounded-2xl p-[18px]">
-            <p className="text-xs text-muted">{ts("morningIntention")}</p>
+          <div
+            className="flex animate-up flex-col gap-2 rounded-2xl bg-surface-2 p-[18px]"
+            style={{ animationDelay: "180ms" }}
+          >
+            <p className="text-2xs text-muted">{ts("morningIntention")}</p>
             <p className="font-display text-base leading-[21px] font-semibold text-fg">
               {intention}
             </p>
-            <p className="mt-auto text-xs font-semibold text-primary">
+            <p className="mt-auto text-2xs font-semibold text-primary">
               {done.length === 0
                 ? ts("intentionPending")
                 : done.length === total
                   ? ts("intentionDone")
                   : ts("intentionPartial", { done: done.length, total })}
             </p>
-          </Well>
+          </div>
         )}
 
         <StreakTile streak={streak} />
       </div>
 
-      {/* Shared work you finished, each with the kudos bar so the other person
-          can leave a mimo. Pills, as in the canvas; one per task because each
-          task carries its own reactions. */}
-      {sharedDone.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="px-1 text-xs font-semibold text-muted">{ts("sharedDoneLove")}</p>
-          {sharedDone.map((t) => (
-            <div
-              key={t.id}
-              className="flex flex-wrap items-center gap-2.5 rounded-[22px] bg-surface py-2 pr-2 pl-2.5 shadow-soft sm:rounded-pill"
-            >
-              <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-pill bg-fit text-on-primary">
-                <Check className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">
-                {t.title}
-              </span>
-              <TaskReactions taskId={t.id} size="sm" />
-            </div>
-          ))}
-        </div>
-      )}
+      {partnerDone.length > 0 && <PartnerLove tasks={partnerDone} />}
 
       {/* The list of what got done isn't on the canvas, which leads with the
           count; it stays one tap away for the days you want to see it. */}
       {done.length > 0 && (
-        <details className="group">
-          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-pill px-1 py-1 text-xs font-semibold text-muted hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+        <details className="group animate-up" style={{ animationDelay: "360ms" }}>
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-pill px-1 py-1 text-2xs font-semibold text-muted hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none [&::-webkit-details-marker]:hidden">
             <ChevronDown
               className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
               aria-hidden
@@ -479,31 +480,193 @@ function StepCelebrate({
   );
 }
 
+/**
+ * The hero check: pops in, then the tick draws itself. Desktop is the 84px
+ * canvas check; on a phone it grows to the mobile ritual's 104px with two
+ * white halos rippling out behind it.
+ */
+export function CelebrationCheck() {
+  return (
+    <span className="relative grid shrink-0 place-items-center max-sm:h-[150px] max-sm:w-[150px]">
+      {/* globals.css has no stroke keyframe, so the one gesture only this check
+          uses travels with it; React hoists and dedupes it by href. Under
+          reduced motion the global rule collapses it to the finished tick. */}
+      <style href="mt-draw" precedence="default">
+        {"@keyframes mt-draw{from{stroke-dashoffset:40}to{stroke-dashoffset:0}}"}
+      </style>
+      {[900, 2200].map((delay) => (
+        <span
+          key={delay}
+          aria-hidden
+          className="absolute inset-5 animate-halo rounded-pill border-[1.5px] border-surface/95 sm:hidden"
+          style={{ animationDelay: `${delay}ms` }}
+        />
+      ))}
+      <span className="relative grid h-[104px] w-[104px] animate-pop place-items-center rounded-pill bg-fit shadow-[0_12px_28px_color-mix(in_srgb,var(--primary)_35%,transparent)] sm:h-[84px] sm:w-[84px]">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          className="h-[46px] w-[46px] sm:h-[38px] sm:w-[38px]"
+          aria-hidden
+        >
+          {/* The tick writes itself after the pop lands, as on the canvas. */}
+          <path
+            d="m5.5 12.5 4 4 9-10"
+            stroke="var(--color-on-primary)"
+            strokeWidth={2.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={40}
+            style={{ animation: "mt-draw 0.5s ease-out 0.5s both" }}
+          />
+        </svg>
+      </span>
+    </span>
+  );
+}
+
+/**
+ * What the other person finished on the shared list, as ONE sentence with one
+ * heart, the way the canvas has it. It used to be a row per task with the
+ * whole emoji bar each, which turned a thank-you into a form. The heart leaves
+ * a ❤️ on every one of those tasks (and takes it back if they all have it);
+ * the other emojis stay on each task's detail sheet.
+ */
+function PartnerLove({ tasks }: { tasks: Task[] }) {
+  const ts = useTranslations("shutdown");
+  const locale = useLocale();
+  const qc = useQueryClient();
+  const me = useMe().data;
+  const profiles = useProfiles().data ?? [];
+  // Grouped by person: in a two-person household that's one row, but the
+  // sentence names one person, so it can't silently merge two.
+  const byOwner = new Map<string, Task[]>();
+  for (const t of tasks) byOwner.set(t.owner_id, [...(byOwner.get(t.owner_id) ?? []), t]);
+
+  const reactions = useQueries({
+    queries: tasks.map((t) => ({
+      queryKey: reactionKeys.task(t.id),
+      queryFn: (): Promise<TaskReaction[]> => getReactions(t.id),
+    })),
+  });
+  const myHeart = new Map<string, TaskReaction | undefined>();
+  tasks.forEach((t, i) =>
+    myHeart.set(
+      t.id,
+      reactions[i]?.data?.find((r) => r.author_id === me?.id && r.emoji === LOVE),
+    ),
+  );
+
+  const [busy, setBusy] = useState(false);
+  async function toggleLove(group: Task[]) {
+    const loved = group.every((t) => myHeart.get(t.id));
+    setBusy(true);
+    try {
+      await Promise.all(
+        group.map((t) => {
+          const mine = myHeart.get(t.id);
+          if (loved && mine) return removeReaction(mine.id);
+          if (!loved && !mine) return addReaction(t.id, LOVE);
+          return null;
+        }),
+      );
+    } finally {
+      setBusy(false);
+      group.forEach((t) => qc.invalidateQueries({ queryKey: reactionKeys.task(t.id) }));
+    }
+  }
+
+  const list = new Intl.ListFormat(locale, { type: "conjunction" });
+  return (
+    <>
+      {[...byOwner].map(([ownerId, group]) => {
+        const profile = profiles.find((p) => p.id === ownerId);
+        const name = profile?.display_name.split(" ")[0] ?? "";
+        const loved = group.every((t) => myHeart.get(t.id));
+        const titles = group.map((t) => t.title);
+        const b = (chunks: React.ReactNode) => <b className="font-bold">{chunks}</b>;
+        return (
+          <div
+            key={ownerId}
+            className="flex animate-up items-center gap-2.5 rounded-[22px] bg-surface py-2 pr-2 pl-2.5 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)] sm:rounded-pill"
+            style={{ animationDelay: "300ms" }}
+          >
+            <OwnerAvatar profile={profile} size={30} />
+            <p className="min-w-0 flex-1 text-[13px] leading-[18px] text-fg">
+              {titles.length > 3
+                ? ts.rich("partnerDidMore", {
+                    name,
+                    tasks: titles.slice(0, 3).join(", "),
+                    more: titles.length - 3,
+                    b,
+                  })
+                : ts.rich("partnerDid", { name, tasks: list.format(titles), b })}
+            </p>
+            <button
+              type="button"
+              onClick={() => toggleLove(group)}
+              disabled={busy}
+              aria-pressed={loved}
+              aria-label={ts("sendLoveTo", { name })}
+              className={cn(
+                "grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-pill transition-colors duration-250 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                loved ? "bg-primary-soft" : "bg-surface-2 hover:bg-border",
+              )}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+                <path
+                  d="M8 13.5S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 7.5-6 7.5Z"
+                  className={cn(
+                    "stroke-fg transition-[fill] duration-250",
+                    loved ? "fill-primary" : "fill-transparent",
+                  )}
+                  strokeWidth={1.3}
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** The emoji the heart button leaves; one of REACTION_EMOJIS, so it shows up
+ *  in the task's own kudos bar like any other reaction. */
+const LOVE = "❤️";
+
 /** How many of the last STREAK_DOTS days are part of the current run. The
  *  streak is a count, not a calendar, so the dots are the run drawn from the
  *  right: honest about length, silent about which older days were missed. */
 const STREAK_DOTS = 14;
 
-/** The dark tile: the streak as a big number, with the run drawn as dots. It
- *  used to be a small chip in the header, easy to miss on the one screen that
- *  feeds it. */
+/** The dark tile: the streak as a big number, with the run drawn as dots that
+ *  pop in one after another. It used to be a small chip in the header, easy to
+ *  miss on the one screen that feeds it. */
 function StreakTile({ streak }: { streak: number }) {
   const ts = useTranslations("shutdown");
   const lit = Math.min(streak, STREAK_DOTS);
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-fg p-[18px] text-bg">
-      <span className="font-display text-[34px] leading-10 font-bold tabular-nums">{streak}</span>
-      <span className="text-[13px] text-bg/75">
+    <div
+      className="flex animate-up flex-col gap-3 rounded-2xl bg-fg p-[18px] text-bg"
+      style={{ animationDelay: "240ms" }}
+    >
+      <span className="font-display text-[34px] leading-[41px] font-bold tabular-nums">
+        {streak}
+      </span>
+      <span className="text-[13px] text-bg/80">
         {streak > 0 ? ts("streak", { n: streak }) : ts("streakNone")}
       </span>
       <div className="mt-auto flex gap-[5px]" aria-hidden>
         {Array.from({ length: STREAK_DOTS }, (_, i) => (
           <span
             key={i}
+            style={{ animationDelay: `${300 + i * 50}ms` }}
             className={cn(
               // Shrink rather than overflow: 14 dots at 12px don't fit the
               // narrowest tile the auto-fit grid can produce.
-              "aspect-square max-w-3 min-w-0 flex-1 rounded-pill",
+              "aspect-square max-w-3 min-w-0 flex-1 animate-pop rounded-pill",
               i >= STREAK_DOTS - lit ? "bg-fit" : "bg-bg/20",
             )}
           />
@@ -528,10 +691,10 @@ function StepReflect({
 }) {
   const ts = useTranslations("shutdown");
   return (
-    <Well className="rounded-[28px]">
-      <div className="flex flex-col gap-[18px] rounded-[22px] bg-surface p-5 shadow-soft sm:p-7">
+    <Well className="animate-up rounded-[28px]">
+      <div className="flex flex-col gap-[18px] rounded-[22px] bg-surface p-5 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)] sm:p-7">
         <div className="flex flex-col gap-1">
-          <h2 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg">
+          <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
             {ts("moodQuestion")}
           </h2>
           <p className="text-sm text-muted">{ts("moodHint")}</p>
@@ -547,9 +710,11 @@ function StepReflect({
                 aria-pressed={on}
                 aria-label={ts(m.labelKey)}
                 className={cn(
-                  "flex h-[88px] min-w-0 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl px-1 transition-[background-color,color,transform,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                  "flex h-[88px] min-w-0 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[20px] px-1 transition-[background-color,color,transform,box-shadow] duration-250 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                  // The canvas's picked mood: white bars and word on the mint
+                  // gradient, lifted 2px on a soft green shadow.
                   on
-                    ? "-translate-y-0.5 bg-primary text-on-primary shadow-card"
+                    ? "-translate-y-0.5 bg-fit text-on-primary shadow-[0_8px_20px_color-mix(in_srgb,var(--primary)_30%,transparent)]"
                     : "bg-bg text-fg hover:bg-surface-2",
                 )}
               >
@@ -573,7 +738,7 @@ function StepReflect({
                     />
                   ))}
                 </span>
-                <span className="max-w-full truncate text-2xs font-semibold sm:text-[13px]">
+                <span className="max-w-full truncate text-2xs font-semibold sm:text-xs">
                   {ts(m.labelKey)}
                 </span>
               </button>
@@ -638,8 +803,8 @@ function StepTomorrow({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg">
+      <div className="flex animate-up flex-col gap-1">
+        <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
           {toToday ? ts("todayHeading") : ts("tomorrowHeading")}
         </h2>
         <p className="text-sm text-muted">
@@ -648,7 +813,7 @@ function StepTomorrow({
       </div>
 
       {pending.length === 0 ? (
-        <p className="flex items-center gap-3 rounded-2xl bg-surface-2 p-4 text-sm font-medium text-fg">
+        <p className="flex animate-up items-center gap-3 rounded-2xl bg-surface-2 p-4 text-sm font-medium text-fg">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-pill bg-fit text-on-primary">
             <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           </span>
@@ -657,13 +822,14 @@ function StepTomorrow({
       ) : (
         <>
           <ul className="flex flex-col gap-2.5">
-            {pending.map((t) => {
+            {pending.map((t, i) => {
               const dest = carryDestination(plan, t.id);
               const channel = t.channel_id ? channelsById.get(t.channel_id) : undefined;
               return (
                 <li
                   key={t.id}
-                  className="flex flex-wrap items-center gap-3 rounded-2xl bg-surface-2 py-2 pr-2 pl-[18px]"
+                  className="flex animate-up flex-wrap items-center gap-3 rounded-2xl bg-surface-2 py-2 pr-2 pl-[18px]"
+                  style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}
                 >
                   <span
                     className="h-1.5 w-1.5 shrink-0 rounded-[2px] bg-border-strong"
@@ -674,7 +840,7 @@ function StepTomorrow({
                     {t.title}
                   </span>
                   {t.time_estimate_min ? (
-                    <span className="shrink-0 font-mono text-xs text-muted">
+                    <span className="shrink-0 font-mono text-2xs text-muted">
                       {formatMinutes(t.time_estimate_min)}
                     </span>
                   ) : null}
@@ -689,9 +855,9 @@ function StepTomorrow({
                         onClick={() => onPick(t.id, o.dest)}
                         aria-pressed={dest === o.dest}
                         className={cn(
-                          "h-[34px] cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                          "h-[34px] cursor-pointer rounded-pill px-3.5 text-2xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
                           dest === o.dest
-                            ? "bg-surface text-fg shadow-soft"
+                            ? "bg-surface text-fg"
                             : "bg-transparent text-muted hover:text-fg",
                         )}
                       >
@@ -709,9 +875,10 @@ function StepTomorrow({
               hatched, never by colour alone. */}
           <div
             className={cn(
-              "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[20px] px-[18px] py-3.5",
+              "flex animate-up flex-wrap items-center gap-x-3 gap-y-2 rounded-[20px] px-[18px] py-3.5",
               over ? "bg-accent-soft text-accent" : "bg-primary-soft text-fg",
             )}
+            style={{ animationDelay: "200ms" }}
           >
             <div className="h-2 min-w-24 flex-1 overflow-hidden rounded-pill bg-surface/70">
               <div
@@ -732,7 +899,9 @@ function StepTomorrow({
                 day: labels.weekdayName(tomorrow),
                 planned: formatMinutes(projectedMin),
                 capacity: formatMinutes(capacityTarget),
-                b: (chunks) => <strong className="font-bold">{chunks}</strong>,
+                // Same weight as the sentence, as on the canvas: the number is
+                // already the only figure in it.
+                b: (chunks) => <span>{chunks}</span>,
               })}
             </p>
           </div>
@@ -746,34 +915,43 @@ function StepTomorrow({
  * One bar of the estimate-vs-actual pair. Both are drawn against the SAME
  * maximum, which is the only way the comparison means anything. The label
  * arrives translated from the caller, so this stays presentational.
+ *
+ * Returns the label row and the bar as siblings, so the parent's gap spaces
+ * them evenly (10px on the canvas) instead of a tight label glued to its bar.
+ * The estimate is a flat grey, the worked time the fit gradient; both fill in
+ * from zero, the second a beat after the first.
  */
 export function CompareBar({
   label,
   min,
   max,
   tone,
+  delayMs = 400,
 }: {
   label: string;
   min: number;
   max: number;
   tone: "soft" | "solid";
+  delayMs?: number;
 }) {
   const pct = max > 0 ? (min / max) * 100 : 0;
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2 text-xs">
+    <>
+      <div className="flex items-baseline justify-between gap-2 text-2xs">
         <span className="text-muted">{label}</span>
-        <span className="font-semibold tabular-nums text-fg">{formatMinutes(min)}</span>
+        <span className="font-mono text-fg">{formatMinutes(min)}</span>
       </div>
-      <div className="mt-1 h-2.5 rounded-pill bg-border">
+      <div className="h-2.5 rounded-pill bg-border">
         <div
           className={cn(
-            "h-full rounded-pill transition-[width] duration-500",
-            tone === "solid" ? "bg-fit" : "bg-border-strong",
+            "h-full animate-fill rounded-pill transition-[width] duration-500",
+            tone === "solid"
+              ? "bg-linear-90 from-fit-from to-primary"
+              : "bg-[color-mix(in_srgb,var(--muted)_30%,var(--border-strong))]",
           )}
-          style={{ width: `${pct}%` }}
+          style={{ width: `${pct}%`, animationDelay: `${delayMs}ms` }}
         />
       </div>
-    </div>
+    </>
   );
 }

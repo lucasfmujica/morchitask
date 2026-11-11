@@ -49,15 +49,18 @@ export function RoutinesView() {
   const routines = routinesQ.data ?? [];
 
   return (
-    <div className="flex max-w-5xl flex-col gap-4">
-      <header className="flex flex-col gap-0.5 px-2 pt-3">
-        <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+    <div className="flex flex-col gap-4">
+      <header className="flex animate-up flex-col gap-0.5 px-2 pt-3">
+        <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em]">
           {t("title")}
         </h1>
         <p className="max-w-[560px] text-sm text-muted">{t("subtitle")}</p>
       </header>
 
-      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-5 shadow-soft">
+      <div
+        className="flex animate-up items-center gap-2 rounded-pill bg-surface p-1.5 pl-5 shadow-[0_1px_2px_rgb(var(--shadow-color)/calc(0.06*var(--shadow-strength)))]"
+        style={{ animationDelay: "60ms" }}
+      >
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -66,7 +69,7 @@ export function RoutinesView() {
           aria-label={t("newLabel")}
           className="h-10 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
-        <Button onClick={add} disabled={!title.trim()} className="shrink-0 px-[18px]">
+        <Button onClick={add} disabled={!title.trim()} className="shrink-0 px-[18px] text-sm">
           {t("add")}
         </Button>
       </div>
@@ -75,9 +78,10 @@ export function RoutinesView() {
         <EmptyState icon={Repeat} title={t("emptyTitle")} hint={t("emptyHint")} />
       ) : (
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(340px,100%),1fr))] items-start gap-4">
-          {routines.map((r) => (
+          {routines.map((r, i) => (
             <RoutineRow
               key={r.id}
+              index={i}
               routine={r}
               channels={channelsQ.data ?? []}
               completed={streaksQ.data?.get(r.id)}
@@ -93,8 +97,11 @@ function RoutineRow({
   routine,
   channels,
   completed,
+  index,
 }: {
   routine: RecurringTemplate;
+  /** Position in the grid, for the canvas's staggered entrance. */
+  index: number;
   channels: Channel[];
   completed?: Set<string>;
 }) {
@@ -137,12 +144,18 @@ function RoutineRow({
     // Each routine sits in its own well: the grey tray is what tells one routine
     // from the next now that the cards have no border.
     <li
-      className={cn(
-        "rounded-2xl bg-surface-2 p-2 transition-opacity",
-        routine.paused && "opacity-60",
-      )}
+      className="animate-up rounded-[28px] bg-surface-2 p-2"
+      style={{ animationDelay: `${100 + index * 60}ms` }}
     >
-      <div className="flex flex-col gap-3.5 rounded-xl bg-surface p-4 shadow-soft">
+      {/* The pause dimming sits on the card, not the well: the entrance
+          animation's fill would pin the well's opacity back to 1. A container,
+          so the history squares can size to the card instead of wrapping. */}
+      <div
+        className={cn(
+          "@container flex flex-col gap-3.5 rounded-[22px] bg-surface p-4 transition-opacity duration-300 shadow-[0_1px_2px_rgb(var(--shadow-color)/calc(0.06*var(--shadow-strength)))]",
+          routine.paused && "opacity-60",
+        )}
+      >
         <div className="flex items-center gap-2.5">
           <span
             className={cn("h-2 w-2 shrink-0 rounded-[2px]", !channel && "bg-border-strong")}
@@ -158,7 +171,7 @@ function RoutineRow({
             className="min-w-0 flex-1 bg-transparent font-display text-base font-semibold text-fg outline-none"
             aria-label={t("titleLabel")}
           />
-          <span className="shrink-0 text-xs text-muted">
+          <span className="shrink-0 text-2xs text-muted">
             {active ? t("statusActive") : t("statusPaused")}
           </span>
           {/* Pause used to be a text button down among the settings; a switch
@@ -176,7 +189,7 @@ function RoutineRow({
           >
             <span
               className={cn(
-                "block h-5 w-5 rounded-pill bg-surface shadow-soft transition-transform duration-300",
+                "block h-5 w-5 rounded-pill bg-surface shadow-[0_1px_3px_rgb(var(--shadow-color)/calc(0.25*var(--shadow-strength)))] transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
                 active && "translate-x-[18px]",
               )}
             />
@@ -202,10 +215,9 @@ function RoutineRow({
                 aria-pressed={days.includes(d.n)}
                 aria-label={t(`weekdayNames.${d.key}`)}
                 className={cn(
-                  "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors duration-200",
-                  days.includes(d.n)
-                    ? "bg-primary text-on-primary"
-                    : "bg-bg text-fg hover:bg-border",
+                  "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-pill text-2xs font-bold transition-colors duration-200",
+                  // White on the mint gradient, as the canvas draws a chosen day.
+                  days.includes(d.n) ? "bg-fit text-on-primary" : "bg-bg text-fg hover:bg-border",
                 )}
               >
                 {tw(`weekdayInitials.${d.key}`)}
@@ -223,7 +235,7 @@ function RoutineRow({
                   value={monthDay}
                   onChange={(e) => patch({ month_day: Number(e.target.value) })}
                   aria-label={t("monthDayLabel")}
-                  className="mx-0.5 h-7 cursor-pointer appearance-none field-sizing-content rounded-md bg-bg px-2 text-center font-mono text-xs font-medium text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  className="mx-0.5 h-6 cursor-pointer appearance-none field-sizing-content rounded-[6px] bg-bg px-2 text-center font-mono text-[13px] font-bold text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
@@ -247,27 +259,32 @@ function RoutineRow({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2.5">
               <div
-                className="flex flex-wrap gap-1"
+                className="flex gap-1"
                 role="img"
                 aria-label={t("history", {
                   n: history.length,
                   done: history.filter((c) => c.done).length,
                 })}
               >
-                {history.map((c) => (
+                {history.map((c, k) => (
                   <span
                     key={c.date}
                     title={c.date}
+                    // Canvas #3FA266, a step between the mint and the primary
+                    // green; no token holds it yet, so it is mixed from both.
                     className={cn(
-                      "h-2.5 w-2.5 rounded-[3px] transition-colors sm:h-3 sm:w-3 sm:rounded-[4px]",
-                      c.done ? "bg-fit" : "bg-border",
+                      "h-2.5 w-2.5 shrink-0 animate-pop rounded-[3px] transition-colors @min-[340px]:h-3 @min-[340px]:w-3 @min-[340px]:rounded-[4px]",
+                      c.done
+                        ? "bg-[color-mix(in_srgb,var(--primary)_72%,var(--fit-from))]"
+                        : "bg-border",
                     )}
+                    style={{ animationDelay: `${300 + k * 30}ms` }}
                   />
                 ))}
               </div>
               <span
                 className={cn(
-                  "ml-auto shrink-0 text-xs font-semibold tabular-nums",
+                  "ml-auto shrink-0 text-2xs font-semibold tabular-nums",
                   streak > 0 ? "text-primary" : "text-muted",
                 )}
               >
@@ -384,8 +401,8 @@ function Seg<T extends string>({
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
           className={cn(
-            "h-8 flex-1 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
-            value === o.value ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
+            "h-8 flex-1 cursor-pointer rounded-pill px-3 text-2xs font-semibold transition-colors duration-200",
+            value === o.value ? "bg-surface text-fg" : "text-muted hover:text-fg",
           )}
         >
           {o.label}

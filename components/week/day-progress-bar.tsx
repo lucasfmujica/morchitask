@@ -1,9 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import type { CSSProperties } from "react";
 import { formatMinutes } from "@/lib/format";
 import { capacityState } from "@/lib/capacity";
-import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
@@ -16,77 +15,80 @@ import { useTranslations } from "next-intl";
  * minutes against the daily capacity budget, so a full Thursday looks full
  * before you drop a fifth task on it.
  *
- * A closed day is settled — it reads green (done) with what it actually took,
- * and the budget stops being the point.
+ * Drawn exactly as the canvas has it: one 6px bar that fills from the left on
+ * mount (staggered per column), mint gradient while it fits, the hatched
+ * overflow over budget, and a quiet grey once the day is closed and the
+ * budget stops being the point.
  */
+
+// Over budget the whole fill turns hatched, so "too much" reads without colour.
+// The canvas's second stripe is #d9682f, which has no token yet; this mix is
+// the closest themed stand-in.
+const OVER_FILL =
+  "repeating-linear-gradient(45deg, var(--accent) 0 5px, color-mix(in srgb, var(--accent) 70%, var(--marker)) 5px 10px)";
+// The canvas's #9aa294: a settled grey between --subtle and --border-strong,
+// mixed from both so it follows the theme.
+const CLOSED_FILL = "color-mix(in srgb, var(--subtle) 38%, var(--border-strong))";
+
 export function DayLoadBar({
   plannedMin,
   capacityMin,
   measuredMin = 0,
   closed = false,
+  index = 0,
 }: {
   plannedMin: number;
   capacityMin: number;
   /** Tracked minutes, shown instead of the budget once the day is closed. */
   measuredMin?: number;
   closed?: boolean;
+  /** Column position, for the fill's staggered entrance. */
+  index?: number;
 }) {
   const t = useTranslations("week");
   const { pct, over, overByMin } = capacityState(plannedMin, capacityMin);
   const empty = plannedMin === 0;
-  // While over, the fill stops at the budget and the mark shows where that was
-  // — same grammar as the day's capacity band.
-  const targetPct = over ? (capacityMin / plannedMin) * 100 : pct;
+
+  const fill: CSSProperties = {
+    width: `${pct}%`,
+    animationDuration: "1.1s",
+    animationDelay: `${300 + index * 80}ms`,
+    background: closed ? CLOSED_FILL : over ? OVER_FILL : undefined,
+  };
 
   return (
-    <div>
+    <>
       {/* Sits on the grey well, so the track is one step darker than it. */}
-      <div className="relative h-1.5 rounded-pill bg-border">
-        <motion.div
+      <div className="h-1.5 overflow-hidden rounded-pill bg-border" aria-hidden>
+        <div
           className={cn(
-            "absolute inset-y-0 left-0 rounded-pill bg-fit",
-            over && !closed && "rounded-r-none",
+            "h-full animate-fill rounded-pill transition-[width] duration-300",
+            !closed && !over && "bg-fit",
           )}
-          initial={false}
-          animate={{ width: `${closed ? 100 : over ? targetPct : pct}%` }}
-          transition={{ duration: 0.4, ease: EASE_OUT }}
+          style={fill}
         />
-        {over && !closed && (
-          <>
-            {/* Past the budget the bar turns to the same striped overflow as the
-                day's capacity band, so "too much" looks the same everywhere. */}
-            <motion.div
-              className="absolute inset-y-0 rounded-r-pill"
-              initial={false}
-              animate={{ left: `${targetPct}%`, width: `${100 - targetPct}%` }}
-              transition={{ duration: 0.4, ease: EASE_OUT }}
-              style={{
-                background:
-                  "repeating-linear-gradient(115deg, var(--danger) 0 4px, color-mix(in srgb, var(--danger) 55%, var(--surface)) 4px 8px)",
-              }}
-            />
-            <span
-              className="absolute -top-[2px] -bottom-[2px] w-[2px] bg-fg/50"
-              style={{ left: `${targetPct}%` }}
-              aria-hidden
-            />
-          </>
-        )}
       </div>
-      <p
+      <span
         className={cn(
-          "mt-1.5 text-2xs font-semibold tabular-nums",
-          closed ? "text-success" : over ? "text-danger" : "text-muted",
+          "text-[11px] font-semibold tabular-nums",
+          over && !closed ? "text-accent" : "text-muted",
         )}
       >
         {closed
           ? t("closed", { time: formatMinutes(measuredMin || plannedMin) })
           : empty
             ? t("noLoad")
-            : `${t("loadOf", { planned: formatMinutes(plannedMin), capacity: formatMinutes(capacityMin) })}${
-                over ? t("over", { over: formatMinutes(overByMin) }) : ""
-              }`}
-      </p>
-    </div>
+            : over
+              ? t("loadOver", {
+                  planned: formatMinutes(plannedMin),
+                  capacity: formatMinutes(capacityMin),
+                  over: formatMinutes(overByMin),
+                })
+              : t("loadOf", {
+                  planned: formatMinutes(plannedMin),
+                  capacity: formatMinutes(capacityMin),
+                })}
+      </span>
+    </>
   );
 }

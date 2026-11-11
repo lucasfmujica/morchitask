@@ -32,6 +32,10 @@ export function remainingMin(
   return Math.max(0, estimateMin - scheduledMin(blocks));
 }
 
+/** When the day ends if you never said otherwise (daily_notes.end_target_min).
+ *  Shared by the agenda and the sidebar's "Cierre a las", which must agree. */
+export const DEFAULT_END_TARGET_MIN = 18 * 60;
+
 /** Below this, a leftover sliver isn't worth keeping in the list. */
 export const MIN_SCHEDULABLE_MIN = 15;
 

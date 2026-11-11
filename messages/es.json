@@ -62,7 +62,8 @@
     "close": "Cerrar",
     "yourSpace": "Tu espacio",
     "ritualDone": "hecho",
-    "ritualPending": "pendiente"
+    "ritualPending": "pendiente",
+    "closesAt": "Cierre a las <t>{time}</t>"
   },
   "palette": {
     "label": "Buscar y acciones rápidas",
@@ -212,7 +213,8 @@
     "deleteFile": "Eliminar {name}",
     "reminderAtTime": "A las {time}",
     "changeField": "Cambiar {field}",
-    "sendComment": "Enviar comentario"
+    "sendComment": "Enviar comentario",
+    "assignedByTitle": "Te la asignó {name}"
   },
   "day": {
     "capacity": "Capacidad del día",
@@ -294,7 +296,11 @@
     "agendaTitle": "Agenda",
     "agendaRange": "{from} a {to}",
     "viewDay": "Día",
-    "viewSwitch": "Cambiar de vista"
+    "viewSwitch": "Cambiar de vista",
+    "fitsLeft": "Entra. Te quedan {time} de aire",
+    "overByShort": "Te pasás por {over}",
+    "doneOfTotalTime": "{done} de {total} hechas · {time}",
+    "scheduledAtToast": "Agendada a las {time}"
   },
   "backlog": {
     "title": "Backlog",
@@ -341,7 +347,6 @@
     "noLoad": "Sin carga",
     "closed": "{time} · cerrado",
     "loadOf": "{planned} de {capacity}",
-    "over": " · +{over}",
     "prevMonth": "Mes anterior",
     "nextMonth": "Mes siguiente",
     "thisWeek": "Esta semana",
@@ -355,7 +360,10 @@
       "fri": "V",
       "sat": "S",
       "sun": "D"
-    }
+    },
+    "dueTag": "Entrega",
+    "dueOn": "Entrega {day}",
+    "loadOver": "{planned} de {capacity} · +{over}"
   },
   "month": {
     "thisMonth": "Este mes",
@@ -422,7 +430,6 @@
     "intentionPending": "Queda para mañana.",
     "intentionDone": "Cumplida: salió todo.",
     "intentionPartial": "Avanzaste: {done} de {total}.",
-    "sharedDone": "Compartidas — dejale un mimo",
     "moodQuestion": "¿Cómo estuvo el día?",
     "moodHint": "Treinta segundos, para vos.",
     "moodHard": "Duro",
@@ -441,8 +448,10 @@
     "weighDayOver": "El {day} quedaría en <b>{planned}</b> de {capacity}. Te conviene mandar algo al backlog.",
     "streakNone": "Hoy puede arrancar una racha nueva.",
     "doneListToggle": "{n, plural, =1 {Ver la que hiciste} other {Ver las # que hiciste}}",
-    "sharedDoneLove": "Compartidas: dejale un mimo.",
-    "saveErrorRetry": "No se pudo guardar. Probá de nuevo, tu reflexión sigue acá."
+    "saveErrorRetry": "No se pudo guardar. Probá de nuevo, tu reflexión sigue acá.",
+    "partnerDid": "<b>{name}</b> hizo {tasks}. Dejale un mimo.",
+    "partnerDidMore": "<b>{name}</b> hizo {tasks} {more, plural, =1 {y 1 más} other {y # más}}. Dejale un mimo.",
+    "sendLoveTo": "Mandarle un mimo a {name}"
   },
   "focus": {
     "blockDoneTitle": "¡Bloque de foco completado! 🍅",

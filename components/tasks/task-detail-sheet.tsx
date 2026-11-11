@@ -3,18 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  CalendarClock,
-  Check,
-  ChevronDown,
-  MoreHorizontal,
-  Pause,
-  Play,
-  Plus,
-  Trash2,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { CalendarClock, Check, ChevronDown, Plus, Trash2, UserPlus } from "lucide-react";
 import { CHANNEL_COLORS, useChannels, useCreateChannel } from "@/lib/queries/channels";
 import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
@@ -63,7 +52,6 @@ import type { Profile, Subtask, Task } from "@/lib/queries/types";
 import { ChecklistAiSuggest } from "./checklist-ai-suggest";
 import { DueDateBadge } from "./due-date-badge";
 import { TaskAttachments } from "./task-attachments";
-import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
 import { TaskReactions } from "./task-reactions";
 import { TaskComments } from "./task-comments";
@@ -96,6 +84,11 @@ export function TaskDetailSheet() {
   const tt = useTranslations("tasks");
   const openTask = useTaskDetail((s) => s.openTask);
   const close = useTaskDetail((s) => s.close);
+  // The sheet only exists after a click, never in the server HTML, so reading
+  // the viewport here can't cause a hydration mismatch. On a desktop it slides
+  // in from the right edge it is pinned to; on a phone it rises from the bottom.
+  const fromSide = typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
+  const offscreen = fromSide ? { opacity: 0, x: 40 } : { opacity: 0, y: 24 };
 
   return (
     <AnimatePresence>
@@ -106,16 +99,17 @@ export function TaskDetailSheet() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
             onClick={close}
           />
           {/* A flex column so the header stays put and only the body scrolls:
               the close button must never scroll away on a long task. */}
           <motion.aside
-            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[86dvh] flex-col overflow-hidden rounded-t-2xl bg-bg pb-safe shadow-drag md:inset-y-4 md:right-4 md:left-auto md:max-h-none md:w-[520px] md:max-w-[calc(100%-2rem)] md:rounded-[28px] md:pb-0"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[86dvh] flex-col overflow-hidden rounded-t-[28px] bg-bg pb-safe shadow-[0_20px_60px_rgb(var(--shadow-color)/0.25)] md:inset-y-4 md:right-4 md:left-auto md:max-h-none md:w-[520px] md:max-w-[calc(100%-2rem)] md:rounded-[28px] md:pb-0"
+            initial={offscreen}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={offscreen}
+            transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
             role="dialog"
             aria-label={tt("detailTitle")}
           >
@@ -263,7 +257,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           aria-hidden
         />
         <div className="flex items-center gap-2">
-          <span className="mr-auto pl-1.5 text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+          <span className="mr-auto pl-1.5 text-[11px] leading-normal font-semibold tracking-[0.06em] text-muted uppercase">
             {tt("detailTitle")}
           </span>
           <div className="relative">
@@ -274,7 +268,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               aria-expanded={menuOpen}
               className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-surface-2 text-fg transition-colors hover:bg-border"
             >
-              <MoreHorizontal className="h-4 w-4" aria-hidden />
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                <circle cx="3.5" cy="8" r="1.3" />
+                <circle cx="8" cy="8" r="1.3" />
+                <circle cx="12.5" cy="8" r="1.3" />
+              </svg>
             </button>
             {menuOpen && (
               <>
@@ -310,14 +308,25 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             aria-label={tc("close")}
             className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-surface-2 text-fg transition-colors hover:bg-border"
           >
-            <X className="h-4 w-4" aria-hidden />
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="m4 4 8 8M12 4l-8 8" />
+            </svg>
           </button>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-3.5 pt-1.5 pb-3.5">
         {/* Title, with the round check that finishes the task from here. */}
-        <div className="flex items-start gap-3 px-1.5 pt-1">
+        <div className="flex items-start gap-3 px-1.5 py-1">
           <DoneCircle done={done} onToggle={toggleDone} />
           <textarea
             value={title}
@@ -343,7 +352,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         {/* Every "where and when" setting lives in one white card: label on the
             left, current value on the right, one row each. Tapping a value opens
             its options under the row, so the card stays a summary at rest. */}
-        <div className="flex flex-col divide-y divide-surface-2 rounded-xl bg-surface px-4 py-1.5">
+        <div className="flex flex-col divide-y divide-surface-2 rounded-[22px] bg-surface px-4 py-1.5">
           {/* Scheduled day: the one setting changed often enough to stay inline */}
           <MetaRow label={tt("scheduledFor")}>
             <div className="flex flex-wrap gap-1">
@@ -381,7 +390,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             onToggle={rowToggle("due")}
             value={
               task.due_date ? (
-                <DueDateBadge dueDate={task.due_date} className="px-2 py-0.5 text-xs" />
+                <DueDateBadge dueDate={task.due_date} className="px-2 py-0.5 text-2xs" />
               ) : (
                 <Unset>{tt("noDate")}</Unset>
               )
@@ -649,13 +658,16 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         {/* Time tracking: the one dark card in the sheet. Time is the live thing
             here, so it gets the hero treatment (and flips with the theme). The
             estimate lives in it too, as the yardstick the bar measures against. */}
-        <section className="flex flex-col gap-3 rounded-xl bg-fg p-4 text-bg">
+        <section className="flex flex-col gap-3 rounded-[22px] bg-fg p-4 text-surface">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
             <div className="mr-auto flex flex-col gap-0.5">
-              <span className="text-xs text-bg/60">{tt("realTime")}</span>
+              <span className="text-2xs text-surface/65">{tt("realTime")}</span>
               {timer.running ? (
                 <span className="flex items-center gap-2 font-display text-[28px] leading-8 font-bold tabular-nums">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-accent" aria-hidden />
+                  <span
+                    className="h-2 w-2 animate-pulse rounded-full bg-accent [animation-duration:1.2s]"
+                    aria-hidden
+                  />
                   {formatClock(timer.liveSeconds)}
                 </span>
               ) : editingReal ? (
@@ -670,13 +682,13 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                   }}
                   placeholder={tt("timePlaceholder")}
                   aria-label={tt("realTime")}
-                  className="h-8 w-28 border-b border-bg/50 bg-transparent font-display text-[28px] font-bold tabular-nums text-bg outline-none placeholder:text-base placeholder:font-normal placeholder:text-bg/50"
+                  className="h-8 w-28 border-b border-surface/50 bg-transparent font-display text-[28px] font-bold tabular-nums text-surface outline-none placeholder:text-base placeholder:font-normal placeholder:text-surface/50"
                 />
               ) : (
                 <button
                   onClick={startEditReal}
                   title={tt("logTimeManually")}
-                  className="cursor-pointer text-left font-display text-[28px] leading-8 font-bold tabular-nums text-bg underline decoration-bg/30 decoration-dotted decoration-from-font underline-offset-4 transition-opacity hover:opacity-80"
+                  className="cursor-pointer text-left font-display text-[28px] leading-8 font-bold tabular-nums text-surface underline decoration-surface/30 decoration-dotted decoration-from-font underline-offset-4 transition-opacity hover:opacity-80"
                 >
                   {formatMinutes(task.actual_time_min ?? 0)}
                 </button>
@@ -686,7 +698,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               onClick={rowToggle("estimate")}
               aria-expanded={openRow === "estimate"}
               title={tt("changeField", { field: tt("estimate2") })}
-              className="cursor-pointer rounded-pill px-2 py-1 text-xs text-bg/60 transition-colors hover:bg-bg/10 hover:text-bg"
+              className="cursor-pointer rounded-pill px-2 py-1 text-2xs text-surface/65 transition-colors hover:bg-surface/10 hover:text-surface"
             >
               {task.time_estimate_min
                 ? tt("ofEstimate", { time: formatMinutes(task.time_estimate_min) })
@@ -696,28 +708,23 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               onClick={timer.toggle}
               aria-pressed={timer.running}
               className={cn(
-                "inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-4 text-[13px] font-bold transition-colors",
+                "inline-flex h-10 shrink-0 cursor-pointer items-center rounded-pill px-4 text-xs font-bold transition-opacity hover:opacity-90",
+                // Start wears the brightened mint the bar below fills with.
+                // Its ink is on-marker because that is the one dark ink that
+                // stays dark in both themes, and this mint is light in both.
                 timer.running
-                  ? "bg-accent text-on-accent hover:bg-accent-hover"
-                  : "bg-bg text-fg hover:bg-bg/85",
+                  ? "bg-accent text-on-accent"
+                  : "bg-linear-135 from-[color-mix(in_srgb,var(--color-fit-from)_70%,var(--color-surface))] to-[color-mix(in_srgb,var(--color-fit-from)_30%,var(--color-primary))] text-on-marker",
               )}
             >
-              {timer.running ? (
-                <>
-                  <Pause className="h-4 w-4" aria-hidden /> {tt("stop")}
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" aria-hidden /> {tt("startTimerShort")}
-                </>
-              )}
+              {timer.running ? tt("stop") : tt("startTimerShort")}
             </button>
           </div>
 
           {task.time_estimate_min ? (
-            <div className="h-2 overflow-hidden rounded-pill bg-bg/15" aria-hidden>
+            <div className="h-2 overflow-hidden rounded-pill bg-surface/8" aria-hidden>
               <div
-                className="h-full rounded-pill bg-fit transition-[width] duration-500"
+                className="h-full rounded-pill bg-linear-to-r from-[color-mix(in_srgb,var(--color-fit-from)_70%,var(--color-surface))] to-[color-mix(in_srgb,var(--color-fit-from)_30%,var(--color-primary))] transition-[width] duration-400 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -757,7 +764,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             onBlur={saveNotes}
             placeholder={tt("descriptionPlaceholder")}
             rows={2}
-            className="field-sizing-content min-h-[64px] w-full resize-none rounded-lg bg-bg p-3 text-sm leading-5 text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="field-sizing-content min-h-[64px] w-full resize-none rounded-[14px] bg-bg p-3 text-sm leading-5 text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
           />
         </Card>
 
@@ -766,7 +773,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           <div className="flex items-center gap-2.5">
             <h2 className="mr-auto font-display text-sm font-semibold">{tt("checklist")}</h2>
             {subtasks.length > 0 && (
-              <span className="font-mono text-xs text-muted">
+              <span className="font-mono text-2xs text-muted">
                 {tt("checklistProgress", { done: doneSubs, total: subtasks.length })}
               </span>
             )}
@@ -774,7 +781,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           {subtasks.length > 0 && (
             <div className="h-1.5 overflow-hidden rounded-pill bg-surface-2" aria-hidden>
               <div
-                className="h-full rounded-pill bg-fit transition-[width] duration-500"
+                className="h-full rounded-pill bg-linear-to-r from-fit-from to-primary transition-[width] duration-400 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
                 style={{ width: `${(doneSubs / subtasks.length) * 100}%` }}
               />
             </div>
@@ -823,7 +830,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           <div className="flex items-center gap-2.5">
             <h2 className="mr-auto font-display text-sm font-semibold">{tt("files")}</h2>
             {attachmentCount > 0 && (
-              <span className="font-mono text-xs text-muted">{attachmentCount}</span>
+              <span className="font-mono text-2xs text-muted">{attachmentCount}</span>
             )}
           </div>
           <TaskAttachments taskId={task.id} />
@@ -949,7 +956,7 @@ function DateChip({
       onClick={openPicker}
       aria-label={tt("pickDate")}
       className={cn(
-        "relative inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors",
+        "relative inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-3 text-2xs font-semibold transition-colors duration-200",
         tone === "segment" ? SEGMENT_BASE : "min-h-8 py-1.5",
         tone === "segment"
           ? active
@@ -1012,8 +1019,8 @@ function ChecklistItemRow({
   }
 
   return (
-    <div className="group -mx-1.5 flex min-h-9 items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors hover:bg-bg">
-      <TaskCheckbox checked={sub.done} onToggle={onToggle} />
+    <div className="group -mx-1.5 flex min-h-9 items-center gap-2.5 rounded-md px-1.5 transition-colors hover:bg-bg">
+      <ItemCheck checked={sub.done} onToggle={onToggle} />
 
       {editing ? (
         <input
@@ -1039,7 +1046,7 @@ function ChecklistItemRow({
           }}
           title={tt("tapToEdit")}
           className={cn(
-            "min-w-0 flex-1 cursor-text break-words text-left text-[13px] leading-snug",
+            "min-w-0 flex-1 cursor-text break-words text-left text-xs leading-snug transition-colors duration-200",
             sub.done ? "text-subtle line-through" : "text-fg",
           )}
         >
@@ -1154,7 +1161,7 @@ function MetaRow({
   return (
     <div>
       <div className="flex min-h-[46px] items-center gap-2.5 py-1.5">
-        <span id={`${id}-l`} className="w-24 shrink-0 text-xs text-muted sm:w-[120px]">
+        <span id={`${id}-l`} className="w-24 shrink-0 text-2xs text-muted sm:w-[120px]">
           {label}
         </span>
         {inline ? (
@@ -1167,7 +1174,7 @@ function MetaRow({
             // outside the button.
             aria-labelledby={`${id}-l ${id}-v`}
             title={tt("changeField", { field: label })}
-            className="group/row -my-1 -mr-2 flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md py-1 pr-2 text-left text-[13px] font-semibold text-fg"
+            className="group/row -my-1 -mr-2 flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md py-1 pr-2 text-left text-xs leading-normal font-semibold text-fg"
           >
             <span id={`${id}-v`} className="flex min-w-0 items-center gap-2">
               {value}
@@ -1181,7 +1188,7 @@ function MetaRow({
             />
           </button>
         ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-2 text-[13px] font-semibold text-fg">
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-xs leading-normal font-semibold text-fg">
             {value}
           </div>
         )}
@@ -1199,7 +1206,7 @@ function Unset({ children }: { children: React.ReactNode }) {
 /** A white card on the sheet's paper, with its heading as the first child. */
 function Card({ children, gap = "gap-2.5" }: { children: React.ReactNode; gap?: string }) {
   return (
-    <section className={cn("flex flex-col rounded-xl bg-surface p-4", gap)}>{children}</section>
+    <section className={cn("flex flex-col rounded-[22px] bg-surface p-4", gap)}>{children}</section>
   );
 }
 
@@ -1215,17 +1222,72 @@ function DoneCircle({ done, onToggle }: { done: boolean; onToggle: () => void })
       aria-label={done ? t("markPending") : t("complete")}
       whileTap={{ scale: 0.85 }}
       className={cn(
-        "mt-0.5 flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors",
-        done ? "bg-fit" : "ring-2 ring-border-strong ring-inset hover:ring-primary",
+        "mt-[3px] flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-[background,box-shadow] duration-[250ms]",
+        done
+          ? "bg-fit"
+          : "shadow-[inset_0_0_0_2px_var(--color-border-strong)] hover:shadow-[inset_0_0_0_2px_var(--color-primary)]",
       )}
     >
-      {done && <Check className="h-3.5 w-3.5 text-on-primary" strokeWidth={3} aria-hidden />}
+      {done && <Tick size={13} className="animate-pop [animation-duration:400ms]" />}
     </motion.button>
   );
 }
 
+/** The canvas's white tick, shared by the finish circle and checklist boxes. */
+function Tick({
+  size,
+  strokeWidth = 2.6,
+  className,
+}: {
+  size: number;
+  strokeWidth?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="var(--color-on-primary)"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="m3.5 8.5 3 3 6-7" />
+    </svg>
+  );
+}
+
+/** A checklist item's box: square-ish, 20px, unlike the round check of a
+ *  task. The canvas keeps the two shapes apart so a step never reads as a
+ *  task of its own. */
+function ItemCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  const t = useTranslations("tasks");
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={checked}
+      aria-label={checked ? t("markPending") : t("complete")}
+      className={cn(
+        "flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-[6px] transition-[background,box-shadow] duration-200",
+        checked
+          ? "bg-fit"
+          : "shadow-[inset_0_0_0_1.5px_var(--color-border-strong)] hover:shadow-[inset_0_0_0_1.5px_var(--color-primary)]",
+      )}
+    >
+      {checked && (
+        <Tick size={10} strokeWidth={2.8} className="animate-pop [animation-duration:400ms]" />
+      )}
+    </button>
+  );
+}
+
 const SEGMENT_BASE = "h-[30px]";
-const SEGMENT_ON = "bg-fg text-bg";
+const SEGMENT_ON = "bg-fg text-surface";
 const SEGMENT_OFF = "bg-surface-2 text-fg hover:bg-border";
 
 /** One option of the scheduled-day control: ink when chosen, like the canvas. */
@@ -1243,7 +1305,7 @@ function Segment({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex cursor-pointer items-center rounded-pill px-3 text-xs font-semibold transition-colors",
+        "inline-flex cursor-pointer items-center rounded-pill px-3 text-2xs font-semibold transition-colors duration-200",
         SEGMENT_BASE,
         active ? SEGMENT_ON : SEGMENT_OFF,
       )}
@@ -1269,7 +1331,7 @@ function DarkChip({
       aria-pressed={active}
       className={cn(
         "inline-flex min-h-8 cursor-pointer items-center rounded-pill px-3 py-1.5 text-xs font-semibold transition-colors",
-        active ? "bg-bg text-fg" : "bg-bg/10 text-bg hover:bg-bg/20",
+        active ? "bg-surface text-fg" : "bg-surface/10 text-surface hover:bg-surface/20",
       )}
     >
       {label}

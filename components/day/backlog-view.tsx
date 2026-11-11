@@ -84,8 +84,8 @@ export function BacklogView() {
 
   return (
     <div className="flex max-w-[1000px] flex-col gap-4">
-      <header className="flex flex-col gap-0.5 px-2 pt-3">
-        <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+      <header className="flex animate-up flex-col gap-0.5 px-2 pt-3">
+        <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em]">
           {t("title")}
         </h1>
         <p className="text-sm text-muted">{t("subtitle")}</p>
@@ -95,22 +95,25 @@ export function BacklogView() {
           much of it you can't even weigh yet. Hidden on an empty backlog, where
           three zeros say less than the empty state does. */}
       {tasks.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
-          <div className="flex flex-col gap-0.5 rounded-2xl bg-surface-2 px-[18px] py-4 text-xs text-muted">
+        <div
+          className="grid animate-up grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]"
+          style={{ animationDelay: "60ms" }}
+        >
+          <div className="flex flex-col gap-0.5 rounded-[24px] bg-surface-2 px-[18px] py-4 text-2xs text-muted">
             {t.rich("statUndated", { n: tasks.length, big })}
           </div>
-          <div className="flex flex-col gap-0.5 rounded-2xl bg-surface-2 px-[18px] py-4 text-xs text-muted">
+          <div className="flex flex-col gap-0.5 rounded-[24px] bg-surface-2 px-[18px] py-4 text-2xs text-muted">
             {t.rich("statEstimated", { time: formatMinutes(estimatedMin), big })}
           </div>
-          <div className="col-span-2 flex items-center gap-2.5 rounded-2xl bg-surface-2 py-3 pr-3 pl-[18px] sm:col-span-1">
-            <div className="flex flex-1 flex-col gap-0.5 text-xs text-muted">
+          <div className="col-span-2 flex items-center gap-2.5 rounded-[24px] bg-surface-2 py-3 pr-3 pl-[18px] sm:col-span-1">
+            <div className="flex flex-1 flex-col gap-0.5 text-2xs text-muted">
               {t.rich("statUnestimated", { n: unestimated.length, big })}
             </div>
             {(unestimated.length > 0 || estimating) && (
               <button
                 onClick={() => setEstimating((v) => !v)}
                 aria-pressed={estimating}
-                className="h-[38px] shrink-0 cursor-pointer rounded-pill bg-surface px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                className="h-[38px] shrink-0 cursor-pointer rounded-pill bg-surface px-3.5 text-2xs font-semibold text-fg transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
               >
                 {estimating ? t("doneEstimating") : t("estimateThem", { n: unestimated.length })}
               </button>
@@ -122,7 +125,12 @@ export function BacklogView() {
       {/* The honest question nobody asks themselves unprompted. It sits above
           the list now: below it, a long backlog pushed it off every screen. */}
       {stale.length > 0 && (
-        <section className="flex flex-wrap items-center gap-3 rounded-2xl bg-marker/25 px-[18px] py-3.5">
+        // Canvas #FBF1C2: the marker yellow washed over white, so the tint
+        // follows the marker token in both themes.
+        <section
+          className="flex animate-up flex-wrap items-center gap-3 rounded-[22px] bg-[color-mix(in_srgb,var(--marker)_30%,var(--surface))] px-[18px] py-3.5"
+          style={{ animationDelay: "100ms" }}
+        >
           <span className="-rotate-2 rounded-[4px] bg-marker px-1.5 py-0.5 font-mono text-[11px] text-on-marker uppercase">
             {t("staleChip", { days: STALE_DAYS })}
           </span>
@@ -135,8 +143,10 @@ export function BacklogView() {
         </section>
       )}
 
-      <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
-      <CaptureSheet viewDate={null} channels={channelsQ.data ?? []} viewTasks={tasks} />
+      <div className="flex animate-up flex-col gap-4" style={{ animationDelay: "140ms" }}>
+        <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
+        <CaptureSheet viewDate={null} channels={channelsQ.data ?? []} viewTasks={tasks} />
+      </div>
 
       <CategoryPills />
 
@@ -162,7 +172,7 @@ export function BacklogView() {
             <section
               key={priority ?? "none"}
               aria-label={label}
-              className="flex flex-col gap-1.5 rounded-2xl bg-surface-2 p-2"
+              className="flex animate-up flex-col gap-1.5 rounded-[26px] bg-surface-2 p-2"
             >
               <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
                 <span
@@ -215,7 +225,8 @@ function CategoryPills() {
     <div
       role="group"
       aria-label={t("categoryFilter")}
-      className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      style={{ animationDelay: "180ms" }}
+      className="-mx-4 flex animate-up gap-2 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <button
         onClick={clear}
@@ -345,7 +356,7 @@ function BacklogRow({
   return (
     <li
       className={cn(
-        "flex items-center gap-2.5 rounded-[16px] bg-surface py-2 pr-2 pl-3.5 shadow-soft transition-shadow",
+        "flex items-center gap-2.5 rounded-[16px] bg-surface py-2 pr-2 pl-3.5 shadow-[0_1px_2px_rgb(var(--shadow-color)/calc(0.06*var(--shadow-strength)))] transition-shadow",
         // While estimating, the rows still missing a number are the ones to
         // look at; everything else steps back.
         estimating && task.time_estimate_min == null && "ring-2 ring-primary ring-inset",
@@ -388,14 +399,14 @@ function BacklogRow({
           tomorrow pill: text only until hovered. */}
       <button
         onClick={() => schedule(today, tcm("todayLower"))}
-        className="h-8 shrink-0 cursor-pointer rounded-pill px-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary-soft focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none sm:px-2.5"
+        className="h-8 shrink-0 cursor-pointer rounded-pill px-1.5 text-2xs font-semibold text-primary transition-colors hover:bg-primary-soft focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none sm:px-2.5"
       >
         {td("plusToday")}
       </button>
       <button
         onClick={() => schedule(addDays(today, 1), tcm("tomorrowLower"))}
         aria-label={t("moveToTomorrow")}
-        className="h-8 shrink-0 cursor-pointer rounded-pill bg-surface-2 px-2.5 text-xs font-semibold text-fg transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+        className="h-8 shrink-0 cursor-pointer rounded-pill bg-surface-2 px-2.5 text-2xs font-semibold text-fg sm:px-3 transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         <span className="hidden sm:inline">{t("moveToTomorrow")}</span>
         <span className="sm:hidden">{tcm("tomorrow")}</span>
