@@ -1,11 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { del } from "@vercel/blob";
 import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as attachments from "@/lib/db/queries/attachments";
 import * as data from "@/lib/db/queries/tasks";
 import { isTaskPriority, type PriorityKey } from "@/lib/priority";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
+import { pushToStint } from "@/lib/stint-sync";
 
 /** The patch reaches `db.update().set()` verbatim, so reject a bogus priority
  *  here rather than relying on the CHECK constraint to raise a 500. */
@@ -22,8 +24,13 @@ export async function createTask(input: NewTask) {
 }
 
 export async function toggleTask(taskId: string, done: boolean) {
-  const { householdId } = await requireWriteAccess();
-  return data.toggleTaskDone(householdId, taskId, done);
+  const { householdId, userId } = await requireWriteAccess();
+  const row = await data.toggleTaskDone(householdId, taskId, done);
+  // A task mirrored from Stint gets finished (or reopened) there too, after
+  // the response: Stint being slow must not slow down the checkbox.
+  if (row.stint_task_id)
+    after(() => pushToStint(householdId, userId, taskId, done ? "done" : "undone"));
+  return row;
 }
 
 export async function updateTask(taskId: string, patch: TaskPatch) {
@@ -67,8 +74,10 @@ export async function getTaskTimeEntries(taskId: string) {
 }
 
 export async function setTaskActiveSince(taskId: string, active: boolean) {
-  const { householdId } = await requireWriteAccess();
+  const { householdId, userId } = await requireWriteAccess();
   await data.setActiveSince(householdId, taskId, active);
+  // Starting the stopwatch on a Stint task moves it to "doing" there.
+  if (active) after(() => pushToStint(householdId, userId, taskId, "timerStarted"));
 }
 
 /** Deletes the task and returns the Google Calendar event ids its blocks had,

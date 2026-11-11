@@ -603,7 +603,17 @@
     "dangerTitle": "Danger zone",
     "dangerDesc": "Export your data or delete your account. Deleting can't be undone.",
     "exportDataAction": "Download your data",
-    "changeColor": "Change the color of {name}"
+    "changeColor": "Change the color of {name}",
+    "stintTitle": "Stint tasks",
+    "stintDesc": "Your Stint tasks show up here, in their own channel. Start a task's timer and it moves to In progress in Stint; finish it here and it's Done there. Your hours stay in Morchitask.",
+    "stintTokenPlaceholder": "Paste your Stint token",
+    "stintConnect": "Connect",
+    "stintDisconnect": "Disconnect",
+    "stintDisconnectConfirm": "Tasks that already arrived stay, but stop syncing. Disconnect?",
+    "stintConnected": "Connected.",
+    "stintSynced": "Connected. Last synced {when}.",
+    "stintErrorToken": "That token doesn't work. Generate a new one in Stint, under Settings.",
+    "stintErrorNetwork": "Couldn't reach Stint. Try again in a bit."
   },
   "goals": {
     "title": "Goals",

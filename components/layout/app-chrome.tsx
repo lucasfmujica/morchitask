@@ -37,6 +37,7 @@ import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { PresenceBanner } from "./presence-banner";
 import { MobileRitualIcons } from "./ritual-nav";
 import { TimerBar } from "./timer-bar";
+import { StintSync } from "./stint-sync";
 import { useTranslations } from "next-intl";
 
 type NavItem = {
@@ -235,6 +236,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         <KeyboardShortcuts />
         <CommandPalette />
         <Toaster />
+        <StintSync />
       </div>
     </ChannelFilterProvider>
   );

@@ -603,7 +603,17 @@
     "dangerTitle": "Zona de peligro",
     "dangerDesc": "Exportá tus datos o borrá la cuenta. Borrar no se puede deshacer.",
     "exportDataAction": "Descargar tus datos",
-    "changeColor": "Cambiar el color de {name}"
+    "changeColor": "Cambiar el color de {name}",
+    "stintTitle": "Tareas de Stint",
+    "stintDesc": "Tus tareas de Stint aparecen acá, en su propio canal. Cuando arrancás el timer de una, en Stint pasa a En curso; cuando la terminás acá, allá queda Hecha. Las horas no salen de Morchitask.",
+    "stintTokenPlaceholder": "Pegá el token de Stint",
+    "stintConnect": "Conectar",
+    "stintDisconnect": "Desconectar",
+    "stintDisconnectConfirm": "Las tareas que ya llegaron se quedan, pero dejan de sincronizarse. ¿Desconectar?",
+    "stintConnected": "Conectado.",
+    "stintSynced": "Conectado. Última sincronización: {when}.",
+    "stintErrorToken": "Ese token no sirve. Generá uno nuevo en Stint, en Ajustes.",
+    "stintErrorNetwork": "No se pudo hablar con Stint. Probá de nuevo en un rato."
   },
   "goals": {
     "title": "Metas",
