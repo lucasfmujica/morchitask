@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { isBillingEnabled } from "@/lib/billing-config";
 import { createCheckoutUrl, createPortalUrl, type BillingInterval } from "@/lib/polar";
-import { getSubscription } from "@/lib/db/queries/subscriptions";
+import { getSubscription, recordCheckoutStarted } from "@/lib/db/queries/subscriptions";
 
 async function requireSession() {
   const session = await auth();
@@ -57,12 +57,23 @@ export async function startCheckout(interval: BillingInterval) {
   const { session, householdId } = await requireSession();
   if (!isBillingEnabled()) throw new Error("billing is not configured");
 
-  return createCheckoutUrl({
+  const url = await createCheckoutUrl({
     householdId,
     interval,
     email: session.user.email,
     successUrl: `${await origin()}/billing?checkout=done`,
   });
+
+  // Recorded for the launch funnel's "Checkout" step, only once Polar has
+  // actually opened a checkout. Never allowed to fail the sale: a metric that
+  // costs a payment is a bad trade, so an error here is logged and dropped.
+  try {
+    await recordCheckoutStarted(householdId, session.user.id);
+  } catch (err) {
+    console.error("could not record checkout start", err);
+  }
+
+  return url;
 }
 
 /**

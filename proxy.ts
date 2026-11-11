@@ -121,8 +121,11 @@ function isReachableWhenLocked(pathname: string) {
 }
 
 export const config = {
-  // Run on everything except Next internals and static assets.
+  // Run on everything except Next internals and static assets. `_vercel` is
+  // Vercel Web Analytics' script and beacon (/_vercel/insights/*): through the
+  // proxy, a logged-out visitor's page view would be redirected to /login, and
+  // the funnel would never see the very visits it exists to count.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icon.svg|icon-192.png|icon-512.png|apple-touch-icon.png|.*\\.(?:png|jpg|jpeg|svg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|_vercel|favicon.ico|manifest.webmanifest|sw.js|icon.svg|icon-192.png|icon-512.png|apple-touch-icon.png|.*\\.(?:png|jpg|jpeg|svg|gif|webp)$).*)",
   ],
 };

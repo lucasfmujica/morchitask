@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { households, subscriptions } from "@/lib/db/schema";
+import { households, profiles, subscriptions } from "@/lib/db/schema";
 import { isSubscriptionStatus, type BillingFacts } from "@/lib/billing";
 
 /**
@@ -121,4 +121,37 @@ export async function householdExists(householdId: string) {
     .from(households)
     .where(eq(households.id, householdId));
   return !!row;
+}
+
+/**
+ * Remembers that this person opened a checkout, the first time they do.
+ *
+ * The launch funnel needs a "Checkout" step between trying the app and paying,
+ * and nothing recorded it: Polar knows, but asking Polar on every admin page
+ * load would put a third-party API on the metrics' critical path.
+ *
+ * Stored as a key in `profiles.notification_prefs` because that is the one
+ * jsonb column on a row we already write, and a dedicated column would have
+ * needed a migration for a single timestamp. It is not a preference, and
+ * nothing in the notification code reads it; the prefs writers merge rather
+ * than replace (`saveMyNotificationPrefs`), so it survives a settings change.
+ * If billing ever gets its own migration, move it to a real column then.
+ *
+ * Merged in SQL, not read-modify-written, so it cannot race a prefs save, and
+ * only set when absent, so the first attempt is the one that counts. Scoped by
+ * household as well as user, like every other write.
+ */
+export async function recordCheckoutStarted(householdId: string, userId: string) {
+  await db
+    .update(profiles)
+    .set({
+      notification_prefs: sql`${profiles.notification_prefs} || jsonb_build_object('checkout_started_at', now())`,
+    })
+    .where(
+      and(
+        eq(profiles.id, userId),
+        eq(profiles.household_id, householdId),
+        sql`${profiles.notification_prefs} ->> 'checkout_started_at' is null`,
+      ),
+    );
 }

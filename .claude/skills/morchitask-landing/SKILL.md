@@ -14,7 +14,7 @@ Sos el design lead de un planificador diario usado todos los días por dos perso
 - Precio: `app/(marketing)/pricing/page.tsx`
 - Shell nav/footer: `app/(marketing)/layout.tsx`
 - Tokens: `app/globals.css`
-- Precio numérico: `lib/pricing.ts` (`PRICE_MONTHLY_USD=10`, `PRICE_YEARLY_USD=80`, `TRIAL_DAYS=14`, `SUNSAMA_MONTHLY_USD=20`)
+- Precio numérico: `lib/pricing.ts` (`PRICE_MONTHLY_USD=10`, `PRICE_YEARLY_USD=80`, `TRIAL_DAYS=14`, `SUNSAMA_MONTHLY_USD=22`, `SUNSAMA_YEARLY_PER_MONTH_USD=17`)
 
 No hardcodees strings en JSX. Si agregás una sección, agregás keys en ES y EN.
 
@@ -36,7 +36,7 @@ No agregues testimonials, logos, feature grid, FAQ en home, ni banda oscura.
 
 Usá el texto de `COPY.md` de este pack. No reescribas "para que suene más marketing". No uses em dash ni raya. Vos en ES, you en EN. CTA siempre "Probalo 14 días gratis" / "Try it free for 14 days".
 
-Sunsama aparece recién en "Por qué cuesta la mitad" y en `/pricing`. Nunca en el H1.
+Sunsama aparece recién en "Por qué cuesta menos de la mitad" y en `/pricing`. Nunca en el H1.
 
 ## Layout
 

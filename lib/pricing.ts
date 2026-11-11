@@ -13,9 +13,9 @@
  *   product nobody asked for.
  * - **$10, not $5.** A daily planner has the highest switching cost of any
  *   software — you are asking someone to put their whole day inside it. Next
- *   to Sunsama at $20, five dollars doesn't read as value, it reads as "weekend
+ *   to Sunsama at $22, five dollars doesn't read as value, it reads as "weekend
  *   project that won't exist in a year", which is the exact fear that stops the
- *   migration. Half of Sunsama is a legible, credible gap.
+ *   migration. Less than half of Sunsama is a legible, credible gap.
  * - **No free tier.** Supporting a user costs the same at $5 as at $10, and the
  *   scarce input here is one person's weekends.
  */
@@ -33,8 +33,15 @@ export const YEARLY_SAVING_PCT = Math.round(
 );
 
 /** The number the comparison copy leans on. Not a competitor's live price —
- *  a reference point, and one to re-check before it goes in an ad. */
-export const SUNSAMA_MONTHLY_USD = 20;
+ *  a reference point, and one to re-check before it goes in an ad. It was $20
+ *  until Sunsama raised it; the copy said "half" and "twice" back then, and
+ *  both went quietly false the day they did. The copy now only claims what
+ *  `pricing.test.ts` checks against these numbers. */
+export const SUNSAMA_MONTHLY_USD = 22;
+
+/** Sunsama billed yearly, per month. The fair comparison for our yearly plan:
+ *  setting our yearly price against their monthly one would flatter us. */
+export const SUNSAMA_YEARLY_PER_MONTH_USD = 17;
 
 /**
  * The price as it is written.
