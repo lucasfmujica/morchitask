@@ -29,7 +29,7 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { CompactTaskRow } from "@/components/tasks/compact-task-row";
 import { TimePicker } from "@/components/ui/time-picker";
-import { ReplanPanel } from "./replan-panel";
+import { ReplanPanel, type ReplanEvent } from "./replan-panel";
 import {
   blockEndMin,
   blockStartMin,
@@ -89,7 +89,8 @@ export function AgendaView({
   /** The task/block currently being dragged in the parent context (null when idle). */
   activeTask: Task | null;
   activeBlockId: string | null;
-  /** "Se me rompió el día" lives in the day's header; the panel opens here. */
+  /** "Reacomodar desde ahora" lives in the day's header; it owns the sheet's
+   *  open state, the agenda supplies the data. */
   replanOpen?: boolean;
   onReplanOpenChange?: (open: boolean) => void;
 }) {
@@ -144,14 +145,15 @@ export function AgendaView({
 
   // Calendar events with a time, as busy ranges. Replanning packs around these
   // and nothing else from Google: they're the walls you can't move from here.
-  const eventBusy: BusyRange[] = useMemo(() => {
-    const ranges: BusyRange[] = [];
+  const eventBusy: ReplanEvent[] = useMemo(() => {
+    const ranges: ReplanEvent[] = [];
     for (const e of events) {
       if (e.allDay || !e.start) continue;
       const startMin = minutesFromMidnight(e.start, TZ);
       ranges.push({
         startMin,
         endMin: e.end ? minutesFromMidnight(e.end, TZ) : startMin + 30,
+        title: e.title,
       });
     }
     return ranges;
@@ -271,19 +273,19 @@ export function AgendaView({
 
   return (
     <div className="flex flex-col gap-2">
-      {hydrated && isToday && replanOpen !== false && (
+      {hydrated && isToday && replanOpen && (
         <ReplanPanel
           date={date}
           tasks={tasks}
           blocksByTask={blocksByTask}
-          calendarBusy={eventBusy}
+          calendarEvents={eventBusy}
           nowMin={nowMin}
           endMin={targetMin}
           meId={me?.id}
           moveBlock={moveBlock}
           scheduleNewBlock={scheduleNewBlock}
-          open={replanOpen}
-          onOpenChange={onReplanOpenChange}
+          toneFor={(task) => pastelFor(task.channel_id)}
+          onClose={() => onReplanOpenChange?.(false)}
         />
       )}
 

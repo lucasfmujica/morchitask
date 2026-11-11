@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { getInboundAddress } from "@/lib/actions/inbound";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * Your private address for forwarding mail into the backlog. Hidden entirely
@@ -28,20 +28,25 @@ export function InboundEmailCard() {
         <p className="min-w-0 flex-1 text-sm font-semibold text-fg">{t("inboundTitle")}</p>
       </div>
       <p className="text-2xs leading-[17px] text-muted">{t("inboundDesc")}</p>
-      <div className="flex items-center gap-2 rounded-pill bg-surface-2 py-1 pr-1 pl-4">
+      {/* The address pill and its copy button as the Captura canvas draws
+          them; the card shell stays the Integraciones one, like its siblings. */}
+      <div className="flex items-center gap-2 rounded-pill bg-bg py-1.5 pr-1.5 pl-4">
         <span className="min-w-0 flex-1 truncate font-mono text-xs">{address}</span>
-        <Button
-          size="sm"
-          variant={copied ? "secondary" : "primary"}
+        <button
+          type="button"
           onClick={() => {
             navigator.clipboard?.writeText(address).then(
               () => setCopied(true),
               () => {},
             );
           }}
+          className={cn(
+            "h-[34px] shrink-0 cursor-pointer rounded-pill px-3.5 text-2xs font-semibold transition-[background] duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+            copied ? "bg-primary-soft text-primary" : "bg-fg text-surface hover:opacity-90",
+          )}
         >
           {copied ? t("inboundCopied") : t("inboundCopy")}
-        </Button>
+        </button>
       </div>
     </div>
   );
