@@ -347,8 +347,8 @@ export function DayView({ date }: { date: string }) {
           // action, and nobody could tell what the button would do.
           <button
             type="button"
-            aria-expanded={replanOpen}
-            onClick={() => setReplanOpen((o) => !o)}
+            aria-haspopup="dialog"
+            onClick={() => setReplanOpen(true)}
             className="flex h-10 cursor-pointer items-center rounded-pill bg-surface-2 px-3.5 text-sm font-semibold text-fg transition-colors hover:bg-border sm:h-11 sm:px-4"
           >
             {t("replanButton")}

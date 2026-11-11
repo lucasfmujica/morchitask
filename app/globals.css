@@ -596,6 +596,106 @@ h3 {
   --ink: #0a0b09;
   --on-ink: #eceee6;
 }
+/* The dictation sheet is an ink card in both themes, like the Foco tile. It
+   needs its own steps on that ink (a well, a selected row, a hairline, two
+   text strengths) and a brighter fit ramp: the app's --fit-from/--primary
+   gradient goes muddy on near-black, so the mic and its CTA use the canvas's
+   lighter pair. The values are the canvas's in light mode; in dark mode the
+   ink sinks with --ink and the steps follow it. */
+:root {
+  --ink-2: #262a23;
+  --ink-3: #2e332b;
+  --ink-line: #474d42;
+  --on-ink-muted: #a9afa2;
+  --on-ink-soft: #eceee6;
+  --ink-fit-from: #b6ebc4;
+  --ink-fit-to: #3fa266;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --ink-2: #171a15;
+    --ink-3: #1f231c;
+    --ink-line: #3a4036;
+  }
+}
+.dark {
+  --ink-2: #171a15;
+  --ink-3: #1f231c;
+  --ink-line: #3a4036;
+}
+@theme inline {
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-line: var(--ink-line);
+  --color-on-ink-muted: var(--on-ink-muted);
+  --color-on-ink-soft: var(--on-ink-soft);
+  --color-ink-fit-from: var(--ink-fit-from);
+  --color-ink-fit-to: var(--ink-fit-to);
+  --shadow-ink-cta: 0 10px 28px color-mix(in srgb, var(--ink-fit-to) 40%, transparent);
+}
+@utility bg-fit-ink {
+  background-image: linear-gradient(135deg, var(--ink-fit-from), var(--ink-fit-to));
+}
+@utility bg-fit-ink-bar {
+  background-image: linear-gradient(180deg, var(--ink-fit-from), var(--ink-fit-to));
+}
+
+/* Listening: the mic rings outward and the level bars breathe. Looping, so
+   no fill mode (reduced motion leaves them at rest, see the rule below). */
+@keyframes mt-listen {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink-fit-to) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 22px transparent;
+  }
+}
+@keyframes mt-wave {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+/* What was heard, revealed left to right as if being typed. */
+@keyframes mt-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@utility animate-listen {
+  animation: mt-listen 1.4s ease-out infinite;
+}
+@utility animate-wave {
+  animation: mt-wave 1s ease-in-out infinite;
+}
+@utility animate-type {
+  animation: mt-type 2.4s steps(60) both;
+}
+/* A card arriving with news (the replan's moves): a smaller overshoot than
+   the check's pop, since it's a whole card and not a tick. */
+@keyframes mt-pop-soft {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@utility animate-pop-soft {
+  animation: mt-pop-soft 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
 @theme inline {
   --color-wash-mint: var(--wash-mint);
   --color-wash-mint-2: var(--wash-mint-2);
