@@ -102,7 +102,7 @@ export function MonthView({ date }: { date: string }) {
                   className={cn(
                     "flex h-6 w-6 items-center justify-center rounded-pill font-display text-sm tabular-nums sm:h-7 sm:w-7",
                     isToday
-                      ? "bg-fit font-bold text-on-primary shadow-soft"
+                      ? "bg-primary font-bold text-on-primary shadow-soft"
                       : inMonth
                         ? "font-semibold text-fg"
                         : "text-subtle",

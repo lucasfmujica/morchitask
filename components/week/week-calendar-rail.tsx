@@ -100,7 +100,7 @@ export function WeekCalendarRail({ date }: { date: string }) {
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-full text-sm transition-colors",
                   isToday
-                    ? "bg-fit font-bold text-on-primary"
+                    ? "bg-primary font-bold text-on-primary"
                     : inWeek
                       ? "font-semibold text-primary"
                       : inMonth

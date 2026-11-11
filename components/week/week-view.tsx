@@ -378,7 +378,7 @@ function DayColumn({
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-pill font-display text-lg font-bold tabular-nums transition-colors",
-          isToday ? "bg-fit text-on-primary shadow-soft" : "text-fg group-hover:bg-surface",
+          isToday ? "bg-primary text-on-primary shadow-soft" : "text-fg group-hover:bg-surface",
         )}
       >
         {dayNum}

@@ -304,7 +304,7 @@ export function FocusTimer() {
           </button>
           <button
             onClick={toggleRun}
-            className="inline-flex h-16 cursor-pointer items-center justify-center gap-2 rounded-pill bg-fit px-6 text-base font-bold text-on-primary shadow-card transition-[filter] hover:brightness-105 sm:px-8"
+            className="inline-flex h-16 cursor-pointer items-center justify-center gap-2 rounded-pill bg-primary px-6 text-base font-bold text-on-primary shadow-card transition-[filter] hover:bg-primary-hover sm:px-8"
             aria-label={running ? t("pause") : t("start")}
           >
             {running ? (

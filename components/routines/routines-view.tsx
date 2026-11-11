@@ -231,7 +231,7 @@ function RoutineRow({
                   className={cn(
                     "flex h-9 max-w-11 flex-1 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors duration-200",
                     days.includes(d.n)
-                      ? "bg-fit text-on-primary"
+                      ? "bg-primary text-on-primary"
                       : "bg-surface-2 text-muted hover:bg-border",
                   )}
                 >

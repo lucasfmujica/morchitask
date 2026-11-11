@@ -218,7 +218,7 @@ function ObjectiveRow({
         aria-label={done ? t("markActive") : t("markDone")}
         className={cn(
           "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
-          done ? "bg-fit text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
+          done ? "bg-primary text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
         )}
       >
         {done && <Check className="h-3 w-3" strokeWidth={3} aria-hidden />}

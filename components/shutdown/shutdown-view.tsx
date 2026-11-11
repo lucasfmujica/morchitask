@@ -487,7 +487,7 @@ function StepReflect({
               className={cn(
                 "flex min-w-0 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl px-1 py-4 transition-[background-color,color,transform,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none sm:py-5",
                 mood === m.value
-                  ? "-translate-y-0.5 bg-fit text-on-primary shadow-card"
+                  ? "-translate-y-0.5 bg-primary text-on-primary shadow-card"
                   : "bg-bg text-fg hover:bg-surface-2",
               )}
             >

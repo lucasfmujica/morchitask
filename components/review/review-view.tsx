@@ -431,7 +431,7 @@ function WeekGoals({ week }: { week: string[] }) {
               <span
                 className={cn(
                   "shrink-0 rounded-pill px-2 py-0.5 text-xs font-bold tabular-nums",
-                  pct === 100 ? "bg-fit text-on-primary" : "bg-surface-2 text-muted",
+                  pct === 100 ? "bg-primary text-on-primary" : "bg-surface-2 text-muted",
                 )}
               >
                 {pct}%
@@ -693,7 +693,7 @@ function TaskDayList({
                 className={cn(
                   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
                   assign[task.id] === d
-                    ? "bg-fit text-on-primary"
+                    ? "bg-primary text-on-primary"
                     : "bg-surface text-muted hover:text-fg",
                 )}
               >
