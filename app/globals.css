@@ -66,7 +66,9 @@
   /* Light end of the "it fits" gradient. Dark enough that a white check or
      large white text keeps 3:1 across the whole ramp (#3fa266 is 3.2:1);
      normal-size text sits on solid --primary instead (5.3:1). */
-  --fit-from: #3fa266;
+  /* The canvas's mint. Text never sits on this gradient (it's fills and
+     icon-only checks), so the light end can be as bright as the design. */
+  --fit-from: #8fdca4;
 
   /* The highlighter: deadlines only, always as a background under ink text. */
   --marker: #f2d24b;
@@ -312,24 +314,24 @@
    were previously ad-hoc text-[10px]/text-[11px].
    ============================================================ */
 @theme {
-  --text-2xs: 0.6875rem; /* 11px */
+  --text-2xs: 0.75rem; /* 12px */
   --text-2xs--line-height: 1rem;
   --text-2xs--letter-spacing: 0.005em;
 
-  --text-xs: 0.75rem; /* 12px */
-  --text-xs--line-height: 1.125rem;
+  --text-xs: 0.8125rem; /* 13px */
+  --text-xs--line-height: 1.1875rem;
 
-  /* One step tighter than Tailwind's defaults (14/16/18). This is the density
-     that makes a planner read like a planner rather than a marketing page —
-     revert these three lines to 0.875/1/1.125rem to undo it wholesale. */
-  --text-sm: 0.8125rem; /* 13px (was 14) — secondary body */
+  /* Back to Tailwind's own 14/16/18 (and a point up on the small steps): the
+     tighter 13/15/17 ramp read as too small on the phone, where the app is
+     used most. */
+  --text-sm: 0.875rem; /* 14px — secondary body */
   --text-sm--line-height: 1.25rem;
 
-  --text-base: 0.9375rem; /* 15px (was 16) — card titles, primary body */
-  --text-base--line-height: 1.375rem;
+  --text-base: 1rem; /* 16px — card titles, primary body */
+  --text-base--line-height: 1.5rem;
 
-  --text-lg: 1.0625rem; /* 17px (was 18) — section titles */
-  --text-lg--line-height: 1.5rem;
+  --text-lg: 1.125rem; /* 18px — section titles */
+  --text-lg--line-height: 1.625rem;
 
   --text-xl: 1.25rem; /* 20px */
   --text-xl--line-height: 1.625rem;
@@ -393,6 +395,140 @@ h3 {
    The only gradient in the app, and it always means the same thing. */
 @utility bg-fit {
   background-image: linear-gradient(135deg, var(--fit-from), var(--primary));
+}
+
+/* The canvas's motion vocabulary, one utility per gesture so every screen
+   moves the same way. Delays come from an inline animation-delay (cascades).
+   All of it collapses under the reduced-motion rule at the end of the file. */
+@keyframes mt-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mt-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes mt-fill {
+  from {
+    width: 0;
+  }
+}
+@keyframes mt-seg {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes mt-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+@keyframes mt-halo {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+@keyframes mt-glow {
+  0%,
+  100% {
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 50%, transparent);
+  }
+}
+@utility animate-up {
+  animation: mt-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-pop {
+  animation: mt-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-fill {
+  animation: mt-fill 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both;
+}
+@utility animate-seg {
+  transform-origin: left;
+  animation: mt-seg 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-now {
+  animation: mt-pulse 1.8s ease-out infinite;
+}
+@utility animate-halo {
+  animation: mt-halo 2.8s ease-out infinite;
+}
+@utility animate-glow {
+  animation: mt-glow 2.4s ease-in-out 1.6s infinite;
+}
+
+/* ============================================================
+   HOY CANVAS TOKENS (agenda pastels, hatch, tile shadows)
+   The canvas paints agenda blocks in four pastels and hatches an overrun
+   in two oranges. Tokens rather than hex in components so dark mode gets
+   its own (deep, low-chroma) versions instead of glowing pastel slabs.
+   The light block comes first: `.dark` has the same specificity as
+   `:root`, so it must come later to win.
+   ============================================================ */
+:root {
+  --agenda-1: #e6eafb; /* periwinkle, pairs with the blue category */
+  --agenda-2: #fbe3d3; /* peach, pairs with the terracotta category */
+  --agenda-3: #ddf3e4; /* mint, pairs with the green category */
+  --agenda-4: #fbf1c2; /* butter */
+  --accent-hatch: #d9682f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --agenda-1: #262b45;
+    --agenda-2: #3a2a20;
+    --agenda-3: #1d3326;
+    --agenda-4: #363119;
+    --accent-hatch: #c9673f;
+  }
+}
+.dark {
+  --agenda-1: #262b45;
+  --agenda-2: #3a2a20;
+  --agenda-3: #1d3326;
+  --agenda-4: #363119;
+  --accent-hatch: #c9673f;
+}
+@theme inline {
+  --color-agenda-1: var(--agenda-1);
+  --color-agenda-2: var(--agenda-2);
+  --color-agenda-3: var(--agenda-3);
+  --color-agenda-4: var(--agenda-4);
+  --color-accent-hatch: var(--accent-hatch);
+  /* The canvas's three small shadows: a resting tile, a selected pill, and
+     the green halo under the day's main verb. */
+  --shadow-tile: 0 1px 2px rgb(var(--shadow-color) / calc(0.06 * var(--shadow-strength)));
+  --shadow-pill: 0 1px 3px rgb(var(--shadow-color) / calc(0.12 * var(--shadow-strength)));
+  --shadow-nav: 0 1px 2px rgb(var(--shadow-color) / calc(0.08 * var(--shadow-strength)));
+  --shadow-cta: 0 6px 18px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
 /* iOS Safari zooms the whole page when a focused field's font-size is under

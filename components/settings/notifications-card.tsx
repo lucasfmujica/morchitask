@@ -13,7 +13,7 @@ export function NotificationsCard() {
   return (
     // The section's title sits inside the white card, as the canvas has it:
     // the two switches are one surface, not two cards.
-    <div className="flex flex-col gap-4 rounded-xl bg-surface p-[18px] shadow-soft">
+    <div className="flex flex-col gap-4 rounded-[22px] bg-surface p-[18px]">
       <h2 className="font-display text-base font-semibold text-fg">{t("notifications")}</h2>
       <Row
         title={t("dailyReminder")}
@@ -54,8 +54,8 @@ function Row({
   return (
     <div className="flex items-center gap-3">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="text-[13px] font-semibold text-fg">{title}</p>
-        <p className="text-xs leading-4 text-muted">{desc}</p>
+        <p className="text-xs leading-normal font-semibold text-fg">{title}</p>
+        <p className="text-2xs leading-4 text-muted">{desc}</p>
       </div>
       <button
         onClick={onToggle}
@@ -74,7 +74,7 @@ function Row({
             className={cn(
               // A fixed white knob, not bg-surface: in dark mode the surface is dark
               // and the knob would vanish into the off track.
-              "absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-on-scrim shadow-card transition-transform duration-300 ease-out",
+              "absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-on-scrim shadow-[0_1px_3px_rgb(var(--shadow-color)/0.25)] transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
               on && "translate-x-[18px]",
             )}
           />

@@ -61,7 +61,7 @@ export function BillingView({ state }: { state: State }) {
 
   return (
     <div className="mx-auto flex w-full max-w-[820px] flex-col gap-[18px] pt-3 pb-6">
-      <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight text-fg">
+      <h1 className="animate-up font-display text-[32px] leading-9 font-bold tracking-[-0.02em] text-fg [animation-duration:600ms]">
         {t("title")}
       </h1>
 
@@ -91,7 +91,12 @@ export function BillingView({ state }: { state: State }) {
 
       {!comped && state.enabled && !subscribed && (
         <>
-          <h2 className="font-display text-lg font-semibold text-fg">{t("choosePlan")}</h2>
+          <h2
+            className="animate-up font-display text-lg font-semibold text-fg [animation-duration:600ms]"
+            style={{ animationDelay: "120ms" }}
+          >
+            {t("choosePlan")}
+          </h2>
 
           <div
             role="group"
@@ -119,25 +124,44 @@ export function BillingView({ state }: { state: State }) {
 
           <section
             aria-label={t("includedTitle")}
-            className="grid grid-cols-[repeat(auto-fit,minmax(min(220px,100%),1fr))] gap-2.5 rounded-2xl bg-surface-2 px-5 py-[18px]"
+            className="grid animate-up grid-cols-[repeat(auto-fit,minmax(min(220px,100%),1fr))] gap-2.5 rounded-[28px] bg-surface-2 px-5 py-[18px] [animation-duration:600ms]"
+            style={{ animationDelay: "220ms" }}
           >
             {INCLUDED.map((key) => (
-              <span key={key} className="flex items-center gap-2 text-[13px] font-medium text-fg">
+              <span
+                key={key}
+                className="flex items-center gap-2 text-xs leading-normal font-medium text-fg"
+              >
                 <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-fit text-on-primary">
-                  <Check className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden />
+                  <svg
+                    width="9"
+                    height="9"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="m3.5 8.5 3 3 6-7" />
+                  </svg>
                 </span>
                 {t(`included.${key}`)}
               </span>
             ))}
           </section>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="mr-auto text-xs text-muted">{t("coverNote")}</p>
+          <div
+            className="flex animate-up flex-wrap items-center gap-3 [animation-duration:600ms]"
+            style={{ animationDelay: "260ms" }}
+          >
+            <p className="mr-auto text-2xs text-muted">{t("coverNote")}</p>
             <Button
               size="lg"
               onClick={() => go(() => startCheckout(interval))}
               disabled={pending}
-              className="h-[50px] px-7 shadow-lg shadow-primary/25"
+              className="h-[50px] animate-glow px-7 text-sm text-surface [animation-delay:1s]"
             >
               {interval === "year" ? t("subscribeYearly") : t("subscribeMonthly")}
             </Button>
@@ -232,15 +256,21 @@ function TrialCard({
 }) {
   const used = 1 - Math.max(0, Math.min(1, daysLeft / TRIAL_DAYS));
   return (
-    <section className="flex flex-col gap-3.5 rounded-2xl bg-fg p-6 text-bg">
+    <section
+      className="flex animate-up flex-col gap-3.5 rounded-[28px] bg-fg p-6 text-surface [animation-duration:600ms]"
+      style={{ animationDelay: "60ms" }}
+    >
       <p className="font-display text-[28px] leading-8 font-bold">{title}</p>
-      <div className="h-2.5 overflow-hidden rounded-pill bg-bg/15" aria-hidden>
+      <div className="h-2.5 overflow-hidden rounded-pill bg-surface/8" aria-hidden>
+        {/* Lighter than the app's fit gradient and run sideways: on ink, the
+            canvas brightens both ends so the bar still glows. It grows in from
+            zero on arrival, like every other capacity bar. */}
         <div
-          className="h-full rounded-pill bg-fit transition-[width] duration-700 ease-out"
+          className="h-full animate-fill rounded-pill bg-linear-to-r from-[color-mix(in_srgb,var(--color-fit-from)_70%,var(--color-surface))] to-[color-mix(in_srgb,var(--color-fit-from)_30%,var(--color-primary))] [animation-delay:400ms]"
           style={{ width: `${used * 100}%` }}
         />
       </div>
-      <p className="text-[13px] text-bg/75">{children}</p>
+      <p className="text-xs text-surface/80">{children}</p>
     </section>
   );
 }
@@ -257,7 +287,7 @@ function Card({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 rounded-2xl bg-surface p-4 shadow-soft",
+        "flex animate-up items-start gap-3 rounded-[28px] bg-surface p-[22px] shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)] [animation-duration:600ms] [animation-delay:60ms]",
         tone === "warn" && "ring-[1.5px] ring-warning/50 ring-inset",
       )}
     >
@@ -297,24 +327,24 @@ function PlanCard({
       className={cn(
         // The picked plan wears the green ring and lifts a little; the other
         // stays a plain white card. Choosing is not buying: the CTA below is.
-        "flex cursor-pointer flex-col items-start gap-2 rounded-2xl bg-surface p-[22px] text-left text-fg transition-[box-shadow,transform] duration-200",
+        "flex animate-up cursor-pointer flex-col items-start gap-2 rounded-[28px] bg-surface p-[22px] text-left text-fg transition-[box-shadow,translate] duration-[250ms] [animation-duration:600ms]",
         selected
-          ? "-translate-y-0.5 shadow-card ring-2 ring-fit-from ring-inset"
-          : "shadow-soft hover:shadow-card",
+          ? "-translate-y-0.5 shadow-[inset_0_0_0_2px_color-mix(in_srgb,var(--color-fit-from)_30%,var(--color-primary)),0_10px_26px_color-mix(in_srgb,var(--color-primary)_18%,transparent)]"
+          : "shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]",
       )}
     >
       <span className="flex w-full items-center gap-2">
-        <span className="mr-auto font-semibold">{name}</span>
+        <span className="mr-auto text-sm font-semibold">{name}</span>
         {badge && (
-          <span className="-rotate-2 rounded-[4px] bg-marker px-2 py-0.5 text-[11px] font-bold text-on-marker">
+          <span className="-rotate-2 rounded-[4px] bg-marker px-2 py-[3px] text-[11px] leading-normal font-bold text-on-marker">
             {badge}
           </span>
         )}
       </span>
-      <span className="font-display text-[40px] leading-[44px] font-bold tracking-tight tabular-nums">
+      <span className="font-display text-[40px] leading-[44px] font-bold tracking-[-0.02em] tabular-nums">
         {price}
       </span>
-      <span className="text-[13px] text-muted">{per}</span>
+      <span className="text-xs text-muted">{per}</span>
     </button>
   );
 }

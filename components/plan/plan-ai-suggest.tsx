@@ -159,7 +159,10 @@ export function PlanAiSuggest({
 
   if (!proposal) {
     return (
-      <section className="rounded-2xl bg-surface-2 p-[18px]">
+      <section
+        className="animate-up rounded-[28px] bg-surface-2 p-[18px]"
+        style={{ animationDelay: "320ms" }}
+      >
         <div className="flex items-start gap-2.5">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0 flex-1">
@@ -193,7 +196,7 @@ export function PlanAiSuggest({
 
   return (
     // Same well, lit with the accent ring while there's a proposal waiting.
-    <section className="rounded-2xl bg-surface-2 p-[18px] ring-1 ring-accent/40 ring-inset">
+    <section className="animate-up rounded-[28px] bg-surface-2 p-[18px] ring-1 ring-accent/40 ring-inset">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-accent" aria-hidden />
         <h2 className="flex-1 font-display text-base font-semibold text-fg">{t("proposal")}</h2>

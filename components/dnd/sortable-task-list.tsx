@@ -40,6 +40,12 @@ import { useTranslations } from "next-intl";
 
 const NO_SUBTASKS: Subtask[] = [];
 
+/** The canvas cascade: rows rise in 50ms apart after the wells (260ms).
+ *  Capped so a long list, or a task added later, never waits a second. */
+function cascadeDelay(i: number) {
+  return `${Math.min(260 + i * 50, 640)}ms`;
+}
+
 /** Cards win over group strips; strips are the fallback when nothing else hits. */
 const listCollision = createTaskCollision({ fallback: closestCenter });
 
@@ -90,8 +96,8 @@ export function SortableTaskList({
     // paint matches — but never the drag-only strips, which can't exist on SSR.
     const staticRows = grouped ? priorityRows(tasks) : null;
     return (
-      <ul className="flex flex-col gap-2">
-        {(staticRows ?? tasks.map((task) => ({ kind: "task" as const, task }))).map((row) =>
+      <ul className="flex flex-col gap-1.5">
+        {(staticRows ?? tasks.map((task) => ({ kind: "task" as const, task }))).map((row, i) =>
           row.kind === "header" ? (
             <li key={`prio-${row.priority ?? "none"}`} className="pt-1 first:pt-0">
               <PriorityGroupHeader scope={scope} priority={row.priority} count={row.count} />
@@ -99,7 +105,7 @@ export function SortableTaskList({
           ) : (
             <li key={row.task.id} className="flex items-stretch gap-1">
               <span className="hidden w-5 shrink-0 touch:block" aria-hidden />
-              <div className="flex-1">
+              <div className="flex-1 animate-up" style={{ animationDelay: cascadeDelay(i) }}>
                 <TaskCard
                   task={row.task}
                   channel={row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined}
@@ -118,11 +124,11 @@ export function SortableTaskList({
     // Headers are NOT sortable items — the item list stays exactly the task ids,
     // so dnd-kit's ids and measurements are unchanged by grouping.
     <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-1.5">
         {/* motion.li handles enter/exit (opacity); the inner dnd node owns the
             drag transform — separate nodes so the two never fight over transform. */}
         <AnimatePresence initial={false}>
-          {(rows ?? tasks.map((task) => ({ kind: "task" as const, task }))).map((row) =>
+          {(rows ?? tasks.map((task) => ({ kind: "task" as const, task }))).map((row, i) =>
             row.kind === "header" ? (
               <motion.li
                 key={`prio-${row.priority ?? "none"}`}
@@ -142,6 +148,7 @@ export function SortableTaskList({
             ) : (
               <motion.li key={row.task.id} {...FADE_IN}>
                 <SortableRow
+                  index={i}
                   task={row.task}
                   channel={row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined}
                   owner={profilesById.get(row.task.owner_id)}
@@ -192,11 +199,13 @@ export function SortableTaskList({
 }
 
 function SortableRow({
+  index,
   task,
   channel,
   owner,
   subtasks,
 }: {
+  index: number;
   task: Task;
   channel?: Channel;
   owner?: Profile;
@@ -250,7 +259,10 @@ function SortableRow({
       >
         <GripVertical className="h-4 w-4" aria-hidden />
       </button>
-      <div className="min-w-0 flex-1">
+      {/* The entry cascade lives on this wrapper, never on the sortable node:
+          a CSS animation's held `transform: none` would override dnd-kit's
+          inline transform and freeze the row mid-drag. */}
+      <div className="min-w-0 flex-1 animate-up" style={{ animationDelay: cascadeDelay(index) }}>
         <SwipeToComplete disabled={done} onComplete={complete}>
           <TaskCard task={task} channel={channel} owner={owner} subtasks={subtasks} />
         </SwipeToComplete>

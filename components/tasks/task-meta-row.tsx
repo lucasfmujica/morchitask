@@ -40,6 +40,7 @@ export function TaskMetaRow({
   onDelete,
   showOwner = true,
   trailing,
+  showDue = true,
   className,
 }: {
   task: Task;
@@ -56,6 +57,9 @@ export function TaskMetaRow({
   showOwner?: boolean;
   /** Rendered last on the right — the week card puts its duration here. */
   trailing?: React.ReactNode;
+  /** The comfortable card draws the deadline tag on its own right edge, as
+   *  the canvas row does, so it asks the meta line not to repeat it. */
+  showDue?: boolean;
   className?: string;
 }) {
   const t = useTranslations("tasks");
@@ -82,7 +86,7 @@ export function TaskMetaRow({
           <span className="truncate">{channel.name}</span>
         </span>
       )}
-      {vis.due && task.due_date && <DueDateBadge dueDate={task.due_date} />}
+      {showDue && vis.due && task.due_date && <DueDateBadge dueDate={task.due_date} />}
       {vis.note &&
         (vis.iconOnly ? (
           <StickyNote className="h-3 w-3 shrink-0 text-subtle" aria-label={t("hasNotes")} />
@@ -94,7 +98,7 @@ export function TaskMetaRow({
       )}
       {vis.shared && <Users className="h-3 w-3 shrink-0 text-primary" aria-label={t("shared")} />}
       {vis.assignedBy && assignedBy && (
-        <span className="shrink-0" title={`Te la asignó ${assignedBy.display_name}`}>
+        <span className="shrink-0" title={t("assignedByTitle", { name: assignedBy.display_name })}>
           <OwnerAvatar profile={assignedBy} size={14} />
         </span>
       )}

@@ -64,16 +64,16 @@ export function DangerZone() {
   }
 
   const pill =
-    "h-9 shrink-0 cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60";
+    "h-9 shrink-0 cursor-pointer rounded-pill px-3.5 text-2xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     // The one panel outlined instead of filled: nothing else on the page has
     // a border, so the outline alone marks it as different. Warm, in the
     // accent, rather than alarm red: it is a place to be careful, and the red
     // is kept for the one button that cannot be taken back.
-    <section className="flex flex-col gap-2.5 rounded-2xl p-[18px] ring-[1.5px] ring-accent/35 ring-inset">
-      <h2 className="font-display text-base font-semibold text-accent">{t("dangerTitle")}</h2>
-      <p className="text-xs leading-[17px] text-muted">{t("dangerDesc")}</p>
+    <section className="flex flex-col gap-2.5 rounded-[28px] p-[18px] shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--color-accent)_28%,var(--color-bg))]">
+      <h2 className="font-display text-sm font-semibold text-accent">{t("dangerTitle")}</h2>
+      <p className="text-2xs leading-[17px] text-muted">{t("dangerDesc")}</p>
       <div className="flex flex-wrap gap-2">
         <button
           onClick={handleExport}

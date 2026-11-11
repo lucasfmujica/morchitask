@@ -52,8 +52,9 @@ export function PriorityGroupHeader({
       ref={setNodeRef}
       className={cn(
         "flex items-center gap-1.5 rounded-pill transition-colors",
-        compact ? "px-1.5 py-0.5 text-2xs" : "px-2 py-1 text-2xs",
-        "font-semibold uppercase tracking-wide",
+        compact ? "px-1.5 py-0.5 text-2xs" : "px-3 pt-1.5 pb-0.5 text-[11px] tracking-[0.06em]",
+        "font-semibold uppercase",
+        compact && "tracking-wide",
         isOver ? "bg-primary-soft text-primary" : "text-muted",
       )}
     >

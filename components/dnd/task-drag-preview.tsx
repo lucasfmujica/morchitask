@@ -56,61 +56,61 @@ export function TaskDragPreview({
   const compact = density === "compact";
   const done = task.status === "done";
 
-  // Mirrors TaskCard's anatomy exactly — rail, two lines, same paddings — so
-  // the thing under your cursor is the thing you picked up.
+  // Mirrors TaskCard's anatomy (the canvas row: round check, title over the
+  // category line, duration hard right) so the thing under your cursor is the
+  // thing you picked up. No category rail: the card lost it too.
   return (
     <div
       className={cn(
-        "pointer-events-none relative grid h-full w-full gap-x-2.5 gap-y-1 overflow-hidden",
-        "rotate-[1.5deg] cursor-grabbing rounded-card border border-primary/40 bg-surface shadow-drag",
-        compact
-          ? "grid-cols-[1.125rem_minmax(0,1fr)] py-[9px] pr-2.5 pl-3"
-          : "grid-cols-[1.25rem_minmax(0,1fr)] py-2.5 pr-3 pl-3.5",
+        "pointer-events-none relative flex h-full w-full items-center overflow-hidden",
+        "rotate-[1.5deg] cursor-grabbing border border-primary/40 bg-surface shadow-drag",
+        compact ? "gap-2.5 rounded-card px-2.5 py-2" : "gap-3 rounded-[18px] px-3 py-2.5",
       )}
     >
-      <span
-        className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
-        style={channel ? { background: channel.color } : undefined}
-        aria-hidden
-      />
-
       {/* Static stand-in for the checkbox — same footprint, no behaviour. */}
       <span
         className={cn(
-          "mt-px rounded-md border-2 border-border-strong",
-          compact ? "h-4 w-4" : "h-5 w-5",
+          "shrink-0 rounded-full shadow-[inset_0_0_0_1.5px_var(--color-border-strong)]",
+          compact ? "h-5 w-5" : "h-6 w-6",
         )}
         aria-hidden
       />
 
-      <div className="flex min-w-0 items-baseline gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
           className={cn(
-            "min-w-0 flex-1 truncate font-medium",
-            compact ? "text-sm leading-[18px]" : "text-base leading-5",
+            "min-w-0 truncate text-sm font-semibold",
+            compact ? "leading-[18px]" : "leading-5",
             done ? "text-subtle line-through" : "text-fg",
           )}
         >
           {task.title}
         </span>
-        {task.time_estimate_min ? (
-          <span className="shrink-0 text-xs font-semibold tabular-nums text-muted">
-            {formatMinutes(task.time_estimate_min)}
+        <div className="flex min-w-0 items-center gap-2 text-2xs text-muted">
+          {task.block_start && (
+            <span className="shrink-0 font-mono">{timeInTimeZone(task.block_start, TZ)}</span>
+          )}
+          {channel && (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-[2px]"
+                style={{ background: channel.color }}
+                aria-hidden
+              />
+              <span className="truncate">{channel.name}</span>
+            </span>
+          )}
+          <span className="ml-auto shrink-0">
+            <OwnerAvatar profile={owner} />
           </span>
-        ) : null}
+        </div>
       </div>
 
-      <div className="col-start-2 flex min-w-0 items-center gap-2 text-2xs text-muted">
-        {task.block_start && (
-          <span className="shrink-0 font-semibold text-accent">
-            {timeInTimeZone(task.block_start, TZ)}
-          </span>
-        )}
-        {channel && <span className="min-w-0 truncate font-medium">#{channel.name}</span>}
-        <span className="ml-auto shrink-0">
-          <OwnerAvatar profile={owner} />
+      {task.time_estimate_min ? (
+        <span className="min-w-11 shrink-0 text-right font-mono text-2xs text-muted">
+          {formatMinutes(task.time_estimate_min)}
         </span>
-      </div>
+      ) : null}
     </div>
   );
 }

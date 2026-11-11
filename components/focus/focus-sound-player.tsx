@@ -73,7 +73,10 @@ export function FocusSoundPlayer() {
   }
 
   return (
-    <Well className="flex flex-col gap-3 p-4">
+    <Well
+      className="flex animate-up flex-col gap-3 rounded-[28px] p-4"
+      style={{ animationDelay: "160ms" }}
+    >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h2 className="text-base font-semibold text-fg">{t("audioTitle")}</h2>
         {/* The canvas shows this as a plain caption; it's the auto-start switch,
@@ -83,7 +86,7 @@ export function FocusSoundPlayer() {
           role="switch"
           aria-checked={autoStart}
           onClick={() => setAutoStart(!autoStart)}
-          className="flex cursor-pointer items-center gap-2 text-xs text-muted transition-colors hover:text-fg"
+          className="flex cursor-pointer items-center gap-2 text-2xs text-muted transition-colors hover:text-fg"
         >
           {t("audioAuto")}
           <span
@@ -124,11 +127,13 @@ export function FocusSoundPlayer() {
                     : undefined
               }
               className={cn(
-                "flex h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl px-1 text-xs font-semibold text-fg transition-colors",
+                "flex h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-[18px] px-1 text-2xs font-semibold text-fg transition-colors duration-[250ms]",
                 locked
                   ? "cursor-not-allowed bg-surface/60 text-subtle"
                   : selected
-                    ? "cursor-pointer bg-primary-soft"
+                    ? // Canvas #C3EDCF to #8FDCA4: the mint, lightened at the
+                      // top-left corner. Dark ink stays on it in both themes.
+                      "cursor-pointer bg-linear-135 from-[color-mix(in_srgb,var(--fit-from)_52%,white)] to-fit-from text-on-marker"
                     : "cursor-pointer bg-surface hover:bg-surface/70",
               )}
             >
@@ -141,7 +146,7 @@ export function FocusSoundPlayer() {
       </div>
 
       <div className="flex items-center gap-2.5">
-        <label htmlFor="focus-volume" className="text-xs font-semibold text-fg">
+        <label htmlFor="focus-volume" className="text-2xs font-semibold text-fg">
           {t("volume")}
         </label>
         <input
@@ -152,7 +157,7 @@ export function FocusSoundPlayer() {
           step={0.01}
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
-          className="h-2 min-w-0 flex-1 cursor-pointer appearance-none rounded-pill [&::-moz-range-thumb]:h-[22px] [&::-moz-range-thumb]:w-[22px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-surface [&::-moz-range-thumb]:shadow-card [&::-webkit-slider-thumb]:h-[22px] [&::-webkit-slider-thumb]:w-[22px] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-surface [&::-webkit-slider-thumb]:shadow-card"
+          className="h-2 min-w-0 flex-1 cursor-pointer appearance-none rounded-pill [&::-moz-range-thumb]:h-[22px] [&::-moz-range-thumb]:w-[22px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-surface [&::-moz-range-thumb]:shadow-[0_2px_6px_rgb(var(--shadow-color)/calc(0.22*var(--shadow-strength)))] [&::-webkit-slider-thumb]:h-[22px] [&::-webkit-slider-thumb]:w-[22px] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-surface [&::-webkit-slider-thumb]:shadow-[0_2px_6px_rgb(var(--shadow-color)/calc(0.22*var(--shadow-strength)))]"
           // The filled part of the track is the "fit" ramp, the rest the card:
           // a native accent-color can't take a gradient.
           style={{
@@ -175,7 +180,7 @@ function Bars({ active, lit }: { active: boolean; lit: boolean }) {
           key={k}
           className={cn(
             "h-full w-[3px] origin-bottom rounded-[2px]",
-            lit ? "bg-fg" : "bg-border-strong",
+            lit ? "bg-on-marker" : "bg-border-strong",
           )}
           initial={false}
           animate={active && !reduce ? { scaleY: [0.35, 1, 0.35] } : { scaleY: 0.4 + k * 0.15 }}

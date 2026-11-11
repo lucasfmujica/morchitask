@@ -31,10 +31,10 @@ export function InviteCard() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-surface p-[18px] shadow-soft">
+    <div className="flex flex-col gap-3 rounded-[22px] bg-surface p-[18px]">
       <div className="flex flex-col gap-1">
         <h2 className="font-display text-base font-semibold text-fg">{t("inviteTitle")}</h2>
-        <p className="text-xs leading-[17px] text-muted">{t("inviteDesc")}</p>
+        <p className="text-2xs leading-[17px] text-muted">{t("inviteDesc")}</p>
       </div>
 
       {!isLoading && !full && (
@@ -52,12 +52,12 @@ export function InviteCard() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t("inviteEmailPlaceholder")}
             aria-label={t("inviteEmailLabel")}
-            className="h-10 min-w-0 flex-1 rounded-pill bg-bg px-4 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="h-[34px] min-w-0 flex-1 rounded-pill bg-bg px-4 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
           />
           <button
             type="submit"
             disabled={invite.isPending || !email.trim()}
-            className="h-10 shrink-0 cursor-pointer rounded-pill bg-fg px-4 text-sm font-semibold text-bg transition-colors hover:bg-fg/85 disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-[34px] shrink-0 cursor-pointer rounded-pill bg-fg px-3.5 text-2xs font-semibold text-surface transition-colors hover:bg-fg/85 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {invite.isPending ? t("inviteSending") : t("inviteSend")}
           </button>

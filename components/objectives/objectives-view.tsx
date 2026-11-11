@@ -14,7 +14,6 @@ import type { ObjectiveProgress } from "@/lib/queries/objectives";
 import type { Objective, ObjectivePeriod } from "@/lib/queries/types";
 import { addDays, addMonths, todayISO, weekRange } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
-import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
 import type { DateLabels } from "@/lib/date-labels";
@@ -55,9 +54,11 @@ export function ObjectivesView() {
   const thisMonth = periodRange("month", today);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-4">
-      <header className="flex flex-col gap-0.5 px-2 pt-3">
-        <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+    // No max width: the canvas lets both wells grow with the window, and the
+    // capped column left a third of a desktop screen empty.
+    <div className="flex flex-col gap-4">
+      <header className="flex animate-up flex-col gap-0.5 px-2 pt-3">
+        <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em]">
           {t("title")}
         </h1>
         <p className="text-sm text-muted">{t("subtitle")}</p>
@@ -67,7 +68,7 @@ export function ObjectivesView() {
 
       {/* Two wells side by side on desktop; stacked on the phone, where a
           second column would squeeze every title to a couple of words. */}
-      <div className="grid items-start gap-4 md:grid-cols-2">
+      <div className="flex flex-wrap items-start gap-4">
         <Group
           title={t("thisWeek")}
           range={labels.weekRangeLabel([thisWeek.start, thisWeek.end])}
@@ -76,6 +77,7 @@ export function ObjectivesView() {
           progress={progress}
           emptyTitle={t("emptyWeek")}
           emptyHint={t("emptyWeekHint")}
+          delay={120}
         />
         <Group
           title={t("thisMonth")}
@@ -87,6 +89,7 @@ export function ObjectivesView() {
           emptyHint={
             week.length > 0 ? t("emptyMonthFromWeek", { n: week.length }) : t("emptyMonthHint")
           }
+          delay={180}
         />
       </div>
     </div>
@@ -108,7 +111,10 @@ function NewObjective() {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl bg-surface p-1.5 pl-5 shadow-soft sm:flex-row sm:items-center sm:rounded-pill">
+    <div
+      className="flex animate-up flex-col gap-2 rounded-[22px] bg-surface p-1.5 pl-5 shadow-[0_1px_2px_rgb(var(--shadow-color)/calc(0.06*var(--shadow-strength)))] sm:flex-row sm:items-center sm:rounded-pill"
+      style={{ animationDelay: "60ms" }}
+    >
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -126,14 +132,14 @@ function NewObjective() {
               aria-pressed={period === p}
               className={cn(
                 "h-[34px] cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors",
-                period === p ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
+                period === p ? "bg-surface text-fg" : "text-muted hover:text-fg",
               )}
             >
               {p === "week" ? t("periodWeek") : t("periodMonth")}
             </button>
           ))}
         </div>
-        <Button onClick={add} className="ml-auto shrink-0 px-[18px]">
+        <Button onClick={add} className="ml-auto shrink-0 px-[18px] text-sm">
           {t("add")}
         </Button>
       </div>
@@ -149,6 +155,7 @@ function Group({
   progress,
   emptyTitle,
   emptyHint,
+  delay,
 }: {
   title: string;
   /** The period on show, under the heading ("9 al 15 de noviembre"). */
@@ -158,20 +165,28 @@ function Group({
   progress: Map<string, ObjectiveProgress>;
   emptyTitle: string;
   emptyHint: string;
+  /** Stagger for the entrance, in ms: the second well lands after the first. */
+  delay: number;
 }) {
   return (
     // Same shape as <Well>, kept a <section> so the heading still scopes it.
-    <section className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-2">
+    // flex 1 1 360px: side by side on desktop, stacked once a column would
+    // drop under 360px and squeeze every title to a couple of words.
+    <section
+      aria-label={title}
+      className="flex min-w-0 flex-[1_1_360px] animate-up flex-col gap-2 rounded-[28px] bg-surface-2 p-2"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       <div className="flex flex-wrap items-baseline gap-x-2 px-3 pt-3 pb-1">
         <h2 className="font-display text-lg font-semibold text-fg">{title}</h2>
-        <span className="text-xs text-muted">{range}</span>
+        <span className="text-2xs text-muted">{range}</span>
       </div>
       {objectives.length === 0 ? (
         // A muted one-liner said "nothing here" and stopped. This says what a
         // goal for this period would be for.
-        <div className="rounded-xl border border-dashed border-border-strong px-4 py-5 text-center">
+        <div className="rounded-[20px] border border-dashed border-border-strong px-4 py-5 text-center">
           <p className="text-sm font-semibold text-fg">{emptyTitle}</p>
-          <p className="mx-auto mt-1 max-w-sm text-xs text-muted">{emptyHint}</p>
+          <p className="mx-auto mt-1 max-w-sm text-2xs text-muted">{emptyHint}</p>
         </div>
       ) : (
         objectives.map((o) => (
@@ -208,17 +223,19 @@ function ObjectiveRow({
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="group flex items-center gap-3 rounded-xl bg-surface p-3.5 shadow-soft sm:gap-3.5">
-      <ProgressRing pct={done ? 100 : pct} label={done ? null : `${pct}%`} done={done} />
+    <div className="group flex animate-up items-center gap-3 rounded-[20px] bg-surface p-3.5 shadow-[0_1px_2px_rgb(var(--shadow-color)/calc(0.06*var(--shadow-strength)))] sm:gap-3.5">
+      {/* The ring tracks linked tasks only, as on the canvas: marking a goal
+          achieved is a judgement, not a count, so it lives on the pill. */}
+      <ProgressRing pct={pct} />
 
-      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <p className={cn("truncate text-sm font-semibold", done ? "text-muted" : "text-fg")}>
           {objective.title}
         </p>
 
         {/* Tasks AND the hours they absorbed: the count alone made a goal you
             poured 6 hours into look identical to one you touched twice. */}
-        <p className="mt-0.5 text-xs text-muted">
+        <p className="text-2xs text-muted">
           {total > 0 ? t("taskProgress", { done: completed, total }) : t("noTasks")}
           {actualMin > 0 && t("contributed", { time: formatMinutes(actualMin) })}
           {/* The list keeps goals from earlier periods too; only those still
@@ -234,11 +251,13 @@ function ObjectiveRow({
         aria-pressed={done}
         aria-label={done ? t("markActive") : t("markDone")}
         className={cn(
-          "inline-flex h-[34px] shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
-          done ? "bg-primary text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
+          "inline-flex h-[34px] shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-2xs font-semibold transition-colors duration-[250ms]",
+          // White on the mint gradient, as the canvas draws it (on-primary is
+          // white in light mode and flips dark where the gradient goes pale).
+          done ? "bg-fit text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
         )}
       >
-        {done && <Check className="h-3 w-3" strokeWidth={3} aria-hidden />}
+        {done && <CheckMark className="h-[11px] w-[11px] animate-pop" />}
         {/* On the phone the label would crowd the title out; the ring and the
             green pill already say which state it is in. */}
         <span className={cn(!done && "hidden sm:inline")}>
@@ -261,9 +280,28 @@ function ObjectiveRow({
 const RING_R = 18;
 const RING_C = 2 * Math.PI * RING_R;
 
-/** Small progress ring: a full green ring means the goal is met. Drawn with the
- *  theme tokens so it flips with dark mode like everything else. */
-function ProgressRing({ pct, label, done }: { pct: number; label: string | null; done: boolean }) {
+/** The canvas's check: a thicker, rounder stroke than lucide's at 11px. */
+function CheckMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="m3.5 8.5 3 3 6-7" />
+    </svg>
+  );
+}
+
+/** Small progress ring that draws itself in from empty on mount (the canvas's
+ *  `ring` keyframe: 1.2s, 0.4s in). Framer skips it under reduced motion via
+ *  the app-wide MotionConfig. */
+function ProgressRing({ pct }: { pct: number }) {
   return (
     <div className="relative h-11 w-11 shrink-0">
       <svg viewBox="0 0 44 44" className="h-11 w-11 -rotate-90" aria-hidden>
@@ -282,15 +320,17 @@ function ProgressRing({ pct, label, done }: { pct: number; label: string | null;
           fill="none"
           strokeWidth="5"
           strokeLinecap="round"
-          stroke="var(--fit-from)"
+          // Canvas #3FA266: a step between the mint and the primary green.
+          // No token holds it yet, so it is mixed from the two that do.
+          stroke="color-mix(in srgb, var(--primary) 72%, var(--fit-from))"
           strokeDasharray={RING_C}
-          initial={false}
+          initial={{ strokeDashoffset: RING_C }}
           animate={{ strokeDashoffset: RING_C * (1 - Math.min(pct, 100) / 100) }}
-          transition={{ duration: 0.6, ease: EASE_OUT }}
+          transition={{ duration: 1.2, delay: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
         />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] font-medium tabular-nums text-fg">
-        {done ? <Check className="h-4 w-4 text-primary" strokeWidth={3} aria-hidden /> : label}
+        {pct}%
       </span>
     </div>
   );

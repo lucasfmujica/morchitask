@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { TaskCheckbox } from "./task-checkbox";
 import { TaskMetaRow } from "./task-meta-row";
+import { DueDateBadge } from "./due-date-badge";
 import { useTaskTimer } from "./use-task-timer";
 import { useTranslations } from "next-intl";
 
@@ -18,10 +19,11 @@ import { useTranslations } from "next-intl";
  * The task card: exactly two lines, always, and no colour but the category's
  * small square.
  *
- *   ┌──────────────────────────────────────────────┐
- *   │ ○ Rehacer portadas LUMA                   1h │  title · duration
- *   │   ■ Trabajo  VIE 13/11          ▬▬▬ 2/3   ⋯  │  what · when · progress
- *   └──────────────────────────────────────────────┘
+ *   ┌──────────────────────────────────────────────────┐
+ *   │    Rehacer portadas LUMA                          │  title
+ *   │ ○                                VIE 13/11    1h │  check · deadline · duration
+ *   │    ■ Trabajo          ▬▬▬ 2/3  ⋯                  │  what · progress
+ *   └──────────────────────────────────────────────────┘
  *
  * The point of the fixed two lines is that every card in a list measures the
  * same. What used to make them ragged — a wrapping chip footer, an inline
@@ -101,8 +103,9 @@ export function TaskCard({
         ? formatMinutes(task.time_estimate_min)
         : null;
 
-  // The duration, editable by tapping. On the comfortable card it closes line 1;
-  // in the narrow week column it moves to line 2 so the title gets the width.
+  // The duration, editable by tapping. On the comfortable card it closes the
+  // row (mono 12px, right-aligned in a 44px column so durations line up down
+  // the list); in the narrow week column it moves to line 2.
   const estimateControl = (
     <>
       {rightLabel ? (
@@ -111,7 +114,10 @@ export function TaskCard({
           disabled={done}
           aria-label={t("estimate")}
           title={done ? t("measuredTime") : t("estimateTime")}
-          className="shrink-0 cursor-pointer rounded font-mono text-xs text-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:cursor-default disabled:hover:text-muted"
+          className={cn(
+            "shrink-0 cursor-pointer rounded font-mono text-2xs text-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:cursor-default disabled:hover:text-muted",
+            !compact && "min-w-11 text-right",
+          )}
         >
           {rightLabel}
         </button>
@@ -122,7 +128,10 @@ export function TaskCard({
             onClick={cycleEstimate}
             aria-label={t("estimateTime")}
             title={t("estimateTime")}
-            className="shrink-0 cursor-pointer rounded text-subtle opacity-0 transition-opacity hover:text-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none group-hover:opacity-100 touch:opacity-100"
+            className={cn(
+              "flex shrink-0 cursor-pointer justify-end rounded text-subtle opacity-0 transition-opacity hover:text-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none group-hover:opacity-100 touch:opacity-100",
+              !compact && "min-w-11",
+            )}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
           </button>
@@ -131,61 +140,76 @@ export function TaskCard({
     </>
   );
 
+  const title = (
+    <button
+      onClick={() => openDetail(task)}
+      className={cn(
+        "min-w-0 cursor-pointer truncate rounded text-left text-sm font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+        compact ? "flex-1 leading-[18px]" : "leading-5",
+        done ? "text-subtle line-through" : "text-fg",
+      )}
+    >
+      {task.title}
+    </button>
+  );
+
+  const meta = (
+    <TaskMetaRow
+      className={compact ? "col-start-2" : undefined}
+      task={task}
+      channel={channel}
+      owner={owner}
+      assignedBy={assignedBy}
+      doneSubtasks={subtasks.filter((s) => s.done).length}
+      totalSubtasks={subtasks.length}
+      visibility={vis}
+      compact={compact}
+      timer={timer}
+      showOwner={!!owner && owner.id !== me?.id}
+      showDue={compact}
+      trailing={compact ? estimateControl : undefined}
+      onDelete={() => {
+        timer.cancel();
+        remove.mutate(task);
+      }}
+    />
+  );
+
+  // The canvas row: check · (title over meta) · deadline tag · duration, all
+  // on one centred line. A white 18px tile on the well; done rows only grey
+  // and strike the title (fading the whole row also faded the check).
+  if (!compact) {
+    return (
+      <div className="group relative flex items-center gap-3 rounded-[18px] bg-surface px-3 py-2.5 shadow-tile transition-[transform,box-shadow] duration-200 hover:-translate-y-px">
+        <TaskCheckbox checked={done} onToggle={handleToggle} size="md" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          {title}
+          {meta}
+        </div>
+        {vis.due && task.due_date && <DueDateBadge dueDate={task.due_date} />}
+        {estimateControl}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "group relative grid gap-x-2.5 gap-y-0.5",
+        "group relative grid grid-cols-[1.125rem_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 px-2.5 py-2",
         // A white tile on a well: the shadow separates it, so no hairline border
         // (kept transparent so the box doesn't shift if a border state returns).
         "rounded-card border border-transparent bg-surface shadow-soft",
         // Scoped to transform/shadow: `transition-all` also animated colour, so
         // every theme toggle played a 200ms fade across every card on screen.
         "transition-[transform,box-shadow] duration-200 hover:-translate-y-px hover:shadow-card",
-        compact
-          ? "grid-cols-[1.125rem_minmax(0,1fr)] px-2.5 py-2"
-          : "grid-cols-[1.375rem_minmax(0,1fr)] px-3 py-2",
         done && "opacity-65",
       )}
     >
       <span className="mt-px">
-        <TaskCheckbox checked={done} onToggle={handleToggle} size={compact ? "sm" : "md"} />
+        <TaskCheckbox checked={done} onToggle={handleToggle} size="sm" />
       </span>
-
-      {/* Line 1 — title, and the duration hard-right. Never wraps. */}
-      <div className="flex min-w-0 items-baseline gap-2">
-        <button
-          onClick={() => openDetail(task)}
-          className={cn(
-            "min-w-0 flex-1 cursor-pointer truncate rounded text-left font-medium focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
-            compact ? "text-sm leading-[18px] font-semibold" : "text-sm leading-5 font-semibold",
-            done ? "text-subtle line-through" : "text-fg",
-          )}
-        >
-          {task.title}
-        </button>
-
-        {!compact && estimateControl}
-      </div>
-
-      {/* Line 2 — when · what, then progress and the affordances. */}
-      <TaskMetaRow
-        className="col-start-2"
-        task={task}
-        channel={channel}
-        owner={owner}
-        assignedBy={assignedBy}
-        doneSubtasks={subtasks.filter((s) => s.done).length}
-        totalSubtasks={subtasks.length}
-        visibility={vis}
-        compact={compact}
-        timer={timer}
-        showOwner={!!owner && owner.id !== me?.id}
-        trailing={compact ? estimateControl : undefined}
-        onDelete={() => {
-          timer.cancel();
-          remove.mutate(task);
-        }}
-      />
+      <div className="flex min-w-0 items-baseline gap-2">{title}</div>
+      {meta}
     </div>
   );
 }

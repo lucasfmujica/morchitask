@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileText, ImageIcon, Loader2, Paperclip, Trash2 } from "lucide-react";
+import { ImageIcon, Loader2, Paperclip, Trash2 } from "lucide-react";
 import {
   ALLOWED_CONTENT_TYPES,
   attachmentSrc,
@@ -84,7 +84,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
                 href={attachmentSrc(f.id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg bg-bg px-3 py-2.5 transition-colors hover:bg-surface-2"
+                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[14px] bg-bg px-3 py-2.5 transition-colors hover:bg-surface-2"
               >
                 {isImage(f.content_type) ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -96,12 +96,26 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
                   />
                 ) : (
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-surface text-fg">
-                    <FileText className="h-4 w-4" aria-hidden />
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <path d="M4 1.5h5l3 3v10H4z" />
+                      <path d="M9 1.5v3h3" />
+                    </svg>
                   </span>
                 )}
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-[13px] font-semibold text-fg">{f.name}</span>
-                  <span className="text-2xs text-muted">
+                  <span className="truncate text-xs leading-normal font-semibold text-fg">
+                    {f.name}
+                  </span>
+                  <span className="text-[11px] leading-normal text-muted">
                     {formatBytes(f.size_bytes)} · {nameOf(f.uploader_id)}
                   </span>
                 </span>

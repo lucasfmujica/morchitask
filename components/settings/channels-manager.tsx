@@ -33,14 +33,14 @@ export function ChannelsManager() {
   return (
     <div className="flex flex-col gap-1.5">
       {channels.map((c) => (
-        <div key={c.id} className="rounded-xl bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
+        <div key={c.id} className="rounded-2xl bg-surface py-2.5 pr-2.5 pl-3.5">
           <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => setRecolouring((id) => (id === c.id ? null : c.id))}
               aria-label={t("changeColor", { name: c.name })}
               aria-expanded={recolouring === c.id}
-              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-surface-2"
+              className="-mx-[5px] flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-surface-2"
             >
               <span className="h-3.5 w-3.5 rounded-[5px]" style={{ backgroundColor: c.color }} />
             </button>
@@ -58,11 +58,11 @@ export function ChannelsManager() {
               aria-label={t("deleteCategory", { name: c.name })}
               className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger"
             >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
             </button>
           </div>
           {recolouring === c.id && (
-            <div className="mt-2 flex flex-wrap gap-2 pb-0.5 pl-[34px]">
+            <div className="mt-2 flex flex-wrap gap-2 pb-0.5 pl-6">
               {CHANNEL_COLORS.map((color) => (
                 <button
                   key={color}
@@ -84,7 +84,7 @@ export function ChannelsManager() {
         </div>
       ))}
 
-      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-4 shadow-soft">
+      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-4">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -97,7 +97,7 @@ export function ChannelsManager() {
           onClick={add}
           disabled={!name.trim()}
           className={cn(
-            "h-[34px] shrink-0 cursor-pointer rounded-pill bg-surface-2 px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-border",
+            "h-[34px] shrink-0 cursor-pointer rounded-pill bg-surface-2 px-3.5 text-2xs font-semibold text-fg transition-colors hover:bg-border",
             !name.trim() && "opacity-40",
           )}
         >

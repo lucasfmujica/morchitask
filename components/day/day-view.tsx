@@ -2,15 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Inbox,
-  RotateCcw,
-  Sparkles,
-} from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Inbox, Sparkles } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -294,13 +286,16 @@ export function DayView({ date }: { date: string }) {
 
       {/* The heading as the canvas has it: the weekday small, the date big,
           and the day's two verbs on the right. */}
-      <header className="flex flex-wrap items-end gap-x-3 gap-y-3 pt-1">
+      <header
+        className="flex animate-up flex-wrap items-center gap-3 px-2 pt-3"
+        style={{ animationDelay: "80ms" }}
+      >
         <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-          <span className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+          <span className="text-[11px] leading-4 font-semibold tracking-[0.06em] text-muted uppercase">
             {labels.weekdayName(date)}
           </span>
           <div className="flex items-center gap-1.5">
-            <h1 className="truncate font-display text-[32px] leading-9 font-bold tracking-tight">
+            <h1 className="truncate font-display text-[32px] leading-10 font-bold tracking-[-0.02em]">
               {labels.dayMonthLabel(date)}
             </h1>
             <button
@@ -331,18 +326,18 @@ export function DayView({ date }: { date: string }) {
           aria-label={t("viewSwitch")}
           className="hidden gap-0.5 rounded-pill bg-surface-2 p-1 sm:flex"
         >
-          <span className="h-8 rounded-pill bg-surface px-3.5 text-xs leading-8 font-semibold text-fg shadow-soft">
+          <span className="h-9 rounded-pill bg-surface px-4 text-sm leading-9 font-semibold text-fg shadow-pill">
             {t("viewDay")}
           </span>
           <Link
             href={`/week/${date}`}
-            className="h-8 rounded-pill px-3.5 text-xs leading-8 font-semibold text-muted transition-colors hover:text-fg"
+            className="h-9 rounded-pill px-4 text-sm leading-9 font-semibold text-muted transition-colors hover:text-fg"
           >
             {tnav("week")}
           </Link>
           <Link
             href={`/month/${date}`}
-            className="h-8 rounded-pill px-3.5 text-xs leading-8 font-semibold text-muted transition-colors hover:text-fg"
+            className="h-9 rounded-pill px-4 text-sm leading-9 font-semibold text-muted transition-colors hover:text-fg"
           >
             {tnav("month")}
           </Link>
@@ -350,21 +345,32 @@ export function DayView({ date }: { date: string }) {
         {isToday && (
           // Says what it does. "Se me rompió el día" was the feeling, not the
           // action, and nobody could tell what the button would do.
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
+            type="button"
             aria-expanded={replanOpen}
             onClick={() => setReplanOpen((o) => !o)}
+            className="flex h-10 cursor-pointer items-center rounded-pill bg-surface-2 px-3.5 text-sm font-semibold text-fg transition-colors hover:bg-border sm:h-11 sm:px-4"
           >
-            <RotateCcw className="h-4 w-4" aria-hidden />
             {t("replanButton")}
-          </Button>
+          </button>
         )}
-        <Link href={`/shutdown/${date}`}>
-          <Button size="sm">
-            {t("shutdownDay")}
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-          </Button>
+        <Link
+          href={`/shutdown/${date}`}
+          className="flex h-10 items-center gap-2 rounded-pill bg-fg px-4 text-sm font-semibold text-surface shadow-cta transition-opacity hover:opacity-90 sm:h-11 sm:px-5"
+        >
+          {t("shutdownDay")}
+          <svg
+            viewBox="0 0 16 16"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M2.5 8h10M9 4.5 12.5 8 9 11.5" />
+          </svg>
         </Link>
       </header>
 
@@ -373,6 +379,7 @@ export function DayView({ date }: { date: string }) {
 
       {myTasks.length > 0 && (
         <CapacityBar
+          className="animate-up [animation-delay:140ms]"
           tasks={myTasks}
           plannedMin={myPlannedMin}
           targetMin={capacityTarget}
@@ -396,18 +403,27 @@ export function DayView({ date }: { date: string }) {
           setActiveBlockId(null);
         }}
       >
-        <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+        {/* The canvas's two wells share the row by flex-basis (360 / 340),
+            not as equal grid halves. */}
+        <div className="lg:flex lg:items-start lg:gap-4">
           <section
             aria-label={t("tasksTitle")}
             className={cn(
-              "flex-col gap-2 rounded-2xl bg-surface-2 p-2 lg:flex",
+              "min-w-0 animate-up flex-col gap-1.5 rounded-[28px] bg-surface-2 p-2 [animation-delay:200ms] lg:flex lg:flex-[1_1_360px]",
               mode === "list" ? "flex" : "hidden",
             )}
           >
-            <div className="flex items-baseline justify-between gap-2 px-2 pt-1.5">
-              <h2 className="text-base font-semibold">{t("tasksTitle")}</h2>
+            <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1.5">
+              <h2 className="font-display text-lg font-semibold">{t("tasksTitle")}</h2>
               <span className="hidden text-2xs text-muted lg:inline">{t("dragHint")}</span>
             </div>
+            {/* Adding sits at the top of the well, under its title: the list can
+                be long, and the field you use most shouldn't scroll away. */}
+            <TaskComposer
+              channels={channelsQ.data ?? []}
+              onSubmit={handleAdd}
+              onDictate={() => setDictating(true)}
+            />
             {/* On a phone the agenda is a tab away, so the day's events show here. */}
             <div className="lg:hidden">
               <CalendarEventsSection date={date} tasks={tasks} />
@@ -460,11 +476,6 @@ export function DayView({ date }: { date: string }) {
               }
               hosted
             />
-            <TaskComposer
-              channels={channelsQ.data ?? []}
-              onSubmit={handleAdd}
-              onDictate={() => setDictating(true)}
-            />
             <CaptureSheet
               viewDate={date}
               channels={channelsQ.data ?? []}
@@ -477,12 +488,12 @@ export function DayView({ date }: { date: string }) {
           <section
             aria-label={t("agendaTitle")}
             className={cn(
-              "flex-col gap-2 rounded-2xl bg-surface-2 p-2 lg:flex",
+              "min-w-0 animate-up flex-col rounded-[28px] bg-surface-2 p-2 [animation-delay:260ms] lg:flex lg:flex-[1_1_340px]",
               mode === "agenda" ? "flex" : "hidden",
             )}
           >
-            <div className="flex items-baseline justify-between gap-2 px-2 pt-1.5">
-              <h2 className="text-base font-semibold">{t("agendaTitle")}</h2>
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+              <h2 className="font-display text-lg font-semibold">{t("agendaTitle")}</h2>
               {agendaRange && (
                 <span className="font-mono text-2xs text-muted">
                   {t("agendaRange", agendaRange)}

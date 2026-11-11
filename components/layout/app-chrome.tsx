@@ -10,7 +10,6 @@ import {
   CalendarRange,
   Inbox,
   Menu,
-  Mic,
   Moon,
   PanelLeft,
   PanelLeftClose,
@@ -28,6 +27,9 @@ import { ChannelFilterProvider } from "@/lib/channel-filter";
 import { useSidebar } from "@/lib/stores/sidebar";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { todayISO } from "@/lib/date";
+import { useDailyNote } from "@/lib/queries/daily-notes";
+import { DEFAULT_END_TARGET_MIN } from "@/lib/scheduling";
+import { minutesToHHMM } from "@/components/day/use-agenda-scheduling";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
@@ -47,6 +49,22 @@ type NavItem = {
   icon: typeof CalendarCheck;
   match: (p: string) => boolean;
 };
+
+// The desktop sidebar draws the canvas's own glyphs, keyed by labelKey: lucide's
+// set reads heavier and didn't match the approved artboard. Paths copied from
+// it, on a 16×16 box at stroke 1.5. The phone's bottom bar keeps lucide.
+const GLYPH = {
+  today: "M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5",
+  plan: "M3 4h10M3 8h7M3 12h5",
+  week: "M2 3h12v11H2zM2 6.5h12M6 6.5V14M10 6.5V14",
+  month: "M2 3h12v11H2zM2 6.5h12M5.5 1.5v3M10.5 1.5v3",
+  focus: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11M8 5v3l2 1.5",
+  backlog: "M2 5h12v8.5H2zM3.5 2.5h9L14 5H2z",
+  goals: "M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5",
+  routines: "M2.5 8a5.5 5.5 0 1 0 1.8-4.1M2.5 2.5v3h3",
+  summary: "M3 13V9M6.5 13V5M10 13V7.5M13.5 13V3",
+  settings: "M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2",
+} as const;
 
 // Grouped like Sunsama: planning views, then tools.
 // Semana and Mes link to the dated route directly: the bare /week and /month
@@ -198,7 +216,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
           <PresenceBanner />
 
-          <main className="flex-1 px-safe py-5 md:px-8 md:py-6">{children}</main>
+          {/* 16px all round on desktop, as every canvas artboard has it. */}
+          <main className="flex-1 px-safe py-5 md:p-4">{children}</main>
 
           {/* Mobile bottom nav — hidden during a ritual so the step CTA is
               the only thing at the bottom of the screen. */}
@@ -290,7 +309,7 @@ function DesktopSidebar({
         onClick={toggleCollapsed}
         aria-label={tc("showMenu")}
         title={tc("showMenu")}
-        className="sticky top-0 z-20 mt-3 ml-2 hidden h-9 w-9 shrink-0 items-center justify-center self-start rounded-lg border border-border bg-surface text-muted shadow-soft transition-colors hover:bg-surface-2 hover:text-fg md:flex"
+        className="sticky top-0 z-20 mt-4 ml-4 hidden h-9 w-9 shrink-0 items-center justify-center self-start rounded-lg border border-border bg-surface text-muted shadow-soft transition-colors hover:bg-surface-2 hover:text-fg md:flex"
       >
         <PanelLeft className="h-5 w-5" aria-hidden />
       </button>
@@ -298,7 +317,8 @@ function DesktopSidebar({
   }
 
   return (
-    <aside className="sticky top-3 my-3 ml-3 hidden h-[calc(100dvh-1.5rem)] w-64 shrink-0 flex-col overflow-hidden rounded-2xl bg-surface-2 md:flex">
+    // The canvas frame: 16px from the window, 220px wide, a 28px-radius well.
+    <aside className="sticky top-4 my-4 ml-4 hidden h-[calc(100dvh-2rem)] w-[220px] shrink-0 animate-up flex-col overflow-hidden rounded-[28px] bg-surface-2 px-3 py-5 md:flex">
       <SidebarBody pathname={pathname} onToggleCollapsed={toggleCollapsed} />
     </aside>
   );
@@ -321,29 +341,34 @@ function SidebarBody({
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const household = useHousehold().data;
+  // "Cierre a las" is today's own end target (set on the agenda), so the
+  // sidebar and the agenda never disagree about when the day ends.
+  const endTarget = useDailyNote(todayISO()).data?.end_target_min ?? DEFAULT_END_TARGET_MIN;
 
   return (
     <>
-      <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
-        <span className="font-display text-xl font-bold tracking-tight text-fg">Morchitask</span>
-        <div className="ml-auto">
+      <div className="flex shrink-0 items-center gap-2 px-3 pb-[18px]">
+        <span className="font-display text-xl leading-6 font-bold tracking-[-0.02em] text-fg">
+          Morchitask
+        </span>
+        <div className="ml-auto flex">
           {onToggleCollapsed && (
             <button
               onClick={onToggleCollapsed}
               aria-label={tc("hideMenu")}
               title={tc("hideMenu")}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors hover:bg-surface/60 hover:text-fg"
             >
-              <PanelLeftClose className="h-5 w-5" aria-hidden />
+              <PanelLeftClose className="h-4 w-4" strokeWidth={1.5} aria-hidden />
             </button>
           )}
           {onNavigate && (
             <button
               onClick={onNavigate}
               aria-label={tc("closeMenu")}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors hover:bg-surface/60 hover:text-fg"
             >
-              <X className="h-5 w-5" aria-hidden />
+              <X className="h-4 w-4" aria-hidden />
             </button>
           )}
         </div>
@@ -353,43 +378,52 @@ function SidebarBody({
           two of you at the foot. Search lives on ⌘K and in the phone's top bar;
           categories and sign-out live in Ajustes. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <nav className="flex flex-col gap-0.5 px-3">
+        <nav className="flex flex-col gap-0.5">
           {sidebarNav(todayISO()).map((item) => (
             <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
           ))}
         </nav>
-        <div className="mt-4 px-3">
-          <Link
-            href="/today?capture=1"
-            onClick={onNavigate}
-            className="flex h-10 items-center gap-2.5 rounded-pill bg-fg px-3.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
-          >
-            <Mic className="h-4 w-4" aria-hidden />
-            {tn("capture")}
-          </Link>
-        </div>
-      </div>
-
-      <div className="shrink-0 p-3">
         <Link
-          href="/settings"
+          href="/today?capture=1"
           onClick={onNavigate}
-          title={tn("settings")}
-          className="flex flex-col gap-2 rounded-xl bg-surface p-3 shadow-soft transition-shadow hover:shadow-card"
+          className="mt-3 flex h-10 shrink-0 items-center gap-2.5 rounded-pill bg-fg px-3.5 text-sm font-semibold text-surface transition-opacity hover:opacity-90"
         >
-          <span className="flex">
-            {(profiles.length ? profiles : me ? [me] : []).map((p, i) => (
-              <span
-                key={p.id}
-                className={cn("rounded-full ring-2 ring-surface", i > 0 && "-ml-1.5")}
-              >
-                <OwnerAvatar profile={p} size={26} />
-              </span>
-            ))}
-          </span>
-          <span className="truncate text-xs text-muted">{household?.name || tc("yourSpace")}</span>
+          <svg
+            viewBox="0 0 16 16"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5" />
+            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" />
+          </svg>
+          {tn("capture")}
         </Link>
       </div>
+
+      <Link
+        href="/settings"
+        onClick={onNavigate}
+        title={household?.name || tc("yourSpace")}
+        className="mt-3 flex shrink-0 flex-col gap-2.5 rounded-[22px] bg-surface p-3.5 transition-shadow hover:shadow-soft"
+      >
+        <span className="flex">
+          {(profiles.length ? profiles : me ? [me] : []).map((p, i) => (
+            <span key={p.id} className={cn("rounded-full ring-2 ring-surface", i > 0 && "-ml-2")}>
+              <OwnerAvatar profile={p} size={30} />
+            </span>
+          ))}
+        </span>
+        <span className="truncate text-2xs text-muted">
+          {tc.rich("closesAt", {
+            time: minutesToHHMM(endTarget),
+            t: (chunks) => <span className="font-mono text-fg">{chunks}</span>,
+          })}
+        </span>
+      </Link>
     </>
   );
 }
@@ -408,7 +442,7 @@ function MobileSidebarDrawer({ pathname }: { pathname: string }) {
         onClick={closeMobile}
         className="absolute inset-0 h-full w-full cursor-default bg-scrim backdrop-blur-sm"
       />
-      <aside className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col border-r border-border bg-surface pt-safe shadow-card">
+      <aside className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-surface-2 px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-5 shadow-card">
         <SidebarBody pathname={pathname} onNavigate={closeMobile} />
       </aside>
     </div>
@@ -426,20 +460,31 @@ function SidebarLink({
 }) {
   const tn = useTranslations("nav");
   const active = item.match(pathname);
-  const Icon = item.icon;
+  const glyph = GLYPH[item.labelKey as keyof typeof GLYPH];
   return (
     <Link
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-pill px-3.5 py-2 text-sm transition-colors",
+        "flex h-10 shrink-0 items-center gap-2.5 rounded-pill px-3.5 text-sm transition-colors",
         active
-          ? "bg-surface font-semibold text-fg shadow-soft"
+          ? "bg-surface font-semibold text-fg shadow-nav"
           : "font-medium text-muted hover:bg-surface/60 hover:text-fg",
       )}
     >
-      <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.4 : 2} aria-hidden />
+      <svg
+        viewBox="0 0 16 16"
+        className="h-4 w-4 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d={glyph} />
+      </svg>
       {tn(item.labelKey)}
     </Link>
   );

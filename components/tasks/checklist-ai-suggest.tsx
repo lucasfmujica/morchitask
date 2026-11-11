@@ -62,7 +62,7 @@ export function ChecklistAiSuggest({
         <button
           onClick={ask}
           disabled={loading}
-          className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-pill bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent transition-colors hover:bg-accent/15 disabled:cursor-default disabled:opacity-70"
+          className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-pill bg-accent-soft px-2.5 py-1 text-2xs font-semibold text-accent transition-colors hover:bg-accent/15 disabled:cursor-default disabled:opacity-70"
         >
           {loading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -81,10 +81,10 @@ export function ChecklistAiSuggest({
   }
 
   return (
-    <div className="rounded-lg border border-accent/30 bg-accent-soft/50 p-2">
+    <div className="rounded-[14px] border border-accent/30 bg-accent-soft/50 p-2">
       <div className="mb-1 flex items-center gap-1.5 px-1">
         <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
-        <p className="flex-1 text-xs font-semibold text-accent">{t("proposal")}</p>
+        <p className="flex-1 text-2xs font-semibold text-accent">{t("proposal")}</p>
         <button
           onClick={() => setItems(null)}
           aria-label={t("dismiss")}
@@ -96,7 +96,7 @@ export function ChecklistAiSuggest({
       <ul className="flex flex-col">
         {items.map((item) => (
           <li key={item} className="flex items-center gap-2 rounded-md px-1 py-1">
-            <span className="min-w-0 flex-1 text-sm text-fg">{item}</span>
+            <span className="min-w-0 flex-1 text-xs text-fg">{item}</span>
             <button
               onClick={() => add([item])}
               aria-label={t("addOne", { item })}
@@ -109,7 +109,7 @@ export function ChecklistAiSuggest({
       </ul>
       <button
         onClick={() => add(items)}
-        className="mt-1 w-full cursor-pointer rounded-md bg-primary py-1.5 text-xs font-bold text-on-primary transition-colors hover:bg-primary-hover"
+        className="mt-1 w-full cursor-pointer rounded-md bg-primary py-1.5 text-2xs font-bold text-on-primary transition-colors hover:bg-primary-hover"
       >
         {t("addAll", { n: items.length })}
       </button>

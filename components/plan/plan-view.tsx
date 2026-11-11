@@ -36,7 +36,7 @@ import { useTranslations } from "next-intl";
 const DAY_START_MIN = 9 * 60;
 
 /** The `Well` look on a real <section>: these are page sections, not boxes. */
-const WELL = "rounded-2xl bg-surface-2 p-2";
+const WELL = "rounded-[28px] bg-surface-2 p-2";
 
 export function PlanView({ date }: { date: string }) {
   const qc = useQueryClient();
@@ -176,18 +176,24 @@ function PlanForm({
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-3 px-2 pt-3">
+      <header
+        className="flex animate-up flex-wrap items-center gap-x-2.5 gap-y-3 px-2 pt-3"
+        style={{ animationDelay: "60ms" }}
+      >
         <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-          <span className="truncate text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+          <span className="truncate text-[11px] leading-4 font-semibold tracking-[0.06em] text-muted uppercase">
             {labels.fullDayLabel(date)}
           </span>
-          <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+          <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em]">
             {t("title")}
           </h1>
         </div>
         {/* The way out of the ritual sits where the eye starts. On a phone it
             moves to the foot of the page instead, where the plan ends. */}
-        <Button onClick={startDay} className="hidden h-[46px] px-[22px] sm:inline-flex">
+        <Button
+          onClick={startDay}
+          className="hidden h-[46px] animate-glow px-[22px] sm:inline-flex"
+        >
           {startLabel}
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
         </Button>
@@ -207,8 +213,8 @@ function PlanForm({
         <div className="flex min-w-0 flex-col gap-4">
           {/* Focus. Once it says something it stops looking like an empty field
               and starts looking like a commitment. */}
-          <section className={WELL}>
-            <div className="flex flex-col gap-2 rounded-xl bg-surface p-4 shadow-soft">
+          <section className={cn(WELL, "animate-up")} style={{ animationDelay: "120ms" }}>
+            <div className="flex flex-col gap-2 rounded-[22px] bg-surface p-4 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]">
               <label
                 htmlFor="plan-intention"
                 className="font-display text-base font-semibold text-fg"
@@ -222,10 +228,7 @@ function PlanForm({
                 onBlur={() => upsert.mutate({ intention: intention || null })}
                 placeholder={t("intentionPlaceholder")}
                 rows={3}
-                className={cn(
-                  "w-full resize-none rounded-[14px] p-3 text-sm leading-5 text-fg placeholder:text-subtle outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-                  intention.trim() ? "bg-primary-soft" : "bg-bg",
-                )}
+                className="w-full resize-none rounded-[14px] bg-bg p-3 text-sm leading-5 text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
               />
             </div>
           </section>
@@ -233,7 +236,10 @@ function PlanForm({
           {/* One place to pull from, with the counts on the tabs: two separate
               cards made you scroll past the second one every morning. */}
           {!isPast && (yesterdayPending.length > 0 || backlog.length > 0) && (
-            <section className={cn(WELL, "flex flex-col gap-1.5")}>
+            <section
+              className={cn(WELL, "flex animate-up flex-col gap-1.5")}
+              style={{ animationDelay: "180ms" }}
+            >
               <div className="flex items-center gap-2 px-2.5 pt-2.5 pb-1.5">
                 <h2 className="mr-auto font-display text-base font-semibold text-fg">
                   {t("pullHeading")}
@@ -241,13 +247,11 @@ function PlanForm({
                 <div className="flex gap-0.5 rounded-pill bg-border p-[3px]">
                   <SourceTab
                     label={tcm("yesterday")}
-                    count={yesterdayPending.length}
                     active={source === "yesterday"}
                     onClick={() => setSource("yesterday")}
                   />
                   <SourceTab
                     label={tnav("backlog")}
-                    count={backlog.length}
                     active={source === "backlog"}
                     onClick={() => setSource("backlog")}
                   />
@@ -255,9 +259,10 @@ function PlanForm({
               </div>
 
               <ul className="flex flex-col gap-1.5">
-                {pullable.slice(0, 8).map((t) => (
+                {pullable.slice(0, 8).map((t, i) => (
                   <PullRow
                     key={t.id}
+                    index={i}
                     task={t}
                     channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
                     onPull={() => pullToToday(t)}
@@ -276,12 +281,12 @@ function PlanForm({
                 (rolledCount === null ? (
                   <button
                     onClick={pullAllFromYesterday}
-                    className="mt-0.5 h-[42px] cursor-pointer rounded-pill bg-surface text-sm font-semibold text-fg shadow-soft transition-shadow hover:shadow-card focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                    className="mt-0.5 h-[42px] cursor-pointer rounded-pill bg-surface text-sm font-semibold text-fg transition-shadow hover:shadow-soft focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
                   >
                     {t("pullAll", { n: yesterdayPending.length })}
                   </button>
                 ) : (
-                  <span className="py-2 text-center text-xs font-semibold text-success">
+                  <span className="py-2 text-center text-2xs font-semibold text-success">
                     {t("pulled")}
                   </span>
                 ))}
@@ -294,7 +299,8 @@ function PlanForm({
               what isn't, and when that would have you finishing. */}
           <section
             aria-label={t("capacityHeading")}
-            className="grid grid-cols-3 gap-2.5 sm:grid-cols-4"
+            className="grid animate-up grid-cols-3 gap-2.5 sm:grid-cols-4"
+            style={{ animationDelay: "140ms" }}
           >
             <CapacityDial
               plannedMin={plannedMin}
@@ -311,7 +317,10 @@ function PlanForm({
           </section>
 
           {/* The day itself: this is where estimates get filled in. */}
-          <section className={cn(WELL, "flex flex-col gap-1.5")}>
+          <section
+            className={cn(WELL, "flex animate-up flex-col gap-1.5")}
+            style={{ animationDelay: "200ms" }}
+          >
             <h2 className="px-2.5 pt-2.5 pb-1.5 font-display text-base font-semibold text-fg">
               {t("dayHeading", { n: mine.length })}
             </h2>
@@ -319,9 +328,10 @@ function PlanForm({
               <p className="px-3 py-5 text-center text-sm text-muted">{t("emptyDay")}</p>
             ) : (
               <ul className="flex flex-col gap-1.5">
-                {mine.map((t) => (
+                {mine.map((t, i) => (
                   <PlanTaskRow
                     key={t.id}
+                    index={i}
                     task={t}
                     channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
                     startMin={firstStartMin(blocksByTask.get(t.id))}
@@ -332,7 +342,10 @@ function PlanForm({
           </section>
 
           {byCategory.length > 0 && (
-            <section className="flex flex-col gap-3 rounded-2xl bg-surface-2 p-[18px]">
+            <section
+              className="flex animate-up flex-col gap-3 rounded-[28px] bg-surface-2 p-[18px]"
+              style={{ animationDelay: "260ms" }}
+            >
               <h2 className="font-display text-base font-semibold text-fg">
                 {t("categoryHeading")}
               </h2>
@@ -348,7 +361,7 @@ function PlanForm({
               </div>
               <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
                 {byCategory.map((c) => (
-                  <li key={c.id} className="flex min-w-0 items-center gap-1.5 text-xs">
+                  <li key={c.id} className="flex min-w-0 items-center gap-1.5 text-2xs">
                     <span
                       className="h-2 w-2 shrink-0 rounded-full"
                       style={{ background: c.color }}
@@ -374,7 +387,11 @@ function PlanForm({
             endTargetMin={note?.end_target_min}
           />
 
-          <Button size="lg" onClick={startDay} className="w-full sm:hidden">
+          <Button
+            size="lg"
+            onClick={startDay}
+            className="h-[46px] w-full animate-glow text-sm sm:hidden"
+          >
             {startLabel}
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Button>
@@ -410,6 +427,12 @@ function CapacityDial({
 
   return (
     <div className="col-span-3 flex items-center justify-center gap-4 rounded-2xl bg-fg px-2 py-3.5 text-bg sm:col-span-1 sm:flex-col sm:gap-1.5">
+      {/* globals.css has no stroke keyframe; this one travels with the dial.
+          React hoists and dedupes it by href, and the global reduced-motion
+          rule collapses it to the final ring. */}
+      <style href="mt-ring" precedence="default">
+        {`@keyframes mt-ring{from{stroke-dashoffset:${RING_C}}}`}
+      </style>
       <div className="relative h-24 w-24 shrink-0">
         <svg width="96" height="96" viewBox="0 0 132 132" className="-rotate-90" aria-hidden>
           <defs>
@@ -424,7 +447,7 @@ function CapacityDial({
             r={RING_R}
             fill="none"
             stroke="currentColor"
-            strokeOpacity={0.14}
+            strokeOpacity={0.1}
             strokeWidth="13"
           />
           <circle
@@ -437,7 +460,12 @@ function CapacityDial({
             strokeLinecap="round"
             strokeDasharray={RING_C}
             strokeDashoffset={RING_C * (1 - Math.min(1, ratio))}
-            className="transition-[stroke-dashoffset] duration-500"
+            // Draws in from empty on arrival (the canvas's ring keyframe), then
+            // eases between values as you pull work in. `backwards`, not
+            // `both`: a filled-forwards animation would pin the offset and
+            // swallow those later transitions.
+            style={{ animation: "mt-ring 1.3s cubic-bezier(.2,.8,.2,1) .3s backwards" }}
+            className="transition-[stroke-dashoffset] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"
           />
         </svg>
         {/* Over budget the number itself says so (">100%"), not only the colour. */}
@@ -452,7 +480,7 @@ function CapacityDial({
         >
           <Minus className="h-3 w-3" aria-hidden />
         </DeltaButton>
-        <span className="text-2xs whitespace-nowrap text-bg/65 tabular-nums">
+        <span className="text-[11px] whitespace-nowrap text-bg/65 tabular-nums">
           {t("capacityOf", { target: formatMinutes(targetMin) })}
         </span>
         <DeltaButton
@@ -490,10 +518,10 @@ function DeltaButton({
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col justify-center gap-1 rounded-2xl bg-surface-2 px-3.5 py-4">
-      <span className="truncate text-xs text-muted">{label}</span>
+      <span className="truncate text-2xs text-muted">{label}</span>
       <span
         className={cn(
-          "font-display text-2xl leading-7 font-bold tracking-tight tabular-nums",
+          "font-display text-2xl leading-7 font-bold tracking-[-0.01em] tabular-nums",
           warn ? "text-accent" : "text-fg",
         )}
       >
@@ -505,12 +533,10 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
 
 function SourceTab({
   label,
-  count,
   active,
   onClick,
 }: {
   label: string;
-  count: number;
   active: boolean;
   onClick: () => void;
 }) {
@@ -519,11 +545,11 @@ function SourceTab({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-[30px] cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors",
+        "h-[30px] cursor-pointer rounded-pill px-3 text-2xs font-semibold transition-colors duration-200",
         active ? "bg-surface text-fg" : "text-muted hover:text-fg",
       )}
     >
-      {label} <span className="tabular-nums opacity-70">{count}</span>
+      {label}
     </button>
   );
 }
@@ -540,22 +566,35 @@ function CategoryMark({ channel }: { channel?: Channel }) {
 }
 
 /** A pullable task (from yesterday or backlog): mark + title + "+ Hoy". */
-function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onPull: () => void }) {
+function PullRow({
+  task,
+  channel,
+  onPull,
+  index,
+}: {
+  task: Task;
+  channel?: Channel;
+  onPull: () => void;
+  index: number;
+}) {
   const t = useTranslations("plan");
   return (
-    <li className="flex items-center gap-2.5 rounded-xl bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
+    <li
+      className="flex animate-up items-center gap-2.5 rounded-[16px] bg-surface py-2.5 pr-2.5 pl-3.5 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]"
+      style={{ animationDelay: `${220 + index * 50}ms` }}
+    >
       <CategoryMark channel={channel} />
       <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">
         {task.title}
       </span>
       {task.time_estimate_min ? (
-        <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted">
+        <span className="shrink-0 font-mono text-2xs font-medium tabular-nums text-muted">
           {formatMinutes(task.time_estimate_min)}
         </span>
       ) : null}
       <button
         onClick={onPull}
-        className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-3 text-xs font-semibold text-fg transition-colors hover:bg-primary-soft hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+        className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-3 text-2xs font-semibold text-fg transition-colors hover:bg-primary-soft hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         <Plus className="h-3 w-3" aria-hidden />
         {t("pullToToday")}
@@ -572,10 +611,12 @@ function PlanTaskRow({
   task,
   channel,
   startMin,
+  index,
 }: {
   task: Task;
   channel?: Channel;
   startMin: number | null;
+  index: number;
 }) {
   const t = useTranslations("plan");
   const tt = useTranslations("tasks");
@@ -596,7 +637,10 @@ function PlanTaskRow({
   }
 
   return (
-    <li className="flex items-center gap-2.5 rounded-xl bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
+    <li
+      className="flex animate-up items-center gap-2.5 rounded-[16px] bg-surface py-2.5 pr-3.5 pl-3.5 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]"
+      style={{ animationDelay: `${240 + Math.min(index, 8) * 50}ms` }}
+    >
       {/* Not on the canvas, kept: ticking off something already done is part
           of looking at the day in the morning. */}
       <TaskCheckbox checked={done} onToggle={() => toggle.mutate(task)} size="sm" />
@@ -621,7 +665,7 @@ function PlanTaskRow({
         onClick={cycleEstimate}
         aria-label={tt("estimate")}
         className={cn(
-          "min-w-10 shrink-0 cursor-pointer rounded-pill px-1.5 py-0.5 text-right font-mono text-xs font-medium tabular-nums transition-colors",
+          "min-w-10 shrink-0 cursor-pointer rounded-pill px-1.5 py-0.5 text-right font-mono text-2xs font-medium tabular-nums transition-colors",
           task.time_estimate_min
             ? "text-muted hover:bg-surface-2 hover:text-fg"
             : "border border-dashed border-border-strong text-subtle hover:text-muted",

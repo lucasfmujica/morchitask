@@ -62,7 +62,8 @@
     "close": "Close",
     "yourSpace": "Your space",
     "ritualDone": "done",
-    "ritualPending": "pending"
+    "ritualPending": "pending",
+    "closesAt": "Shutdown at <t>{time}</t>"
   },
   "palette": {
     "label": "Search and quick actions",
@@ -212,7 +213,8 @@
     "deleteFile": "Delete {name}",
     "reminderAtTime": "At {time}",
     "changeField": "Change {field}",
-    "sendComment": "Send comment"
+    "sendComment": "Send comment",
+    "assignedByTitle": "Assigned to you by {name}"
   },
   "day": {
     "capacity": "Today's capacity",
@@ -294,7 +296,11 @@
     "agendaTitle": "Agenda",
     "agendaRange": "{from} to {to}",
     "viewDay": "Day",
-    "viewSwitch": "Switch view"
+    "viewSwitch": "Switch view",
+    "fitsLeft": "It fits. {time} of breathing room",
+    "overByShort": "{over} over",
+    "doneOfTotalTime": "{done} of {total} done · {time}",
+    "scheduledAtToast": "Scheduled at {time}"
   },
   "backlog": {
     "title": "Backlog",
@@ -341,7 +347,6 @@
     "noLoad": "Nothing planned",
     "closed": "{time} · closed",
     "loadOf": "{planned} of {capacity}",
-    "over": " · +{over}",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "thisWeek": "This week",
@@ -355,7 +360,10 @@
       "fri": "F",
       "sat": "S",
       "sun": "S"
-    }
+    },
+    "dueTag": "Due",
+    "dueOn": "Due {day}",
+    "loadOver": "{planned} of {capacity} · +{over}"
   },
   "month": {
     "thisMonth": "This month",
@@ -422,7 +430,6 @@
     "intentionPending": "It carries to tomorrow.",
     "intentionDone": "Met: all of it.",
     "intentionPartial": "Progress: {done} of {total}.",
-    "sharedDone": "Shared — send some love",
     "moodQuestion": "How was the day?",
     "moodHint": "Thirty seconds, just for you.",
     "moodHard": "Rough",
@@ -441,8 +448,10 @@
     "weighDayOver": "{day} would come to <b>{planned}</b> of {capacity}. Worth sending something to the backlog.",
     "streakNone": "Today can start a new streak.",
     "doneListToggle": "{n, plural, =1 {See the one you did} other {See the # you did}}",
-    "sharedDoneLove": "Shared: send some love.",
-    "saveErrorRetry": "That didn't save. Try again, your reflection is still here."
+    "saveErrorRetry": "That didn't save. Try again, your reflection is still here.",
+    "partnerDid": "<b>{name}</b> finished {tasks}. Send some love.",
+    "partnerDidMore": "<b>{name}</b> finished {tasks} {more, plural, =1 {and 1 more} other {and # more}}. Send some love.",
+    "sendLoveTo": "Send {name} some love"
   },
   "focus": {
     "blockDoneTitle": "Focus block done! 🍅",

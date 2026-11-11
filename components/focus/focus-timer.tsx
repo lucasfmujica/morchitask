@@ -22,6 +22,13 @@ const DURATION: Record<Mode, number> = { focus: 25 * 60, break: 5 * 60 };
 /** A pomodoro set. Four blocks is the classic before a long break. */
 const BLOCKS_PER_SET = 4;
 
+/** Canvas #3FA266 and #B6EBC4: a step into the primary green, and a lighter
+ *  mint, which the dark timer tile needs to glow against. No tokens hold them
+ *  yet, so they are mixed from the fit tokens and follow the theme. */
+const FIT_MID = "color-mix(in srgb, var(--color-primary) 72%, var(--color-fit-from))";
+const FIT_LIGHT = "color-mix(in srgb, var(--color-fit-from) 62%, white)";
+const FIT_MID_BORDER = "border-[color-mix(in_srgb,var(--color-primary)_72%,var(--color-fit-from))]";
+
 function mmss(total: number) {
   const m = Math.floor(total / 60);
   const s = total % 60;
@@ -183,14 +190,16 @@ export function FocusTimer() {
   }
 
   return (
-    <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)] lg:items-start">
+    // Two flexing columns, as on the canvas (520px and 320px bases): side by
+    // side on a laptop, the sidebar drops under the timer once both can't fit.
+    <div className="flex w-full flex-wrap items-start gap-4">
       {/* The one dark tile on the page: the timer is the screen's single big
           number, so it gets the inverted hero card, as tall as the screen.
           Everything inside reads off `text-bg` tints, which flip with the card
           in dark mode. */}
       <section
         aria-label={t("timerLabel")}
-        className="flex flex-col items-center gap-[22px] rounded-2xl bg-fg px-4 py-7 text-bg sm:px-7 lg:sticky lg:top-6 lg:min-h-[calc(100dvh-3rem)] lg:justify-center"
+        className="flex min-w-0 flex-[1_1_520px] animate-up flex-col items-center gap-[22px] rounded-[32px] bg-fg px-4 py-7 text-bg sm:px-7 lg:sticky lg:top-4 lg:min-h-[calc(100dvh-2rem)] lg:justify-center"
       >
         {/* The task you're on, as the chip over the ring. In a break there is
             no task to pick, so the chip steps aside. */}
@@ -199,28 +208,27 @@ export function FocusTimer() {
         )}
 
         <div className="relative h-[260px] w-[260px] sm:h-[300px] sm:w-[300px]">
-          {/* A slow breath around the ring while a block runs: something alive
-              on screen that isn't the seconds ticking. */}
+          {/* A slow breath around the ring, always, as the canvas has it:
+              the screen stays alive even before the first block starts. */}
           <motion.span
             aria-hidden
-            className="absolute -inset-3.5 rounded-full border-[1.5px] border-fit-from"
+            className={cn("absolute -inset-3.5 rounded-full border-[1.5px]", FIT_MID_BORDER)}
             initial={false}
             animate={
-              running && !reduce
-                ? { scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }
-                : { scale: 1, opacity: 0.35 }
+              reduce ? { scale: 1, opacity: 0.5 } : { scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }
             }
             transition={
-              running && !reduce
-                ? { duration: 4, ease: "easeInOut", repeat: Infinity }
-                : { duration: 0.3 }
+              reduce ? { duration: 0 } : { duration: 4, ease: "easeInOut", repeat: Infinity }
             }
           />
           <svg viewBox="0 0 300 300" className="h-full w-full -rotate-90" aria-hidden>
             <defs>
+              {/* The canvas's lighter ramp on the dark tile (#B6EBC4 to
+                  #3FA266), mixed from the fit tokens. As style: the stop-color
+                  attribute won't take color-mix(). */}
               <linearGradient id="focus-ring" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="var(--color-fit-from)" />
-                <stop offset="1" stopColor="var(--color-primary)" />
+                <stop offset="0" style={{ stopColor: FIT_LIGHT }} />
+                <stop offset="1" style={{ stopColor: FIT_MID }} />
               </linearGradient>
             </defs>
             <circle
@@ -229,10 +237,12 @@ export function FocusTimer() {
               r={R}
               fill="none"
               stroke="var(--color-bg)"
-              strokeOpacity={0.12}
+              strokeOpacity={0.08}
               strokeWidth="16"
             />
-            <circle
+            {/* Draws in from empty on mount (the canvas's 1.4s `ring`), then
+                follows the clock second by second. */}
+            <motion.circle
               cx="150"
               cy="150"
               r={R}
@@ -241,12 +251,17 @@ export function FocusTimer() {
               strokeWidth="16"
               strokeLinecap="round"
               strokeDasharray={C}
-              strokeDashoffset={C * (1 - progress)}
-              style={{ transition: "stroke-dashoffset 1s linear" }}
+              initial={{ strokeDashoffset: C }}
+              animate={{ strokeDashoffset: C * (1 - progress) }}
+              transition={
+                running
+                  ? { duration: 1, ease: "linear" }
+                  : { duration: 1.4, delay: 0.2, ease: [0.2, 0.8, 0.2, 1] }
+              }
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-            <span className="font-display text-[56px] leading-none font-bold tracking-tight tabular-nums sm:text-[68px]">
+            <span className="font-display text-[56px] leading-none font-bold tracking-[-0.02em] tabular-nums sm:text-[68px]">
               {/* Digits stay tabular so the clock doesn't wobble each second,
                   but the display face's tabular colon is figure-wide ("25 : 00"),
                   so the colon alone goes back to proportional. */}
@@ -266,21 +281,22 @@ export function FocusTimer() {
         {/* The set, as four bars under its count: done, the one you're on,
             and what's left. */}
         <div className="flex flex-col items-center gap-2">
-          <span className="text-xs text-bg/60">
+          <span className="text-2xs text-bg/65">
             {t("blockOf", { n: currentBlock + 1, total: BLOCKS_PER_SET })}
           </span>
           <span className="flex gap-1.5" aria-hidden>
             {Array.from({ length: BLOCKS_PER_SET }, (_, i) => (
               <span
                 key={i}
-                className={cn(
-                  "h-1.5 w-7 rounded-pill",
-                  i < completed
-                    ? "bg-fit"
-                    : i === currentBlock && mode === "focus"
-                      ? "bg-fit-from/45"
-                      : "bg-bg/15",
-                )}
+                className="h-1.5 w-7 rounded-pill"
+                style={{
+                  backgroundColor:
+                    i < completed
+                      ? FIT_MID
+                      : i === currentBlock && mode === "focus"
+                        ? FIT_LIGHT
+                        : "color-mix(in srgb, var(--color-bg) 8%, transparent)",
+                }}
               />
             ))}
           </span>
@@ -291,14 +307,20 @@ export function FocusTimer() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-pill bg-bg/10 text-bg transition-colors hover:bg-bg/20"
+            className="inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-pill bg-bg/5 text-bg transition-colors hover:bg-bg/15"
             aria-label={t("reset")}
           >
             <RotateCcw className="h-[18px] w-[18px]" aria-hidden />
           </button>
+          {/* The canvas's light mint pill with dark ink. on-marker is the one
+              ink that stays dark in both themes, which this light fill needs. */}
           <button
             onClick={toggleRun}
-            className="inline-flex h-16 min-w-40 cursor-pointer items-center justify-center rounded-pill bg-primary px-[34px] text-base font-bold text-on-primary shadow-[0_10px_30px_color-mix(in_srgb,var(--color-primary)_45%,transparent)] transition-colors hover:bg-primary-hover"
+            className="inline-flex h-16 min-w-40 cursor-pointer items-center justify-center rounded-pill px-[34px] text-base font-bold text-on-marker transition-[filter] hover:brightness-105"
+            style={{
+              backgroundImage: `linear-gradient(135deg, ${FIT_LIGHT}, ${FIT_MID})`,
+              boxShadow: `0 10px 30px color-mix(in srgb, ${FIT_MID} 45%, transparent)`,
+            }}
           >
             {running ? t("pause") : t("start")}
           </button>
@@ -306,7 +328,7 @@ export function FocusTimer() {
           <button
             onClick={finishTask}
             disabled={!selected}
-            className="inline-flex h-[52px] cursor-pointer items-center rounded-pill bg-bg/10 px-[18px] text-sm font-semibold text-bg transition-colors hover:bg-bg/20 disabled:cursor-default disabled:opacity-40"
+            className="inline-flex h-[52px] cursor-pointer items-center rounded-pill bg-bg/5 px-[18px] text-sm font-semibold text-bg transition-colors hover:bg-bg/15 disabled:cursor-default disabled:opacity-40"
           >
             {t("finishTask")}
           </button>
@@ -374,8 +396,11 @@ function FocusSidebar({
   const max = Math.max(estimatedMin, actualMin, 1);
 
   return (
-    <aside className="flex min-w-0 flex-col gap-4">
-      <Well className="flex flex-col gap-1.5">
+    <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-4">
+      <Well
+        className="flex animate-up flex-col gap-1.5 rounded-[28px]"
+        style={{ animationDelay: "100ms" }}
+      >
         <h2 className="px-2.5 pt-2.5 pb-1 text-base font-semibold text-fg">{t("queue")}</h2>
         {tasks.length === 0 ? (
           <p className="px-2.5 pb-2 text-xs text-subtle">{t("queueEmpty")}</p>
@@ -391,9 +416,10 @@ function FocusSidebar({
                     onClick={() => onPick(task.id)}
                     aria-pressed={active}
                     className={cn(
-                      "flex w-full cursor-pointer flex-col gap-1.5 rounded-xl bg-surface px-3.5 py-2.5 text-left transition-shadow",
-                      active ? "ring-2 ring-fit-from ring-inset" : "shadow-soft hover:shadow-card",
+                      "flex w-full cursor-pointer flex-col gap-1.5 rounded-[16px] bg-surface px-3.5 py-2.5 text-left transition-[background-color,box-shadow] duration-200",
+                      active ? "shadow-[inset_0_0_0_2px_var(--fit-mid)]" : "hover:bg-surface/80",
                     )}
+                    style={{ "--fit-mid": FIT_MID } as React.CSSProperties}
                   >
                     <span className="flex w-full items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">
@@ -405,7 +431,7 @@ function FocusSidebar({
                     </span>
                     <span className="block h-1 w-full overflow-hidden rounded-pill bg-surface-2">
                       <span
-                        className="block h-full rounded-pill bg-fit transition-[width] duration-700"
+                        className="block h-full animate-fill rounded-pill bg-linear-to-r from-fit-from to-primary transition-[width] duration-700"
                         style={{ width: `${ratio * 100}%` }}
                       />
                     </span>
@@ -420,23 +446,35 @@ function FocusSidebar({
       <FocusAudioPanel />
 
       {(estimatedMin > 0 || actualMin > 0) && (
-        <Well className="flex flex-col gap-2.5 p-4">
+        <Well
+          className="flex animate-up flex-col gap-2.5 rounded-[28px] p-4"
+          style={{ animationDelay: "280ms" }}
+        >
           <h2 className="text-base font-semibold text-fg">{t("estimateVsActual")}</h2>
           {(
             [
-              [t("estimatedBar"), estimatedMin, "bg-border-strong"],
-              [t("actualBar"), actualMin, "bg-fit"],
+              // Canvas #9AA294: a step between the subtle and the strong grey.
+              [
+                t("estimatedBar"),
+                estimatedMin,
+                "bg-[color-mix(in_srgb,var(--subtle)_45%,var(--border-strong))]",
+                "0.5s",
+              ],
+              [t("actualBar"), actualMin, "bg-linear-to-r from-fit-from to-primary", "0.7s"],
             ] as const
-          ).map(([label, value, tone]) => (
+          ).map(([label, value, tone, delay]) => (
             <div key={label} className="flex flex-col gap-2.5">
-              <div className="flex items-baseline justify-between gap-2 text-xs">
+              <div className="flex items-baseline justify-between gap-2 text-2xs">
                 <span className="text-muted">{label}</span>
                 <span className="font-mono text-fg tabular-nums">{formatMinutes(value)}</span>
               </div>
               <div className="h-2.5 rounded-pill bg-border">
                 <div
-                  className={cn("h-full rounded-pill transition-[width] duration-500", tone)}
-                  style={{ width: `${(value / max) * 100}%` }}
+                  className={cn(
+                    "h-full animate-fill rounded-pill transition-[width] duration-500",
+                    tone,
+                  )}
+                  style={{ width: `${(value / max) * 100}%`, animationDelay: delay }}
                 />
               </div>
             </div>
@@ -494,7 +532,7 @@ function TaskPicker({
         aria-label={t("pickTask")}
         className={cn(
           "flex max-w-full cursor-pointer items-center gap-2.5 rounded-pill py-1.5 pr-4 pl-1.5 text-left text-sm text-bg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
-          open ? "bg-bg/20" : "bg-bg/10 hover:bg-bg/15",
+          open ? "bg-bg/15" : "bg-bg/5 hover:bg-bg/10",
         )}
       >
         {selected ? (
@@ -512,7 +550,7 @@ function TaskPicker({
                 .toUpperCase()}
             </span>
             <span className="min-w-0 truncate font-semibold">{selected.title}</span>
-            <span className="shrink-0 font-mono text-xs text-bg/60 tabular-nums">
+            <span className="shrink-0 font-mono text-2xs text-bg/65 tabular-nums">
               {taskTime(selected, true)}
             </span>
           </>

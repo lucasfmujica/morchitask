@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUp, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useAddComment, useComments, useDeleteComment } from "@/lib/queries/comments";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {comments.length > 0 && (
         <ul className="flex flex-col gap-3">
           {comments.map((c) => {
@@ -40,10 +40,11 @@ export function TaskComments({ taskId }: { taskId: string }) {
                 </span>
                 {/* A chat bubble with its corner pointing at the avatar. */}
                 <div className="min-w-0 rounded-[4px_16px_16px_16px] bg-bg px-3 py-2.5">
-                  <p className="text-2xs font-semibold text-muted">
+                  {/* The avatar already says who; the name is for screen readers. */}
+                  <p className="sr-only">
                     {mine ? tcm("you") : (author?.display_name ?? t("someone"))}
                   </p>
-                  <p className="break-words text-[13px] leading-[19px] text-fg">{c.body}</p>
+                  <p className="text-xs leading-[19px] break-words text-fg">{c.body}</p>
                 </div>
                 {mine && (
                   <button
@@ -78,7 +79,19 @@ export function TaskComments({ taskId }: { taskId: string }) {
             "flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-fit text-on-primary transition-opacity disabled:cursor-default disabled:opacity-40",
           )}
         >
-          <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M8 13V3M4 7l4-4 4 4" />
+          </svg>
         </button>
       </div>
     </div>

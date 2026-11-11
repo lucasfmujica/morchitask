@@ -17,6 +17,7 @@ import type { Channel, Task, TaskBlock } from "@/lib/queries/types";
 import { DEFAULT_TIMEZONE, minutesFromMidnight, timeInTimeZone, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import {
+  DEFAULT_END_TARGET_MIN,
   firstFreeSlot,
   freeSlots,
   nextBlockDurationMin,
@@ -37,16 +38,26 @@ import {
 } from "./use-agenda-scheduling";
 import { useTranslations } from "next-intl";
 
-const DEFAULT_TARGET_MIN = 18 * 60; // 18:00
-
 const START_HOUR = 6;
 const END_HOUR = 24;
-/** One hour of the day. 50px fits 09:00–20:00 without scrolling on a laptop;
- *  the old 56 pushed the evening below the fold on every screen. */
-const PX_PER_HOUR = 50;
-/** A 30m block is 25px tall, which cut the title in half. Blocks never draw
- *  shorter than this, even when the time they represent is. */
-const MIN_BLOCK_PX = 52;
+/** One hour of the day: the canvas's 56px. The card is a fixed 476px window
+ *  (eight hours) that scrolls over the full 06–24 day. */
+const PX_PER_HOUR = 56;
+/** Where the first hour line sits inside the card, as on the canvas. */
+const GRID_TOP = 20;
+/** Blocks stop 4px short of their end so back-to-back ones read as two. */
+const BLOCK_GAP_PX = 4;
+/** Below this a block can't hold title and time on two lines (a 30m block is
+ *  24px), so they share one, centred, instead of the time being clipped. */
+const TWO_LINE_MIN_PX = 46;
+/** The canvas's four pastels, handed out by category order so a category keeps
+ *  its colour all day. Tasks without a category take the last one. */
+const PASTELS = ["bg-agenda-1", "bg-agenda-2", "bg-agenda-3", "bg-agenda-4"] as const;
+
+/** y for a minute-of-day inside the scrolling grid. */
+function yFor(min: number) {
+  return GRID_TOP + ((min - START_HOUR * 60) / 60) * PX_PER_HOUR;
+}
 /** The window we look for openings in — nobody wants "hay un hueco a las 6am". */
 const DAY_START_MIN = 8 * 60;
 const DAY_END_MIN = 21 * 60;
@@ -100,10 +111,21 @@ export function AgendaView({
     [calendarQ.data, ownEventIds],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Category → pastel, by the categories' own order (stable across days).
+  const pastelFor = useMemo(() => {
+    const order = [...channelsById.values()].sort(
+      (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+    );
+    const idx = new Map(order.map((c, i) => [c.id, i]));
+    return (channelId: string | null) => {
+      const i = channelId != null ? idx.get(channelId) : undefined;
+      return i == null ? PASTELS[3] : PASTELS[i % PASTELS.length];
+    };
+  }, [channelsById]);
   const noteQ = useDailyNote(date);
   const upsertNote = useUpsertDailyNote(date);
   const toast = useToast();
-  const targetMin = noteQ.data?.end_target_min ?? DEFAULT_TARGET_MIN;
+  const targetMin = noteQ.data?.end_target_min ?? DEFAULT_END_TARGET_MIN;
 
   // Every block of every task, flattened and sorted by start, for the grid.
   const scheduled = useMemo(() => {
@@ -167,19 +189,36 @@ export function AgendaView({
     );
     return () => clearInterval(id);
   }, []);
-  // Open the window at the morning (or the first block, if it starts earlier),
-  // not at 06:00 — the early hours are almost always empty.
-  const firstMin = scheduled.length ? blockStartMin(scheduled[0].block) : DAY_START_MIN;
+  // Open the window on the hour of the first block (09:00 at the latest), with
+  // that hour's line where the canvas puts its first one — not at 06:00, the
+  // early hours are almost always empty.
+  const firstMin = scheduled.length ? blockStartMin(scheduled[0].block) : 9 * 60;
+  const firstMinRef = useRef(firstMin);
+  useEffect(() => {
+    firstMinRef.current = firstMin;
+  });
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const from = Math.min(firstMin, DAY_START_MIN) - 30;
-    el.scrollTop = Math.max(0, ((from - START_HOUR * 60) / 60) * PX_PER_HOUR);
-    // Only on mount: once you've scrolled, the agenda shouldn't jump back.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Applied once, when the window first has a size: on a phone the agenda
+    // is a hidden tab at mount (display: none ignores scrollTop), and even on
+    // desktop the first effect could land before layout and leave it at 06:00.
+    // Once you've scrolled, the agenda shouldn't jump back.
+    const apply = () => {
+      if (el.clientHeight === 0) return false;
+      const fromHour = Math.floor(Math.min(firstMinRef.current, 9 * 60) / 60);
+      el.scrollTop = Math.max(0, (fromHour - START_HOUR) * PX_PER_HOUR);
+      return true;
+    };
+    if (apply()) return;
+    const ro = new ResizeObserver(() => {
+      if (apply()) ro.disconnect();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
   const showNow = hydrated && isToday && nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60;
-  const nowTop = ((nowMin - START_HOUR * 60) / 60) * PX_PER_HOUR;
+  const nowTop = yFor(nowMin);
 
   function schedule(task: Task, time: string) {
     const [h, m] = time.split(":").map(Number);
@@ -199,7 +238,7 @@ export function AgendaView({
     if (startMin == null) return;
     const dur = nextBlockDurationMin(task.time_estimate_min, blocksByTask.get(task.id) ?? []);
     scheduleNewBlock(task, startMin, dur);
-    toast(`Agendada a las ${minutesToHHMM(startMin)}`);
+    toast(td("scheduledAtToast", { time: minutesToHHMM(startMin) }));
   }
 
   const myUnscheduled = unscheduled.filter((t) => t.owner_id === me?.id && t.status === "todo");
@@ -251,7 +290,7 @@ export function AgendaView({
       {/* On desktop the full task list on the left is the drag source, so this
           compact list is only needed on mobile (where list + agenda are tabs). */}
       {unscheduled.length > 0 && (
-        <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-3 shadow-soft lg:hidden">
+        <section className="flex flex-col gap-1 rounded-[22px] bg-surface p-3 shadow-tile lg:hidden">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">
             {td("unscheduledHint")}
           </p>
@@ -298,9 +337,9 @@ export function AgendaView({
         </section>
       )}
 
-      <div className="rounded-xl bg-surface p-3 shadow-soft">
+      <div className="overflow-hidden rounded-[22px] bg-surface">
         {events.filter((e) => e.allDay).length > 0 && (
-          <div className="mb-3 flex flex-col gap-1 border-b border-border pb-3">
+          <div className="mx-3 mt-3 flex flex-col gap-1 border-b border-border pb-3">
             {events
               .filter((e) => e.allDay)
               .map((e) => (
@@ -319,32 +358,35 @@ export function AgendaView({
               ))}
           </div>
         )}
-        {/* The full day scrolls inside a fixed window, opened at the morning,
-            so the card measures the same whatever the day holds. */}
-        <div ref={scrollRef} className="max-h-[520px] overflow-y-auto pr-1">
-          <div className="relative" style={{ height: (END_HOUR - START_HOUR) * PX_PER_HOUR }}>
-            {hours.map((h, i) => {
+        {/* The full day scrolls inside the canvas's fixed 476px window, opened
+            at the morning, so the card measures the same whatever the day holds. */}
+        <div ref={scrollRef} className="h-[476px] overflow-y-auto">
+          <div
+            className="relative"
+            style={{ height: (END_HOUR - START_HOUR) * PX_PER_HOUR + GRID_TOP * 2 }}
+          >
+            {hours.map((h) => {
               // The hour you said you want to be done — the one line on the grid
               // that is a decision rather than a tick mark.
               const isTarget = h === Math.floor(targetMin / 60);
               return (
                 <div
                   key={h}
-                  className="absolute inset-x-0 flex items-start gap-2"
-                  style={{ top: i * PX_PER_HOUR }}
+                  className="absolute right-3 left-3 flex items-center gap-2.5"
+                  style={{ top: yFor(h * 60) - 8 }}
                 >
                   <span
                     className={cn(
-                      "-mt-1.5 w-10 shrink-0 text-right font-mono text-2xs",
+                      "w-9 shrink-0 font-mono text-[11px] leading-4",
                       isTarget ? "font-bold text-accent" : "text-subtle",
                     )}
                   >
                     {String(h).padStart(2, "0")}:00
                   </span>
-                  <div
+                  <span
                     className={cn(
-                      "flex-1 border-t",
-                      isTarget ? "border-dashed border-accent/50" : "border-border",
+                      "flex-1",
+                      isTarget ? "border-t border-dashed border-accent/50" : "h-px bg-surface-2",
                     )}
                   />
                 </div>
@@ -355,9 +397,9 @@ export function AgendaView({
               it is. Only while there's something to put in it. */}
             {suggestedGap && activeTask && (
               <div
-                className="pointer-events-none absolute right-1 left-12 z-0 flex items-center justify-center rounded-xl border-[1.5px] border-dashed border-primary bg-primary/[0.07] px-2 text-2xs font-semibold text-primary"
+                className="pointer-events-none absolute right-3.5 left-[58px] z-0 flex items-center justify-center rounded-[14px] border-[1.5px] border-dashed border-primary bg-primary/[0.07] px-2 text-2xs font-semibold text-primary"
                 style={{
-                  top: ((suggestedGap.startMin - START_HOUR * 60) / 60) * PX_PER_HOUR,
+                  top: yFor(suggestedGap.startMin),
                   height: Math.max((suggestedGap.lenMin / 60) * PX_PER_HOUR, 28),
                 }}
                 aria-hidden
@@ -377,13 +419,13 @@ export function AgendaView({
               .map((e) => {
                 const sMin = minutesFromMidnight(e.start!, TZ);
                 const eMin = e.end ? minutesFromMidnight(e.end, TZ) : sMin + 30;
-                const top = Math.max(0, ((sMin - START_HOUR * 60) / 60) * PX_PER_HOUR);
-                const height = Math.max(((eMin - sMin) / 60) * PX_PER_HOUR, MIN_BLOCK_PX);
+                const top = Math.max(GRID_TOP, yFor(sMin));
+                const height = Math.max(((eMin - sMin) / 60) * PX_PER_HOUR - BLOCK_GAP_PX, 24);
                 const ec = e.color ?? "#94a3b8";
                 return (
                   <div
                     key={e.id}
-                    className="pointer-events-none absolute right-1 left-12 z-[1] overflow-hidden rounded-[10px] px-3 py-1.5 text-xs"
+                    className="pointer-events-none absolute right-3.5 left-[58px] z-[1] overflow-hidden rounded-[14px] px-3 py-1.5 text-[13px]"
                     style={{
                       top,
                       height,
@@ -395,7 +437,7 @@ export function AgendaView({
                     }}
                   >
                     <span className="block truncate font-medium text-muted">{e.title}</span>
-                    <span className="text-2xs text-subtle">
+                    <span className="font-mono text-[11px] text-subtle">
                       {timeInTimeZone(e.start!, TZ)}
                       {e.end ? `–${timeInTimeZone(e.end, TZ)}` : ""}
                     </span>
@@ -403,12 +445,13 @@ export function AgendaView({
                 );
               })}
 
-            {scheduled.map(({ task, block }) => (
+            {scheduled.map(({ task, block }, i) => (
               <ScheduledBlock
                 key={block.id}
                 task={task}
                 block={block}
-                channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
+                pastel={pastelFor(task.channel_id)}
+                delayMs={400 + Math.min(i, 6) * 80}
                 onUnschedule={() => removeBlock(block)}
                 onResize={(endMin) => resizeBlock(block, endMin)}
                 dragging={activeBlockId === block.id}
@@ -419,12 +462,12 @@ export function AgendaView({
               // z-[5] keeps it UNDER the blocks (z-10): drawn over them it read
               // as a strikethrough across whatever you're doing right now.
               <div
-                className="pointer-events-none absolute inset-x-0 z-[5] flex items-center"
-                style={{ top: nowTop }}
+                className="pointer-events-none absolute right-3 left-[50px] z-[5] flex items-center"
+                style={{ top: nowTop - 5 }}
                 aria-hidden
               >
-                <span className="ml-9 h-2 w-2 shrink-0 rounded-full bg-danger" />
-                <span className="h-[1.5px] flex-1 bg-danger" />
+                <span className="h-2.5 w-2.5 shrink-0 animate-now rounded-full bg-accent" />
+                <span className="h-0.5 flex-1 bg-accent" />
               </div>
             )}
           </div>
@@ -476,12 +519,12 @@ function DragHandle({ task }: { task: Task }) {
 
 function DropSlot({ min, dragging }: { min: number; dragging: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id: `slot-${min}` });
-  const top = ((min - START_HOUR * 60) / 60) * PX_PER_HOUR;
+  const top = yFor(min);
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "absolute right-1 left-12 z-30 rounded transition-colors",
+        "absolute right-3.5 left-[58px] z-30 rounded-[14px] transition-colors",
         dragging && "outline-dashed outline-1 outline-transparent",
         isOver && "bg-primary-soft/70 outline-primary",
       )}
@@ -497,14 +540,18 @@ function DropSlot({ min, dragging }: { min: number; dragging: boolean }) {
 function ScheduledBlock({
   task,
   block,
-  channel,
+  pastel,
+  delayMs,
   onUnschedule,
   onResize,
   dragging,
 }: {
   task: Task;
   block: TaskBlock;
-  channel?: Channel;
+  /** The category's pastel utility (bg-agenda-N). */
+  pastel: string;
+  /** Entry cascade delay, as on the canvas (400ms + 80ms per block). */
+  delayMs: number;
   onUnschedule: () => void;
   onResize: (endMin: number) => void;
   dragging: boolean;
@@ -516,8 +563,6 @@ function ScheduledBlock({
   });
   const startMin = blockStartMin(block);
   const endMin = blockEndMin(block);
-  const done = task.status === "done";
-  const tc = channel?.color ?? "var(--color-primary)";
 
   // Live resize: while dragging the bottom edge, render a draft end time and
   // commit on release. Manual pointer tracking (not dnd-kit) so it never fights
@@ -549,14 +594,14 @@ function ScheduledBlock({
     if (next != null && next !== endMin) onResize(next);
   }
 
-  const top = Math.max(0, ((startMin - START_HOUR * 60) / 60) * PX_PER_HOUR);
-  // Never shorter than MIN_BLOCK_PX: at 50px/hour a 30m block is 25px, which
-  // clipped the title to a sliver of ascenders. A short block overlapping the
-  // next one slightly is a far smaller lie than an unreadable one.
-  const height = Math.max(((shownEnd - startMin) / 60) * PX_PER_HOUR, MIN_BLOCK_PX);
+  const top = Math.max(GRID_TOP, yFor(startMin));
+  const height = Math.max(((shownEnd - startMin) / 60) * PX_PER_HOUR - BLOCK_GAP_PX, 20);
   const resizing = draftEnd != null;
-  // Under ~45m there isn't room for two lines, so title and range share one.
-  const oneLine = shownEnd - startMin < 45;
+  const oneLine = height < TWO_LINE_MIN_PX;
+  const range = td("agendaRange", {
+    from: minutesToHHMM(startMin),
+    to: minutesToHHMM(shownEnd),
+  });
 
   return (
     <div
@@ -564,44 +609,31 @@ function ScheduledBlock({
       {...attributes}
       {...listeners}
       className={cn(
-        "group absolute right-1 left-12 z-10 cursor-grab touch-none overflow-hidden rounded-[10px] px-3 py-1.5 text-xs active:cursor-grabbing",
-        done && "opacity-60",
+        "group absolute right-3.5 left-[58px] z-10 flex animate-up cursor-grab touch-none flex-col gap-px overflow-hidden rounded-[14px] px-3 active:cursor-grabbing",
+        oneLine ? "justify-center" : "py-2",
+        pastel,
         dragging && "opacity-40",
         resizing && "ring-2 ring-primary",
       )}
-      style={{
-        top,
-        height,
-        boxSizing: "border-box",
-        // A soft tint of the category, nothing else: no border, no rail.
-        backgroundColor: `color-mix(in srgb, ${tc} 16%, var(--color-surface))`,
-      }}
+      style={{ top, height, boxSizing: "border-box", animationDelay: `${delayMs}ms` }}
     >
-      <div className={cn("flex gap-1.5", oneLine ? "items-baseline" : "items-start")}>
-        <span
-          className={cn("min-w-0 flex-1 truncate font-semibold text-fg", done && "line-through")}
-        >
+      <div className="flex items-baseline gap-1.5">
+        <span className="min-w-0 flex-1 truncate text-[13px] leading-4 font-semibold text-fg">
           {task.title}
         </span>
         {oneLine && (
-          <span className="shrink-0 font-mono text-2xs text-muted">
-            {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
-          </span>
+          <span className="shrink-0 font-mono text-[11px] leading-4 text-muted">{range}</span>
         )}
         <button
           onClick={onUnschedule}
           onPointerDown={(e) => e.stopPropagation()}
           aria-label={td("removeBlock")}
-          className="shrink-0 cursor-pointer text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus-visible:opacity-100 touch:opacity-100"
+          className="shrink-0 cursor-pointer self-center text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus-visible:opacity-100 touch:opacity-100"
         >
           <X className="h-3 w-3" aria-hidden />
         </button>
       </div>
-      {!oneLine && (
-        <span className="font-mono text-2xs text-muted">
-          {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
-        </span>
-      )}
+      {!oneLine && <span className="font-mono text-[11px] leading-4 text-muted">{range}</span>}
 
       {/* Resize handle (drag the bottom edge to change the duration). */}
       <div
