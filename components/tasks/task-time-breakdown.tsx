@@ -114,14 +114,10 @@ export function TimeBreakdownList({
   }
 
   return (
-    <div className="mt-2 rounded-xl border border-border bg-surface px-3.5 py-3">
-      <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
-          {t("perDay")}
-        </span>
-        <span className="text-2xs tabular-nums text-subtle">
-          {t("dayCount", { n: days.length })}
-        </span>
+    <div className="rounded-xl bg-surface p-4">
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <span className="font-display text-sm font-semibold text-fg">{t("perDay")}</span>
+        <span className="font-mono text-xs text-muted">{t("dayCount", { n: days.length })}</span>
       </div>
 
       <ul className="flex flex-col gap-2">

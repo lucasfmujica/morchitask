@@ -49,7 +49,7 @@ export function LanguageSelector() {
             disabled={pending}
             aria-pressed={active}
             className={cn(
-              "h-10 cursor-pointer rounded-pill px-3 text-sm font-semibold transition-colors duration-200 disabled:cursor-wait disabled:opacity-60",
+              "h-[38px] cursor-pointer rounded-pill px-3 text-sm font-semibold transition-colors duration-200 disabled:cursor-wait disabled:opacity-60",
               active ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
             )}
           >

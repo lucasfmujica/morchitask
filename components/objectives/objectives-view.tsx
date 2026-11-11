@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Plus, Target, Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import {
   useCreateObjective,
   useDeleteObjective,
@@ -50,16 +50,17 @@ export function ObjectivesView() {
   const week = objectives.filter((o) => o.period === "week");
   const month = objectives.filter((o) => o.period === "month");
 
+  const today = todayISO();
+  const thisWeek = periodRange("week", today);
+  const thisMonth = periodRange("month", today);
+
   return (
     <div className="flex max-w-5xl flex-col gap-4">
-      <header className="flex items-center gap-3 px-1 pt-1">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-          <Target className="h-5 w-5" aria-hidden />
-        </span>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">{t("title")}</h1>
-          <p className="text-sm text-muted">{t("subtitle")}</p>
-        </div>
+      <header className="flex flex-col gap-0.5 px-2 pt-3">
+        <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+          {t("title")}
+        </h1>
+        <p className="text-sm text-muted">{t("subtitle")}</p>
       </header>
 
       <NewObjective />
@@ -69,6 +70,8 @@ export function ObjectivesView() {
       <div className="grid items-start gap-4 md:grid-cols-2">
         <Group
           title={t("thisWeek")}
+          range={labels.weekRangeLabel([thisWeek.start, thisWeek.end])}
+          current={thisWeek}
           objectives={week}
           progress={progress}
           emptyTitle={t("emptyWeek")}
@@ -76,9 +79,11 @@ export function ObjectivesView() {
         />
         <Group
           title={t("thisMonth")}
+          range={labels.monthLabel(today)}
+          current={thisMonth}
           objectives={month}
           progress={progress}
-          emptyTitle={t("emptyMonth", { month: labels.monthLabel(todayISO()) })}
+          emptyTitle={t("emptyMonth", { month: labels.monthLabel(today) })}
           emptyHint={
             week.length > 0 ? t("emptyMonthFromWeek", { n: week.length }) : t("emptyMonthHint")
           }
@@ -103,7 +108,7 @@ function NewObjective() {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl bg-surface p-2 pl-4 shadow-soft sm:flex-row sm:items-center sm:rounded-pill">
+    <div className="flex flex-col gap-2 rounded-2xl bg-surface p-1.5 pl-5 shadow-soft sm:flex-row sm:items-center sm:rounded-pill">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -113,14 +118,14 @@ function NewObjective() {
         className="h-10 min-w-0 flex-1 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
       />
       <div className="flex items-center gap-2">
-        <div className="flex gap-0.5 rounded-pill bg-surface-2 p-1">
+        <div className="flex gap-0.5 rounded-pill bg-surface-2 p-[3px]">
           {(["week", "month"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               aria-pressed={period === p}
               className={cn(
-                "h-8 cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors",
+                "h-[34px] cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors",
                 period === p ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
               )}
             >
@@ -128,8 +133,7 @@ function NewObjective() {
             </button>
           ))}
         </div>
-        <Button onClick={add} className="ml-auto shrink-0">
-          <Plus className="h-4 w-4" aria-hidden />
+        <Button onClick={add} className="ml-auto shrink-0 px-[18px]">
           {t("add")}
         </Button>
       </div>
@@ -139,12 +143,17 @@ function NewObjective() {
 
 function Group({
   title,
+  range,
+  current,
   objectives,
   progress,
   emptyTitle,
   emptyHint,
 }: {
   title: string;
+  /** The period on show, under the heading ("9 al 15 de noviembre"). */
+  range: string;
+  current: { start: string; end: string };
   objectives: Objective[];
   progress: Map<string, ObjectiveProgress>;
   emptyTitle: string;
@@ -153,7 +162,10 @@ function Group({
   return (
     // Same shape as <Well>, kept a <section> so the heading still scopes it.
     <section className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-2">
-      <h2 className="px-3 pt-2 pb-1 text-lg font-semibold text-fg">{title}</h2>
+      <div className="flex flex-wrap items-baseline gap-x-2 px-3 pt-3 pb-1">
+        <h2 className="font-display text-lg font-semibold text-fg">{title}</h2>
+        <span className="text-xs text-muted">{range}</span>
+      </div>
       {objectives.length === 0 ? (
         // A muted one-liner said "nothing here" and stopped. This says what a
         // goal for this period would be for.
@@ -163,7 +175,12 @@ function Group({
         </div>
       ) : (
         objectives.map((o) => (
-          <ObjectiveRow key={o.id} objective={o} progress={progress.get(o.id)} />
+          <ObjectiveRow
+            key={o.id}
+            objective={o}
+            progress={progress.get(o.id)}
+            current={o.start_date === current.start && o.end_date === current.end}
+          />
         ))
       )}
     </section>
@@ -173,9 +190,12 @@ function Group({
 function ObjectiveRow({
   objective,
   progress,
+  current,
 }: {
   objective: Objective;
   progress?: ObjectiveProgress;
+  /** Inside the period the well's heading names; its own range would repeat it. */
+  current: boolean;
 }) {
   const labels = useDateLabels();
   const t = useTranslations("goals");
@@ -192,12 +212,7 @@ function ObjectiveRow({
       <ProgressRing pct={done ? 100 : pct} label={done ? null : `${pct}%`} done={done} />
 
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "truncate text-[15px] font-semibold",
-            done ? "text-muted line-through" : "text-fg",
-          )}
-        >
+        <p className={cn("truncate text-sm font-semibold", done ? "text-muted" : "text-fg")}>
           {objective.title}
         </p>
 
@@ -206,7 +221,9 @@ function ObjectiveRow({
         <p className="mt-0.5 text-xs text-muted">
           {total > 0 ? t("taskProgress", { done: completed, total }) : t("noTasks")}
           {actualMin > 0 && t("contributed", { time: formatMinutes(actualMin) })}
-          <span className="text-subtle"> · {rangeLabel(objective, labels)}</span>
+          {/* The list keeps goals from earlier periods too; only those still
+              need their own dates, the rest sit under the heading's. */}
+          {!current && <span className="text-subtle"> · {rangeLabel(objective, labels)}</span>}
         </p>
       </div>
 
@@ -217,7 +234,7 @@ function ObjectiveRow({
         aria-pressed={done}
         aria-label={done ? t("markActive") : t("markDone")}
         className={cn(
-          "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
+          "inline-flex h-[34px] shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
           done ? "bg-primary text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
         )}
       >
@@ -265,7 +282,7 @@ function ProgressRing({ pct, label, done }: { pct: number; label: string | null;
           fill="none"
           strokeWidth="5"
           strokeLinecap="round"
-          stroke="var(--primary)"
+          stroke="var(--fit-from)"
           strokeDasharray={RING_C}
           initial={false}
           animate={{ strokeDashoffset: RING_C * (1 - Math.min(pct, 100) / 100) }}

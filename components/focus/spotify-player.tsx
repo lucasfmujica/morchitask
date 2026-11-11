@@ -82,7 +82,7 @@ export function SpotifyPlayer() {
 
   if (!connected) {
     return (
-      <div className="mx-auto flex w-full max-w-md flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft">
+      <div className="flex w-full flex-col gap-3 rounded-2xl bg-surface p-4 shadow-soft">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
             <Music className="h-5 w-5" aria-hidden />
@@ -263,7 +263,7 @@ export function SpotifyPlayer() {
 
 function PlayerShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-2xl border border-border bg-surface p-4 shadow-soft">
+    <div className="flex w-full flex-col gap-4 rounded-2xl bg-surface p-4 shadow-soft">
       {children}
     </div>
   );

@@ -66,6 +66,9 @@ export async function tasksInRange(
 ) {
   return db
     .select({
+      id: tasks.id,
+      title: tasks.title,
+      due_date: tasks.due_date,
       planned_date: tasks.planned_date,
       status: tasks.status,
       time_estimate_min: tasks.time_estimate_min,

@@ -50,18 +50,14 @@ export function RoutinesView() {
 
   return (
     <div className="flex max-w-5xl flex-col gap-4">
-      <header className="flex items-center gap-3 px-1 pt-1">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-          <Repeat className="h-5 w-5" aria-hidden />
-        </span>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">{t("title")}</h1>
-          <p className="text-sm text-muted">{t("subtitle")}</p>
-        </div>
+      <header className="flex flex-col gap-0.5 px-2 pt-3">
+        <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+          {t("title")}
+        </h1>
+        <p className="max-w-[560px] text-sm text-muted">{t("subtitle")}</p>
       </header>
 
-      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-4 shadow-soft">
-        <Repeat className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
+      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-5 shadow-soft">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -70,7 +66,7 @@ export function RoutinesView() {
           aria-label={t("newLabel")}
           className="h-10 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
-        <Button onClick={add} disabled={!title.trim()} className="shrink-0">
+        <Button onClick={add} disabled={!title.trim()} className="shrink-0 px-[18px]">
           {t("add")}
         </Button>
       </div>
@@ -78,7 +74,7 @@ export function RoutinesView() {
       {routines.length === 0 ? (
         <EmptyState icon={Repeat} title={t("emptyTitle")} hint={t("emptyHint")} />
       ) : (
-        <ul className="grid items-start gap-4 lg:grid-cols-2">
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(340px,100%),1fr))] items-start gap-4">
           {routines.map((r) => (
             <RoutineRow
               key={r.id}
@@ -134,6 +130,9 @@ function RoutineRow({
     patch({ time_estimate_min: next });
   }
 
+  const channel = channels.find((c) => c.id === routine.channel_id);
+  const active = !routine.paused;
+
   return (
     // Each routine sits in its own well: the grey tray is what tells one routine
     // from the next now that the cards have no border.
@@ -144,7 +143,12 @@ function RoutineRow({
       )}
     >
       <div className="flex flex-col gap-3.5 rounded-xl bg-surface p-4 shadow-soft">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={cn("h-2 w-2 shrink-0 rounded-[2px]", !channel && "bg-border-strong")}
+            style={channel ? { backgroundColor: channel.color } : undefined}
+            aria-hidden
+          />
           <input
             defaultValue={routine.title}
             onBlur={(e) => {
@@ -154,141 +158,172 @@ function RoutineRow({
             className="min-w-0 flex-1 bg-transparent font-display text-base font-semibold text-fg outline-none"
             aria-label={t("titleLabel")}
           />
-          {streak > 0 && (
-            <span
-              title={t("streak", { n: streak })}
-              className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning tabular-nums"
-            >
-              🔥 {streak}
-            </span>
-          )}
+          <span className="shrink-0 text-xs text-muted">
+            {active ? t("statusActive") : t("statusPaused")}
+          </span>
+          {/* Pause used to be a text button down among the settings; a switch
+              in the corner says the state and changes it in one place. */}
           <button
-            onClick={cycleEstimate}
+            role="switch"
+            aria-checked={active}
+            aria-label={t("switchLabel", { title: routine.title })}
+            title={active ? t("pause") : t("resume")}
+            onClick={() => patch({ paused: !routine.paused })}
             className={cn(
-              "h-7 shrink-0 cursor-pointer rounded-pill px-2.5 text-xs font-medium transition-colors",
-              routine.time_estimate_min
-                ? "bg-surface-2 text-muted hover:bg-border"
-                : "text-subtle hover:text-muted",
+              "h-[26px] w-11 shrink-0 cursor-pointer rounded-pill p-[3px] transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-none",
+              active ? "bg-fit" : "bg-border",
             )}
           >
-            {routine.time_estimate_min ? formatMinutes(routine.time_estimate_min) : tt("addTime")}
-          </button>
-          <button
-            onClick={() => remove.mutate(routine.id)}
-            aria-label={t("delete")}
-            className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
+            <span
+              className={cn(
+                "block h-5 w-5 rounded-pill bg-surface shadow-soft transition-transform duration-300",
+                active && "translate-x-[18px]",
+              )}
+            />
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Seg
-            options={[
-              { value: "daily", label: t("freqDaily") },
-              { value: "weekly", label: t("freqWeekly") },
-              { value: "monthly", label: t("freqMonthly") },
-            ]}
-            value={routine.freq}
-            onChange={(v) => patch({ freq: v })}
-          />
+        <Seg
+          options={[
+            { value: "daily", label: t("freqDaily") },
+            { value: "weekly", label: t("freqWeekly") },
+            { value: "monthly", label: t("freqMonthly") },
+          ]}
+          value={routine.freq}
+          onChange={(v) => patch({ freq: v })}
+        />
 
+        {weekly && (
+          <div className="flex gap-1.5">
+            {WEEKDAYS.map((d) => (
+              <button
+                key={d.n}
+                onClick={() => toggleDay(d.n)}
+                aria-pressed={days.includes(d.n)}
+                aria-label={t(`weekdayNames.${d.key}`)}
+                className={cn(
+                  "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors duration-200",
+                  days.includes(d.n)
+                    ? "bg-primary text-on-primary"
+                    : "bg-bg text-fg hover:bg-border",
+                )}
+              >
+                {tw(`weekdayInitials.${d.key}`)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {monthly && (
+          <p className="text-[13px] text-muted">
+            {t.rich("monthDayRule", {
+              last: String(monthDay === 31),
+              day: () => (
+                <select
+                  value={monthDay}
+                  onChange={(e) => patch({ month_day: Number(e.target.value) })}
+                  aria-label={t("monthDayLabel")}
+                  className="mx-0.5 h-7 cursor-pointer appearance-none field-sizing-content rounded-md bg-bg px-2 text-center font-mono text-xs font-medium text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n === 31 ? t("monthDayLast") : n}
+                    </option>
+                  ))}
+                </select>
+              ),
+            })}
+            {monthDay >= 29 && monthDay < 31 && (
+              <span className="text-subtle"> {t("monthDayShortMonths")}</span>
+            )}
+          </p>
+        )}
+
+        {routine.freq === "daily" && every === 1 && (
+          <p className="text-[13px] text-muted">{t("dailyHint")}</p>
+        )}
+
+        {completed !== undefined && history.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="flex flex-wrap gap-1"
+                role="img"
+                aria-label={t("history", {
+                  n: history.length,
+                  done: history.filter((c) => c.done).length,
+                })}
+              >
+                {history.map((c) => (
+                  <span
+                    key={c.date}
+                    title={c.date}
+                    className={cn(
+                      "h-2.5 w-2.5 rounded-[3px] transition-colors sm:h-3 sm:w-3 sm:rounded-[4px]",
+                      c.done ? "bg-fit" : "bg-border",
+                    )}
+                  />
+                ))}
+              </div>
+              <span
+                className={cn(
+                  "ml-auto shrink-0 text-xs font-semibold tabular-nums",
+                  streak > 0 ? "text-primary" : "text-muted",
+                )}
+              >
+                {streak > 0 ? t("streak", { n: streak }) : t("noStreak")}
+              </span>
+            </div>
+            <span className="text-[11px] text-muted" aria-hidden>
+              {t("history", { n: history.length, done: history.filter((c) => c.done).length })}
+            </span>
+          </div>
+        )}
+
+        {/* What the canvas leaves out but a routine still needs: the "every N"
+            interval, the estimate its tasks inherit, the category and delete.
+            One quiet row at the foot, below what you read at a glance. */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
           <EveryStepper
             value={every}
             freq={routine.freq}
             onChange={(n) => patch({ repeat_every: n })}
           />
-
-          {monthly && (
-            <label className="flex items-center gap-1.5 text-xs text-muted">
-              {t("monthDayPrefix")}
-              <select
-                value={monthDay}
-                onChange={(e) => patch({ month_day: Number(e.target.value) })}
-                aria-label={t("monthDayLabel")}
-                className="h-7 cursor-pointer rounded-pill bg-surface-2 px-2 font-mono text-xs font-medium text-fg outline-none"
-              >
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n === 31 ? t("monthDayLast") : n}
-                  </option>
-                ))}
-              </select>
-              {monthDay !== 31 && t("monthDaySuffix")}
-              {monthDay >= 29 && monthDay < 31 && (
-                <span className="text-subtle">{t("monthDayShortMonths")}</span>
-              )}
-            </label>
-          )}
-
-          {weekly && (
-            <div className="flex w-full gap-1.5">
-              {WEEKDAYS.map((d) => (
-                <button
-                  key={d.n}
-                  onClick={() => toggleDay(d.n)}
-                  aria-pressed={days.includes(d.n)}
-                  className={cn(
-                    "flex h-9 max-w-11 flex-1 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors duration-200",
-                    days.includes(d.n)
-                      ? "bg-primary text-on-primary"
-                      : "bg-surface-2 text-muted hover:bg-border",
-                  )}
-                >
-                  {tw(`weekdayInitials.${d.key}`)}
-                </button>
-              ))}
-            </div>
-          )}
-
           <button
-            onClick={() => patch({ paused: !routine.paused })}
-            className="ml-auto h-7 cursor-pointer rounded-pill bg-surface-2 px-3 text-xs font-semibold text-muted transition-colors hover:bg-border hover:text-fg"
+            onClick={cycleEstimate}
+            aria-label={tt("estimate")}
+            className={cn(
+              "h-7 shrink-0 cursor-pointer rounded-pill px-2.5 font-mono text-[11px] transition-colors",
+              routine.time_estimate_min
+                ? "bg-bg text-muted hover:bg-border"
+                : "text-subtle hover:bg-bg hover:text-muted",
+            )}
           >
-            {routine.paused ? t("resume") : t("pause")}
+            {routine.time_estimate_min ? formatMinutes(routine.time_estimate_min) : tt("addTime")}
+          </button>
+          {channels.length > 0 && (
+            <select
+              value={routine.channel_id ?? ""}
+              onChange={(e) => patch({ channel_id: e.target.value || null })}
+              aria-label={tt("category")}
+              className="h-7 max-w-36 min-w-0 cursor-pointer truncate field-sizing-content rounded-pill bg-bg px-2.5 text-xs font-medium text-muted outline-none hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <option value="">{tt("noCategory")}</option>
+              {channels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => remove.mutate(routine.id)}
+            aria-label={t("delete")}
+            className="ml-auto flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
           </button>
         </div>
-
-        {completed !== undefined && history.length > 0 && (
-          <div
-            className="flex flex-wrap gap-1"
-            role="img"
-            aria-label={t("history", {
-              n: history.length,
-              done: history.filter((c) => c.done).length,
-            })}
-          >
-            {history.map((c) => (
-              <span
-                key={c.date}
-                title={c.date}
-                className={cn(
-                  "h-3 w-3 rounded-[4px] transition-colors",
-                  c.done ? "bg-fit" : "bg-surface-2",
-                )}
-              />
-            ))}
-          </div>
-        )}
-
-        {channels.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            <Chip
-              active={!routine.channel_id}
-              label={tt("noCategory")}
-              onClick={() => patch({ channel_id: null })}
-            />
-            {channels.map((c) => (
-              <Chip
-                key={c.id}
-                active={routine.channel_id === c.id}
-                label={c.name}
-                color={c.color}
-                onClick={() => patch({ channel_id: c.id })}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </li>
   );
@@ -342,14 +377,14 @@ function Seg<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex gap-0.5 rounded-pill bg-surface-2 p-1">
+    <div className="flex gap-0.5 rounded-pill bg-surface-2 p-[3px]">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
           className={cn(
-            "h-7 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
+            "h-8 flex-1 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
             value === o.value ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
           )}
         >
@@ -357,33 +392,5 @@ function Seg<T extends string>({
         </button>
       ))}
     </div>
-  );
-}
-
-function Chip({
-  active,
-  label,
-  color,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  color?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-medium transition-colors",
-        active ? "bg-primary-soft text-primary" : "bg-surface-2 text-muted hover:bg-border",
-      )}
-    >
-      {color && (
-        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} aria-hidden />
-      )}
-      {label}
-    </button>
   );
 }

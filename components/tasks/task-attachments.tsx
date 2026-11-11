@@ -47,12 +47,17 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
     for (const file of Array.from(list)) {
       const reason = rejectionKey(file);
       if (reason) {
-        setError(`${file.name}: ${reason}`);
+        setError(
+          t("fileRejected", {
+            name: file.name,
+            reason: t(reason, { max: formatBytes(MAX_ATTACHMENT_BYTES) }),
+          }),
+        );
         continue;
       }
       setUploading((names) => [...names, file.name]);
       uploadFile.mutate(file, {
-        onError: () => setError(`No se pudo subir ${file.name}. Probá de nuevo.`),
+        onError: () => setError(t("uploadFailed", { name: file.name })),
         // Drop this file's name whether it worked or not — the list below
         // either gained a row or the error line explains why it didn't.
         onSettled: () =>
@@ -79,7 +84,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
                 href={attachmentSrc(f.id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface p-1.5 transition-colors hover:bg-surface-2"
+                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg bg-bg px-3 py-2.5 transition-colors hover:bg-surface-2"
               >
                 {isImage(f.content_type) ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -87,16 +92,16 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
                     src={attachmentSrc(f.id)}
                     alt={f.name}
                     loading="lazy"
-                    className="h-10 w-10 shrink-0 rounded-md object-cover"
+                    className="h-8 w-8 shrink-0 rounded-[10px] object-cover"
                   />
                 ) : (
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted">
-                    <FileText className="h-4.5 w-4.5" aria-hidden />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-surface text-fg">
+                    <FileText className="h-4 w-4" aria-hidden />
                   </span>
                 )}
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm text-fg">{f.name}</span>
-                  <span className="text-2xs text-subtle">
+                  <span className="truncate text-[13px] font-semibold text-fg">{f.name}</span>
+                  <span className="text-2xs text-muted">
                     {formatBytes(f.size_bytes)} · {nameOf(f.uploader_id)}
                   </span>
                 </span>
@@ -104,7 +109,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
               {f.uploader_id === me?.id && (
                 <button
                   onClick={() => remove.mutate(f.id)}
-                  aria-label={`Eliminar ${f.name}`}
+                  aria-label={t("deleteFile", { name: f.name })}
                   className="-m-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-danger/10 hover:text-danger group-hover:opacity-100 touch:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -118,9 +123,9 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
       {uploading.map((name, i) => (
         <div
           key={`${name}-${i}`}
-          className="flex items-center gap-2.5 rounded-lg border border-dashed border-border p-1.5"
+          className="flex items-center gap-2.5 rounded-lg border border-dashed border-border px-3 py-2.5"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-surface-2 text-muted">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           </span>
           <span className="min-w-0 flex-1 truncate text-sm text-muted">

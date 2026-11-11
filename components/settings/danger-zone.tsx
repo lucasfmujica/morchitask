@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Download, Trash2 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { deleteMyAccount, exportMyData } from "@/lib/actions/account";
@@ -64,86 +63,74 @@ export function DangerZone() {
     await signOut({ redirectTo: "/" });
   }
 
+  const pill =
+    "h-9 shrink-0 cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60";
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 rounded-xl bg-surface p-3.5 shadow-soft sm:flex-row sm:items-center">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-            <Download className="h-[18px] w-[18px]" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-fg">{t("exportTitle")}</p>
-            <p className="text-xs text-muted">
-              {exportError ? t("exportFailed") : t("exportDesc")}
-            </p>
-          </div>
-        </div>
+    // The one panel outlined instead of filled: nothing else on the page has
+    // a border, so the outline alone marks it as different. Warm, in the
+    // accent, rather than alarm red: it is a place to be careful, and the red
+    // is kept for the one button that cannot be taken back.
+    <section className="flex flex-col gap-2.5 rounded-2xl p-[18px] ring-[1.5px] ring-accent/35 ring-inset">
+      <h2 className="font-display text-base font-semibold text-accent">{t("dangerTitle")}</h2>
+      <p className="text-xs leading-[17px] text-muted">{t("dangerDesc")}</p>
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="ml-12 h-9 w-fit cursor-pointer rounded-pill bg-surface-2 px-4 text-sm font-semibold text-fg transition-colors hover:bg-border disabled:opacity-60 sm:ml-0 sm:shrink-0"
+          className={`${pill} bg-surface-2 text-fg hover:bg-border`}
         >
-          {exporting ? t("exporting") : t("exportAction")}
+          {exporting ? t("exporting") : t("exportDataAction")}
         </button>
-      </div>
-
-      {/* The one card outlined in danger: nothing else on the page is
-          bordered any more, so the outline alone marks it as different. */}
-      <div className="flex flex-col gap-3 rounded-xl bg-surface p-3.5 ring-[1.5px] ring-danger/40 ring-inset">
-        <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
-            <Trash2 className="h-[18px] w-[18px]" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-danger">{t("deleteTitle")}</p>
-            <p className="text-xs text-muted">{t("deleteDesc")}</p>
-          </div>
-          {!confirming && (
-            <button
-              onClick={() => setConfirming(true)}
-              className="h-9 shrink-0 cursor-pointer rounded-pill bg-danger/10 px-4 text-sm font-semibold text-danger transition-colors hover:bg-danger/20"
-            >
-              {t("deleteAction")}
-            </button>
-          )}
-        </div>
-
-        {confirming && (
-          <div className="flex flex-col gap-2 border-t border-border pt-3 pl-12">
-            <p className="text-xs text-muted">{t("deleteConfirmHint", { word: confirmWord })}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                autoFocus
-                disabled={deleting}
-                placeholder={confirmWord}
-                aria-label={t("deleteConfirmLabel")}
-                className="h-9 w-40 rounded-pill bg-surface-2 px-4 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-danger"
-              />
-              <button
-                onClick={handleDelete}
-                disabled={!canDelete || deleting}
-                className="h-9 cursor-pointer rounded-pill bg-danger px-4 text-sm font-semibold text-on-danger transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {deleting ? t("deleting") : t("deleteConfirmAction")}
-              </button>
-              <button
-                onClick={() => {
-                  setConfirming(false);
-                  setTyped("");
-                  setDeleteError(false);
-                }}
-                disabled={deleting}
-                className="h-9 cursor-pointer rounded-pill px-3 text-sm font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-              >
-                {t("deleteCancel")}
-              </button>
-            </div>
-            {deleteError && <p className="text-xs text-danger">{t("deleteFailed")}</p>}
-          </div>
+        {!confirming && (
+          <button
+            onClick={() => setConfirming(true)}
+            className={`${pill} bg-accent-soft text-accent hover:bg-accent/20`}
+          >
+            {t("deleteAction")}
+          </button>
         )}
       </div>
-    </div>
+      {exportError && <p className="text-xs text-danger">{t("exportFailed")}</p>}
+
+      {confirming && (
+        <div className="flex flex-col gap-2 border-t border-border pt-3">
+          <p className="text-xs leading-[17px] text-muted">{t("deleteDesc")}</p>
+          <p className="text-xs font-semibold text-fg">
+            {t("deleteConfirmHint", { word: confirmWord })}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              autoFocus
+              disabled={deleting}
+              placeholder={confirmWord}
+              aria-label={t("deleteConfirmLabel")}
+              className="h-9 w-36 rounded-pill bg-surface-2 px-4 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-danger"
+            />
+            <button
+              onClick={handleDelete}
+              disabled={!canDelete || deleting}
+              className={`${pill} bg-danger text-on-danger hover:opacity-90 disabled:opacity-40`}
+            >
+              {deleting ? t("deleting") : t("deleteConfirmAction")}
+            </button>
+            <button
+              onClick={() => {
+                setConfirming(false);
+                setTyped("");
+                setDeleteError(false);
+              }}
+              disabled={deleting}
+              className={`${pill} px-3 text-muted hover:bg-surface-2 hover:text-fg`}
+            >
+              {t("deleteCancel")}
+            </button>
+          </div>
+          {deleteError && <p className="text-xs text-danger">{t("deleteFailed")}</p>}
+        </div>
+      )}
+    </section>
   );
 }

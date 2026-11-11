@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { ArrowUp, Trash2 } from "lucide-react";
 import { useAddComment, useComments, useDeleteComment } from "@/lib/queries/comments";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { cn } from "@/lib/utils";
@@ -29,20 +29,21 @@ export function TaskComments({ taskId }: { taskId: string }) {
   return (
     <div className="flex flex-col gap-2">
       {comments.length > 0 && (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-3">
           {comments.map((c) => {
             const author = profiles.find((p) => p.id === c.author_id);
             const mine = c.author_id === me?.id;
             return (
-              <li key={c.id} className="group flex items-start gap-2">
-                <span className="mt-0.5 shrink-0">
-                  <OwnerAvatar profile={author} size={22} />
+              <li key={c.id} className="group flex items-start gap-2.5">
+                <span className="shrink-0">
+                  <OwnerAvatar profile={author} size={28} />
                 </span>
-                <div className="min-w-0 flex-1 rounded-xl rounded-tl-sm bg-surface-2 px-3 py-2">
-                  <p className="text-xs font-semibold text-muted">
+                {/* A chat bubble with its corner pointing at the avatar. */}
+                <div className="min-w-0 rounded-[4px_16px_16px_16px] bg-bg px-3 py-2.5">
+                  <p className="text-2xs font-semibold text-muted">
                     {mine ? tcm("you") : (author?.display_name ?? t("someone"))}
                   </p>
-                  <p className="break-words text-sm text-fg">{c.body}</p>
+                  <p className="break-words text-[13px] leading-[19px] text-fg">{c.body}</p>
                 </div>
                 {mine && (
                   <button
@@ -59,7 +60,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
         </ul>
       )}
 
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-focus">
+      <div className="flex items-center gap-2 rounded-pill bg-bg py-[5px] pr-[5px] pl-4 focus-within:ring-2 focus-within:ring-focus">
         <input
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -68,14 +69,16 @@ export function TaskComments({ taskId }: { taskId: string }) {
           aria-label={t("newComment")}
           className="min-w-0 flex-1 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
+        {/* Green disc with an arrow: sending is the "yes" of this box. */}
         <button
           onClick={submit}
           disabled={!body.trim()}
+          aria-label={t("sendComment")}
           className={cn(
-            "h-7 shrink-0 cursor-pointer rounded-md bg-primary px-2.5 text-xs font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40",
+            "flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-fit text-on-primary transition-opacity disabled:cursor-default disabled:opacity-40",
           )}
         >
-          {tcm("send")}
+          <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
         </button>
       </div>
     </div>

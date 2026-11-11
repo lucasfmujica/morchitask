@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowRight, Check, Clock, CreditCard, Gift, TriangleAlert } from "lucide-react";
+import { Check, CreditCard, Gift, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { openBillingPortal, startCheckout } from "@/lib/actions/billing";
 import type { getBillingState } from "@/lib/actions/billing";
@@ -13,6 +13,7 @@ import {
   YEARLY_SAVING_PCT,
 } from "@/lib/pricing";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type State = Awaited<ReturnType<typeof getBillingState>>;
@@ -24,11 +25,22 @@ type State = Awaited<ReturnType<typeof getBillingState>>;
  * question — what is my access, and what do I do about it — and splitting them
  * is how "cancelled" ends up with no way back.
  */
+type Interval = "month" | "year";
+
+/** What the plan includes, as the canvas lists it. Keys, so the list is the
+ *  same in both catalogs and can't grow a line in only one language. */
+const INCLUDED = ["rituals", "calendar", "shared", "focus", "capture", "export"] as const;
+
 export function BillingView({ state }: { state: State }) {
   const t = useTranslations("billing");
   const labels = useDateLabels();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState(false);
+  // One CTA for the plan picked above it. The cards only choose; the button
+  // is what checks out, and it passes the chosen interval straight through,
+  // so each plan still goes to its own product. Yearly starts selected
+  // because it is the one we suggest.
+  const [interval, setPlanInterval] = useState<Interval>("year");
 
   const { access, subscription } = state;
   const subscribed = !!subscription && access.source === "subscription" && access.allowed;
@@ -48,8 +60,8 @@ export function BillingView({ state }: { state: State }) {
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
-      <h1 className="px-1 pt-1 text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+    <div className="mx-auto flex w-full max-w-[820px] flex-col gap-[18px] pt-3 pb-6">
+      <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight text-fg">
         {t("title")}
       </h1>
 
@@ -62,49 +74,79 @@ export function BillingView({ state }: { state: State }) {
 
       {/* Nothing to sell to someone who is comped, and nothing to sell at all
           until the payment provider is configured. */}
-      {!comped && state.enabled && (
-        <section className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-2">
-          <h2 className="px-3 pt-2 pb-0.5 text-base font-semibold text-fg">
-            {subscribed ? t("manageTitle") : t("choosePlan")}
-          </h2>
-
-          {subscribed ? (
-            <button
-              onClick={() => go(() => openBillingPortal())}
-              disabled={pending}
-              className="m-1 inline-flex h-10 w-fit cursor-pointer items-center gap-2 rounded-pill bg-fg px-4 text-sm font-semibold text-bg transition-colors hover:bg-fg/85 disabled:opacity-60"
-            >
-              <CreditCard className="h-4 w-4" aria-hidden />
-              {t("managePlan")}
-            </button>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <PlanCard
-                name={t("monthly")}
-                price={formatUsd(PRICE_MONTHLY_USD)}
-                per={t("perMonth")}
-                onPick={() => go(() => startCheckout("month"))}
-                disabled={pending}
-                cta={t("subscribe")}
-              />
-              <PlanCard
-                name={t("yearly")}
-                price={formatUsd(PRICE_YEARLY_USD)}
-                per={t("perYear")}
-                note={t("yearlySaving", { pct: YEARLY_SAVING_PCT })}
-                highlight
-                onPick={() => go(() => startCheckout("year"))}
-                disabled={pending}
-                cta={t("subscribe")}
-              />
-            </div>
-          )}
-
-          {error && <p className="px-3 pb-1.5 text-sm text-danger">{t("checkoutFailed")}</p>}
+      {!comped && state.enabled && subscribed && (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-display text-lg font-semibold text-fg">{t("manageTitle")}</h2>
+          <Button
+            onClick={() => go(() => openBillingPortal())}
+            disabled={pending}
+            className="w-fit"
+          >
+            <CreditCard className="h-4 w-4" aria-hidden />
+            {t("managePlan")}
+          </Button>
+          {error && <p className="text-sm text-danger">{t("checkoutFailed")}</p>}
         </section>
       )}
 
-      {!state.enabled && <p className="px-1 text-sm text-muted">{t("notConfigured")}</p>}
+      {!comped && state.enabled && !subscribed && (
+        <>
+          <h2 className="font-display text-lg font-semibold text-fg">{t("choosePlan")}</h2>
+
+          <div
+            role="group"
+            aria-label={t("choosePlan")}
+            className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3.5"
+          >
+            <PlanCard
+              name={t("monthly")}
+              price={formatUsd(PRICE_MONTHLY_USD)}
+              per={t("perMonth")}
+              selected={interval === "month"}
+              onSelect={() => setPlanInterval("month")}
+            />
+            <PlanCard
+              name={t("yearly")}
+              price={formatUsd(PRICE_YEARLY_USD)}
+              per={t("perYearAbout", {
+                monthly: formatUsd(Math.round(PRICE_YEARLY_USD / 12)),
+              })}
+              badge={t("yearlySaving", { pct: YEARLY_SAVING_PCT })}
+              selected={interval === "year"}
+              onSelect={() => setPlanInterval("year")}
+            />
+          </div>
+
+          <section
+            aria-label={t("includedTitle")}
+            className="grid grid-cols-[repeat(auto-fit,minmax(min(220px,100%),1fr))] gap-2.5 rounded-2xl bg-surface-2 px-5 py-[18px]"
+          >
+            {INCLUDED.map((key) => (
+              <span key={key} className="flex items-center gap-2 text-[13px] font-medium text-fg">
+                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-fit text-on-primary">
+                  <Check className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden />
+                </span>
+                {t(`included.${key}`)}
+              </span>
+            ))}
+          </section>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="mr-auto text-xs text-muted">{t("coverNote")}</p>
+            <Button
+              size="lg"
+              onClick={() => go(() => startCheckout(interval))}
+              disabled={pending}
+              className="h-[50px] px-7 shadow-lg shadow-primary/25"
+            >
+              {interval === "year" ? t("subscribeYearly") : t("subscribeMonthly")}
+            </Button>
+          </div>
+          {error && <p className="text-sm text-danger">{t("checkoutFailed")}</p>}
+        </>
+      )}
+
+      {!state.enabled && <p className="text-sm text-muted">{t("notConfigured")}</p>}
     </div>
   );
 }
@@ -177,8 +219,8 @@ function StatusCard({
   );
 }
 
-/** The trial as the page's dark hero card, with what is left of it as a green
- *  bar: the same "still fits" green the day view uses for its capacity. */
+/** The trial as the page's dark hero card. The bar fills as the trial is used
+ *  up, in the same "it fits" green the day view uses for its capacity. */
 function TrialCard({
   daysLeft,
   title,
@@ -188,25 +230,18 @@ function TrialCard({
   title: string;
   children: React.ReactNode;
 }) {
-  const left = Math.max(0, Math.min(1, daysLeft / TRIAL_DAYS));
+  const used = 1 - Math.max(0, Math.min(1, daysLeft / TRIAL_DAYS));
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-fg p-5 text-bg">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg/15">
-          <Clock className="h-[18px] w-[18px]" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-lg font-semibold">{title}</p>
-          <p className="text-xs text-bg/70">{children}</p>
-        </div>
-      </div>
-      <div className="h-2 overflow-hidden rounded-pill bg-bg/15" aria-hidden>
+    <section className="flex flex-col gap-3.5 rounded-2xl bg-fg p-6 text-bg">
+      <p className="font-display text-[28px] leading-8 font-bold">{title}</p>
+      <div className="h-2.5 overflow-hidden rounded-pill bg-bg/15" aria-hidden>
         <div
           className="h-full rounded-pill bg-fit transition-[width] duration-700 ease-out"
-          style={{ width: `${left * 100}%` }}
+          style={{ width: `${used * 100}%` }}
         />
       </div>
-    </div>
+      <p className="text-[13px] text-bg/75">{children}</p>
+    </section>
   );
 }
 
@@ -243,51 +278,43 @@ function PlanCard({
   name,
   price,
   per,
-  note,
-  highlight,
-  onPick,
-  disabled,
-  cta,
+  badge,
+  selected,
+  onSelect,
 }: {
   name: string;
   price: string;
   per: string;
-  note?: string;
-  highlight?: boolean;
-  onPick: () => void;
-  disabled: boolean;
-  cta: string;
+  badge?: string;
+  selected: boolean;
+  onSelect: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
       className={cn(
-        // The suggested plan wears the primary ring, the "selected" mark used
-        // across the app; the other stays a plain white card in the well.
-        "flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-soft transition-shadow",
-        highlight && "ring-2 ring-primary",
+        // The picked plan wears the green ring and lifts a little; the other
+        // stays a plain white card. Choosing is not buying: the CTA below is.
+        "flex cursor-pointer flex-col items-start gap-2 rounded-2xl bg-surface p-[22px] text-left text-fg transition-[box-shadow,transform] duration-200",
+        selected
+          ? "-translate-y-0.5 shadow-card ring-2 ring-fit-from ring-inset"
+          : "shadow-soft hover:shadow-card",
       )}
     >
-      <div>
-        <p className="text-sm font-semibold text-muted">{name}</p>
-        <p className="mt-1 flex items-baseline gap-1.5">
-          <span className="font-display text-3xl font-bold tracking-tight tabular-nums text-fg">
-            {price}
+      <span className="flex w-full items-center gap-2">
+        <span className="mr-auto font-semibold">{name}</span>
+        {badge && (
+          <span className="-rotate-2 rounded-[4px] bg-marker px-2 py-0.5 text-[11px] font-bold text-on-marker">
+            {badge}
           </span>
-          <span className="text-sm text-muted">{per}</span>
-        </p>
-        {note && <p className="mt-1 text-xs font-medium text-primary">{note}</p>}
-      </div>
-      <button
-        onClick={onPick}
-        disabled={disabled}
-        className={cn(
-          "mt-auto inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-pill px-4 text-sm font-semibold transition-colors disabled:opacity-60",
-          highlight ? "bg-fg text-bg hover:bg-fg/85" : "bg-surface-2 text-fg hover:bg-border",
         )}
-      >
-        {cta}
-        <ArrowRight className="h-4 w-4" aria-hidden />
-      </button>
-    </div>
+      </span>
+      <span className="font-display text-[40px] leading-[44px] font-bold tracking-tight tabular-nums">
+        {price}
+      </span>
+      <span className="text-[13px] text-muted">{per}</span>
+    </button>
   );
 }

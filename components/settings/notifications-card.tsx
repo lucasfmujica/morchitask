@@ -1,6 +1,5 @@
 "use client";
 
-import { Bell, Clock } from "lucide-react";
 import { usePushNotifications } from "@/lib/queries/push";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -12,9 +11,11 @@ export function NotificationsCard() {
     usePushNotifications();
 
   return (
-    <div className="flex flex-col divide-y divide-border rounded-xl bg-surface px-3.5 shadow-soft">
+    // The section's title sits inside the white card, as the canvas has it:
+    // the two switches are one surface, not two cards.
+    <div className="flex flex-col gap-4 rounded-xl bg-surface p-[18px] shadow-soft">
+      <h2 className="font-display text-base font-semibold text-fg">{t("notifications")}</h2>
       <Row
-        icon={<Bell className="h-5 w-5" aria-hidden />}
         title={t("dailyReminder")}
         desc={supported ? t("dailyReminderDesc") : t("dailyReminderUnsupported")}
         on={enabled && prefs.dailyPlan !== false}
@@ -23,7 +24,6 @@ export function NotificationsCard() {
         label={t("dailyReminderLabel")}
       />
       <Row
-        icon={<Clock className="h-5 w-5" aria-hidden />}
         title={t("taskReminders")}
         desc={t("taskRemindersDesc")}
         on={!!prefs.taskReminders}
@@ -36,7 +36,6 @@ export function NotificationsCard() {
 }
 
 function Row({
-  icon,
   title,
   desc,
   on,
@@ -44,7 +43,6 @@ function Row({
   onToggle,
   label,
 }: {
-  icon: React.ReactNode;
   title: string;
   desc: string;
   on: boolean;
@@ -54,13 +52,10 @@ function Row({
 }) {
   const t = useTranslations("settings");
   return (
-    <div className="flex items-center gap-3 py-3.5">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary [&>svg]:h-[18px] [&>svg]:w-[18px]">
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-fg">{title}</p>
-        <p className="text-xs text-muted">{desc}</p>
+    <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="text-[13px] font-semibold text-fg">{title}</p>
+        <p className="text-xs leading-4 text-muted">{desc}</p>
       </div>
       <button
         onClick={onToggle}

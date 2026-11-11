@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Plus, Sun } from "lucide-react";
+import { ArrowRight, Minus, Plus } from "lucide-react";
 import {
   taskKeys,
   useBacklogTasks,
@@ -24,7 +24,7 @@ import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { capacityState, clampCapacity, resolveCapacity } from "@/lib/capacity";
 import { scheduledMin } from "@/lib/scheduling";
-import { blockEndMin } from "@/components/day/use-agenda-scheduling";
+import { blockEndMin, blockStartMin, minutesToHHMM } from "@/components/day/use-agenda-scheduling";
 import { PastDayNotice } from "@/components/day/past-day-notice";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
 import { PlanAiSuggest } from "@/components/plan/plan-ai-suggest";
@@ -87,13 +87,12 @@ export function PlanView({ date }: { date: string }) {
 }
 
 /**
- * The morning plan, as two columns: the decisions on the left, their
- * consequence on the right.
+ * The morning plan, as two columns: the decisions on the left (focus, what to
+ * pull in), their consequence on the right (budget tiles, the day, the split).
  *
  * The old page was a stack of five cards where the capacity bar scrolled away
- * the moment you started pulling work in — so you made every choice blind to
- * its cost. Here the budget, the category split and the CTA are one sticky
- * panel: you watch the day fill as you fill it.
+ * the moment you started pulling work in, so you made every choice blind to
+ * its cost. Side by side, the tiles sit next to the list you pull from.
  */
 function PlanForm({
   date,
@@ -173,197 +172,228 @@ function PlanForm({
     router.push(`/day/${date}`);
   }
 
+  const startLabel = alreadyPlanned ? t("saveAndStart") : t("start");
+
   return (
-    <div className="flex max-w-5xl flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
-      <div className="flex min-w-0 flex-col gap-4">
-        <header className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-accent-soft text-accent">
-            <Sun className="h-5 w-5" aria-hidden />
+    <div className="flex w-full flex-col gap-4">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-3 px-2 pt-3">
+        <div className="mr-auto flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+            {labels.fullDayLabel(date)}
           </span>
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="truncate text-2xs font-semibold tracking-wide text-muted uppercase">
-              {labels.fullDayLabel(date)}
-            </p>
-            <h1 className="text-2xl font-bold tracking-tight text-fg md:text-3xl">{t("title")}</h1>
-          </div>
-        </header>
+          <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+            {t("title")}
+          </h1>
+        </div>
+        {/* The way out of the ritual sits where the eye starts. On a phone it
+            moves to the foot of the page instead, where the plan ends. */}
+        <Button onClick={startDay} className="hidden h-[46px] px-[22px] sm:inline-flex">
+          {startLabel}
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        </Button>
+      </header>
 
-        <PastDayNotice date={date}>
-          {t.rich("pastNotice", {
-            day: labels.fullDayLabel(date),
-            b: (chunks) => <span className="font-semibold">{chunks}</span>,
-          })}
-        </PastDayNotice>
+      <PastDayNotice date={date}>
+        {t.rich("pastNotice", {
+          day: labels.fullDayLabel(date),
+          b: (chunks) => <span className="font-semibold">{chunks}</span>,
+        })}
+      </PastDayNotice>
 
-        {/* Focus. Once it says something it stops looking like an empty field
-            and starts looking like a commitment. */}
-        <section className={WELL}>
-          <div className="flex flex-col gap-2 rounded-xl bg-surface p-3.5 shadow-soft">
-            <h2 className="text-base font-semibold text-fg">{t("focusHeading")}</h2>
-            <textarea
-              value={intention}
-              onChange={(e) => setIntention(e.target.value)}
-              onBlur={() => upsert.mutate({ intention: intention || null })}
-              placeholder={t("intentionPlaceholder")}
-              rows={2}
-              className={cn(
-                "w-full resize-none rounded-lg px-3 py-2.5 text-sm text-fg placeholder:text-subtle outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-                intention.trim() ? "bg-primary-soft" : "bg-bg",
-              )}
-            />
-          </div>
-        </section>
-
-        {/* One place to pull from, with the counts on the tabs — two separate
-            cards made you scroll past the second one every morning. */}
-        {!isPast && (yesterdayPending.length > 0 || backlog.length > 0) && (
-          <section className={cn(WELL, "flex flex-col gap-1.5")}>
-            <div className="flex items-center gap-2 px-2 pt-1.5 pb-1">
-              <h2 className="text-base font-semibold text-fg">{t("pullHeading")}</h2>
-              <div className="ml-auto flex gap-0.5 rounded-pill bg-border p-0.5">
-                <SourceTab
-                  label={tcm("yesterday")}
-                  count={yesterdayPending.length}
-                  active={source === "yesterday"}
-                  onClick={() => setSource("yesterday")}
-                />
-                <SourceTab
-                  label={tnav("backlog")}
-                  count={backlog.length}
-                  active={source === "backlog"}
-                  onClick={() => setSource("backlog")}
-                />
-              </div>
+      {/* Decisions on the left, their consequence on the right. The old page
+          stacked everything and the budget scrolled away while you pulled work
+          in; side by side, the tiles move as you fill the day. */}
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* Focus. Once it says something it stops looking like an empty field
+              and starts looking like a commitment. */}
+          <section className={WELL}>
+            <div className="flex flex-col gap-2 rounded-xl bg-surface p-4 shadow-soft">
+              <label
+                htmlFor="plan-intention"
+                className="font-display text-base font-semibold text-fg"
+              >
+                {t("focusHeading")}
+              </label>
+              <textarea
+                id="plan-intention"
+                value={intention}
+                onChange={(e) => setIntention(e.target.value)}
+                onBlur={() => upsert.mutate({ intention: intention || null })}
+                placeholder={t("intentionPlaceholder")}
+                rows={3}
+                className={cn(
+                  "w-full resize-none rounded-[14px] p-3 text-sm leading-5 text-fg placeholder:text-subtle outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                  intention.trim() ? "bg-primary-soft" : "bg-bg",
+                )}
+              />
             </div>
-
-            <ul className="flex flex-col gap-1.5">
-              {pullable.slice(0, 8).map((t) => (
-                <PullRow
-                  key={t.id}
-                  task={t}
-                  channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-                  onPull={() => pullToToday(t)}
-                />
-              ))}
-              {pullable.length === 0 && (
-                <li className="px-3 py-4 text-center text-xs text-muted">
-                  {source === "yesterday" ? t("emptyYesterday") : t("emptyBacklog")}
-                </li>
-              )}
-            </ul>
-
-            {/* The bulk move sits under the list it empties, as a white pill. */}
-            {source === "yesterday" &&
-              yesterdayPending.length > 0 &&
-              (rolledCount === null ? (
-                <button
-                  onClick={pullAllFromYesterday}
-                  className="mt-0.5 h-10 cursor-pointer rounded-pill bg-surface text-sm font-semibold text-fg shadow-soft transition-shadow hover:shadow-card focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-                >
-                  {t("pullAll", { n: yesterdayPending.length })}
-                </button>
-              ) : (
-                <span className="py-2 text-center text-xs font-semibold text-success">
-                  {t("pulled")}
-                </span>
-              ))}
           </section>
-        )}
 
-        {/* The day itself — this is where estimates get filled in. */}
-        <section className={cn(WELL, "flex flex-col gap-1.5")}>
-          <h2 className="px-2 pt-1.5 pb-1 text-base font-semibold text-fg">
-            {t("dayHeading", { n: mine.length })}
-          </h2>
-          {mine.length === 0 ? (
-            <p className="px-3 py-5 text-center text-sm text-muted">{t("emptyDay")}</p>
-          ) : (
-            <ul className="flex flex-col gap-1.5">
-              {mine.map((t) => (
-                <PlanTaskRow
-                  key={t.id}
-                  task={t}
-                  channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-                />
-              ))}
-            </ul>
+          {/* One place to pull from, with the counts on the tabs: two separate
+              cards made you scroll past the second one every morning. */}
+          {!isPast && (yesterdayPending.length > 0 || backlog.length > 0) && (
+            <section className={cn(WELL, "flex flex-col gap-1.5")}>
+              <div className="flex items-center gap-2 px-2.5 pt-2.5 pb-1.5">
+                <h2 className="mr-auto font-display text-base font-semibold text-fg">
+                  {t("pullHeading")}
+                </h2>
+                <div className="flex gap-0.5 rounded-pill bg-border p-[3px]">
+                  <SourceTab
+                    label={tcm("yesterday")}
+                    count={yesterdayPending.length}
+                    active={source === "yesterday"}
+                    onClick={() => setSource("yesterday")}
+                  />
+                  <SourceTab
+                    label={tnav("backlog")}
+                    count={backlog.length}
+                    active={source === "backlog"}
+                    onClick={() => setSource("backlog")}
+                  />
+                </div>
+              </div>
+
+              <ul className="flex flex-col gap-1.5">
+                {pullable.slice(0, 8).map((t) => (
+                  <PullRow
+                    key={t.id}
+                    task={t}
+                    channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
+                    onPull={() => pullToToday(t)}
+                  />
+                ))}
+                {pullable.length === 0 && (
+                  <li className="p-[18px] text-center text-[13px] text-muted">
+                    {source === "yesterday" ? t("emptyYesterday") : t("emptyBacklog")}
+                  </li>
+                )}
+              </ul>
+
+              {/* The bulk move sits under the list it empties, as a white pill. */}
+              {source === "yesterday" &&
+                yesterdayPending.length > 0 &&
+                (rolledCount === null ? (
+                  <button
+                    onClick={pullAllFromYesterday}
+                    className="mt-0.5 h-[42px] cursor-pointer rounded-pill bg-surface text-sm font-semibold text-fg shadow-soft transition-shadow hover:shadow-card focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                  >
+                    {t("pullAll", { n: yesterdayPending.length })}
+                  </button>
+                ) : (
+                  <span className="py-2 text-center text-xs font-semibold text-success">
+                    {t("pulled")}
+                  </span>
+                ))}
+            </section>
           )}
-        </section>
-      </div>
+        </div>
 
-      {/* The consequence panel. Sticky on desktop so it's never off-screen
-          while you're deciding. */}
-      <aside className="flex flex-col gap-3 lg:sticky lg:top-6">
-        <section className={WELL}>
-          <div className="rounded-xl bg-surface p-4 shadow-soft">
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* The budget as a bento row: the dial in ink, then what's placed,
+              what isn't, and when that would have you finishing. */}
+          <section
+            aria-label={t("capacityHeading")}
+            className="grid grid-cols-3 gap-2.5 sm:grid-cols-4"
+          >
             <CapacityDial
               plannedMin={plannedMin}
               targetMin={capacityTarget}
               onTargetChange={(capacity_min) => upsert.mutate({ capacity_min })}
             />
-          </div>
-          {/* Three small tiles under the dial: what's placed, what isn't, and
-              when that would have you finishing. */}
-          <dl className="mt-2 grid grid-cols-3 gap-2">
             <Stat label={t("statBooked")} value={formatMinutes(bookedMin)} />
             <Stat label={t("statLoose")} value={looseMin > 0 ? formatMinutes(looseMin) : "—"} />
             <Stat
               label={t("statFinish")}
               value={finishMin == null ? "—" : minutesAsClock(finishMin)}
-              strong
+              warn={plannedMin > capacityTarget}
             />
-          </dl>
-        </section>
-
-        {byCategory.length > 0 && (
-          <section className="rounded-2xl bg-surface-2 p-4">
-            <h2 className="text-base font-semibold text-fg">{t("categoryHeading")}</h2>
-            <div className="mt-3 flex h-3 gap-[3px] overflow-hidden rounded-pill">
-              {byCategory.map((c) => (
-                <span
-                  key={c.id}
-                  className="rounded-pill"
-                  style={{ width: `${(c.minutes / plannedMin) * 100}%`, background: c.color }}
-                  title={`${c.name}: ${formatMinutes(c.minutes)}`}
-                />
-              ))}
-            </div>
-            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-              {byCategory.map((c) => (
-                <li key={c.id} className="flex min-w-0 items-center gap-1.5 text-xs">
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: c.color }}
-                    aria-hidden
-                  />
-                  <span className="min-w-0 truncate font-semibold text-fg">{c.name}</span>
-                  <span className="shrink-0 tabular-nums text-muted">
-                    {formatMinutes(c.minutes)}
-                  </span>
-                </li>
-              ))}
-            </ul>
           </section>
-        )}
 
-        <PlanAiSuggest
-          date={date}
-          tasks={mine}
-          blocksByTask={blocksByTask}
-          capacityLeftMin={Math.max(0, capacityTarget - bookedMin)}
-          endTargetMin={note?.end_target_min}
-        />
+          {/* The day itself: this is where estimates get filled in. */}
+          <section className={cn(WELL, "flex flex-col gap-1.5")}>
+            <h2 className="px-2.5 pt-2.5 pb-1.5 font-display text-base font-semibold text-fg">
+              {t("dayHeading", { n: mine.length })}
+            </h2>
+            {mine.length === 0 ? (
+              <p className="px-3 py-5 text-center text-sm text-muted">{t("emptyDay")}</p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {mine.map((t) => (
+                  <PlanTaskRow
+                    key={t.id}
+                    task={t}
+                    channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
+                    startMin={firstStartMin(blocksByTask.get(t.id))}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
 
-        <Button size="lg" onClick={startDay} className="w-full">
-          {alreadyPlanned ? t("saveAndStart") : t("start")}
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Button>
-      </aside>
+          {byCategory.length > 0 && (
+            <section className="flex flex-col gap-3 rounded-2xl bg-surface-2 p-[18px]">
+              <h2 className="font-display text-base font-semibold text-fg">
+                {t("categoryHeading")}
+              </h2>
+              <div className="flex h-3.5 gap-[3px] overflow-hidden rounded-pill">
+                {byCategory.map((c) => (
+                  <span
+                    key={c.id}
+                    className="rounded-pill transition-[width] duration-500"
+                    style={{ width: `${(c.minutes / plannedMin) * 100}%`, background: c.color }}
+                    title={`${c.name}: ${formatMinutes(c.minutes)}`}
+                  />
+                ))}
+              </div>
+              <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+                {byCategory.map((c) => (
+                  <li key={c.id} className="flex min-w-0 items-center gap-1.5 text-xs">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: c.color }}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 truncate font-semibold text-fg">{c.name}</span>
+                    <span className="shrink-0 font-mono font-medium tabular-nums text-muted">
+                      {formatMinutes(c.minutes)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Not on the canvas: the AI proposal lives at the foot of the
+              consequence column, out of the way until there's loose work. */}
+          <PlanAiSuggest
+            date={date}
+            tasks={mine}
+            blocksByTask={blocksByTask}
+            capacityLeftMin={Math.max(0, capacityTarget - bookedMin)}
+            endTargetMin={note?.end_target_min}
+          />
+
+          <Button size="lg" onClick={startDay} className="w-full sm:hidden">
+            {startLabel}
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
-/** The headline number: how much day you've committed, against how much there is. */
+/** Ring geometry, in the SVG's own units (it is scaled down to 96px). */
+const RING_R = 52;
+const RING_C = 2 * Math.PI * RING_R;
+
+/**
+ * The headline tile: how much day you've committed, as a ring against the
+ * capacity, in ink so it anchors the row. The +/-30m nudges live under the
+ * target: the canvas has no place for them, and this is where the number they
+ * change is.
+ */
 function CapacityDial({
   plannedMin,
   targetMin,
@@ -374,85 +404,101 @@ function CapacityDial({
   onTargetChange: (min: number) => void;
 }) {
   const t = useTranslations("plan");
-  const { pct, over, near, overByMin } = capacityState(plannedMin, targetMin);
-  const targetPct = over ? (targetMin / plannedMin) * 100 : 100;
+  const { over } = capacityState(plannedMin, targetMin);
+  const ratio = targetMin > 0 ? plannedMin / targetMin : 0;
+  const shown = Math.round(ratio * 100);
 
   return (
-    <div>
-      <div className="flex items-baseline gap-2">
-        <span
-          className={cn(
-            "font-display text-3xl font-bold tracking-tight tabular-nums",
-            over ? "text-danger" : near ? "text-warning" : "text-fg",
-          )}
-        >
-          {formatMinutes(plannedMin)}
+    <div className="col-span-3 flex items-center justify-center gap-4 rounded-2xl bg-fg px-2 py-3.5 text-bg sm:col-span-1 sm:flex-col sm:gap-1.5">
+      <div className="relative h-24 w-24 shrink-0">
+        <svg width="96" height="96" viewBox="0 0 132 132" className="-rotate-90" aria-hidden>
+          <defs>
+            <linearGradient id="plan-ring" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="var(--fit-from)" />
+              <stop offset="1" stopColor="var(--primary)" />
+            </linearGradient>
+          </defs>
+          <circle
+            cx="66"
+            cy="66"
+            r={RING_R}
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={0.14}
+            strokeWidth="13"
+          />
+          <circle
+            cx="66"
+            cy="66"
+            r={RING_R}
+            fill="none"
+            stroke={over ? "var(--accent)" : "url(#plan-ring)"}
+            strokeWidth="13"
+            strokeLinecap="round"
+            strokeDasharray={RING_C}
+            strokeDashoffset={RING_C * (1 - Math.min(1, ratio))}
+            className="transition-[stroke-dashoffset] duration-500"
+          />
+        </svg>
+        {/* Over budget the number itself says so (">100%"), not only the colour. */}
+        <span className="absolute inset-0 flex items-center justify-center font-display text-xl font-bold tabular-nums">
+          {shown}%
         </span>
-        <span className="text-sm text-muted">
+      </div>
+      <div className="flex items-center gap-1">
+        <DeltaButton
+          label={t("capacityDelta", { delta: "-30m" })}
+          onClick={() => onTargetChange(clampCapacity(targetMin - 30))}
+        >
+          <Minus className="h-3 w-3" aria-hidden />
+        </DeltaButton>
+        <span className="text-2xs whitespace-nowrap text-bg/65 tabular-nums">
           {t("capacityOf", { target: formatMinutes(targetMin) })}
         </span>
-        {over && (
-          <span className="ml-auto rounded-pill bg-danger/12 px-1.5 py-0.5 text-2xs font-bold tabular-nums text-danger">
-            +{formatMinutes(overByMin)}
-          </span>
-        )}
-      </div>
-
-      <div className="relative mt-2.5 h-2.5 rounded-pill bg-surface-2">
-        <div
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-pill transition-[width] duration-300",
-            over ? "rounded-r-none bg-fit" : near ? "bg-warning" : "bg-fit",
-          )}
-          style={{ width: `${over ? targetPct : pct}%` }}
-        />
-        {over && (
-          <>
-            <div
-              className="absolute inset-y-0 rounded-r-pill"
-              style={{
-                left: `${targetPct}%`,
-                width: `${100 - targetPct}%`,
-                background:
-                  "repeating-linear-gradient(115deg, var(--danger) 0 4px, color-mix(in srgb, var(--danger) 55%, var(--surface)) 4px 8px)",
-              }}
-            />
-            <span
-              className="absolute -top-[3px] -bottom-[3px] w-[2px] bg-fg/55"
-              style={{ left: `${targetPct}%` }}
-              aria-hidden
-            />
-          </>
-        )}
-      </div>
-
-      <div className="mt-2 flex gap-1.5">
-        {[-30, 30].map((delta) => (
-          <button
-            key={delta}
-            onClick={() => onTargetChange(clampCapacity(targetMin + delta))}
-            className="cursor-pointer rounded-pill bg-surface-2 px-2 py-0.5 text-2xs font-semibold text-muted transition-colors hover:bg-border hover:text-fg"
-          >
-            {t("capacityDelta", { delta: delta > 0 ? `+${delta}m` : `${delta}m` })}
-          </button>
-        ))}
+        <DeltaButton
+          label={t("capacityDelta", { delta: "+30m" })}
+          onClick={() => onTargetChange(clampCapacity(targetMin + 30))}
+        >
+          <Plus className="h-3 w-3" aria-hidden />
+        </DeltaButton>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function DeltaButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 rounded-xl bg-surface px-3 py-2.5 shadow-soft">
-      <dt className="truncate text-2xs text-muted">{label}</dt>
-      <dd
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-pill text-bg/65 transition-colors hover:bg-bg/15 hover:text-bg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+    >
+      {children}
+    </button>
+  );
+}
+
+function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  return (
+    <div className="flex min-w-0 flex-col justify-center gap-1 rounded-2xl bg-surface-2 px-3.5 py-4">
+      <span className="truncate text-xs text-muted">{label}</span>
+      <span
         className={cn(
-          "font-display text-lg leading-6 font-bold tracking-tight tabular-nums",
-          strong ? "text-accent" : "text-fg",
+          "font-display text-2xl leading-7 font-bold tracking-tight tabular-nums",
+          warn ? "text-accent" : "text-fg",
         )}
       >
         {value}
-      </dd>
+      </span>
     </div>
   );
 }
@@ -473,8 +519,8 @@ function SourceTab({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-7 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors",
-        active ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
+        "h-[30px] cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors",
+        active ? "bg-surface text-fg" : "text-muted hover:text-fg",
       )}
     >
       {label} <span className="tabular-nums opacity-70">{count}</span>
@@ -482,19 +528,28 @@ function SourceTab({
   );
 }
 
-/** A pullable task (from yesterday or backlog): rail + title + "+ Hoy". */
+/** The category as a small square, the same mark the month grid uses. */
+function CategoryMark({ channel }: { channel?: Channel }) {
+  return (
+    <span
+      className={cn("h-1.5 w-1.5 shrink-0 rounded-[2px]", !channel && "bg-border-strong")}
+      style={channel ? { background: channel.color } : undefined}
+      aria-hidden
+    />
+  );
+}
+
+/** A pullable task (from yesterday or backlog): mark + title + "+ Hoy". */
 function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onPull: () => void }) {
   const t = useTranslations("plan");
   return (
-    <li className="relative flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2 pr-2 pl-3.5 shadow-soft">
-      <span
-        className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
-        style={channel ? { background: channel.color } : undefined}
-        aria-hidden
-      />
-      <span className="min-w-0 flex-1 truncate text-sm text-fg">{task.title}</span>
+    <li className="flex items-center gap-2.5 rounded-xl bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
+      <CategoryMark channel={channel} />
+      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">
+        {task.title}
+      </span>
       {task.time_estimate_min ? (
-        <span className="shrink-0 text-2xs font-semibold tabular-nums text-muted">
+        <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted">
           {formatMinutes(task.time_estimate_min)}
         </span>
       ) : null}
@@ -509,8 +564,20 @@ function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onP
   );
 }
 
-/** A task in today's plan, with the estimate chip that makes the panel move. */
-function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
+/**
+ * A task in today's plan: when it starts (if it has a place yet) and the
+ * estimate, which cycles on click and makes the tiles above move.
+ */
+function PlanTaskRow({
+  task,
+  channel,
+  startMin,
+}: {
+  task: Task;
+  channel?: Channel;
+  startMin: number | null;
+}) {
+  const t = useTranslations("plan");
   const tt = useTranslations("tasks");
   const toggle = useToggleTask();
   const update = useUpdateTask();
@@ -529,28 +596,34 @@ function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
   }
 
   return (
-    <li className="relative flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
-      <span
-        className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
-        style={channel ? { background: channel.color } : undefined}
-        aria-hidden
-      />
+    <li className="flex items-center gap-2.5 rounded-xl bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
+      {/* Not on the canvas, kept: ticking off something already done is part
+          of looking at the day in the morning. */}
       <TaskCheckbox checked={done} onToggle={() => toggle.mutate(task)} size="sm" />
+      <CategoryMark channel={channel} />
       <span
         className={cn(
-          "min-w-0 flex-1 truncate text-sm font-medium",
+          "min-w-0 flex-1 truncate text-[13px] font-semibold",
           done ? "text-subtle line-through" : "text-fg",
         )}
       >
         {task.title}
       </span>
+      <span
+        className={cn(
+          "shrink-0 rounded-pill px-2 py-[3px] font-mono text-[11px] font-medium tabular-nums",
+          startMin != null ? "bg-primary-soft text-fg" : "bg-surface-2 text-muted",
+        )}
+      >
+        {startMin != null ? minutesToHHMM(startMin) : t("noTime")}
+      </span>
       <button
         onClick={cycleEstimate}
         aria-label={tt("estimate")}
         className={cn(
-          "shrink-0 cursor-pointer rounded-pill px-2 py-0.5 text-2xs font-semibold tabular-nums transition-colors",
+          "min-w-10 shrink-0 cursor-pointer rounded-pill px-1.5 py-0.5 text-right font-mono text-xs font-medium tabular-nums transition-colors",
           task.time_estimate_min
-            ? "bg-surface-2 text-muted hover:bg-border"
+            ? "text-muted hover:bg-surface-2 hover:text-fg"
             : "border border-dashed border-border-strong text-subtle hover:text-muted",
         )}
       >
@@ -558,6 +631,12 @@ function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
       </button>
     </li>
   );
+}
+
+/** Where a task's first block starts, in minutes from midnight; null if unplaced. */
+function firstStartMin(blocks: readonly TaskBlock[] | undefined): number | null {
+  if (!blocks || blocks.length === 0) return null;
+  return Math.min(...blocks.map(blockStartMin));
 }
 
 /**

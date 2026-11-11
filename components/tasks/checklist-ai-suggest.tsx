@@ -58,7 +58,7 @@ export function ChecklistAiSuggest({
 
   if (!items) {
     return (
-      <div className="mt-1.5 flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <button
           onClick={ask}
           disabled={loading}
@@ -81,7 +81,7 @@ export function ChecklistAiSuggest({
   }
 
   return (
-    <div className="mt-1.5 rounded-lg border border-accent/30 bg-accent-soft/50 p-2">
+    <div className="rounded-lg border border-accent/30 bg-accent-soft/50 p-2">
       <div className="mb-1 flex items-center gap-1.5 px-1">
         <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
         <p className="flex-1 text-xs font-semibold text-accent">{t("proposal")}</p>

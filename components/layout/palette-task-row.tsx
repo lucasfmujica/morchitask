@@ -3,7 +3,6 @@
 import type { MatchRange } from "@/lib/palette";
 import type { Channel, Task } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
-import { PRIORITY_RAIL } from "@/components/tasks/priority-badge";
 import { cn } from "@/lib/utils";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
@@ -34,27 +33,19 @@ export function PaletteTaskRow({
 
   return (
     <span className="flex min-w-0 flex-1 items-center gap-2.5">
-      {/* Priority as a rail rather than a pill — a pill per row would be noise. */}
+      {/* The category's swatch, square like everywhere a category is named.
+          Uncategorised tasks keep the slot so titles stay aligned. */}
       <span
-        className={cn(
-          "h-4 w-[3px] shrink-0 rounded-pill",
-          task.priority ? PRIORITY_RAIL[task.priority] : "bg-transparent",
-        )}
+        className={cn("h-2 w-2 shrink-0 rounded-[2px]", !channel && "bg-border")}
+        style={channel ? { backgroundColor: channel.color } : undefined}
         aria-hidden
       />
-      {channel && (
-        <span
-          className="h-2 w-2 shrink-0 rounded-[3px]"
-          style={{ backgroundColor: channel.color }}
-          aria-hidden
-        />
-      )}
-      <span className={cn("min-w-0 flex-1 truncate", done && "text-subtle line-through")}>
+      <span
+        className={cn("min-w-0 flex-1 truncate font-medium", done && "text-subtle line-through")}
+      >
         <Highlight text={task.title} ranges={ranges} />
       </span>
-      <span className="shrink-0 rounded-pill bg-surface-2 px-2 py-0.5 text-2xs font-medium text-muted">
-        {where}
-      </span>
+      <span className="shrink-0 text-xs text-muted">{where}</span>
     </span>
   );
 }
@@ -69,7 +60,7 @@ function Highlight({ text, ranges }: { text: string; ranges: MatchRange[] }) {
   ranges.forEach(([start, end], i) => {
     if (start > cursor) parts.push(text.slice(cursor, start));
     parts.push(
-      <mark key={i} className="bg-transparent font-semibold text-fg">
+      <mark key={i} className="bg-transparent font-bold text-fg">
         {text.slice(start, end)}
       </mark>,
     );

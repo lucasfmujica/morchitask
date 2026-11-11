@@ -60,8 +60,15 @@ export function OwnerAvatar({
     <span
       title={label}
       aria-label={profile ? t("assignedTo", { name: profile.display_name }) : undefined}
-      style={{ width: size, height: size, backgroundColor: profile?.color ?? "var(--color-muted)" }}
-      className="inline-flex shrink-0 items-center justify-center rounded-full text-2xs font-bold text-white"
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: profile?.color ?? "var(--color-muted)",
+        // The letter grows with the circle; a fixed 2xs looked lost in the
+        // 56px profile avatar in Ajustes. Small sizes keep the old 11px floor.
+        fontSize: Math.max(11, Math.round(size * 0.38)),
+      }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white"
     >
       {initial}
     </span>

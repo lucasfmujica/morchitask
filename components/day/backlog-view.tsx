@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { useChannels, useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { taskKeys, useBacklogTasks, useMoveTaskToDate, useUpdateTask } from "@/lib/queries/tasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
@@ -17,20 +17,30 @@ import { cn } from "@/lib/utils";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { useComposerCreate } from "@/components/tasks/use-composer-create";
 import { CaptureSheet } from "@/components/tasks/capture-sheet";
-import { Button, EmptyState, SkeletonList, Well } from "@/components/ui";
+import { EmptyState, SkeletonList, Well } from "@/components/ui";
+import { PRIORITY_GROUPS, priorityLabelKey, priorityOf } from "@/lib/priority";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
 
-/** Past this, an idea isn't waiting for a slot — it's waiting for a decision. */
+/** Past this, an idea isn't waiting for a slot: it's waiting for a decision. */
 const STALE_DAYS = 30;
+
+/** Group dots as the canvas has them. Not PRIORITY_DOT: here the four groups
+ *  sit side by side as wells, and "Baja" in green read as "this one fits". */
+const GROUP_DOT: Record<string, string> = {
+  high: "bg-accent",
+  medium: "bg-marker",
+  low: "bg-subtle",
+  none: "bg-border-strong",
+};
 
 /**
  * The backlog: everything without a day.
  *
- * Two things changed. Every row now carries its AGE, because how long an idea
- * has been sitting there is the fact that decides its fate and a list of bare
- * titles hides it. And scheduling is two buttons on the row (Hoy / Mañana)
- * rather than a trip through the task sheet.
+ * Every row carries its AGE, because how long an idea has been sitting there is
+ * the fact that decides its fate and a list of bare titles hides it. Scheduling
+ * is a button on the row rather than a trip through the task sheet. The list is
+ * split by priority into wells, so "what matters" reads before "what's oldest".
  */
 export function BacklogView() {
   const t = useTranslations("backlog");
@@ -45,6 +55,14 @@ export function BacklogView() {
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
   const filtering = selected.size > 0;
   const visibleTasks = useMemo(() => filterTasksByChannels(tasks, selected), [tasks, selected]);
+  const groups = useMemo(
+    () =>
+      PRIORITY_GROUPS.map((priority) => ({
+        priority,
+        tasks: visibleTasks.filter((task) => priorityOf(task) === priority),
+      })).filter((g) => g.tasks.length > 0),
+    [visibleTasks],
+  );
   const channelsById = channelLookupQ.data ?? EMPTY_CHANNEL_MAP;
 
   const estimatedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
@@ -58,45 +76,70 @@ export function BacklogView() {
     addFromComposer(input, tasks);
   }
 
+  const big = (chunks: ReactNode) => (
+    <span className="font-display text-[28px] leading-8 font-bold tabular-nums text-fg">
+      {chunks}
+    </span>
+  );
+
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
-      <header className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-primary-soft text-primary">
-          <Inbox className="h-5 w-5" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight text-fg md:text-3xl">{t("title")}</h1>
-          {/* Real numbers, not "N tareas": what's here, how long it'd take, and
-              how much of it you can't even weigh yet. */}
-          <p className="truncate text-sm text-muted">
-            {tasks.length > 0
-              ? [
-                  t("undated", { n: tasks.length }),
-                  estimatedMin > 0 && t("estimated", { time: formatMinutes(estimatedMin) }),
-                  unestimated.length > 0 && t("unestimated", { n: unestimated.length }),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              : t("subtitle")}
-          </p>
-        </div>
-        {unestimated.length > 0 && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="shrink-0"
-            onClick={() => setEstimating((v) => !v)}
-            aria-pressed={estimating}
-          >
-            {estimating ? t("doneEstimating") : t("estimateThem", { n: unestimated.length })}
-          </Button>
-        )}
+    <div className="flex max-w-[1000px] flex-col gap-4">
+      <header className="flex flex-col gap-0.5 px-2 pt-3">
+        <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight">
+          {t("title")}
+        </h1>
+        <p className="text-sm text-muted">{t("subtitle")}</p>
       </header>
+
+      {/* Real numbers, not "N tareas": what's here, how long it'd take, and how
+          much of it you can't even weigh yet. Hidden on an empty backlog, where
+          three zeros say less than the empty state does. */}
+      {tasks.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
+          <div className="flex flex-col gap-0.5 rounded-2xl bg-surface-2 px-[18px] py-4 text-xs text-muted">
+            {t.rich("statUndated", { n: tasks.length, big })}
+          </div>
+          <div className="flex flex-col gap-0.5 rounded-2xl bg-surface-2 px-[18px] py-4 text-xs text-muted">
+            {t.rich("statEstimated", { time: formatMinutes(estimatedMin), big })}
+          </div>
+          <div className="col-span-2 flex items-center gap-2.5 rounded-2xl bg-surface-2 py-3 pr-3 pl-[18px] sm:col-span-1">
+            <div className="flex flex-1 flex-col gap-0.5 text-xs text-muted">
+              {t.rich("statUnestimated", { n: unestimated.length, big })}
+            </div>
+            {(unestimated.length > 0 || estimating) && (
+              <button
+                onClick={() => setEstimating((v) => !v)}
+                aria-pressed={estimating}
+                className="h-[38px] shrink-0 cursor-pointer rounded-pill bg-surface px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+              >
+                {estimating ? t("doneEstimating") : t("estimateThem", { n: unestimated.length })}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* The honest question nobody asks themselves unprompted. It sits above
+          the list now: below it, a long backlog pushed it off every screen. */}
+      {stale.length > 0 && (
+        <section className="flex flex-wrap items-center gap-3 rounded-2xl bg-marker/25 px-[18px] py-3.5">
+          <span className="-rotate-2 rounded-[4px] bg-marker px-1.5 py-0.5 font-mono text-[11px] text-on-marker uppercase">
+            {t("staleChip", { days: STALE_DAYS })}
+          </span>
+          <p className="min-w-0 flex-[1_1_260px] text-[13px] text-fg">
+            {t.rich("staleNotice", {
+              n: stale.length,
+              b: (chunks) => <b className="font-semibold">{chunks}</b>,
+            })}
+          </p>
+        </section>
+      )}
 
       <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
       <CaptureSheet viewDate={null} channels={channelsQ.data ?? []} viewTasks={tasks} />
 
-      {/* The list is one well with the ideas as white rows on it. */}
+      <CategoryPills />
+
       {tasksQ.isLoading ? (
         <Well>
           <SkeletonList />
@@ -113,28 +156,90 @@ export function BacklogView() {
           />
         </Well>
       ) : (
-        <Well>
-          <ul className="flex flex-col gap-1.5">
-            {visibleTasks.map((task) => (
-              <BacklogRow
-                key={task.id}
-                task={task}
-                channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
-                today={today}
-                estimating={estimating}
-              />
-            ))}
-          </ul>
-        </Well>
+        groups.map(({ priority, tasks: inGroup }) => {
+          const label = tt(priorityLabelKey(priority));
+          return (
+            <section
+              key={priority ?? "none"}
+              aria-label={label}
+              className="flex flex-col gap-1.5 rounded-2xl bg-surface-2 p-2"
+            >
+              <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
+                <span
+                  className={cn("h-2 w-2 rounded-full", GROUP_DOT[priority ?? "none"])}
+                  aria-hidden
+                />
+                <h2 className="font-display text-sm font-semibold text-fg">{label}</h2>
+                <span className="font-mono text-[11px] text-muted tabular-nums">
+                  {inGroup.length}
+                </span>
+              </div>
+              <ul className="flex flex-col gap-1.5">
+                {inGroup.map((task) => (
+                  <BacklogRow
+                    key={task.id}
+                    task={task}
+                    channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
+                    today={today}
+                    estimating={estimating}
+                  />
+                ))}
+              </ul>
+            </section>
+          );
+        })
       )}
+    </div>
+  );
+}
 
-      {/* The honest question nobody asks themselves unprompted. */}
-      {stale.length > 0 && (
-        <section className="rounded-2xl bg-accent-soft p-4">
-          <p className="text-sm font-semibold text-fg">{t("staleWarning", { n: stale.length })}</p>
-          <p className="mt-1 text-xs text-muted">{t("staleAction")}</p>
-        </section>
-      )}
+/**
+ * The category pills above the list. Same shared filter as the sidebar (so the
+ * two stay in sync), drawn the way the canvas has it: the chosen one in ink.
+ * Not ChannelFilterBar, whose green chips read as status next to the wells.
+ */
+function CategoryPills() {
+  const t = useTranslations("backlog");
+  const tt = useTranslations("tasks");
+  const channels = useChannels().data ?? [];
+  const { selected, toggle, clear } = useChannelFilter();
+  if (channels.length === 0) return null;
+
+  const pill = (active: boolean) =>
+    cn(
+      "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-4 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+      active ? "bg-fg text-bg" : "bg-surface-2 text-fg hover:bg-border",
+    );
+
+  return (
+    <div
+      role="group"
+      aria-label={t("categoryFilter")}
+      className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <button
+        onClick={clear}
+        aria-pressed={selected.size === 0}
+        className={pill(selected.size === 0)}
+      >
+        <span className="h-[7px] w-[7px] rounded-[2px] bg-current" aria-hidden />
+        {tt("allCategories")}
+      </button>
+      {channels.map((c) => (
+        <button
+          key={c.id}
+          onClick={() => toggle(c.id)}
+          aria-pressed={selected.has(c.id)}
+          className={pill(selected.has(c.id))}
+        >
+          <span
+            className="h-[7px] w-[7px] rounded-[2px]"
+            style={{ backgroundColor: c.color }}
+            aria-hidden
+          />
+          {c.name}
+        </button>
+      ))}
     </div>
   );
 }
@@ -221,61 +326,80 @@ function BacklogRow({
     update.mutate({ task, patch: { time_estimate_min: next } });
   }
 
+  const estimatePill = (className: string) => (
+    <button
+      onClick={cycleEstimate}
+      aria-label={tt("estimate")}
+      className={cn(
+        "shrink-0 cursor-pointer rounded-pill px-2 font-mono tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+        task.time_estimate_min
+          ? "bg-bg text-muted hover:bg-border"
+          : "bg-accent-soft text-accent hover:bg-accent-soft/70",
+        className,
+      )}
+    >
+      {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : t("noEstimate")}
+    </button>
+  );
+
   return (
     <li
       className={cn(
-        "relative flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2 pr-2 pl-3.5 shadow-soft transition-shadow",
+        "flex items-center gap-2.5 rounded-[16px] bg-surface py-2 pr-2 pl-3.5 shadow-soft transition-shadow",
         // While estimating, the rows still missing a number are the ones to
-        // look at — everything else steps back.
+        // look at; everything else steps back.
         estimating && task.time_estimate_min == null && "ring-2 ring-primary ring-inset",
       )}
     >
-      <span
-        className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
-        style={channel ? { background: channel.color } : undefined}
-        aria-hidden
-      />
-      <button
-        onClick={() => openDetail(task)}
-        className="min-w-0 flex-1 cursor-pointer rounded text-left focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-      >
-        <span className="block truncate text-sm font-medium text-fg">{task.title}</span>
-        <span className="block truncate text-2xs text-muted">
-          {channel ? `#${channel.name} · ` : ""}
-          {labels.ageLabel(task.created_at, today)}
+      {/* The title is the button; its ::after stretches over the whole text
+          column so the meta line opens the task too, while the phone's
+          estimate pill (raised above it) keeps its own click. */}
+      <div className="relative flex min-w-0 flex-1 flex-col gap-px">
+        <button
+          onClick={() => openDetail(task)}
+          className="cursor-pointer truncate rounded text-left text-[13px] font-semibold text-fg after:absolute after:inset-0 after:rounded after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-focus"
+        >
+          {task.title}
+        </button>
+        <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
+          <span
+            className={cn("h-1.5 w-1.5 shrink-0 rounded-[2px]", !channel && "bg-border-strong")}
+            style={channel ? { backgroundColor: channel.color } : undefined}
+            aria-hidden
+          />
+          <span className="truncate">
+            {channel
+              ? t("rowMeta", {
+                  category: channel.name,
+                  age: labels.ageLabel(task.created_at, today),
+                })
+              : labels.ageLabel(task.created_at, today)}
+          </span>
+          {/* On the phone the pill moves down here: beside the buttons it
+              squeezed titles to a word or two. */}
+          {estimatePill("relative z-10 py-px text-[10px] sm:hidden")}
         </span>
-      </button>
-
-      <button
-        onClick={cycleEstimate}
-        aria-label={tt("estimate")}
-        className={cn(
-          "shrink-0 cursor-pointer rounded-pill px-2 py-0.5 text-2xs font-semibold tabular-nums transition-colors",
-          task.time_estimate_min
-            ? "bg-surface-2 text-muted hover:bg-border"
-            : "border border-dashed border-border-strong text-subtle hover:text-muted",
-        )}
-      >
-        {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : tt("addTime")}
-      </button>
-
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          onClick={() => schedule(today, tcm("todayLower"))}
-          className="h-7 cursor-pointer rounded-pill bg-primary-soft px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-        >
-          {td("plusToday")}
-        </button>
-        <button
-          onClick={() => schedule(addDays(today, 1), tcm("tomorrowLower"))}
-          aria-label={t("moveToTomorrow")}
-          title={t("moveToTomorrow")}
-          className="flex h-7 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-2.5 text-xs font-semibold text-fg transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-        >
-          <CalendarClock className="h-3 w-3" aria-hidden />
-          {tcm("tomorrow")}
-        </button>
       </div>
+
+      {estimatePill("hidden py-[3px] text-[11px] sm:inline-block")}
+
+      {/* "Hoy" isn't on the canvas, but pulling an idea into today is the
+          other half of what the backlog is for. It stays, quieter than the
+          tomorrow pill: text only until hovered. */}
+      <button
+        onClick={() => schedule(today, tcm("todayLower"))}
+        className="h-8 shrink-0 cursor-pointer rounded-pill px-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary-soft focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none sm:px-2.5"
+      >
+        {td("plusToday")}
+      </button>
+      <button
+        onClick={() => schedule(addDays(today, 1), tcm("tomorrowLower"))}
+        aria-label={t("moveToTomorrow")}
+        className="h-8 shrink-0 cursor-pointer rounded-pill bg-surface-2 px-2.5 text-xs font-semibold text-fg transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+      >
+        <span className="hidden sm:inline">{t("moveToTomorrow")}</span>
+        <span className="sm:hidden">{tcm("tomorrow")}</span>
+      </button>
     </li>
   );
 }
