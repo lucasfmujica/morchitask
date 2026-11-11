@@ -33,7 +33,13 @@ import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekRange } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
-import { parsePriorityDropId, resolveTaskDrop, type PriorityDropTarget } from "@/lib/priority";
+import {
+  parsePriorityDropId,
+  priorityRows,
+  resolveTaskDrop,
+  type PriorityDropTarget,
+} from "@/lib/priority";
+import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { orderTasksForDisplay } from "@/lib/week-filter";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { useCoarsePointer } from "@/lib/use-coarse-pointer";
@@ -441,15 +447,28 @@ function DayColumn({
               {/* Columns are narrow, so separators stay compact and only appear
                   when the day actually mixes priorities (or while dragging, so
                   an empty group still has somewhere to drop). */}
-              {tasks.map((task) => (
-                <WeekCard
-                  key={task.id}
-                  task={task}
-                  channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
-                  owner={profilesById.get(task.owner_id)}
-                  subtasks={subsMap.get(task.id) ?? []}
-                />
-              ))}
+              {priorityRows(tasks, { includeEmpty: dragging }).map((row) =>
+                row.kind === "header" ? (
+                  <PriorityGroupHeader
+                    key={`prio-${row.priority ?? "none"}`}
+                    scope={date}
+                    priority={row.priority}
+                    count={row.empty ? undefined : row.count}
+                    empty={row.empty}
+                    compact
+                  />
+                ) : (
+                  <WeekCard
+                    key={row.task.id}
+                    task={row.task}
+                    channel={
+                      row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined
+                    }
+                    owner={profilesById.get(row.task.owner_id)}
+                    subtasks={subsMap.get(row.task.id) ?? []}
+                  />
+                ),
+              )}
             </SortableContext>
 
             {/* A day that hasn't loaded is NOT an empty day. Without this branch

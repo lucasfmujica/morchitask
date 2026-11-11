@@ -22,7 +22,8 @@
     "new": "Nueva",
     "brand": "Morchitask",
     "you": "Vos",
-    "time": "Hora"
+    "time": "Hora",
+    "loading": "Cargando"
   },
   "nav": {
     "today": "Hoy",
@@ -292,7 +293,6 @@
     "dragHint": "Arrastrá a la agenda",
     "agendaTitle": "Agenda",
     "agendaRange": "{from} a {to}",
-    "brokeDay": "Se me rompió el día",
     "viewDay": "Día",
     "viewSwitch": "Cambiar de vista"
   },

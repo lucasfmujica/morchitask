@@ -48,16 +48,30 @@ type NavItem = {
 };
 
 // Grouped like Sunsama: planning views, then tools.
-const PLAN_NAV: NavItem[] = [
-  {
-    href: "/today",
-    labelKey: "today",
-    icon: CalendarCheck,
-    match: (p) => p === "/today" || p.startsWith("/day"),
-  },
-  { href: "/week", labelKey: "week", icon: CalendarRange, match: (p) => p.startsWith("/week") },
-  { href: "/month", labelKey: "month", icon: CalendarDays, match: (p) => p.startsWith("/month") },
-];
+// Semana and Mes link to the dated route directly: the bare /week and /month
+// only redirect there, which cost a second server round trip on every click.
+function planNav(today: string): NavItem[] {
+  return [
+    {
+      href: "/today",
+      labelKey: "today",
+      icon: CalendarCheck,
+      match: (p) => p === "/today" || p.startsWith("/day"),
+    },
+    {
+      href: `/week/${today}`,
+      labelKey: "week",
+      icon: CalendarRange,
+      match: (p) => p.startsWith("/week"),
+    },
+    {
+      href: `/month/${today}`,
+      labelKey: "month",
+      icon: CalendarDays,
+      match: (p) => p.startsWith("/month"),
+    },
+  ];
+}
 const TOOL_NAV: NavItem[] = [
   { href: "/focus", labelKey: "focus", icon: Timer, match: (p) => p.startsWith("/focus") },
   { href: "/backlog", labelKey: "backlog", icon: Inbox, match: (p) => p.startsWith("/backlog") },
@@ -78,16 +92,17 @@ const TOOL_NAV: NavItem[] = [
 
 /** The desktop sidebar, in the canvas order. Planificar carries today's date. */
 function sidebarNav(today: string): NavItem[] {
+  const plan = planNav(today);
   return [
-    PLAN_NAV[0], // Hoy
+    plan[0], // Hoy
     {
       href: `/plan/${today}`,
       labelKey: "plan",
       icon: Sun,
       match: (p) => p.startsWith("/plan"),
     },
-    PLAN_NAV[1], // Semana
-    PLAN_NAV[2], // Mes
+    plan[1], // Semana
+    plan[2], // Mes
     TOOL_NAV[0], // Foco
     TOOL_NAV[1], // Backlog
     TOOL_NAV[3], // Metas
@@ -111,9 +126,10 @@ function sidebarNav(today: string): NavItem[] {
  * "Cerrar" is a route with today's date in it, so it's built per render.
  */
 function bottomNav(today: string): NavItem[] {
+  const plan = planNav(today);
   return [
-    PLAN_NAV[0], // Hoy
-    PLAN_NAV[1], // Semana
+    plan[0], // Hoy
+    plan[1], // Semana
     TOOL_NAV[1], // Backlog
     TOOL_NAV[3], // Metas
     {
