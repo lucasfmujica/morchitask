@@ -28,6 +28,7 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { CompactTaskRow } from "@/components/tasks/compact-task-row";
 import { TimePicker } from "@/components/ui/time-picker";
+import { ReplanPanel } from "./replan-panel";
 import {
   blockEndMin,
   blockStartMin,
@@ -78,7 +79,8 @@ export function AgendaView({
 }) {
   const td = useTranslations("day");
   const me = useMe().data;
-  const { scheduleNewBlock, resizeBlock, removeBlock, connected } = useAgendaScheduling(date);
+  const { scheduleNewBlock, moveBlock, resizeBlock, removeBlock, connected } =
+    useAgendaScheduling(date);
   const calendarQ = useCalendarEvents(date, connected);
   // Hide events we created from our own blocks — they're already drawn as
   // planned blocks, so this avoids showing each synced session twice.
@@ -112,13 +114,10 @@ export function AgendaView({
     [tasks, blocksByTask],
   );
 
-  // Everything that occupies the day, blocks and calendar events alike — the
-  // openings have to account for both or "hueco de 1h" is a lie.
-  const busy: BusyRange[] = useMemo(() => {
-    const ranges: BusyRange[] = scheduled.map(({ block }) => ({
-      startMin: blockStartMin(block),
-      endMin: blockEndMin(block),
-    }));
+  // Calendar events with a time, as busy ranges. Replanning packs around these
+  // and nothing else from Google: they're the walls you can't move from here.
+  const eventBusy: BusyRange[] = useMemo(() => {
+    const ranges: BusyRange[] = [];
     for (const e of events) {
       if (e.allDay || !e.start) continue;
       const startMin = minutesFromMidnight(e.start, TZ);
@@ -128,7 +127,20 @@ export function AgendaView({
       });
     }
     return ranges;
-  }, [scheduled, events]);
+  }, [events]);
+
+  // Everything that occupies the day, blocks and calendar events alike — the
+  // openings have to account for both or "hueco de 1h" is a lie.
+  const busy: BusyRange[] = useMemo(
+    () => [
+      ...scheduled.map(({ block }) => ({
+        startMin: blockStartMin(block),
+        endMin: blockEndMin(block),
+      })),
+      ...eventBusy,
+    ],
+    [scheduled, eventBusy],
+  );
 
   const openings = useMemo(() => freeSlots(busy, DAY_START_MIN, DAY_END_MIN, 30), [busy]);
 
@@ -221,6 +233,20 @@ export function AgendaView({
           {td("autoSchedule")}
         </button>
       </div>
+
+      {hydrated && isToday && (
+        <ReplanPanel
+          date={date}
+          tasks={tasks}
+          blocksByTask={blocksByTask}
+          calendarBusy={eventBusy}
+          nowMin={nowMin}
+          endMin={targetMin}
+          meId={me?.id}
+          moveBlock={moveBlock}
+          scheduleNewBlock={scheduleNewBlock}
+        />
+      )}
 
       {/* On desktop the full task list on the left is the drag source, so this
           compact list is only needed on mobile (where list + agenda are tabs). */}
