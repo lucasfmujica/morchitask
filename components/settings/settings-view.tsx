@@ -19,6 +19,7 @@ import { ThemeSelector } from "./theme-selector";
 import { ChannelsManager } from "./channels-manager";
 import { InviteCard } from "./invite-card";
 import { NotificationsCard } from "./notifications-card";
+import { InboundEmailCard } from "./inbound-email-card";
 import { LanguageSelector } from "./language-selector";
 import { DangerZone } from "./danger-zone";
 import Link from "next/link";
@@ -253,6 +254,9 @@ export function SettingsView() {
       <Section title={t("notifications")}>
         <NotificationsCard />
       </Section>
+
+      {/* Renders nothing until capture by email is configured on the server. */}
+      <InboundEmailCard />
 
       {/* Plan and billing live on their own page — this is the way in. Not a
           card with the price on it: that number belongs in one place, and

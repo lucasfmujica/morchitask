@@ -548,7 +548,11 @@
     "billing": "Plan",
     "billingTitle": "Plan and billing",
     "billingDesc": "Your subscription, card and invoices.",
-    "avatarEmpty": "The image is empty."
+    "avatarEmpty": "The image is empty.",
+    "inboundTitle": "Email your backlog",
+    "inboundDesc": "Forward any email to this address and it shows up as a task in your backlog. It's yours alone: don't share it.",
+    "inboundCopy": "Copy",
+    "inboundCopied": "Copied"
   },
   "goals": {
     "title": "Goals",

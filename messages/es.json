@@ -548,7 +548,11 @@
     "billing": "Plan",
     "billingTitle": "Plan y pago",
     "billingDesc": "Tu suscripción, la tarjeta y las facturas.",
-    "avatarEmpty": "La imagen está vacía."
+    "avatarEmpty": "La imagen está vacía.",
+    "inboundTitle": "Mandá mails a tu backlog",
+    "inboundDesc": "Reenviá cualquier mail a esta dirección y aparece como tarea en tu backlog. Es solo tuya: no la compartas.",
+    "inboundCopy": "Copiar",
+    "inboundCopied": "Copiada"
   },
   "goals": {
     "title": "Metas",

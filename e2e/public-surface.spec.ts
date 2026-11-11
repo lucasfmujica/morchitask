@@ -212,3 +212,23 @@ test.describe("the payment webhook", () => {
     expect(response.ok()).toBe(false);
   });
 });
+
+test.describe("the inbound email webhook", () => {
+  /**
+   * Writes tasks into someone's backlog from outside, so it gets the payment
+   * webhook's treatment: reachable without a session (a mail relay is not a
+   * browser) and refusing anything without the shared secret.
+   */
+  test("is reachable without a session, and refuses an unauthenticated delivery", async ({
+    request,
+  }) => {
+    const response = await request.post("/api/webhooks/inbound-email", {
+      data: { to: "backlog+00000000000000000000000000000000.000000000000@x.test", text: "hola" },
+      failOnStatusCode: false,
+      maxRedirects: 0,
+    });
+    expect(response.status()).not.toBe(307);
+    // 503 without configuration, 403 with it and no secret. Never 2xx.
+    expect([403, 503]).toContain(response.status());
+  });
+});
