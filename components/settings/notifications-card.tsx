@@ -12,7 +12,7 @@ export function NotificationsCard() {
     usePushNotifications();
 
   return (
-    <div className="flex flex-col divide-y divide-border rounded-xl border border-border bg-surface">
+    <div className="flex flex-col divide-y divide-border rounded-xl bg-surface px-3.5 shadow-soft">
       <Row
         icon={<Bell className="h-5 w-5" aria-hidden />}
         title={t("dailyReminder")}
@@ -54,12 +54,12 @@ function Row({
 }) {
   const t = useTranslations("settings");
   return (
-    <div className="flex items-center gap-3 p-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+    <div className="flex items-center gap-3 py-3.5">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary [&>svg]:h-[18px] [&>svg]:w-[18px]">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-fg">{title}</p>
+        <p className="text-sm font-semibold text-fg">{title}</p>
         <p className="text-xs text-muted">{desc}</p>
       </div>
       <button
@@ -67,18 +67,20 @@ function Row({
         disabled={disabled}
         aria-pressed={on}
         aria-label={on ? t("turnOff", { what: label }) : t("turnOn", { what: label })}
-        className="shrink-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+        className="shrink-0 cursor-pointer rounded-pill outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span
           className={cn(
-            "relative block h-6 w-11 rounded-full transition-colors",
-            on ? "bg-primary" : "bg-surface-2",
+            "relative block h-[26px] w-11 rounded-pill transition-colors duration-300",
+            on ? "bg-fit" : "bg-border",
           )}
         >
           <span
             className={cn(
-              "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-surface shadow-soft transition-transform",
-              on && "translate-x-5",
+              // A fixed white knob, not bg-surface: in dark mode the surface is dark
+              // and the knob would vanish into the off track.
+              "absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-on-scrim shadow-card transition-transform duration-300 ease-out",
+              on && "translate-x-[18px]",
             )}
           />
         </span>

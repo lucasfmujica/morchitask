@@ -31,13 +31,13 @@ export function InviteCard() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+    <div className="flex flex-col gap-3 rounded-xl bg-surface p-3.5 shadow-soft">
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-          <Mail className="h-5 w-5" aria-hidden />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <Mail className="h-[18px] w-[18px]" aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-fg">{t("inviteTitle")}</p>
+          <p className="text-sm font-semibold text-fg">{t("inviteTitle")}</p>
           <p className="text-xs text-muted">{t("inviteDesc")}</p>
         </div>
       </div>
@@ -57,12 +57,12 @@ export function InviteCard() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t("inviteEmailPlaceholder")}
             aria-label={t("inviteEmailLabel")}
-            className="min-w-0 flex-1 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-subtle focus:border-primary focus:outline-none"
+            className="h-10 min-w-0 flex-1 rounded-pill bg-surface-2 px-4 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
           />
           <button
             type="submit"
             disabled={invite.isPending || !email.trim()}
-            className="shrink-0 cursor-pointer rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-10 shrink-0 cursor-pointer rounded-pill bg-fg px-4 text-sm font-semibold text-bg transition-colors hover:bg-fg/85 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {invite.isPending ? t("inviteSending") : t("inviteSend")}
           </button>
@@ -78,7 +78,7 @@ export function InviteCard() {
       {full && invites.length === 0 && <p className="text-xs text-muted">{t("inviteFull")}</p>}
 
       {invites.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col divide-y divide-border rounded-lg bg-surface-2 px-1">
           {invites.map((i) => (
             <li key={i.id} className="flex items-center gap-2 p-2.5">
               <div className="min-w-0 flex-1">
@@ -95,14 +95,14 @@ export function InviteCard() {
               <button
                 onClick={() => copyLink(i.token)}
                 aria-label={t("inviteCopy", { email: i.email })}
-                className="shrink-0 cursor-pointer rounded-lg p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                className="shrink-0 cursor-pointer rounded-full p-2 text-muted transition-colors hover:bg-surface hover:text-fg"
               >
                 {copied === i.token ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </button>
               <button
                 onClick={() => revoke.mutate(i.id)}
                 aria-label={t("inviteRevoke", { email: i.email })}
-                className="shrink-0 cursor-pointer rounded-lg p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                className="shrink-0 cursor-pointer rounded-full p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
               >
                 <X className="h-4 w-4" />
               </button>

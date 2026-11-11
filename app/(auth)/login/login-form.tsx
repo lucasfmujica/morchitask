@@ -35,18 +35,24 @@ export function LoginForm() {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* The main action is an ink pill like every other one in the app. The
+          G gets a white disc so Google's red still reads on the dark pill. */}
       <Button
         size="lg"
-        variant="secondary"
         onClick={signInWithGoogle}
         disabled={loading}
-        className="w-full border border-border bg-surface"
+        className="h-14 w-full pr-7 pl-2.5 text-[15px] shadow-card"
       >
-        <GoogleIcon />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-on-scrim">
+          <GoogleIcon />
+        </span>
+        <span className="flex-1 text-center">
+          {loading ? t("connecting") : t("continueWithGoogle")}
+        </span>
         {loading ? t("connecting") : t("continueWithGoogle")}
       </Button>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-center text-sm text-danger">
           {error}
         </p>
       )}

@@ -26,7 +26,9 @@ export function ThemeSelector() {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    // Segmented pill: the track is a step darker than the well it sits in, so
+    // the white selected option reads as lifted out of it.
+    <div className="grid grid-cols-3 gap-0.5 rounded-pill bg-border p-1">
       {OPTIONS.map(({ value, labelKey, icon: Icon }) => {
         const active = hydrated && theme === value;
         return (
@@ -35,14 +37,12 @@ export function ThemeSelector() {
             onClick={() => choose(value)}
             aria-pressed={active}
             className={cn(
-              "flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border p-3 text-sm font-medium transition-colors",
-              active
-                ? "border-primary bg-primary-soft text-primary"
-                : "border-border text-muted hover:bg-surface-2 hover:text-fg",
+              "flex h-10 min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-pill px-2 text-sm font-semibold transition-colors duration-200",
+              active ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
             )}
           >
-            <Icon className="h-5 w-5" aria-hidden />
-            {tr(labelKey)}
+            <Icon className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">{tr(labelKey)}</span>
           </button>
         );
       })}

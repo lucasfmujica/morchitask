@@ -1,11 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowRight, Check, CreditCard, Gift, TriangleAlert } from "lucide-react";
+import { ArrowRight, Check, Clock, CreditCard, Gift, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { openBillingPortal, startCheckout } from "@/lib/actions/billing";
 import type { getBillingState } from "@/lib/actions/billing";
-import { formatUsd, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, YEARLY_SAVING_PCT } from "@/lib/pricing";
+import {
+  formatUsd,
+  PRICE_MONTHLY_USD,
+  PRICE_YEARLY_USD,
+  TRIAL_DAYS,
+  YEARLY_SAVING_PCT,
+} from "@/lib/pricing";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { cn } from "@/lib/utils";
 
@@ -42,8 +48,10 @@ export function BillingView({ state }: { state: State }) {
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+    <div className="flex max-w-2xl flex-col gap-4">
+      <h1 className="px-1 pt-1 text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+        {t("title")}
+      </h1>
 
       <StatusCard
         state={state}
@@ -55,8 +63,8 @@ export function BillingView({ state }: { state: State }) {
       {/* Nothing to sell to someone who is comped, and nothing to sell at all
           until the payment provider is configured. */}
       {!comped && state.enabled && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-subtle">
+        <section className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-2">
+          <h2 className="px-3 pt-2 pb-0.5 text-base font-semibold text-fg">
             {subscribed ? t("manageTitle") : t("choosePlan")}
           </h2>
 
@@ -64,13 +72,13 @@ export function BillingView({ state }: { state: State }) {
             <button
               onClick={() => go(() => openBillingPortal())}
               disabled={pending}
-              className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-60"
+              className="m-1 inline-flex h-10 w-fit cursor-pointer items-center gap-2 rounded-pill bg-fg px-4 text-sm font-semibold text-bg transition-colors hover:bg-fg/85 disabled:opacity-60"
             >
               <CreditCard className="h-4 w-4" aria-hidden />
               {t("managePlan")}
             </button>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               <PlanCard
                 name={t("monthly")}
                 price={formatUsd(PRICE_MONTHLY_USD)}
@@ -92,11 +100,11 @@ export function BillingView({ state }: { state: State }) {
             </div>
           )}
 
-          {error && <p className="text-sm text-danger">{t("checkoutFailed")}</p>}
+          {error && <p className="px-3 pb-1.5 text-sm text-danger">{t("checkoutFailed")}</p>}
         </section>
       )}
 
-      {!state.enabled && <p className="text-sm text-muted">{t("notConfigured")}</p>}
+      {!state.enabled && <p className="px-1 text-sm text-muted">{t("notConfigured")}</p>}
     </div>
   );
 }
@@ -150,12 +158,12 @@ function StatusCard({
 
   if (access.allowed && access.source === "trial") {
     return (
-      <Card tone="ok" icon={<Check className="h-5 w-5" aria-hidden />}>
-        <p className="text-sm font-medium text-fg">
-          {t("trialLeft", { n: access.trialDaysLeft ?? 0 })}
-        </p>
-        <p className="text-xs text-muted">{t("trialBody")}</p>
-      </Card>
+      <TrialCard
+        daysLeft={access.trialDaysLeft ?? 0}
+        title={t("trialLeft", { n: access.trialDaysLeft ?? 0 })}
+      >
+        {t("trialBody")}
+      </TrialCard>
     );
   }
 
@@ -166,6 +174,39 @@ function StatusCard({
           stops is exactly when someone needs to know the data is still theirs. */}
       <p className="text-xs text-muted">{t("lockedBody")}</p>
     </Card>
+  );
+}
+
+/** The trial as the page's dark hero card, with what is left of it as a green
+ *  bar: the same "still fits" green the day view uses for its capacity. */
+function TrialCard({
+  daysLeft,
+  title,
+  children,
+}: {
+  daysLeft: number;
+  title: string;
+  children: React.ReactNode;
+}) {
+  const left = Math.max(0, Math.min(1, daysLeft / TRIAL_DAYS));
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl bg-fg p-5 text-bg">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg/15">
+          <Clock className="h-[18px] w-[18px]" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-lg font-semibold">{title}</p>
+          <p className="text-xs text-bg/70">{children}</p>
+        </div>
+      </div>
+      <div className="h-2 overflow-hidden rounded-pill bg-bg/15" aria-hidden>
+        <div
+          className="h-full rounded-pill bg-fit transition-[width] duration-700 ease-out"
+          style={{ width: `${left * 100}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -181,13 +222,13 @@ function Card({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 rounded-xl border bg-surface p-4",
-        tone === "warn" ? "border-warning/40" : "border-border",
+        "flex items-start gap-3 rounded-2xl bg-surface p-4 shadow-soft",
+        tone === "warn" && "ring-[1.5px] ring-warning/50 ring-inset",
       )}
     >
       <span
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
           tone === "warn" ? "bg-warning/10 text-warning" : "bg-primary-soft text-primary",
         )}
       >
@@ -220,14 +261,16 @@ function PlanCard({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-2xl bg-surface p-5 ring-1",
-        highlight ? "ring-primary/40" : "ring-border",
+        // The suggested plan wears the primary ring, the "selected" mark used
+        // across the app; the other stays a plain white card in the well.
+        "flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-soft transition-shadow",
+        highlight && "ring-2 ring-primary",
       )}
     >
       <div>
         <p className="text-sm font-semibold text-muted">{name}</p>
         <p className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-3xl font-extrabold tracking-tight tabular-nums text-fg">
+          <span className="font-display text-3xl font-bold tracking-tight tabular-nums text-fg">
             {price}
           </span>
           <span className="text-sm text-muted">{per}</span>
@@ -237,7 +280,10 @@ function PlanCard({
       <button
         onClick={onPick}
         disabled={disabled}
-        className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-60"
+        className={cn(
+          "mt-auto inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-pill px-4 text-sm font-semibold transition-colors disabled:opacity-60",
+          highlight ? "bg-fg text-bg hover:bg-fg/85" : "bg-surface-2 text-fg hover:bg-border",
+        )}
       >
         {cta}
         <ArrowRight className="h-4 w-4" aria-hidden />
