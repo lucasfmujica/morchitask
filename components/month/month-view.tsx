@@ -5,13 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { tasksInRangeQueryOptions, type AnalyticsTask } from "@/lib/queries/tasks";
+import {
+  tasksInRangeQueryOptions,
+  useWorkedInRange,
+  type AnalyticsTask,
+} from "@/lib/queries/tasks";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useMe } from "@/lib/queries/profiles";
 import type { Channel } from "@/lib/queries/types";
 import { addMonths, monthGrid, monthOf, todayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { capacityState, resolveCapacity } from "@/lib/capacity";
+import { canHaveWorked, resolveWorkGoal, workedState } from "@/lib/worked";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui";
 import { useDateLabels } from "@/lib/use-date-labels";
@@ -21,7 +26,7 @@ import { useTranslations } from "next-intl";
 const arrow =
   "flex h-9 w-9 cursor-pointer items-center justify-center rounded-pill text-fg transition-colors hover:bg-surface";
 
-/** What one day of the grid carries: its load and the tasks to name. */
+/** What one day of the grid carries: its plan and the tasks to name. */
 type DaySummary = {
   total: number;
   plannedMin: number;
@@ -49,6 +54,10 @@ export function MonthView({ date }: { date: string }) {
   const channelsById = useChannelLookup().data ?? EMPTY_CHANNEL_MAP;
   const me = useMe().data;
   const capacity = resolveCapacity(null, me?.capacity_target_min);
+  // The cell bars draw what I worked (tracked time, per day), not what was
+  // planned; the plan only speaks for days that haven't happened yet.
+  const worked = useWorkedInRange(gridStart, gridEnd).data;
+  const workGoal = resolveWorkGoal();
   const noCategory = tt("noCategory");
 
   const byDay = useMemo(
@@ -61,8 +70,9 @@ export function MonthView({ date }: { date: string }) {
   const [selected, setSelected] = useState(() => (isThisMonth ? today : `${targetMonth}-01`));
   const sel = monthOf(selected) === targetMonth ? selected : `${targetMonth}-01`;
   const selSummary = byDay.get(sel);
-  const selState = capacityState(selSummary?.plannedMin ?? 0, capacity);
+  const selPlan = capacityState(selSummary?.plannedMin ?? 0, capacity);
   const selIsPast = sel < today;
+  const selWorked = canHaveWorked(sel, today);
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -71,10 +81,15 @@ export function MonthView({ date }: { date: string }) {
         style={{ animationDelay: "60ms", animationDuration: "0.6s" }}
       >
         <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-          <span className="text-[11px] font-semibold tracking-[0.06em] text-muted uppercase">
+          {/* The canvas sets every line here at the font's own `normal` height,
+              not Tailwind's 1.5: with 1.5 the header, the weekday row and each
+              chip line grew a few px apiece and the grid came out ~50px taller. */}
+          <span className="text-[11px] leading-[normal] font-semibold tracking-[0.06em] text-muted uppercase">
             {tnav("month")}
           </span>
-          <h1 className="m-0 truncate font-display text-[32px] font-bold tracking-[-0.02em]">
+          {/* `!` because the global h1 rule (unlayered) otherwise beats the
+              utility and halves the canvas's -0.02em to -0.01em. */}
+          <h1 className="m-0 truncate font-display text-[32px] leading-[normal] font-bold tracking-[-0.02em]!">
             {labels.monthLabel(date)}
           </h1>
         </div>
@@ -119,7 +134,7 @@ export function MonthView({ date }: { date: string }) {
           {labels.weekdayHeaders().map((w) => (
             <div
               key={w}
-              className="text-center text-[11px] font-semibold tracking-[0.06em] text-muted uppercase sm:pl-2.5 sm:text-left"
+              className="text-center text-[11px] leading-[normal] font-semibold tracking-[0.06em] text-muted uppercase sm:pl-2.5 sm:text-left"
             >
               {w}
             </div>
@@ -151,7 +166,8 @@ export function MonthView({ date }: { date: string }) {
                 isPast={d < today}
                 selected={d === sel}
                 summary={byDay.get(d)}
-                capacity={capacity}
+                workedMin={canHaveWorked(d, today) ? (worked?.get(d) ?? 0) : 0}
+                goalMin={workGoal}
                 onSelect={() => setSelected(d)}
               />
             );
@@ -168,18 +184,19 @@ export function MonthView({ date }: { date: string }) {
       >
         <span className="mr-auto text-sm font-semibold text-fg">{labels.fullDayLabel(sel)}</span>
         <span className="text-xs text-muted tabular-nums">
-          {!selSummary || selSummary.plannedMin === 0
-            ? t("noLoad")
-            : selState.over
-              ? t("loadOver", {
-                  planned: formatMinutes(selSummary.plannedMin),
-                  target: formatMinutes(capacity),
-                  over: formatMinutes(selState.overByMin),
-                })
-              : t("load", {
-                  planned: formatMinutes(selSummary.plannedMin),
-                  target: formatMinutes(capacity),
-                })}
+          {selWorked
+            ? t("workedDay", {
+                worked: formatMinutes(worked?.get(sel) ?? 0),
+                goal: formatMinutes(workGoal),
+              })
+            : !selSummary || selSummary.plannedMin === 0
+              ? t("noLoad")
+              : selPlan.over
+                ? t("plannedDayOver", {
+                    planned: formatMinutes(selSummary.plannedMin),
+                    over: formatMinutes(selPlan.overByMin),
+                  })
+                : t("plannedDay", { planned: formatMinutes(selSummary.plannedMin) })}
         </span>
         <div className="flex items-center gap-1">
           {!selIsPast && (
@@ -209,7 +226,8 @@ function DayCell({
   isPast,
   selected,
   summary,
-  capacity,
+  workedMin,
+  goalMin,
   onSelect,
 }: {
   day: string;
@@ -218,7 +236,9 @@ function DayCell({
   isPast: boolean;
   selected: boolean;
   summary?: DaySummary;
-  capacity: number;
+  /** 0 for future days: nothing can have been worked yet. */
+  workedMin: number;
+  goalMin: number;
   onSelect: () => void;
 }) {
   const t = useTranslations("month");
@@ -257,7 +277,7 @@ function DayCell({
         <span
           key={c.key}
           className={cn(
-            "hidden min-w-0 items-center gap-[5px] text-[11px] font-semibold sm:flex",
+            "hidden min-w-0 items-center gap-[5px] text-[11px] leading-[normal] font-semibold sm:flex",
             // A deadline that day wears the highlighter, as everywhere else.
             c.deadline ? "-rotate-1 rounded-[4px] bg-marker px-1 py-px text-on-marker" : "text-fg",
           )}
@@ -271,23 +291,23 @@ function DayCell({
         </span>
       ))}
       {extra > 0 && (
-        <span className="hidden text-[11px] text-muted sm:block">
+        <span className="hidden text-[11px] leading-[normal] text-muted sm:block">
           {t("moreCategories", { n: extra })}
         </span>
       )}
 
-      <LoadBar plannedMin={summary?.plannedMin ?? 0} capacity={capacity} />
+      <WorkedBar workedMin={workedMin} goalMin={goalMin} />
     </button>
   );
 }
 
 /**
- * The thin bar at the foot of each cell: how much of the day's capacity is
- * spoken for. Green while it fits; over budget it fills and turns hatched, so
- * the overload reads without relying on colour alone.
+ * The thin bar at the foot of each cell: how much of the day's work goal I put
+ * in. It used to draw planned load against capacity, with a hatched overrun;
+ * worked time past the goal is not an overload, so it just fills.
  */
-function LoadBar({ plannedMin, capacity }: { plannedMin: number; capacity: number }) {
-  const { pct, over } = capacityState(plannedMin, capacity);
+function WorkedBar({ workedMin, goalMin }: { workedMin: number; goalMin: number }) {
+  const { pct } = workedState(workedMin, goalMin);
   return (
     <span
       className="mt-auto block h-1 w-full shrink-0 overflow-hidden rounded-pill bg-surface-2"
@@ -301,9 +321,7 @@ function LoadBar({ plannedMin, capacity }: { plannedMin: number; capacity: numbe
           width: `${pct}%`,
           animationDuration: "1s",
           animationDelay: "0.5s",
-          background: over
-            ? "repeating-linear-gradient(45deg, var(--accent) 0 5px, color-mix(in srgb, var(--accent) 70%, var(--marker)) 5px 10px)"
-            : "linear-gradient(90deg, var(--fit-from), var(--primary))",
+          background: "linear-gradient(90deg, var(--fit-from), var(--primary))",
         }}
       />
     </span>
@@ -311,7 +329,7 @@ function LoadBar({ plannedMin, capacity }: { plannedMin: number; capacity: numbe
 }
 
 /**
- * Rows → one summary per day. Load counts only the viewer's own tasks
+ * Rows → one summary per day. Planned time counts only the viewer's own tasks
  * (capacity is personal); the task count keeps shared ones, as the old dots
  * did. Chips name the tasks, with that day's deadlines first.
  */

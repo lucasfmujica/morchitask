@@ -372,15 +372,20 @@ body {
 
 /* Headings speak in the display face; body stays in Figtree. Tabular numbers
    everywhere because this app is mostly durations and clocks. */
-h1,
-h2,
-h3 {
-  font-family: var(--font-schibsted), var(--font-figtree), ui-sans-serif, sans-serif;
-  letter-spacing: -0.01em;
-  /* Schibsted's tabular set also makes "," and "." figure-wide, which opened a
-     visible gap before punctuation in headings ("calma ,"). Headings are prose,
-     not clocks. */
-  font-variant-numeric: normal;
+/* In the base layer on purpose: unlayered, this rule beat Tailwind's
+   tracking-* utilities, so every heading's letter-spacing was stuck at
+   -0.01em whatever the canvas asked for. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-schibsted), var(--font-figtree), ui-sans-serif, sans-serif;
+    letter-spacing: -0.01em;
+    /* Schibsted's tabular set also makes "," and "." figure-wide, which opened a
+       visible gap before punctuation in headings ("calma ,"). Headings are prose,
+       not clocks. */
+    font-variant-numeric: normal;
+  }
 }
 
 /* Same punctuation gap as headings, for display-face text outside them (a

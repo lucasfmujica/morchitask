@@ -217,7 +217,6 @@
     "assignedByTitle": "Assigned to you by {name}"
   },
   "day": {
-    "capacity": "Today's capacity",
     "adjustCapacity": "Adjust today's capacity",
     "lowerCapacity": "Lower capacity",
     "raiseCapacity": "Raise capacity",
@@ -284,16 +283,12 @@
     "replanKeep": "Keep",
     "replanCancel": "Cancel",
     "replanDone": "{moved, plural, =0 {Nothing to move} =1 {Moved 1 block} other {Moved # blocks}}{parked, plural, =0 {.} =1 { and took 1 task off the day.} other { and took # tasks off the day.}}",
-    "planned": "Planned",
-    "plannedOf": "<big>{planned}</big> <small>of <goal>{target}</goal></small>",
     "tasksTitle": "Tasks",
     "dragHint": "Drag onto the agenda",
     "agendaTitle": "Agenda",
     "agendaRange": "{from} to {to}",
     "viewDay": "Day",
     "viewSwitch": "Switch view",
-    "fitsLeft": "It fits. {time} of breathing room",
-    "overByShort": "{over} over",
     "scheduledAtToast": "Scheduled at {time}",
     "worked": "Worked",
     "replanEyebrow": "Today · {time}",
@@ -311,7 +306,14 @@
     "replanTagNow": "Overlaps now",
     "replanTagDone": "Done",
     "replanTagCalendar": "Calendar",
-    "replanClose": "Close"
+    "replanClose": "Close",
+    "dayProgress": "Your day",
+    "workedOf": "<big>{worked}</big> <small>of {goal}</small>",
+    "workedOfGoal": "{worked} of {goal}",
+    "goalReached": "You reached {goal}",
+    "goalLeft": "{left} to go to reach {goal}",
+    "plannedLine": "Planned {planned} of <goal>{target}</goal>",
+    "plannedLineOver": "Planned {planned} of <goal>{target}</goal> · <warn>{over} over</warn>"
   },
   "backlog": {
     "title": "Backlog",
@@ -356,8 +358,6 @@
     "addTaskToDay": "Add a task to this day",
     "addTaskPlaceholder": "Add task…",
     "noLoad": "Nothing planned",
-    "closed": "{time} · closed",
-    "loadOf": "{planned} of {capacity}",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "thisWeek": "This week",
@@ -374,7 +374,10 @@
     },
     "dueTag": "Due",
     "dueOn": "Due {day}",
-    "loadOver": "{planned} of {capacity} · +{over}"
+    "workedOf": "{worked} of {goal}",
+    "workedClosed": "{worked} of {goal} · closed",
+    "plannedOnly": "Planned {planned}",
+    "plannedOver": "Planned {planned} · +{over}"
   },
   "month": {
     "thisMonth": "This month",
@@ -384,11 +387,12 @@
     "taskCount": "{n, plural, =1 {# task} other {# tasks}}",
     "cellLabel": "{day}: {n, plural, =0 {no tasks} =1 {# task} other {# tasks}}",
     "moreCategories": "+{n} more",
-    "load": "{planned} of {target}",
-    "loadOver": "{planned} of {target} · {over} over",
     "noLoad": "Nothing planned",
     "planThatDay": "Plan that day",
-    "openDay": "Open the day"
+    "openDay": "Open the day",
+    "workedDay": "You worked {worked} of {goal}",
+    "plannedDay": "Planned {planned}",
+    "plannedDayOver": "Planned {planned} · {over} over"
   },
   "plan": {
     "title": "Plan your day",

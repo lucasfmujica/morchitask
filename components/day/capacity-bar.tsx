@@ -12,6 +12,7 @@ import {
   clampCapacity,
   DEFAULT_CAPACITY_MIN,
 } from "@/lib/capacity";
+import { WORK_GOAL_MIN, workedState } from "@/lib/worked";
 import type { Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
@@ -20,33 +21,43 @@ import { useTranslations } from "next-intl";
 export { DEFAULT_CAPACITY_MIN };
 
 /**
- * The day's capacity, as the bento tile at the top of Hoy: the planned time as
- * a big number, the bar beside it.
+ * The day's tile at the top of Hoy: what you WORKED, against the 5h goal, with
+ * the plan underneath in small type.
  *
- * It replaces the old pair of thin bars (capacity + completion). The completion
- * count moved next to the list tabs, because the two answered different
- * questions and stacking them made both easy to ignore.
+ * It used to lead with planned time against the capacity budget. Only one of
+ * the two people who use this plans; the other mostly just works, so a bar fed
+ * by estimates said nothing about her day. Worked time has an answer every
+ * day, so it got the big number and the bar.
  *
- * What makes this one hard to ignore when it matters:
- *
- * - the bar SPLITS at the target — the overrun is drawn OUTSIDE the budget as
- *   a hatched stretch rather than a full bar that has simply turned red, so
- *   you can see how much too much it is;
- * - the diagnosis names a task and the button acts on it, so "you're over" has
- *   a next move instead of being a verdict;
- * - over-budget is never signalled by colour alone (there's a `+45m` chip and
- *   the sentence), which is what makes it readable without colour vision.
+ * - The bar fills to the goal and stops: past 5h it is simply full, in the
+ *   same mint, with "Llegaste a las 5h". Working more than the goal is not a
+ *   failure, so there is no red and no overrun stretch here any more.
+ * - Planning stays one line down, because it still matters to whoever plans:
+ *   the capacity target is still editable there, and an over-planned day
+ *   still names the task to move and offers the button. Over-planning is said
+ *   in words, never by colour alone.
  */
 export function CapacityBar({
   tasks = [],
+  workedMin,
+  goalMin = WORK_GOAL_MIN,
+  isToday = true,
+  isFuture = false,
   plannedMin,
   targetMin = DEFAULT_CAPACITY_MIN,
   onTargetChange,
   onMoveOverflow,
   className,
 }: {
-  /** The day's tasks — used to name the one worth moving. */
+  /** The day's tasks: the done count, and the one worth moving when over-planned. */
   tasks?: readonly Task[];
+  /** Minutes I tracked on this day (from the per-day entries). */
+  workedMin: number;
+  goalMin?: number;
+  /** Today gets "te faltan…"; a past day just shows what it was. */
+  isToday?: boolean;
+  /** A future day has no worked time yet: the bar stays empty and quiet. */
+  isFuture?: boolean;
   plannedMin: number;
   targetMin?: number;
   onTargetChange?: (min: number) => void;
@@ -55,41 +66,32 @@ export function CapacityBar({
   className?: string;
 }) {
   const t = useTranslations("day");
-  if (targetMin <= 0) return null;
-
-  const { pct, over, overByMin } = capacityState(plannedMin, targetMin);
+  const worked = isFuture ? 0 : workedMin;
+  const { pct, reached, leftMin } = workedState(worked, goalMin);
+  const { over, overByMin } = capacityState(plannedMin, targetMin);
   const suggestion = capacitySuggestion(tasks, plannedMin, targetMin);
-  // Where the budget ends, as a share of everything planned. Only meaningful
-  // while over — that's the only time the bar runs past the target.
-  const targetPct = over ? (targetMin / plannedMin) * 100 : 100;
-
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
-  // Time actually tracked on today's tasks (stopwatch, Foco or typed in).
-  // This used to show the ESTIMATE of the finished tasks next to "hechas",
-  // which read as worked time and wasn't: someone who tracked 1h25m saw the
-  // 1h40m they had guessed. Same source as Foco and the day close, so the
-  // three screens agree.
-  const workedMin = tasks.reduce((sum, t) => sum + (t.actual_time_min ?? 0), 0);
+  const goal = () =>
+    onTargetChange ? (
+      <CapacityTarget value={targetMin} onChange={onTargetChange} />
+    ) : (
+      <span>{formatMinutes(targetMin)}</span>
+    );
 
   return (
     <section
-      aria-label={t("capacity")}
+      aria-label={t("dayProgress")}
       className={cn("rounded-[28px] bg-surface-2 p-2", className)}
     >
       <div className="flex flex-wrap items-center gap-5 rounded-[22px] bg-surface px-5 py-[18px] shadow-tile">
-        {/* The number is the point: how much of the day is already spoken for. */}
+        {/* The number is the point: how much of the day you already put in. */}
         <div className="flex flex-col gap-0.5">
-          <span className="text-2xs text-muted">{t("planned")}</span>
-          <span
-            className={cn(
-              "flex items-baseline gap-1.5 whitespace-nowrap tabular-nums",
-              over && "text-accent",
-            )}
-          >
-            {t.rich("plannedOf", {
-              planned: formatMinutes(plannedMin),
-              target: formatMinutes(targetMin),
+          <span className="text-2xs text-muted">{t("worked")}</span>
+          <span className="flex items-baseline gap-1.5 whitespace-nowrap tabular-nums">
+            {t.rich("workedOf", {
+              worked: formatMinutes(worked),
+              goal: formatMinutes(goalMin),
               big: (chunks) => (
                 <span className="font-display text-[30px] leading-9 font-bold tracking-[-0.02em]">
                   {chunks}
@@ -98,62 +100,59 @@ export function CapacityBar({
               small: (chunks) => (
                 <span className="text-base font-semibold text-muted">{chunks}</span>
               ),
-              goal: () =>
-                onTargetChange ? (
-                  <CapacityTarget value={targetMin} onChange={onTargetChange} />
-                ) : (
-                  <span>{formatMinutes(targetMin)}</span>
-                ),
             })}
           </span>
         </div>
 
-        <div className="flex flex-col gap-0.5">
-          <span className="text-2xs text-muted">{t("worked")}</span>
-          <span className="font-display text-[30px] leading-9 font-bold tracking-[-0.02em] whitespace-nowrap tabular-nums">
-            {formatMinutes(workedMin)}
-          </span>
-        </div>
-
         <div className="flex flex-[1_1_260px] flex-col gap-2">
-          {/* Under budget it's one gradient fill that grows in on load; over,
-              it splits at the target and the overrun is drawn outside the
-              budget as the canvas's orange hatch. */}
-          <div className="relative flex h-2.5 overflow-hidden rounded-pill bg-surface-2">
+          <div
+            className="relative h-2.5 overflow-hidden rounded-pill bg-surface-2"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={goalMin}
+            aria-valuenow={Math.min(Math.round(worked), goalMin)}
+            aria-valuetext={t("workedOfGoal", {
+              worked: formatMinutes(worked),
+              goal: formatMinutes(goalMin),
+            })}
+          >
             <div
-              className={cn(
-                "h-full shrink-0 animate-fill rounded-pill bg-fit transition-[width] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]",
-                over && "rounded-r-none",
-              )}
-              style={{ width: `${over ? targetPct : pct}%` }}
+              className="h-full animate-fill rounded-pill bg-fit transition-[width] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]"
+              style={{ width: `${pct}%` }}
             />
-            {over && (
-              <div
-                className="h-full flex-1 animate-fill rounded-r-pill"
-                style={{
-                  background:
-                    "repeating-linear-gradient(45deg, var(--color-accent) 0 6px, var(--color-accent-hatch) 6px 12px)",
-                }}
-              />
-            )}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-2xs">
-            {over ? (
-              <span className="font-semibold text-accent">
-                {t("overByShort", { over: formatMinutes(overByMin) })}
+            {reached ? (
+              <span className="flex items-center gap-1.5 font-semibold text-primary">
+                <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+                {t("goalReached", { goal: formatMinutes(goalMin) })}
+              </span>
+            ) : isToday && !isFuture ? (
+              <span className="font-semibold text-primary">
+                {t("goalLeft", { left: formatMinutes(leftMin), goal: formatMinutes(goalMin) })}
               </span>
             ) : (
-              <span className="font-semibold text-primary">
-                {t("fitsLeft", { time: formatMinutes(targetMin - plannedMin) })}
-              </span>
+              <span />
             )}
             <span className="text-muted tabular-nums">
               {t("doneOfTotal", { done: doneCount, total: tasks.length })}
             </span>
           </div>
-          {/* Over budget the line above is a verdict; this is the next move.
-              One message per case, not a shared prefix plus a glued tail: the
-              emphasised word moves in another language. */}
+
+          {/* The plan, kept but quiet. Over budget the sentence says so and
+              the next line offers the move: one message per case, since the
+              emphasised words move in another language. */}
+          {targetMin > 0 && (
+            <p className="text-2xs text-muted tabular-nums">
+              {t.rich(over ? "plannedLineOver" : "plannedLine", {
+                planned: formatMinutes(plannedMin),
+                target: formatMinutes(targetMin),
+                over: formatMinutes(overByMin),
+                goal,
+                warn: (chunks) => <span className="font-semibold text-accent">{chunks}</span>,
+              })}
+            </p>
+          )}
           {over && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xs text-muted">
               <p className="min-w-0 flex-1">

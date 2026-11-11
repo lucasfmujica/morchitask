@@ -236,3 +236,41 @@ describe("Stint link", () => {
     expect(await stint.getStintLink(B.household, B.user)).not.toBeNull();
   });
 });
+
+describe("worked time", () => {
+  // A second person in A's household: tracked time is personal, so the
+  // household filter alone is not enough here. Sharing a task is exactly how
+  // two people end up with rows on the same task and day.
+  const A2 = "aaaaaaaa-0000-4000-8000-000000000003";
+
+  it("only ever sums the asking user's own minutes, in their own household", async () => {
+    await client.exec(`
+      insert into "user" (id, email) values ('${A2}', '${A2}@example.com');
+      insert into profiles (id, household_id, display_name) values ('${A2}', '${A.household}', 'user-a2');
+    `);
+    const [aShared] = (await tasksQueries.tasksForDate(A.household, A.user, TODAY)).filter((t) =>
+      t.title.startsWith("shared-"),
+    );
+    const [bTask] = await tasksQueries.tasksForDate(B.household, B.user, TODAY);
+
+    // Raw inserts: the write path uses Neon's batch(), which pglite lacks.
+    await client.exec(`
+      insert into task_time_entries (household_id, task_id, user_id, day, minutes) values
+        ('${A.household}', '${aShared.id}', '${A.user}', '${TODAY}', 30),
+        ('${A.household}', '${aShared.id}', '${A2}', '${TODAY}', 45),
+        ('${B.household}', '${bTask.id}', '${B.user}', '${TODAY}', 90);
+    `);
+
+    expect(await tasksQueries.workedMinutesByDay(A.household, A.user, TODAY, TODAY)).toEqual([
+      { day: TODAY, minutes: 30 },
+    ]);
+    expect(await tasksQueries.workedMinutesByDay(A.household, A2, TODAY, TODAY)).toEqual([
+      { day: TODAY, minutes: 45 },
+    ]);
+    // B's own user id, asked through A's household: nothing, not B's 90.
+    expect(await tasksQueries.workedMinutesByDay(A.household, B.user, TODAY, TODAY)).toEqual([]);
+    expect(await tasksQueries.workedMinutesByDay(B.household, B.user, TODAY, TODAY)).toEqual([
+      { day: TODAY, minutes: 90 },
+    ]);
+  });
+});

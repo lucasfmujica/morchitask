@@ -26,6 +26,7 @@ import {
   useMoveTaskToDate,
   useReorderTask,
   useTasksForDate,
+  useWorkedInRange,
   taskKeys,
 } from "@/lib/queries/tasks";
 import { useBlocksForDate } from "@/lib/queries/task-blocks";
@@ -137,6 +138,10 @@ export function DayView({ date }: { date: string }) {
     [myTasks],
   );
   const capacityTarget = resolveCapacity(noteQ.data?.capacity_min, me?.capacity_target_min);
+  // What I tracked on THIS day, from the per-day entries. Summing the tasks'
+  // actual_time_min instead would credit today with a rolled-over task's hours
+  // from yesterday, and miss time put into a task planned for another day.
+  const workedMin = useWorkedInRange(date, date).data?.get(date) ?? 0;
 
   // Celebrate the moment you finish everything for the day (once per completion).
   const allMineDone = myTasks.length > 0 && myTasks.every((t) => t.status === "done");
@@ -377,10 +382,13 @@ export function DayView({ date }: { date: string }) {
       <PastDayNotice date={date} />
       {isToday && <CarryoverNotice date={date} />}
 
-      {myTasks.length > 0 && (
+      {(myTasks.length > 0 || workedMin > 0) && (
         <CapacityBar
           className="animate-up [animation-delay:140ms]"
           tasks={myTasks}
+          workedMin={workedMin}
+          isToday={isToday}
+          isFuture={date > todayISO()}
           plannedMin={myPlannedMin}
           targetMin={capacityTarget}
           onTargetChange={(capacity_min) => upsertNote.mutate({ capacity_min })}
