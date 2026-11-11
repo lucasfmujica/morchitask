@@ -221,6 +221,9 @@ export const profiles = pgTable(
     color: text("color").notNull().default("#0d9488"),
     avatar_url: text("avatar_url"),
     capacity_target_min: integer("capacity_target_min"),
+    /** Notification preferences, plus one key that is not a preference:
+     *  `checkout_started_at`, the launch funnel's checkout marker (see
+     *  `recordCheckoutStarted`). Writers must merge, never replace. */
     notification_prefs: jsonb("notification_prefs").notNull().default({}),
     google_calendar_connected: boolean("google_calendar_connected").notNull().default(false),
     gcal_target_calendar_id: text("gcal_target_calendar_id"),

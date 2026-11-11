@@ -3,6 +3,7 @@ import { Figtree, IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
 import { getLocale, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
+import { PageAnalytics } from "@/components/page-analytics";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { SITE_URL } from "@/lib/seo";
@@ -85,6 +86,12 @@ export default async function RootLayout({
             wording of the Pomodoro timer before deciding to sign up. Each route
             group mounts its own with the namespaces it uses. */}
         <Providers>{children}</Providers>
+        {/* Page views for the launch funnel's "Visits" step, which the app's own
+            database cannot see. Vercel Web Analytics is cookieless and served
+            from our own origin (/_vercel/insights), so it needs no consent
+            banner and no CSP exception. It does need a line in the privacy
+            policy. Outside a Vercel deployment it records nothing. */}
+        <PageAnalytics />
         <AgentationProvider />
       </body>
     </html>

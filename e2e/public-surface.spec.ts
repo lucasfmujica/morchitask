@@ -23,6 +23,9 @@ const PRIVATE_ROUTES = [
   "/focus",
   "/routines",
   "/billing",
+  // Admin-only, and still an app route first: logged out is a login redirect,
+  // and only after sign-in does the allowlist get to answer 404.
+  "/admin/metrics",
 ];
 
 test.describe("route protection", () => {
@@ -174,6 +177,19 @@ test.describe("PWA", () => {
     // the install prompt gets HTML instead of JSON and silently stops working.
     const response = await request.get("/manifest.webmanifest", { maxRedirects: 0 });
     expect(response.status()).toBe(200);
+  });
+});
+
+test.describe("Vercel Web Analytics", () => {
+  test("its endpoints are not behind the login redirect", async ({ request }) => {
+    // Locally nothing serves /_vercel, so this answers 404. Through the proxy
+    // it would be a 307 to /login, which on Vercel means every logged-out page
+    // view (the whole top of the funnel) silently fails to record.
+    const response = await request.get("/_vercel/insights/script.js", {
+      failOnStatusCode: false,
+      maxRedirects: 0,
+    });
+    expect(response.status()).not.toBe(307);
   });
 });
 

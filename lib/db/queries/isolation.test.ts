@@ -307,3 +307,48 @@ describe("worked time", () => {
     expect(theirs.map((r) => [r.channel_name, r.minutes])).toEqual([["chan-bbbb", 90]]);
   });
 });
+
+describe("checkout recording", () => {
+  it("cannot be aimed at a person in another household", async () => {
+    // B's user id with A's household: the write must match nothing.
+    await subscriptionQueries.recordCheckoutStarted(A.household, B.user);
+    const theirs = await client.query<{ prefs: Record<string, unknown> }>(
+      `select notification_prefs as prefs from profiles where id = '${B.user}'`,
+    );
+    expect(theirs.rows[0].prefs).not.toHaveProperty("checkout_started_at");
+
+    await subscriptionQueries.recordCheckoutStarted(A.household, A.user);
+    const mine = await client.query<{ prefs: Record<string, unknown> }>(
+      `select notification_prefs as prefs from profiles where id = '${A.user}'`,
+    );
+    expect(mine.rows[0].prefs).toHaveProperty("checkout_started_at");
+  });
+});
+
+/**
+ * The one deliberate exception to everything above: the admin launch metrics
+ * read across households. What keeps that safe is that only counts come out,
+ * so the check here is the inverse of the others: both households are in the
+ * numbers, and nothing that identifies either is in the result.
+ */
+describe("admin launch metrics", () => {
+  it("count both households and return nothing that identifies either", async () => {
+    const { launchMetrics } = await import("./admin-metrics");
+    await client.exec(`
+      update households set created_at = '2026-12-01T15:00:00Z', trial_ends_at = '2026-12-15T15:00:00Z';
+    `);
+
+    const metrics = await launchMetrics(new Date("2026-12-04T15:00:00Z"));
+    expect(metrics.funnel.launch.trials).toBe(2);
+
+    const json = JSON.stringify(metrics);
+    for (const t of [A, B]) {
+      expect(json).not.toContain(t.household);
+      expect(json).not.toContain(t.user);
+      expect(json).not.toContain(t.user.slice(0, 4)); // names, titles, channels
+    }
+    expect(json).not.toContain("@example.com");
+    expect(json).not.toContain("sub_a");
+    expect(json).not.toContain("cus_a");
+  });
+});
