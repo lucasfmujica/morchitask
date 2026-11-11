@@ -5,6 +5,7 @@ import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { SITE_URL } from "@/lib/seo";
 
 // Figtree for the interface, Schibsted Grotesk for headings, Plex Mono for the
 // few places that show raw times. DM Sans was retired with the bento redesign.
@@ -32,6 +33,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const metadata: Metadata = {
+  // Resolves the relative canonical, hreflang and og:image URLs the marketing
+  // pages emit. Without it Next guesses from the request host and warns.
+  metadataBase: new URL(SITE_URL),
   title: "Morchitask",
   applicationName: "Morchitask",
   appleWebApp: {

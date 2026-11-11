@@ -28,17 +28,22 @@ Rediseño bento (noviembre 2026). Fuente de verdad: `app/globals.css`.
 
 ## Firma visual (una sola)
 
-La barra de capacidad del día. Verde (degradé `bg-fit`) cuando entra. Rayada en `--danger` cuando te pasaste. Esa barra es el único gesto que la landing puede poner en el fold. No hay segunda firma (no hay patrón geométrico, no hay gradiente, no hay ilustración).
+La barra de capacidad del día. Verde (degradé `bg-fit`) cuando entra. Rayada en `--danger` cuando te pasaste. En la landing va a ancho completo justo debajo del hero; el fold lo ocupa el ritual en el teléfono. No hay segunda firma (no hay patrón geométrico ni ilustración); los lavados menta y durazno de marketing son el color del momento del día, no una firma.
 
 ## Composición de marketing
 
-Cinco superficies, en este orden, nada más:
+Aprobada en el canvas (noviembre 2026, `Landing.dc.html`). Reemplaza la lista de cinco superficies anterior. Código: `app/(marketing)/page.tsx`, `layout.tsx` y `components/marketing/`. En este orden:
 
-1. Fold: nav chica + H1 de ritual + un frame de Hoy o Planificar a escala real.
-2. Ritual: tres bloques full-bleed, un screenshot grande por momento.
-3. Semana: la tira Lun–Vie a ancho completo. Prueba de que no es otra lista.
-4. Honestidad: tipografía, una columna o lista, sin cards 2×2.
-5. Precio + cierre: misma superficie clara. CTA de tinta. Sin banda `#000`.
+1. Nav: logo (tile `bg-fit` con check) + wordmark, links en la pastilla segmentada del producto (`bg-surface-2`), "Entrar" como texto, "Probar gratis" en pastilla de tinta.
+2. Hero en dos columnas: el H1 contiene la keyword (eyebrow mono "Planificador diario con time-blocking" adentro del `<h1>`) y el titular de 92px (56px en mobile) con el resaltador `--marker` bajo "Cerrá la noche."; subtítulo, CTA de tinta con glow, nota de precio. A la derecha, un pozo de 520px con el teléfono pasando los tres rituales como stories (mañana, día, noche, 5s cada uno, tabs clickeables); el color del pozo sigue la hora (menta a la mañana, durazno a la noche).
+3. Tira de capacidad a ancho completo: la firma visual, fuera del fold.
+4. Bento "Un día con principio y final" en grilla de 12 columnas (una sola en mobile): agenda con barra que se pasa (7), anillo de capacidad sobre lavado menta (5), dictado, mail y reacomodar (4 cada uno), semana (6), Foco en tile oscuro `bg-ink` (6), "para vos y una persona más" (12). Cada tile es UI real animada en loop, no ilustración.
+5. Precio: barras contra Sunsama (7) + tile menta con el precio grande (5). Sunsama aparece acá, nunca en el hero.
+6. "Lo que no hace": lista ordenada tipográfica, una columna. Sin cards.
+7. Cierre: panel redondeado con degradé menta a durazno (`--wash-mint` → `--wash-peach`) y CTA de tinta.
+8. Footer: solo links que existen (Precio, Privacidad, Términos, cambio de idioma).
+
+Aprobado y ya no prohibido: la grilla bento, el tile oscuro de Foco (solo ese, no una banda) y los lavados menta/durazno del ritual, anillo, precio y cierre. Las animaciones viven en el bloque "MARKETING MOTION" de `app/globals.css` y se apagan con `prefers-reduced-motion`.
 
 ## Screenshots
 
@@ -56,10 +61,10 @@ Cinco superficies, en este orden, nada más:
 ## Don't
 
 - Inter, purple gradients, cards anidadas, 01/02/03 decorativo.
-- Banda dark decorativa.
+- Banda dark decorativa a ancho completo (el tile de Foco es la única superficie oscura).
 - Emojis como iconos de sección.
 - Hero que vende el precio contra Sunsama.
 - Inventar una paleta "más premium" para marketing.
 - Mockups de App Store genéricos.
 - Bounce o elastic en hover.
-- Secciones nuevas no listadas acá.
+- Secciones nuevas no listadas en "Composición de marketing".

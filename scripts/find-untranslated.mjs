@@ -28,7 +28,7 @@ const ALLOWED =
 
 /** Tailwind classes, CSS values and framework literals — most of the noise. */
 const CSSISH =
-  /(^|[\s(])(flex|grid|inline|block|hidden|absolute|relative|fixed|sticky|rounded|border|bg-|text-|font-|tracking-|leading-|shadow|gap-|p[xytblr]?-|m[xytblr]?-|[hw]-|min-|max-|top-|bottom-|left-|right-|inset|z-|overflow|cursor-|transition|duration-|ease-|animate-|opacity-|ring-|outline|divide-|space-|truncate|shrink|grow|items-|justify-|self-|order-|col-|row-|snap-|touch-|pointer-events|whitespace|tabular-nums|sr-only|backdrop|placeholder:|hover:|focus|disabled:|group|peer|md:|lg:|sm:|dark:|use client|use server|noopener|repeating-linear|var\(--|min-width|max-width|prefers-color-scheme|stroke-dashoffset|linear|ease-in|ease-out)/;
+  /(^|[\s(])(flex|grid|inline|block|hidden|absolute|relative|fixed|sticky|rounded|border|bg-|text-|font-|tracking-|leading-|shadow|gap-|p[xytblr]?-|m[xytblr]?-|[hw]-|min-|max-|top-|bottom-|left-|right-|inset|z-|overflow|cursor-|transition|duration-|ease-|animate-|opacity-|ring-|outline|divide-|space-|truncate|shrink|grow|items-|justify-|self-|order-|col-|row-|snap-|touch-|pointer-events|whitespace|tabular-nums|sr-only|backdrop|placeholder:|hover:|focus|disabled:|group|peer|md:|lg:|sm:|dark:|use client|use server|noopener|repeating-linear|var\(--|min-width|max-width|prefers-color-scheme|prefers-reduced-motion|stroke-dashoffset|linear|ease-in|ease-out)/;
 
 /** SVG path data ("M2 3h12v11H2z…"): commands and numbers, never words. */
 const SVG_PATH = /^[Mm][\d\s.,-]+[MmLlHhVvCcSsQqTtAaZz\d\s.,-]*$/;

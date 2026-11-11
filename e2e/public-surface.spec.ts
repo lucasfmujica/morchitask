@@ -232,3 +232,171 @@ test.describe("the inbound email webhook", () => {
     expect([403, 503]).toContain(response.status());
   });
 });
+
+test.describe("English marketing URLs", () => {
+  /**
+   * `/en/...` is not a route: `proxy.ts` rewrites it to the unprefixed page with
+   * a header `i18n/request.ts` reads first. These pin both halves, and that the
+   * unprefixed URL is still the Spanish one for a client that asks for nothing.
+   */
+  test("/en serves English, even to a Spanish browser with a Spanish cookie", async ({
+    browser,
+  }) => {
+    // The URL beats every other signal: hreflang promises English there.
+    const context = await browser.newContext({ locale: "es-AR" });
+    await context.addCookies([
+      { name: "morchitask-locale", value: "es", url: "http://localhost:3100" },
+    ]);
+    const page = await context.newPage();
+    const response = await page.goto("/en");
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveURL(/\/en$/);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await context.close();
+  });
+
+  test("/en/pricing serves the English pricing page", async ({ page }) => {
+    const response = await page.goto("/en/pricing");
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByRole("heading", { level: 1, name: "One plan." })).toBeVisible();
+  });
+
+  test("/en/privacy and /en/terms render in English", async ({ request }) => {
+    for (const path of ["/en/privacy", "/en/terms"]) {
+      const response = await request.get(path, { maxRedirects: 0 });
+      expect(response.status(), path).toBe(200);
+      expect(await response.text(), path).toContain('<html lang="en"');
+    }
+  });
+
+  test("an /en prefix never reaches the app", async ({ request }) => {
+    // Only marketing pages are rewritten; /en/today must not become /today.
+    const response = await request.get("/en/today", { maxRedirects: 0 });
+    expect(response.status()).not.toBe(200);
+  });
+
+  test("/ is Spanish for a client that sends no language at all", async ({ request }) => {
+    // What a crawler looks like: no cookie, no Accept-Language. Deterministic,
+    // unlike a browser context, which always sends its locale.
+    const html = await (await request.get("/", { headers: { "accept-language": "" } })).text();
+    expect(html).toContain('<html lang="es"');
+  });
+
+  test("a spoofed locale header from outside is ignored", async ({ request }) => {
+    const html = await (
+      await request.get("/pricing", { headers: { "x-mt-locale": "en", "accept-language": "es" } })
+    ).text();
+    expect(html).toContain('<html lang="es"');
+  });
+});
+
+test.describe("SEO", () => {
+  const hreflangs = async (request: import("@playwright/test").APIRequestContext, path: string) => {
+    const html = await (await request.get(path)).text();
+    return {
+      html,
+      langs: [...html.matchAll(/<link rel="alternate" hrefLang="([^"]+)" href="([^"]+)"/g)].map(
+        (m) => [m[1], new URL(m[2]).pathname],
+      ),
+      canonical: html.match(/<link rel="canonical" href="([^"]+)"/)?.[1],
+    };
+  };
+
+  for (const [path, canonical] of [
+    ["/", "/"],
+    ["/en", "/en"],
+    ["/pricing", "/pricing"],
+    ["/en/pricing", "/en/pricing"],
+  ] as const) {
+    test(`${path} declares its canonical and the hreflang pair`, async ({ request }) => {
+      const { langs, canonical: c } = await hreflangs(request, path);
+      expect(c && new URL(c).pathname).toBe(canonical);
+      const page = canonical.replace(/^\/en/, "") || "/";
+      expect(langs).toEqual(
+        expect.arrayContaining([
+          ["es", page],
+          ["en", page === "/" ? "/en" : `/en${page}`],
+          ["x-default", page],
+        ]),
+      );
+    });
+  }
+
+  test("robots.txt allows the site, keeps crawlers out of the app, names the sitemap", async ({
+    request,
+  }) => {
+    const response = await request.get("/robots.txt", { maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("Allow: /");
+    expect(body).toContain("Disallow: /api/");
+    expect(body).toContain("Disallow: /today");
+    expect(body).toMatch(/Sitemap: .*\/sitemap\.xml/);
+  });
+
+  test("sitemap.xml lists both languages of the marketing pages", async ({ request }) => {
+    const response = await request.get("/sitemap.xml", { maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    const body = await response.text();
+    const locs = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
+    for (const path of ["/", "/pricing", "/privacy", "/terms", "/en", "/en/pricing"]) {
+      expect(locs).toContain(path);
+    }
+    expect(body).toContain('hreflang="en"');
+  });
+
+  test("the share image is public", async ({ request }) => {
+    const html = await (await request.get("/pricing")).text();
+    const src = html.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
+    expect(src).toBeTruthy();
+    const image = await request.get(new URL(src!).pathname + new URL(src!).search, {
+      maxRedirects: 0,
+    });
+    expect(image.status()).toBe(200);
+    expect(image.headers()["content-type"]).toContain("image/png");
+  });
+
+  const jsonLd = (html: string) =>
+    [...html.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)].flatMap((m) => {
+      const data = JSON.parse(m[1]);
+      return Array.isArray(data) ? data : [data];
+    });
+
+  test("/ describes the product with its real price and no rating", async ({ request }) => {
+    const items = jsonLd(await (await request.get("/")).text());
+    const app = items.find((d) => d["@type"] === "SoftwareApplication");
+    expect(app, "SoftwareApplication JSON-LD on /").toBeTruthy();
+    expect(app.offers.map((o: { price: string }) => Number(o.price))).toContain(10);
+    expect(JSON.stringify(app)).not.toContain("aggregateRating");
+    expect(items.some((d) => d["@type"] === "Organization")).toBe(true);
+  });
+
+  test("/pricing carries a FAQPage built from the visible questions", async ({ page }) => {
+    await page.goto("/pricing");
+    const items = jsonLd(await page.content());
+    const faq = items.find((d) => d["@type"] === "FAQPage");
+    expect(faq.mainEntity.length).toBe(await page.locator("details").count());
+    const first = faq.mainEntity[0].name;
+    await expect(page.locator("summary", { hasText: first })).toBeVisible();
+    // The price on the page and in the card agree, both from lib/pricing.
+    await expect(page.getByText("US$80").first()).toBeVisible();
+  });
+});
+
+test.describe("pricing period toggle", () => {
+  test("defaults to yearly with the saving, and switches to monthly", async ({ browser }) => {
+    const context = await browser.newContext({ locale: "es-AR" });
+    const page = await context.newPage();
+    await page.goto("/pricing");
+    const yearly = page.getByRole("button", { name: "Anual" });
+    await expect(yearly).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("Ahorrás 33%")).toBeVisible();
+
+    await page.getByRole("button", { name: "Mensual" }).click();
+    await expect(yearly).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText("Ahorrás 33%")).toHaveCount(0);
+    await expect(page.getByText("por mes", { exact: true })).toBeVisible();
+    await context.close();
+  });
+});

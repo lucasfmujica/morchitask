@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { stripEnglishPrefix, URL_LOCALE_HEADER } from "@/lib/seo";
 
 // Paths that are reachable without a session. `/auth` covers the Spotify
 // connect flow (/auth/spotify, /auth/spotify/callback) — kept public like the
@@ -18,8 +19,19 @@ const PUBLIC_PREFIXES = ["/login", "/api/auth", "/auth", "/api/webhooks", "/shar
  *  deliberate act and not an accidental hole in the app. */
 const MARKETING_PATHS = ["/", "/pricing", "/privacy", "/terms"];
 
+/** What crawlers fetch besides the pages. A login redirect on these would hand
+ *  Google an HTML page where it expects a robots file, and it would then treat
+ *  the whole site as crawlable-by-default with no sitemap. */
+const CRAWLER_PATHS = ["/robots.txt", "/sitemap.xml"];
+
+/** The marketing pages' share cards. Next serves them at a hashed path next to
+ *  each page (`/pricing/opengraph-image-ab12cd`), so they are matched by shape
+ *  rather than listed. */
+const OG_IMAGE = /^(?:\/(?:pricing|privacy|terms))?\/opengraph-image(?:-[\w]+)?$/;
+
 function isPublic(pathname: string) {
   if (MARKETING_PATHS.includes(pathname)) return true;
+  if (CRAWLER_PATHS.includes(pathname) || OG_IMAGE.test(pathname)) return true;
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
@@ -32,9 +44,16 @@ function isPublic(pathname: string) {
  * their day, not to read a pitch they already accepted. The other marketing
  * routes stay reachable either way — someone with an account still has a
  * legitimate reason to read the terms or the price.
+ *
+ * English marketing URLs (`/en`, `/en/pricing`, ...) are not routes. They are
+ * rewritten here to the same page with a header that tells `i18n/request.ts`
+ * to render English, so the app's paths never move (see the note there about
+ * the installed PWA). Every rule below judges the page the URL stands for, so
+ * `/en` redirects a signed-in visitor exactly like `/` does.
  */
 export const proxy = auth((req) => {
-  const { pathname } = req.nextUrl;
+  const english = stripEnglishPrefix(req.nextUrl.pathname);
+  const pathname = english ?? req.nextUrl.pathname;
   const isLoggedIn = !!req.auth;
 
   if (!isLoggedIn && !isPublic(pathname)) {
@@ -65,6 +84,24 @@ export const proxy = auth((req) => {
     const url = req.nextUrl.clone();
     url.pathname = "/billing";
     return NextResponse.redirect(url);
+  }
+
+  // The header is only ever trusted because this is the one place that sets
+  // it, so one arriving from outside is dropped. A spoofed one would only
+  // change the language of the sender's own page, but it would also make that
+  // page claim the wrong canonical URL, and there is no reason to allow it.
+  const forwarded = new Headers(req.headers);
+  forwarded.delete(URL_LOCALE_HEADER);
+
+  if (english) {
+    forwarded.set(URL_LOCALE_HEADER, "en");
+    const url = req.nextUrl.clone();
+    url.pathname = english;
+    return NextResponse.rewrite(url, { request: { headers: forwarded } });
+  }
+
+  if (req.headers.has(URL_LOCALE_HEADER)) {
+    return NextResponse.next({ request: { headers: forwarded } });
   }
 });
 

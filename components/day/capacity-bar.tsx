@@ -65,10 +65,12 @@ export function CapacityBar({
 
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
-  // What's already finished, in time: the canvas closes the line with it.
-  const doneMin = tasks
-    .filter((t) => t.status === "done")
-    .reduce((sum, t) => sum + (t.time_estimate_min ?? 0), 0);
+  // Time actually tracked on today's tasks (stopwatch, Foco or typed in).
+  // This used to show the ESTIMATE of the finished tasks next to "hechas",
+  // which read as worked time and wasn't: someone who tracked 1h25m saw the
+  // 1h40m they had guessed. Same source as Foco and the day close, so the
+  // three screens agree.
+  const workedMin = tasks.reduce((sum, t) => sum + (t.actual_time_min ?? 0), 0);
 
   return (
     <section
@@ -106,6 +108,13 @@ export function CapacityBar({
           </span>
         </div>
 
+        <div className="flex flex-col gap-0.5">
+          <span className="text-2xs text-muted">{t("worked")}</span>
+          <span className="font-display text-[30px] leading-9 font-bold tracking-[-0.02em] whitespace-nowrap tabular-nums">
+            {formatMinutes(workedMin)}
+          </span>
+        </div>
+
         <div className="flex flex-[1_1_260px] flex-col gap-2">
           {/* Under budget it's one gradient fill that grows in on load; over,
               it splits at the target and the overrun is drawn outside the
@@ -139,11 +148,7 @@ export function CapacityBar({
               </span>
             )}
             <span className="text-muted tabular-nums">
-              {t("doneOfTotalTime", {
-                done: doneCount,
-                total: tasks.length,
-                time: formatMinutes(doneMin),
-              })}
+              {t("doneOfTotal", { done: doneCount, total: tasks.length })}
             </span>
           </div>
           {/* Over budget the line above is a verdict; this is the next move.

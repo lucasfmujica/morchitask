@@ -98,6 +98,6 @@ test.describe("what the public pages ship", () => {
   test("the landing still has the words it is supposed to have", async ({ request }) => {
     // The other half of the assertion above: trimming to nothing would pass it.
     const html = await (await request.get("/")).text();
-    expect(html).toContain("Tres momentos");
+    expect(html).toContain("Planificador diario con time-blocking");
   });
 });

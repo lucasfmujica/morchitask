@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, localeFromAcceptLanguage } from "@/lib/locale";
+import { URL_LOCALE_HEADER } from "@/lib/seo";
 
 /**
  * Resolves the language for one request.
@@ -17,23 +18,39 @@ import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, localeFromAcceptLanguage } fro
  * account is created with. It changes nothing for people already signed in:
  * they have the cookie, written at sign-in and on every change.
  *
- * There is no locale in the URL. Paths are load-bearing here: the installed
- * PWA opens `start_url: "/today"`, the service worker navigates push
- * notifications to server-generated paths, and `proxy.ts` redirects to
- * `/login` and `/today`. Prefixing every route would break an app already
- * installed on someone's phone.
+ * App paths carry no locale. Paths are load-bearing there: the installed PWA
+ * opens `start_url: "/today"`, the service worker navigates push notifications
+ * to server-generated paths, and `proxy.ts` redirects to `/login` and
+ * `/today`. Prefixing every route would break an app already installed on
+ * someone's phone.
  *
- * KNOWN GAP, and it is a real one for the marketing pages: a crawler sends no
- * cookie, so Google only ever indexes the `Accept-Language` default. Proper
- * SEO for two languages needs `/en` and `/es` URLs with hreflang. That can be
- * added for the marketing routes alone, without touching the app's paths —
- * but it is not built, so do not expect the English landing to rank.
+ * The marketing pages are the exception, because a crawler sends no cookie
+ * and usually no `Accept-Language`, so it could only ever index one language.
+ * `/en`, `/en/pricing`, `/en/privacy` and `/en/terms` are English URLs: the
+ * proxy rewrites them to the unprefixed page and sets `x-mt-locale: en`, which
+ * is read FIRST here and beats even the cookie (a URL that says English has to
+ * render English, or the hreflang pointing at it would be a lie).
+ *
+ * The unprefixed marketing URLs are the Spanish ones, but rendering there still
+ * follows cookie, then `Accept-Language`, as before. Forcing Spanish on them
+ * would greet every English-speaking first visitor in Spanish, and the
+ * sign-up locale rule above relies on this path. What makes crawlers index
+ * them as Spanish is not the rendered text but the page's own declarations:
+ * `canonical` points at itself, hreflang maps `es` and `x-default` to the
+ * unprefixed URL and `en` to `/en/...` (see `marketingMetadata` in
+ * `lib/seo.ts`), and a crawler with no language headers renders the Spanish
+ * default anyway. The sitemap lists both versions.
  */
 export default getRequestConfig(async () => {
+  const requestHeaders = await headers();
+  // Only `proxy.ts` can set this: it strips any copy arriving from outside.
+  const fromUrl = requestHeaders.get(URL_LOCALE_HEADER);
   const chosen = (await cookies()).get(LOCALE_COOKIE)?.value;
-  const locale = isLocale(chosen)
-    ? chosen
-    : localeFromAcceptLanguage((await headers()).get("accept-language"));
+  const locale = isLocale(fromUrl)
+    ? fromUrl
+    : isLocale(chosen)
+      ? chosen
+      : localeFromAcceptLanguage(requestHeaders.get("accept-language"));
 
   return {
     locale,

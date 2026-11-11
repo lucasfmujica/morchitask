@@ -1,8 +1,20 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { Schibsted_Grotesk } from "next/font/google";
+import { getLocale, getTranslations } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { PUBLIC_NAMESPACES, pickMessages } from "@/lib/i18n-messages";
+import { LogoMark } from "@/components/marketing/icons";
+import { localizedPath } from "@/lib/seo";
+
+// The landing's headlines are 800; the app only loads 600/700. Loading the
+// heavy weight here keeps it off every logged-in page.
+const schibstedHeavy = Schibsted_Grotesk({
+  subsets: ["latin"],
+  weight: ["800"],
+  variable: "--font-schibsted-heavy",
+  display: "swap",
+});
 
 /**
  * Chrome for the pages a stranger reads.
@@ -10,64 +22,98 @@ import { PUBLIC_NAMESPACES, pickMessages } from "@/lib/i18n-messages";
  * Deliberately not the app's shell: no sidebar, no command palette, no query
  * client. Someone who has not signed in has no data to fetch, and mounting the
  * app's providers here would ship the whole authenticated bundle to a landing
- * page — which is the one page where weight actually costs conversions.
+ * page, which is the one page where weight actually costs conversions.
+ *
+ * The nav borrows the app's segmented pill instead of a marketing navbar, so
+ * the first thing a visitor sees is already the product's chrome.
  */
 export default async function MarketingLayout({ children }: { children: ReactNode }) {
   const t = await getTranslations("marketing");
-  // Every page in this group is a server component today, so nothing here reads
-  // the provider — it is mounted anyway, with the three namespaces these pages
-  // use, so that adding one interactive control later works instead of throwing.
+  const locale = await getLocale();
+  // The landing's client parts (the ritual player) read the marketing
+  // namespace, so the provider carries the public namespaces.
   const messages = await pickMessages(PUBLIC_NAMESPACES);
+
+  // Section anchors live on the home page of each language; from /pricing or
+  // /privacy they have to point back there rather than at a missing #id.
+  const home = locale === "en" ? "/en" : "/";
+  const anchor = (id: string) => (home === "/" ? `/#${id}` : `${home}#${id}`);
+  const other = locale === "en" ? { href: "/", lang: "es" } : { href: "/en", lang: "en" };
+  // On /en every link stays in English; the unprefixed URLs are the Spanish ones.
+  const lang = locale === "en" ? "en" : "es";
+  const path = (p: "/pricing" | "/privacy" | "/terms") => localizedPath(p, lang);
+
+  const pill =
+    "flex h-9 items-center rounded-pill px-4 text-muted transition-colors hover:bg-surface hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  const footerLink = "text-muted transition-colors hover:text-primary";
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <div className="flex min-h-dvh flex-col bg-bg">
-        <header className="sticky top-0 z-20 border-b border-border bg-bg/85 backdrop-blur">
-          <nav className="mx-auto flex h-16 w-full max-w-5xl items-center gap-3 px-5">
-            <Link href="/" className="flex items-center gap-2.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.svg" alt="Morchitask" className="h-8 w-8 rounded-xl shadow-soft" />
-              <span className="text-base font-extrabold tracking-tight text-fg">Morchitask</span>
+      <div
+        data-marketing
+        className={`${schibstedHeavy.variable} flex min-h-dvh flex-col bg-bg text-fg`}
+      >
+        <header className="mx-auto flex w-full max-w-[1280px] items-center gap-4 px-4 py-5 min-[900px]:px-8">
+          <Link
+            href={home}
+            aria-label={t("nav.home")}
+            className="font-display-heavy flex items-center gap-2.5 text-xl tracking-[-0.02em] text-fg"
+          >
+            <LogoMark />
+            Morchitask
+          </Link>
+          <nav
+            aria-label={t("nav.label")}
+            className="mx-auto hidden gap-0.5 rounded-pill bg-surface-2 p-1 text-sm font-semibold min-[900px]:flex"
+          >
+            <Link href={anchor("como")} className={pill}>
+              {t("nav.how")}
             </Link>
-
-            <div className="ml-auto flex items-center gap-1 sm:gap-2">
-              <Link
-                href="/pricing"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-              >
-                {t("navPricing")}
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
-              >
-                {t("navSignIn")}
-              </Link>
-            </div>
+            <Link href={path("/pricing")} className={pill}>
+              {t("nav.pricing")}
+            </Link>
+            <Link href={anchor("honesto")} className={pill}>
+              {t("nav.honest")}
+            </Link>
           </nav>
+          <Link
+            href="/login"
+            className="ml-auto text-sm font-semibold text-fg transition-colors hover:text-primary min-[900px]:ml-0"
+          >
+            {t("nav.signIn")}
+          </Link>
+          <Link
+            href="/login"
+            className="flex h-10 items-center rounded-pill bg-fg px-[18px] text-sm font-semibold whitespace-nowrap text-bg transition-colors hover:bg-fg/85"
+          >
+            {t("nav.try")}
+          </Link>
         </header>
 
         <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-border">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center">
-            <div className="min-w-0">
-              <p className="text-sm font-bold tracking-tight text-fg">Morchitask</p>
-              <p className="text-xs text-muted">{t("footerTagline")}</p>
-            </div>
-            <nav className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted sm:ml-auto">
-              <Link href="/pricing" className="transition-colors hover:text-fg">
-                {t("footerPricing")}
-              </Link>
-              <Link href="/privacy" className="transition-colors hover:text-fg">
-                {t("footerPrivacy")}
-              </Link>
-              <Link href="/terms" className="transition-colors hover:text-fg">
-                {t("footerTerms")}
-              </Link>
-              <span className="text-subtle">{t("footerRights")}</span>
-            </nav>
+        <footer className="mx-auto flex w-full max-w-[1280px] flex-wrap items-start gap-x-12 gap-y-6 px-4 pt-6 pb-12 text-sm text-muted min-[900px]:px-8">
+          <div className="flex flex-[1_1_260px] flex-col gap-2">
+            <span className="font-display-heavy text-lg text-fg">Morchitask</span>
+            <span>{t("footer.tagline")}</span>
           </div>
+          <nav
+            aria-label={t("footer.label")}
+            className="flex flex-wrap gap-x-6 gap-y-2 min-[900px]:pt-1"
+          >
+            <Link href={path("/pricing")} className={footerLink}>
+              {t("footer.pricing")}
+            </Link>
+            <Link href={path("/privacy")} className={footerLink}>
+              {t("footer.privacy")}
+            </Link>
+            <Link href={path("/terms")} className={footerLink}>
+              {t("footer.terms")}
+            </Link>
+            <Link href={other.href} lang={other.lang} hrefLang={other.lang} className={footerLink}>
+              {t("footer.otherLanguage")}
+            </Link>
+          </nav>
         </footer>
       </div>
     </NextIntlClientProvider>
