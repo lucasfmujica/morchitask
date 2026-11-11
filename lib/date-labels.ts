@@ -20,6 +20,8 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/locale";
 type Patterns = {
   /** Weekday + day + month: "lunes 23 de junio" / "Monday, June 23". */
   full: string;
+  /** The day without its weekday, for a heading that shows the weekday apart. */
+  dayMonth: string;
   /** Day + month, compact: "23 jun" / "Jun 23". */
   short: string;
   /** Abbreviated weekday + day: "lun 23" / "Mon 23". */
@@ -31,8 +33,22 @@ type Patterns = {
 };
 
 const PATTERNS: Record<Locale, Patterns> = {
-  es: { full: "EEEE d 'de' MMMM", short: "d MMM", weekday: "EEE d", fns: es, capitalize: true },
-  en: { full: "EEEE, MMMM d", short: "MMM d", weekday: "EEE d", fns: enUS, capitalize: false },
+  es: {
+    full: "EEEE d 'de' MMMM",
+    dayMonth: "d 'de' MMMM",
+    short: "d MMM",
+    weekday: "EEE d",
+    fns: es,
+    capitalize: true,
+  },
+  en: {
+    full: "EEEE, MMMM d",
+    dayMonth: "MMMM d",
+    short: "MMM d",
+    weekday: "EEE d",
+    fns: enUS,
+    capitalize: false,
+  },
 };
 
 /**
@@ -91,6 +107,16 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
   /** A day as a heading: "Lunes 23 de junio" / "Monday, June 23". */
   function fullDayLabel(day: DayISO): string {
     return titled(day, p.full);
+  }
+
+  /** "11 de noviembre" / "November 11": the big line of the day's heading. */
+  function dayMonthLabel(day: DayISO): string {
+    return write(day, p.dayMonth);
+  }
+
+  /** "miércoles" / "Wednesday": the small label over that heading. */
+  function weekdayName(day: DayISO): string {
+    return write(day, "EEEE");
   }
 
   /** Abbreviated weekday + day, for week and month headers. */
@@ -160,6 +186,8 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
     relativeLabel,
     compactDayLabel,
     fullDayLabel,
+    dayMonthLabel,
+    weekdayName,
     shortDayLabel,
     weekRangeLabel,
     weekDayHeading,

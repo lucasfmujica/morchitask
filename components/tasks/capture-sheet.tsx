@@ -64,11 +64,16 @@ export function CaptureSheet({
   viewDate,
   channels,
   viewTasks,
+  open: openProp,
+  onOpenChange,
 }: {
   /** Where tasks land when nothing was said about the day (null = backlog). */
   viewDate: string | null;
   channels: Channel[];
   viewTasks: Task[];
+  /** Controlled: the parent owns the trigger (Hoy opens it from the composer's mic). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const t = useTranslations("capture");
   const tai = useTranslations("ai");
@@ -80,7 +85,10 @@ export function CaptureSheet({
   const connected = !!useMe().data?.google_calendar_connected;
   const toast = useToast();
 
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = (v: boolean) => (controlled ? onOpenChange?.(v) : setOpenState(v));
   const [text, setText] = useState("");
   const [items, setItems] = useState<Proposal[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -218,6 +226,7 @@ export function CaptureSheet({
   const selected = items?.filter((i) => i.on).length ?? 0;
 
   if (!open) {
+    if (controlled) return null;
     return (
       <Button
         variant="secondary"

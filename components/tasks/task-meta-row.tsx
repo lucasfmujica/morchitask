@@ -38,6 +38,8 @@ export function TaskMetaRow({
   compact = false,
   timer,
   onDelete,
+  showOwner = true,
+  trailing,
   className,
 }: {
   task: Task;
@@ -50,20 +52,35 @@ export function TaskMetaRow({
   compact?: boolean;
   timer?: ReturnType<typeof useTaskTimer>;
   onDelete: () => void;
+  /** The avatar only earns its place when the task isn't yours. */
+  showOwner?: boolean;
+  /** Rendered last on the right — the week card puts its duration here. */
+  trailing?: React.ReactNode;
   className?: string;
 }) {
   const t = useTranslations("tasks");
   return (
-    <div className={cn("flex min-w-0 items-center gap-2 text-2xs text-muted", className)}>
+    // Fixed at 16px tall: the controls on the right are allowed to overhang it,
+    // so a card never grows because of a hover-only button.
+    <div className={cn("flex h-4 min-w-0 items-center gap-2 text-2xs text-muted", className)}>
       {/* When and what. */}
       {task.block_start && (
-        <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-accent">
+        <span className="inline-flex shrink-0 items-center gap-1 font-mono">
           <Clock className="h-[11px] w-[11px]" aria-hidden />
           {timeInTimeZone(task.block_start, TZ)}
         </span>
       )}
       {vis.channel && channel && (
-        <span className="min-w-0 truncate font-medium">#{channel.name}</span>
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          {/* The category's colour lives in this square and nowhere else on the
+              card: a coloured rail down the side read as generated UI. */}
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-[2px]"
+            style={{ background: channel.color }}
+            aria-hidden
+          />
+          <span className="truncate">{channel.name}</span>
+        </span>
       )}
       {vis.due && task.due_date && <DueDateBadge dueDate={task.due_date} />}
       {vis.note &&
@@ -114,7 +131,7 @@ export function TaskMetaRow({
             </button>
           ))}
         {vis.moveMenu && <MoveToDayMenu task={task} />}
-        <OwnerAvatar profile={owner} />
+        {showOwner && <OwnerAvatar profile={owner} size={18} />}
         {vis.deleteButton && (
           <button
             onClick={onDelete}
@@ -124,6 +141,7 @@ export function TaskMetaRow({
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
           </button>
         )}
+        {trailing}
       </div>
     </div>
   );

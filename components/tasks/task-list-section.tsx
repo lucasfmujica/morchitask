@@ -23,6 +23,7 @@ export function TaskListSection({
   grouped = false,
   scope = "",
   dragging = false,
+  bare = false,
 }: {
   tasks: Task[];
   isLoading: boolean;
@@ -43,20 +44,23 @@ export function TaskListSection({
   scope?: string;
   /** A drag is in progress (reveals empty-group strips). */
   dragging?: boolean;
+  /** The caller already draws the well around the list. */
+  bare?: boolean;
 }) {
   const t = useTranslations("tasks");
+  const Frame = bare ? BareFrame : Well;
   // The list lives in a well: a grey tray with the cards as white tiles on it.
   // Loading and empty states sit in the same tray so the page doesn't jump
   // between a bare skeleton and a framed list once the query lands.
   if (isLoading)
     return (
-      <Well>
+      <Frame>
         <SkeletonList />
-      </Well>
+      </Frame>
     );
   if (tasks.length === 0)
     return (
-      <Well>
+      <Frame>
         <EmptyState
           icon={emptyIcon ?? ListChecks}
           title={emptyTitle}
@@ -66,11 +70,11 @@ export function TaskListSection({
           kbdHint={t("kbdNewTask")}
           className="border-transparent bg-surface/60"
         />
-      </Well>
+      </Frame>
     );
 
   return (
-    <Well>
+    <Frame>
       <SortableTaskList
         tasks={tasks}
         channelsById={channelsById}
@@ -82,6 +86,10 @@ export function TaskListSection({
         scope={scope}
         dragging={dragging}
       />
-    </Well>
+    </Frame>
   );
+}
+
+function BareFrame({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

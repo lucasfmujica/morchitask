@@ -98,7 +98,7 @@ export function SortableTaskList({
             </li>
           ) : (
             <li key={row.task.id} className="flex items-stretch gap-1">
-              <span className="w-5 shrink-0" aria-hidden />
+              <span className="hidden w-5 shrink-0 touch:block" aria-hidden />
               <div className="flex-1">
                 <TaskCard
                   task={row.task}
@@ -241,7 +241,12 @@ function SortableRow({
         {...(coarse ? handle : {})}
         aria-label={t("reorderOrDrag")}
         tabIndex={coarse ? 0 : -1}
-        className="flex w-5 shrink-0 cursor-grab touch-none items-center justify-center text-subtle/60 transition-colors hover:text-muted active:cursor-grabbing"
+        // On a pointer the whole card drags, so the grip column only exists on
+        // touch, where the card body is busy with swipe-to-complete.
+        className={cn(
+          "w-5 shrink-0 cursor-grab touch-none items-center justify-center text-subtle/60 transition-colors hover:text-muted active:cursor-grabbing",
+          coarse ? "flex" : "hidden",
+        )}
       >
         <GripVertical className="h-4 w-4" aria-hidden />
       </button>

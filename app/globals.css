@@ -68,6 +68,10 @@
      normal-size text sits on solid --primary instead (5.3:1). */
   --fit-from: #3fa266;
 
+  /* The highlighter: deadlines only, always as a background under ink text. */
+  --marker: #f2d24b;
+  --on-marker: #1c1f1a;
+
   --accent: #b3400f;
   --accent-hover: #96350c;
   --on-accent: #ffffff;
@@ -115,6 +119,10 @@
        what sits on it uses --on-primary, which is dark. */
     --fit-from: #b6ebc4;
 
+    /* The highlighter: deadlines only, always as a background under ink text. */
+    --marker: #e3c443;
+    --on-marker: #1c1f1a;
+
     --accent: #ff8f62;
     --accent-hover: #ffa884;
     --on-accent: #1a0b05;
@@ -149,6 +157,10 @@
   /* Light end of the "it fits" gradient. In dark mode the ramp is light and
      what sits on it uses --on-primary, which is dark. */
   --fit-from: #b6ebc4;
+
+  /* The highlighter: deadlines only, always as a background under ink text. */
+  --marker: #e3c443;
+  --on-marker: #1c1f1a;
 
   --accent: #ff8f62;
   --accent-hover: #ffa884;
@@ -242,6 +254,8 @@
   --color-on-primary: var(--on-primary);
   --color-primary-soft: var(--primary-soft);
   --color-fit-from: var(--fit-from);
+  --color-marker: var(--marker);
+  --color-on-marker: var(--on-marker);
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);

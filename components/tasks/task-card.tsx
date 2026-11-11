@@ -11,18 +11,17 @@ import { cn } from "@/lib/utils";
 import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { TaskCheckbox } from "./task-checkbox";
 import { TaskMetaRow } from "./task-meta-row";
-import { TaskReactions } from "./task-reactions";
 import { useTaskTimer } from "./use-task-timer";
 import { useTranslations } from "next-intl";
 
 /**
- * The task card, in its post-redesign anatomy: a category rail and exactly two
- * lines, always.
+ * The task card: exactly two lines, always, and no colour but the category's
+ * small square.
  *
- *   ┌─┬────────────────────────────────────────────┐
- *   │▌│ Rehacer portadas LUMA                  1h  │  title · duration
- *   │ │ 🕐 14:30  #Trabajo          ▬▬▬ 2/3   ⋯    │  when · what · progress
- *   └─┴────────────────────────────────────────────┘
+ *   ┌──────────────────────────────────────────────┐
+ *   │ ○ Rehacer portadas LUMA                   1h │  title · duration
+ *   │   ■ Trabajo  VIE 13/11          ▬▬▬ 2/3   ⋯  │  what · when · progress
+ *   └──────────────────────────────────────────────┘
  *
  * The point of the fixed two lines is that every card in a list measures the
  * same. What used to make them ragged — a wrapping chip footer, an inline
@@ -30,9 +29,9 @@ import { useTranslations } from "next-intl";
  * now reads as three segments plus `2/3`, and its items are edited in the
  * detail sheet.
  *
- * The 3px rail carries the category colour, which is why the meta row no
- * longer needs a coloured dot. `density="compact"` is the week column: same
- * anatomy, one notch tighter.
+ * There used to be a 3px category rail down the left edge; it went with the
+ * bento redesign (a coloured left border is the most recognisable "generated
+ * UI" tell). `density="compact"` is the week column: same anatomy, tighter.
  */
 export function TaskCard({
   task,
@@ -102,30 +101,52 @@ export function TaskCard({
         ? formatMinutes(task.time_estimate_min)
         : null;
 
+  // The duration, editable by tapping. On the comfortable card it closes line 1;
+  // in the narrow week column it moves to line 2 so the title gets the width.
+  const estimateControl = (
+    <>
+      {rightLabel ? (
+        <button
+          onClick={cycleEstimate}
+          disabled={done}
+          aria-label={t("estimate")}
+          title={done ? t("measuredTime") : t("estimateTime")}
+          className="shrink-0 cursor-pointer rounded font-mono text-xs text-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:cursor-default disabled:hover:text-muted"
+        >
+          {rightLabel}
+        </button>
+      ) : (
+        vis.estimate &&
+        !done && (
+          <button
+            onClick={cycleEstimate}
+            aria-label={t("estimateTime")}
+            title={t("estimateTime")}
+            className="shrink-0 cursor-pointer rounded text-subtle opacity-0 transition-opacity hover:text-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none group-hover:opacity-100 touch:opacity-100"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )
+      )}
+    </>
+  );
+
   return (
     <div
       className={cn(
-        "group relative grid gap-x-2.5 gap-y-1 overflow-hidden",
+        "group relative grid gap-x-2.5 gap-y-0.5",
         // A white tile on a well: the shadow separates it, so no hairline border
         // (kept transparent so the box doesn't shift if a border state returns).
         "rounded-card border border-transparent bg-surface shadow-soft",
         // Scoped to transform/shadow: `transition-all` also animated colour, so
         // every theme toggle played a 200ms fade across every card on screen.
         "transition-[transform,box-shadow] duration-200 hover:-translate-y-px hover:shadow-card",
-        // The extra left padding is the room the rail sits in.
         compact
-          ? "grid-cols-[1.125rem_minmax(0,1fr)] py-[9px] pr-2.5 pl-3"
-          : "grid-cols-[1.25rem_minmax(0,1fr)] py-2.5 pr-3 pl-3.5",
+          ? "grid-cols-[1.125rem_minmax(0,1fr)] px-2.5 py-2"
+          : "grid-cols-[1.375rem_minmax(0,1fr)] px-3 py-2",
         done && "opacity-65",
       )}
     >
-      {/* Category rail — the card's only use of a raw category colour. */}
-      <span
-        className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
-        style={channel ? { background: channel.color } : undefined}
-        aria-hidden
-      />
-
       <span className="mt-px">
         <TaskCheckbox checked={done} onToggle={handleToggle} size={compact ? "sm" : "md"} />
       </span>
@@ -136,36 +157,14 @@ export function TaskCard({
           onClick={() => openDetail(task)}
           className={cn(
             "min-w-0 flex-1 cursor-pointer truncate rounded text-left font-medium focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
-            compact ? "text-sm leading-[18px]" : "text-base leading-5",
+            compact ? "text-sm leading-[18px] font-semibold" : "text-sm leading-5 font-semibold",
             done ? "text-subtle line-through" : "text-fg",
           )}
         >
           {task.title}
         </button>
 
-        {rightLabel ? (
-          <button
-            onClick={cycleEstimate}
-            disabled={done}
-            aria-label={t("estimate")}
-            title={done ? t("measuredTime") : t("estimateTime")}
-            className="shrink-0 cursor-pointer rounded text-xs font-semibold tabular-nums text-muted transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:cursor-default disabled:hover:text-muted"
-          >
-            {rightLabel}
-          </button>
-        ) : (
-          vis.estimate &&
-          !done && (
-            <button
-              onClick={cycleEstimate}
-              aria-label={t("estimateTime")}
-              title={t("estimateTime")}
-              className="shrink-0 cursor-pointer rounded text-subtle opacity-0 transition-opacity hover:text-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none group-hover:opacity-100 touch:opacity-100"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          )
-        )}
+        {!compact && estimateControl}
       </div>
 
       {/* Line 2 — when · what, then progress and the affordances. */}
@@ -180,18 +179,13 @@ export function TaskCard({
         visibility={vis}
         compact={compact}
         timer={timer}
+        showOwner={!!owner && owner.id !== me?.id}
+        trailing={compact ? estimateControl : undefined}
         onDelete={() => {
           timer.cancel();
           remove.mutate(task);
         }}
       />
-
-      {/* Kudos on a finished shared task — the one thing worth a third line. */}
-      {task.shared && done && (
-        <div className="col-start-2">
-          <TaskReactions taskId={task.id} size="sm" />
-        </div>
-      )}
     </div>
   );
 }
