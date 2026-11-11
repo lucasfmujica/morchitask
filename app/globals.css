@@ -554,3 +554,320 @@ h3 {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   MARKETING MOTION (landing page only)
+   The landing's washes and the gestures its bento tiles loop through.
+   Kept apart from the app's motion vocabulary above because these loop
+   forever to "play" a feature; nothing logged in should ever do that.
+   Reduced motion: the global rule above shortens every animation to one
+   0.01ms pass. Looping utilities therefore declare NO fill mode, so the
+   element falls back to its resting style (the finished frame) instead of
+   freezing on a keyframe that fades it out. One-shot entries keep `both`.
+   ============================================================ */
+:root {
+  --wash-mint: #c6eed2; /* top of the morning gradient */
+  --wash-mint-2: #e4f6ea; /* where the mint fades out */
+  --wash-peach: #f7e7d6; /* the evening end of the closing panel */
+  --mint-soft: #ddf3e4; /* eyebrow pill, "new time" chips */
+  --on-wash: #2c5a3d; /* small text sitting on a mint wash */
+  /* The Foco tile stays dark in both themes: in dark mode it sinks below
+     --bg instead of inverting into a light slab. */
+  --ink: #1c1f1a;
+  --on-ink: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --wash-mint: #1a3a27;
+    --wash-mint-2: #16261c;
+    --wash-peach: #36281d;
+    --mint-soft: #1d3326;
+    --on-wash: #a8dcb9;
+    --ink: #0a0b09;
+    --on-ink: #eceee6;
+  }
+}
+.dark {
+  --wash-mint: #1a3a27;
+  --wash-mint-2: #16261c;
+  --wash-peach: #36281d;
+  --mint-soft: #1d3326;
+  --on-wash: #a8dcb9;
+  --ink: #0a0b09;
+  --on-ink: #eceee6;
+}
+@theme inline {
+  --color-wash-mint: var(--wash-mint);
+  --color-wash-mint-2: var(--wash-mint-2);
+  --color-wash-peach: var(--wash-peach);
+  --color-mint-soft: var(--mint-soft);
+  --color-on-wash: var(--on-wash);
+  --color-ink: var(--ink);
+  --color-on-ink: var(--on-ink);
+}
+
+/* The overflow stripes, as a fill (the capacity bar's "you went over"). */
+@utility bg-hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--accent) 0 6px,
+    var(--accent-hatch) 6px 12px
+  );
+}
+
+@keyframes mk-swipe {
+  from {
+    transform: scaleX(0) rotate(-1deg);
+  }
+  to {
+    transform: scaleX(1) rotate(-1deg);
+  }
+}
+@keyframes mk-story {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes mk-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mk-draw {
+  from {
+    stroke-dashoffset: 40;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes mk-ring {
+  from {
+    stroke-dashoffset: var(--ring-from);
+  }
+}
+@keyframes mk-dragin {
+  0%,
+  12% {
+    transform: translate(-120px, -70px) rotate(-4deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  55%,
+  92% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mk-overbar {
+  0%,
+  50% {
+    width: 62%;
+    background-image: linear-gradient(90deg, var(--fit-from), var(--primary));
+  }
+  58%,
+  92% {
+    width: 100%;
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--accent) 0 6px,
+      var(--accent-hatch) 6px 12px
+    );
+  }
+  100% {
+    width: 62%;
+  }
+}
+@keyframes mk-type {
+  0% {
+    width: 0;
+  }
+  45%,
+  100% {
+    width: 100%;
+  }
+}
+@keyframes mk-chip {
+  0%,
+  48% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  56%,
+  92% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mk-mail {
+  0%,
+  10% {
+    transform: translateY(-36px);
+    opacity: 0;
+  }
+  28%,
+  90% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mk-strike {
+  0%,
+  30% {
+    background-size: 0 2px;
+  }
+  45%,
+  100% {
+    background-size: 100% 2px;
+  }
+}
+@keyframes mk-newtime {
+  0%,
+  45% {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  55%,
+  92% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mk-eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@keyframes mk-heart {
+  0%,
+  60% {
+    transform: scale(1);
+  }
+  68% {
+    transform: scale(1.35);
+  }
+  76%,
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes mk-spin {
+  to {
+    stroke-dashoffset: var(--ring-to);
+  }
+}
+
+/* One-shot entries (fill `both`: reduced motion lands on the last frame). */
+@utility animate-swipe {
+  transform-origin: left;
+  animation: mk-swipe 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.7s both;
+}
+@utility animate-story {
+  transform-origin: left;
+  animation: mk-story 5s linear both;
+}
+@utility animate-drop {
+  animation: mk-drop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-draw {
+  stroke-dasharray: 40;
+  animation: mk-draw 0.5s ease-out 0.65s both;
+}
+/* Ring fills from empty to its resting offset; set --ring-from to the
+   circumference on the element. */
+@utility animate-ring {
+  animation: mk-ring 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both;
+}
+/* Ring fills from its resting (empty) offset to --ring-to and stays. */
+@utility animate-spin-to {
+  animation: mk-spin 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards;
+}
+
+/* Loops (no fill mode, see the note at the top of this block). */
+@utility animate-dragin {
+  animation: mk-dragin 7s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+@utility animate-overbar {
+  animation: mk-overbar 7s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+@utility animate-type {
+  animation: mk-type 7s steps(38) infinite;
+}
+@utility animate-chip {
+  animation: mk-chip 7s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+@utility animate-mail {
+  animation: mk-mail 6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+/* A strike drawn as a background so it can grow left to right. Its resting
+   size is zero, so reduced motion sets the struck state explicitly. */
+@utility animate-strike {
+  background: linear-gradient(var(--accent), var(--accent)) no-repeat 0 55%;
+  background-size: 0 2px;
+  animation: mk-strike 6s ease infinite;
+  @media (prefers-reduced-motion: reduce) {
+    background-size: 100% 2px;
+  }
+}
+@utility animate-newtime {
+  animation: mk-newtime 6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+@utility animate-eq {
+  transform-origin: bottom;
+  animation: mk-eq 1.1s ease-in-out infinite;
+}
+@utility animate-heart {
+  animation: mk-heart 3s ease infinite;
+}
+
+/* The fill of a horizontal bar that fits: the same mint-to-green as bg-fit,
+   laid along the bar instead of across a tile. */
+@utility bg-fit-bar {
+  background-image: linear-gradient(90deg, var(--fit-from), var(--primary));
+}
+
+/* Marketing headlines are set a weight heavier (800) than the app's headings.
+   The weight is loaded only by the marketing layout (--font-schibsted-heavy),
+   so the app never downloads it. */
+@utility font-display-heavy {
+  font-family: var(--font-schibsted-heavy), var(--font-schibsted), ui-sans-serif, sans-serif;
+  font-weight: 800;
+  font-variant-numeric: normal;
+}
+
+/* Reduced motion shortens animations but keeps their delays, so a staggered
+   entry (fill `both`) would sit invisible for up to 1.6s before snapping in.
+   On the marketing pages nothing is worth that wait. */
+@media (prefers-reduced-motion: reduce) {
+  [data-marketing] *,
+  [data-marketing] *::before,
+  [data-marketing] *::after {
+    animation-delay: 0s !important;
+  }
+}
