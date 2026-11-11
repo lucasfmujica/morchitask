@@ -102,7 +102,7 @@ export function PlanAiSuggest({
         : 0;
     const fromMin = Math.max(DAY_START_MIN, nowMin);
     if (fromMin >= toMin) {
-      setError(`Ya no queda lugar antes de las ${minutesToHHMM(toMin)}.`);
+      setError(t("planNoTimeLeft", { time: minutesToHHMM(toMin) }));
       return;
     }
     setLoading(true);
@@ -159,11 +159,11 @@ export function PlanAiSuggest({
 
   if (!proposal) {
     return (
-      <section className="rounded-2xl bg-surface-2 p-4">
+      <section className="rounded-2xl bg-surface-2 p-[18px]">
         <div className="flex items-start gap-2.5">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-fg">{t("planTitle")}</h2>
+            <h2 className="font-display text-base font-semibold text-fg">{t("planTitle")}</h2>
             <p className="mt-0.5 text-xs text-muted">{t("planHint", { n: pending.length })}</p>
           </div>
         </div>
@@ -172,7 +172,7 @@ export function PlanAiSuggest({
           variant="ghost"
           onClick={ask}
           disabled={loading}
-          className="mt-3 w-full bg-surface shadow-soft hover:bg-surface hover:shadow-card"
+          className="mt-3 h-[42px] w-full bg-surface shadow-soft hover:bg-surface hover:shadow-card"
           size="sm"
         >
           {loading ? (
@@ -193,10 +193,10 @@ export function PlanAiSuggest({
 
   return (
     // Same well, lit with the accent ring while there's a proposal waiting.
-    <section className="rounded-2xl bg-surface-2 p-4 ring-1 ring-accent/40 ring-inset">
+    <section className="rounded-2xl bg-surface-2 p-[18px] ring-1 ring-accent/40 ring-inset">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-accent" aria-hidden />
-        <h2 className="flex-1 text-base font-semibold text-fg">{t("proposal")}</h2>
+        <h2 className="flex-1 font-display text-base font-semibold text-fg">{t("proposal")}</h2>
         <button
           onClick={() => setProposal(null)}
           aria-label={t("dismiss")}
@@ -209,7 +209,7 @@ export function PlanAiSuggest({
       <ol className="mt-3 flex flex-col gap-1.5 rounded-xl bg-surface p-3 shadow-soft">
         {proposal.blocks.map((b) => (
           <li key={b.taskId} className="flex items-baseline gap-2.5 text-xs">
-            <span className="shrink-0 font-semibold tabular-nums text-accent">
+            <span className="shrink-0 font-mono font-medium tabular-nums text-accent">
               {minutesToHHMM(b.startMin)}–{minutesToHHMM(b.endMin)}
             </span>
             <span className="min-w-0 flex-1 truncate text-fg">{titleById.get(b.taskId)}</span>

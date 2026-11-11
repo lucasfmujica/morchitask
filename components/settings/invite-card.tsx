@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Mail, X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 import { useInviteActions, useInvites } from "@/lib/queries/invites";
 import { useFormatter, useTranslations } from "next-intl";
 
@@ -31,15 +31,10 @@ export function InviteCard() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-surface p-3.5 shadow-soft">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-          <Mail className="h-[18px] w-[18px]" aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-fg">{t("inviteTitle")}</p>
-          <p className="text-xs text-muted">{t("inviteDesc")}</p>
-        </div>
+    <div className="flex flex-col gap-3 rounded-xl bg-surface p-[18px] shadow-soft">
+      <div className="flex flex-col gap-1">
+        <h2 className="font-display text-base font-semibold text-fg">{t("inviteTitle")}</h2>
+        <p className="text-xs leading-[17px] text-muted">{t("inviteDesc")}</p>
       </div>
 
       {!isLoading && !full && (
@@ -57,7 +52,7 @@ export function InviteCard() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t("inviteEmailPlaceholder")}
             aria-label={t("inviteEmailLabel")}
-            className="h-10 min-w-0 flex-1 rounded-pill bg-surface-2 px-4 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="h-10 min-w-0 flex-1 rounded-pill bg-bg px-4 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
           />
           <button
             type="submit"
@@ -78,7 +73,7 @@ export function InviteCard() {
       {full && invites.length === 0 && <p className="text-xs text-muted">{t("inviteFull")}</p>}
 
       {invites.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-lg bg-surface-2 px-1">
+        <ul className="flex flex-col divide-y divide-border rounded-lg bg-bg px-1">
           {invites.map((i) => (
             <li key={i.id} className="flex items-center gap-2 p-2.5">
               <div className="min-w-0 flex-1">

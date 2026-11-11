@@ -4,51 +4,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  CalendarCheck2,
-  BarChart3,
-  CalendarCheck,
-  CalendarDays,
-  CalendarRange,
-  Inbox,
-  Moon,
-  Plus,
-  Repeat,
-  Search,
-  Settings,
-  Sun,
-  Target,
-  Timer,
-} from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { useTaskDetail } from "@/lib/stores/task-detail";
-import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
-import { taskKeys, useCreateTask, useTaskSearch } from "@/lib/queries/tasks";
+import { useChannelLookup, useChannels, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
+import { taskKeys, useTaskSearch } from "@/lib/queries/tasks";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { buildPaletteItems, type ActionMeta, type PaletteItem } from "@/lib/palette";
+import { parseQuickAdd, type QuickAddResult } from "@/lib/quick-add";
+import { PRIORITY_DOT, PRIORITY_LABEL_KEY } from "@/lib/priority";
+import { formatMinutes } from "@/lib/format";
 import type { Channel, Task } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
-import { orderForAppend } from "@/lib/ordering";
+import { useDateLabels } from "@/lib/use-date-labels";
 import { EASE_OUT_EXPO, SPRING_SOFT } from "@/lib/motion";
-import { Kbd, Skeleton } from "@/components/ui";
+import { Skeleton } from "@/components/ui";
+import { useComposerCreate } from "@/components/tasks/use-composer-create";
 import { PaletteTaskRow } from "./palette-task-row";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-
-const NAV_ICONS: Record<string, typeof CalendarCheck> = {
-  today: CalendarCheck,
-  week: CalendarRange,
-  month: CalendarDays,
-  plan: Sun,
-  shutdown: Moon,
-  review: CalendarCheck2,
-  backlog: Inbox,
-  routines: Repeat,
-  metas: Target,
-  focus: Timer,
-  resumen: BarChart3,
-  settings: Settings,
-};
 
 export function CommandPalette() {
   const tp = useTranslations("palette");
@@ -69,11 +43,11 @@ export function CommandPalette() {
             // max-h in dvh + a flex column: on a phone the on-screen keyboard
             // eats ~40% of the viewport, and a fixed vh panel would push the
             // results out of reach.
-            className="flex max-h-[80dvh] w-full max-w-xl flex-col gap-1 overflow-hidden rounded-2xl bg-bg p-2 shadow-drag"
-            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            className="flex max-h-[80dvh] w-full max-w-[640px] flex-col gap-1.5 overflow-hidden rounded-[28px] bg-bg p-2 shadow-drag"
+            initial={{ opacity: 0, scale: 0.98, y: -14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 8 }}
-            transition={{ duration: 0.18, ease: EASE_OUT_EXPO }}
+            exit={{ opacity: 0, scale: 0.98, y: -8 }}
+            transition={{ duration: 0.22, ease: EASE_OUT_EXPO }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={tp("label")}
@@ -90,13 +64,15 @@ export function CommandPalette() {
 function PaletteBody({ close }: { close: () => void }) {
   const tp = useTranslations("palette");
   const tn = useTranslations("nav");
+  const tc = useTranslations("common");
   const router = useRouter();
   const qc = useQueryClient();
-  const create = useCreateTask();
+  const createFromText = useComposerCreate(todayISO());
   const openDetail = useTaskDetail((s) => s.open);
   const pushRecent = useCommandPalette((s) => s.pushRecent);
   const recentTaskIds = useCommandPalette((s) => s.recentTaskIds);
   const channelsById = useChannelLookup().data ?? EMPTY_CHANNEL_MAP;
+  const channels = useChannels().data;
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -149,6 +125,13 @@ function PaletteBody({ close }: { close: () => void }) {
     [query, actions, searchQ.data, recents],
   );
 
+  // The same quick-add the composer understands ("mañana 10hs 30m #trabajo"),
+  // so the create card can show what it read before you press Enter.
+  const parsed = useMemo(
+    () => parseQuickAdd(query, { today: todayISO(), channels: channels ?? [] }),
+    [query, channels],
+  );
+
   // Clamp at render rather than in an effect — selection follows a shrinking list.
   const active = Math.max(0, Math.min(selected, flat.length - 1));
 
@@ -174,19 +157,34 @@ function PaletteBody({ close }: { close: () => void }) {
       openDetail(item.task);
       return;
     }
+    // Same rules as the composer: typing only "mañana" leaves no title, and
+    // then the words ARE the title (and nothing is taken from them).
+    const raw = item.title.trim();
+    const clean = parsed.title.trim();
     const today = todayISO();
-    const tasks = qc.getQueryData<Task[]>(taskKeys.date(today)) ?? [];
-    create.mutate({
-      title: item.title,
-      plannedDate: today,
-      sortOrder: orderForAppend(tasks.map((t) => t.sort_order)),
-    });
     close();
+    createFromText(
+      {
+        title: clean || raw,
+        channelId: (clean && parsed.channelId) || null,
+        timeEstimateMin: (clean && parsed.estimateMin) || null,
+        priority: (clean && parsed.priority) || null,
+        ...(clean && parsed.plannedDate && { plannedDate: parsed.plannedDate }),
+        ...(clean && parsed.time && { time: parsed.time }),
+      },
+      qc.getQueryData<Task[]>(taskKeys.date(today)) ?? [],
+    );
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    const move = (delta: number) =>
-      setSelected(Math.max(0, Math.min(active + delta, flat.length - 1)));
+    // Wraps around: the create card is drawn on top but is the LAST item of
+    // the flat list (lib/palette keeps it last so Enter on "sema" still
+    // navigates). Wrapping makes up-from-the-first-result land on it, which is
+    // where the eye expects it.
+    const move = (delta: number) => {
+      if (flat.length === 0) return;
+      setSelected((active + delta + flat.length) % flat.length);
+    };
 
     if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
       e.preventDefault();
@@ -221,12 +219,15 @@ function PaletteBody({ close }: { close: () => void }) {
 
   const searching = query.trim().length >= 2;
   const showSkeleton = searching && searchQ.isFetching && !searchQ.data;
+  const createIndex = flat.findIndex((item) => item.kind === "create");
+  const createItem = createIndex === -1 ? undefined : flat[createIndex];
+  const listSections = sections.filter((section) => section.id !== "create");
   let index = -1;
 
   return (
     <>
-      {/* The input is the one white card on the paper panel: it's where you are. */}
-      <div className="flex shrink-0 items-center gap-2.5 rounded-xl bg-surface pr-2 pl-4 shadow-soft">
+      {/* The input is a white pill on the paper panel: it's where you are. */}
+      <div className="flex shrink-0 items-center gap-2.5 rounded-[22px] bg-surface py-1.5 pr-2 pl-[18px]">
         <Search className="h-[18px] w-[18px] shrink-0 text-muted" aria-hidden />
         <input
           autoFocus
@@ -242,8 +243,16 @@ function PaletteBody({ close }: { close: () => void }) {
           aria-expanded
           aria-controls="palette-list"
           aria-activedescendant={flat[active] ? `palette-item-${active}` : undefined}
-          className="w-full min-w-0 bg-transparent py-3.5 text-base text-fg placeholder:text-subtle outline-none"
+          className="h-[46px] w-full min-w-0 bg-transparent text-[17px] text-fg placeholder:text-subtle outline-none"
         />
+        {/* Also a way out by touch, where there is no Escape key. */}
+        <button
+          onClick={close}
+          aria-label={tc("close")}
+          className="shrink-0 cursor-pointer rounded-[6px] bg-surface-2 px-[7px] py-[3px] font-mono text-2xs text-muted transition-colors hover:text-fg"
+        >
+          esc
+        </button>
       </div>
 
       <div
@@ -251,12 +260,24 @@ function PaletteBody({ close }: { close: () => void }) {
         id="palette-list"
         role="listbox"
         aria-label={tp("results")}
-        className="min-h-0 flex-1 overflow-y-auto px-0.5 py-1"
+        className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto"
       >
+        {createItem?.kind === "create" && (
+          <CreateCard
+            item={createItem}
+            index={createIndex}
+            active={createIndex === active}
+            parsed={parsed}
+            channelsById={channelsById}
+            onRun={() => runItem(createItem)}
+            onMouseMove={(e) => onMouseMove(createIndex, e)}
+          />
+        )}
+
         {showSkeleton ? (
-          <div className="flex flex-col gap-1 p-1.5">
+          <div className="flex flex-col gap-1 p-1">
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-10 rounded-lg" />
+              <Skeleton key={i} className="h-[42px] rounded-lg" />
             ))}
           </div>
         ) : flat.length === 0 ? (
@@ -264,13 +285,18 @@ function PaletteBody({ close }: { close: () => void }) {
             {tp("empty", { query: query.trim() })}
           </p>
         ) : (
-          sections.map((section) => (
-            <div key={section.id} role="group" aria-label={tp(section.headingKey)}>
-              <p className="px-3 pt-2.5 pb-1 text-2xs font-semibold uppercase tracking-wide text-muted">
+          listSections.map((section) => (
+            <div
+              key={section.id}
+              role="group"
+              aria-label={tp(section.headingKey)}
+              className="flex flex-col gap-0.5 px-1 pt-1 pb-0.5"
+            >
+              <p className="px-2.5 py-1.5 text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
                 {tp(section.headingKey)}
               </p>
               {section.items.map((item) => {
-                index += 1;
+                index = flat.indexOf(item, index + 1);
                 const i = index;
                 const isActive = i === active;
                 return (
@@ -282,16 +308,15 @@ function PaletteBody({ close }: { close: () => void }) {
                     aria-selected={isActive}
                     onClick={() => runItem(item)}
                     onMouseMove={(e) => onMouseMove(i, e)}
-                    className={cn(
-                      "relative flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-fg transition-colors",
-                      !isActive && "hover:bg-surface-2",
-                    )}
+                    // isolate: once framer drops the panel transform, a bare -z-10 highlight
+                    // would slide under the panel background and vanish.
+                    className="relative isolate flex h-[42px] w-full shrink-0 cursor-pointer items-center gap-2.5 rounded-lg px-3 text-left text-sm text-fg"
                   >
                     {isActive && (
                       <motion.span
                         layoutId="palette-active"
                         transition={SPRING_SOFT}
-                        className="absolute inset-0 -z-10 rounded-lg bg-surface shadow-soft"
+                        className="absolute inset-0 -z-10 rounded-lg bg-surface-2"
                         aria-hidden
                       />
                     )}
@@ -304,19 +329,144 @@ function PaletteBody({ close }: { close: () => void }) {
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3 px-3 pt-1 pb-0.5 text-2xs text-muted">
-        <span className="flex items-center gap-1">
-          <Kbd>↑</Kbd>
-          <Kbd>↓</Kbd> {tp("navigate")}
+      <div className="flex shrink-0 items-center gap-4 border-t border-border px-3.5 pt-2 pb-1.5 text-2xs text-muted">
+        <span>
+          <span className="font-mono">{"↑↓"}</span> {tp("navigate")}
         </span>
-        <span className="flex items-center gap-1">
-          <Kbd>⏎</Kbd> {tp("openItem")}
+        <span>
+          <span className="font-mono">{"↵"}</span> {tp("openItem")}
         </span>
-        <span className="ml-auto flex items-center gap-1">
-          <Kbd>esc</Kbd> {tp("closeItem")}
+        <span>
+          <span className="font-mono">esc</span> {tp("closeItem")}
         </span>
       </div>
     </>
+  );
+}
+
+/**
+ * "Crear tarea" as its own card on top, with what the quick-add parser read
+ * from the text as chips under the title, so "mañana 10hs #trabajo" visibly
+ * becomes a date, a time and a category before you commit to it.
+ */
+function CreateCard({
+  item,
+  index,
+  active,
+  parsed,
+  channelsById,
+  onRun,
+  onMouseMove,
+}: {
+  item: Extract<PaletteItem, { kind: "create" }>;
+  index: number;
+  active: boolean;
+  parsed: QuickAddResult;
+  channelsById: Map<string, Channel>;
+  onRun: () => void;
+  onMouseMove: (e: React.MouseEvent) => void;
+}) {
+  const tp = useTranslations("palette");
+  const tt = useTranslations("tasks");
+  const labels = useDateLabels();
+  const today = todayISO();
+  const clean = parsed.title.trim();
+  // With nothing left once the tokens are taken, the words are the title and
+  // nothing is parsed out of them (same rule as runItem).
+  const useParsed = !!clean;
+  const channel = useParsed && parsed.channelId ? channelsById.get(parsed.channelId) : undefined;
+
+  return (
+    <button
+      id={`palette-item-${index}`}
+      data-index={index}
+      role="option"
+      aria-selected={active}
+      onClick={onRun}
+      onMouseMove={onMouseMove}
+      className={cn(
+        "flex shrink-0 cursor-pointer flex-col gap-2.5 rounded-[20px] bg-surface px-3.5 py-3 text-left ring-2 transition-shadow ring-inset",
+        active ? "ring-primary/50" : "ring-transparent",
+      )}
+    >
+      <span className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+        {tp("createHeading")}
+      </span>
+      <span className="flex items-center gap-2.5">
+        {/* Green disc: creating it is the "yes, add this" of the palette. */}
+        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-fit text-on-primary">
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">
+          {tp("createTask", { title: clean || item.title })}
+        </span>
+        {active && (
+          <span className="shrink-0 font-mono text-2xs text-muted" aria-hidden>
+            {"↵"}
+          </span>
+        )}
+      </span>
+      <span className="flex flex-wrap gap-1.5 pl-9">
+        {/* Where it lands: the parsed day, or today like before. */}
+        <ParsedChip className="bg-primary-soft text-fg">
+          {labels.relativeLabel(
+            useParsed && parsed.plannedDate ? parsed.plannedDate : today,
+            today,
+          )}
+        </ParsedChip>
+        {useParsed && parsed.time && (
+          <ParsedChip className="bg-surface-2 font-mono text-fg">{parsed.time}</ParsedChip>
+        )}
+        {useParsed && parsed.estimateMin && (
+          <ParsedChip className="bg-surface-2 font-mono text-fg">
+            {formatMinutes(parsed.estimateMin)}
+          </ParsedChip>
+        )}
+        {channel && (
+          <ParsedChip className="text-on-scrim" style={{ backgroundColor: channel.color }}>
+            {channel.name}
+          </ParsedChip>
+        )}
+        {useParsed && parsed.priority && (
+          <ParsedChip
+            className={
+              parsed.priority === "high" ? "bg-accent-soft text-accent" : "bg-surface-2 text-fg"
+            }
+          >
+            {parsed.priority !== "high" && (
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: PRIORITY_DOT[parsed.priority] }}
+                aria-hidden
+              />
+            )}
+            {tt(PRIORITY_LABEL_KEY[parsed.priority])}
+          </ParsedChip>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function ParsedChip({
+  className,
+  style,
+  children,
+}: {
+  className: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-semibold",
+        className,
+      )}
+      style={style}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -327,8 +477,6 @@ function PaletteRowContent({
   item: PaletteItem;
   channelsById: Map<string, Channel>;
 }) {
-  const tp = useTranslations("palette");
-  const tcm = useTranslations("common");
   if (item.kind === "task") {
     return (
       <PaletteTaskRow
@@ -338,27 +486,13 @@ function PaletteRowContent({
       />
     );
   }
-  if (item.kind === "create") {
-    return (
-      <>
-        {/* Green disc: creating it is the "yes, add this" of the palette. */}
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fit text-on-primary">
-          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 truncate font-semibold">
-          {tp("createTask", { title: item.title })}
-        </span>
-        <span className="shrink-0 text-2xs text-subtle">{tcm("today")}</span>
-      </>
-    );
-  }
-  const Icon = NAV_ICONS[item.id] ?? CalendarCheck;
+  if (item.kind === "create") return null;
+  // Places get a neutral swatch where tasks get their category's colour, so
+  // the two kinds of row line up but never read as each other.
   return (
     <>
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-muted">
-        <Icon className="h-3.5 w-3.5" aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      <span className="h-2 w-2 shrink-0 rounded-[2px] bg-border-strong" aria-hidden />
+      <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
     </>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, Flame, Quote } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { taskKeys, useMoveTaskToDate, useTasksForDate } from "@/lib/queries/tasks";
 import { useMe } from "@/lib/queries/profiles";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
@@ -24,6 +24,7 @@ import {
   projectedTomorrowMin,
   shutdownSummary,
   splitByDestination,
+  type CarryDestination,
   type CarryPlan,
 } from "@/lib/shutdown";
 import { resolveCapacity } from "@/lib/capacity";
@@ -167,24 +168,25 @@ function ShutdownRitual({
   const isLast = step === STEP_KEYS.length - 1;
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-6 py-2">
+    <div className="relative isolate mx-auto flex w-full max-w-[760px] flex-col gap-[18px] pt-1 md:pt-3">
       {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
 
-      <header className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-fg">{ts("title")}</h1>
-            <p className="text-sm text-muted">{labels.fullDayLabel(date)}</p>
-          </div>
-          {streak > 0 && (
-            <span
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent"
-              title={ts("streak", { n: streak })}
-            >
-              <Flame className="h-4 w-4" aria-hidden />
-              {streak}
-            </span>
-          )}
+      {/* On a phone the ritual reads as one green screen (the canvas's mobile
+          closing ritual): the wash sits behind the header and the hero, and
+          fades out before the step content so the tiles keep their contrast. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-x-4 -top-5 -z-10 h-[460px] bg-linear-to-b from-primary-soft via-primary-soft/60 to-transparent md:hidden"
+      />
+
+      <header className="flex flex-col gap-3.5">
+        <div className="flex items-center gap-3">
+          <h1 className="mr-auto font-display text-[28px] leading-9 font-bold tracking-tight text-fg md:text-[32px]">
+            {ts("title")}
+          </h1>
+          <span className="font-mono text-xs text-muted uppercase">
+            {labels.shortDayLabel(date)}
+          </span>
         </div>
         <StepBar step={step} onJump={setStep} />
       </header>
@@ -204,6 +206,7 @@ function ShutdownRitual({
           actualMin={actualMin}
           accuracy={accuracy}
           intention={note?.intention ?? null}
+          streak={streak}
           channelsById={channelsById}
         />
       )}
@@ -220,43 +223,39 @@ function ShutdownRitual({
           pending={pending}
           tomorrow={tomorrow}
           plan={plan}
-          onToggle={(id) =>
-            setPlan((p) => ({
-              ...p,
-              [id]: carryDestination(p, id) === "tomorrow" ? "backlog" : "tomorrow",
-            }))
-          }
+          onPick={(id, dest) => setPlan((p) => ({ ...p, [id]: dest }))}
           projectedMin={projectedMin}
           capacityTarget={capacityTarget}
+          channelsById={channelsById}
         />
       )}
 
       {/* On a phone the CTA is pinned: the step content scrolls under it, so
           "Cerrar el día" is never a scroll away. */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-3 border-t border-border bg-bg/95 px-4 py-3 pb-safe backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-        {step > 0 && (
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => setStep(step - 1)}
-            className="px-4 text-muted hover:text-fg"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            {ts("back")}
-          </Button>
-        )}
+      <div className="sticky bottom-0 z-10 -mx-4 mt-1.5 flex items-center gap-2.5 border-t border-border bg-bg/95 px-4 py-3 pb-safe backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+        {/* Kept in the layout on step 1 (just hidden) so "Seguir" doesn't jump
+            sideways as you move between steps. */}
+        <Button
+          variant="ghost"
+          size="lg"
+          onClick={() => setStep(step - 1)}
+          aria-hidden={step === 0}
+          tabIndex={step === 0 ? -1 : undefined}
+          className={cn("px-[18px] text-muted hover:text-fg", step === 0 && "invisible")}
+        >
+          {ts("back")}
+        </Button>
         <Button
           size="lg"
           onClick={() => (isLast ? closeDay() : setStep(step + 1))}
           disabled={upsert.isPending}
-          className="ml-auto"
+          className="ml-auto px-[26px]"
         >
           {isLast ? (alreadyClosed ? ts("saveAndSee") : ts("title")) : ts("next")}
-          <ArrowRight className="h-4 w-4" aria-hidden />
         </Button>
       </div>
 
-      {saveError && <p className="text-right text-sm text-danger">{ts("saveError")}</p>}
+      {saveError && <p className="text-right text-sm text-danger">{ts("saveErrorRetry")}</p>}
     </div>
   );
 }
@@ -265,8 +264,9 @@ function StepBar({ step, onJump }: { step: number; onJump: (i: number) => void }
   const ts = useTranslations("shutdown");
   return (
     <div className="flex flex-col gap-2">
-      {/* Each segment carries its step's name underneath, so the bar is also
-          the map; the aria-label already names it for screen readers. */}
+      {/* Each segment carries "1 de 3 · Celebrá" underneath, so the bar is also
+          the map. Ink, not green: green on this screen means "done", and a step
+          you're merely on isn't done yet. */}
       <div className="grid grid-cols-3 gap-2">
         {STEP_KEYS.map((key, i) => (
           <button
@@ -278,17 +278,17 @@ function StepBar({ step, onJump }: { step: number; onJump: (i: number) => void }
           >
             <span
               className={cn(
-                "block h-1.5 w-full rounded-pill transition-colors duration-300",
-                i <= step ? "bg-fit" : "bg-border group-hover:bg-border-strong",
+                "block h-[5px] w-full rounded-pill transition-colors duration-300",
+                i <= step ? "bg-fg" : "bg-border group-hover:bg-border-strong",
               )}
             />
             <span
               className={cn(
-                "truncate text-xs font-semibold",
-                i === step ? "text-fg" : "text-subtle",
+                "truncate text-xs font-semibold max-sm:hidden",
+                i === step ? "text-fg" : "text-muted",
               )}
             >
-              {ts(key)}
+              {ts("stepOf", { step: i + 1, total: STEP_KEYS.length, name: ts(key) })}
             </span>
           </button>
         ))}
@@ -309,6 +309,7 @@ function StepCelebrate({
   actualMin,
   accuracy,
   intention,
+  streak,
   channelsById,
 }: {
   done: Task[];
@@ -317,27 +318,32 @@ function StepCelebrate({
   actualMin: number;
   accuracy: number | null;
   intention: string | null;
+  streak: number;
   channelsById: Map<string, Channel>;
 }) {
   const ts = useTranslations("shutdown");
   const acc = accuracyLabelKey(accuracy);
   const sharedDone = done.filter((t) => t.shared);
+  const hasTime = estimatedMin > 0 || actualMin > 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-5 rounded-2xl bg-linear-to-b from-primary-soft to-surface p-5 shadow-soft sm:p-7">
+    <div className="flex flex-col gap-3.5">
+      {/* Desktop: a green-washed card with the check beside the headline.
+          Phone: the card dissolves into the screen's wash and everything
+          centres under a bigger check, as in the mobile ritual. */}
+      <div className="flex flex-col items-center gap-4 pt-4 text-center sm:flex-row sm:gap-[22px] sm:rounded-[28px] sm:bg-linear-to-b sm:from-primary-soft sm:to-surface sm:to-85% sm:p-7 sm:text-left">
         {/* The big green check only when something got done: on an empty day
             it would be congratulating you for nothing. */}
         {done.length > 0 && (
-          <span className="grid h-20 w-20 shrink-0 place-items-center rounded-pill bg-fit text-on-primary shadow-card">
-            <Check className="h-9 w-9" strokeWidth={2.5} aria-hidden />
+          <span className="grid h-[104px] w-[104px] shrink-0 place-items-center rounded-pill bg-fit text-on-primary shadow-[0_12px_28px_-6px] shadow-primary/45 sm:h-[84px] sm:w-[84px]">
+            <Check className="h-11 w-11 sm:h-[38px] sm:w-[38px]" strokeWidth={2.6} aria-hidden />
           </span>
         )}
-        <div className="min-w-0 flex-1 basis-56">
-          <h2 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h2 className="font-display text-[30px] leading-[34px] font-bold tracking-tight text-fg sm:text-[34px] sm:leading-10">
             {done.length === 0 ? ts("nothingDone") : ts("didCount", { n: done.length })}
           </h2>
-          <p className="mt-1 text-sm text-muted">
+          <p className="text-[15px] text-muted sm:text-sm">
             {done.length === 0
               ? ts("nothingDoneHint")
               : actualMin > 0
@@ -347,45 +353,15 @@ function StepCelebrate({
         </div>
       </div>
 
-      {done.length > 0 && (
-        <Well>
-          <ul className="flex flex-col divide-y divide-border/60 rounded-xl bg-surface px-4 shadow-soft">
-            {done.map((t) => {
-              const channel = t.channel_id ? channelsById.get(t.channel_id) : undefined;
-              return (
-                <li key={t.id} className="flex items-center gap-2.5 py-2.5">
-                  <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.5} aria-hidden />
-                  {channel && (
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: channel.color }}
-                      aria-hidden
-                    />
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-sm text-fg">{t.title}</span>
-                  {t.actual_time_min ? (
-                    <span className="shrink-0 text-2xs tabular-nums text-muted">
-                      {formatMinutes(t.actual_time_min)}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </Well>
-      )}
-
-      <div
-        className={cn(
-          "grid grid-cols-1 gap-4 empty:hidden",
-          intention && (estimatedMin > 0 || actualMin > 0) && "sm:grid-cols-2",
-        )}
-      >
+      {/* The bento: estimate vs actual, the morning's intention, the streak.
+          auto-fit so a missing tile (nothing tracked, no intention) lets the
+          others widen instead of leaving a hole. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3.5">
         {/* Estimated vs actual, as two bars against a shared scale. Two sentences
           made you do the arithmetic; two bars make the gap the thing you see —
           which is the whole feedback loop this screen exists for. */}
-        {(estimatedMin > 0 || actualMin > 0) && (
-          <Well className="flex flex-col gap-2.5 p-4">
+        {hasTime && (
+          <Well className="flex flex-col gap-2.5 rounded-2xl p-[18px]">
             <CompareBar
               label={ts("estimatedBar")}
               min={estimatedMin}
@@ -401,7 +377,7 @@ function StepCelebrate({
             {acc && (
               <p
                 className={cn(
-                  "mt-0.5 self-start rounded-pill px-2.5 py-1 text-2xs font-semibold",
+                  "self-start rounded-pill px-2.5 py-1 text-xs font-semibold",
                   acc.key === "accuracyOnTarget"
                     ? "bg-primary-soft text-primary"
                     : "bg-accent-soft text-accent",
@@ -416,41 +392,123 @@ function StepCelebrate({
         {/* The morning's intention, closing the loop it opened in /plan — with
           the day's result attached, so it reads as answered rather than filed. */}
         {intention && (
-          <Well className="flex gap-3 p-4">
-            <Quote className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
-            <div className="flex min-w-0 flex-col">
-              <p className="text-xs font-medium text-muted">{ts("morningIntention")}</p>
-              <p className="mt-1.5 font-display text-base leading-snug font-semibold text-fg">
-                {intention}
-              </p>
-              <p className="mt-auto pt-2 text-xs font-semibold text-primary">
-                {done.length === 0
-                  ? ts("intentionPending")
-                  : done.length === total
-                    ? ts("intentionDone")
-                    : ts("intentionPartial", { done: done.length, total })}
-              </p>
-            </div>
+          <Well className="flex flex-col gap-2 rounded-2xl p-[18px]">
+            <p className="text-xs text-muted">{ts("morningIntention")}</p>
+            <p className="font-display text-base leading-[21px] font-semibold text-fg">
+              {intention}
+            </p>
+            <p className="mt-auto text-xs font-semibold text-primary">
+              {done.length === 0
+                ? ts("intentionPending")
+                : done.length === total
+                  ? ts("intentionDone")
+                  : ts("intentionPartial", { done: done.length, total })}
+            </p>
           </Well>
         )}
+
+        <StreakTile streak={streak} />
       </div>
 
+      {/* Shared work you finished, each with the kudos bar so the other person
+          can leave a mimo. Pills, as in the canvas; one per task because each
+          task carries its own reactions. */}
       {sharedDone.length > 0 && (
-        <Well className="flex flex-col gap-1.5">
-          <p className="px-2.5 pt-1.5 pb-0.5 text-xs font-semibold text-muted">
-            {ts("sharedDone")}
-          </p>
+        <div className="flex flex-col gap-2">
+          <p className="px-1 text-xs font-semibold text-muted">{ts("sharedDoneLove")}</p>
           {sharedDone.map((t) => (
             <div
               key={t.id}
-              className="flex items-center gap-3 rounded-xl bg-surface py-2 pr-2 pl-4 shadow-soft"
+              className="flex flex-wrap items-center gap-2.5 rounded-[22px] bg-surface py-2 pr-2 pl-2.5 shadow-soft sm:rounded-pill"
             >
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">{t.title}</span>
+              <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-pill bg-fit text-on-primary">
+                <Check className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">
+                {t.title}
+              </span>
               <TaskReactions taskId={t.id} size="sm" />
             </div>
           ))}
-        </Well>
+        </div>
       )}
+
+      {/* The list of what got done isn't on the canvas, which leads with the
+          count; it stays one tap away for the days you want to see it. */}
+      {done.length > 0 && (
+        <details className="group">
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-pill px-1 py-1 text-xs font-semibold text-muted hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+            <ChevronDown
+              className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
+              aria-hidden
+            />
+            {ts("doneListToggle", { n: done.length })}
+          </summary>
+          <Well className="mt-2">
+            <ul className="flex flex-col divide-y divide-border/60 rounded-xl bg-surface px-4 shadow-soft">
+              {done.map((t) => {
+                const channel = t.channel_id ? channelsById.get(t.channel_id) : undefined;
+                return (
+                  <li key={t.id} className="flex items-center gap-2.5 py-2.5">
+                    <Check
+                      className="h-4 w-4 shrink-0 text-primary"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
+                    {channel && (
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: channel.color }}
+                        aria-hidden
+                      />
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-sm text-fg">{t.title}</span>
+                    {t.actual_time_min ? (
+                      <span className="shrink-0 font-mono text-2xs text-muted">
+                        {formatMinutes(t.actual_time_min)}
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </Well>
+        </details>
+      )}
+    </div>
+  );
+}
+
+/** How many of the last STREAK_DOTS days are part of the current run. The
+ *  streak is a count, not a calendar, so the dots are the run drawn from the
+ *  right: honest about length, silent about which older days were missed. */
+const STREAK_DOTS = 14;
+
+/** The dark tile: the streak as a big number, with the run drawn as dots. It
+ *  used to be a small chip in the header, easy to miss on the one screen that
+ *  feeds it. */
+function StreakTile({ streak }: { streak: number }) {
+  const ts = useTranslations("shutdown");
+  const lit = Math.min(streak, STREAK_DOTS);
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl bg-fg p-[18px] text-bg">
+      <span className="font-display text-[34px] leading-10 font-bold tabular-nums">{streak}</span>
+      <span className="text-[13px] text-bg/75">
+        {streak > 0 ? ts("streak", { n: streak }) : ts("streakNone")}
+      </span>
+      <div className="mt-auto flex gap-[5px]" aria-hidden>
+        {Array.from({ length: STREAK_DOTS }, (_, i) => (
+          <span
+            key={i}
+            className={cn(
+              // Shrink rather than overflow: 14 dots at 12px don't fit the
+              // narrowest tile the auto-fit grid can produce.
+              "aspect-square max-w-3 min-w-0 flex-1 rounded-pill",
+              i >= STREAK_DOTS - lit ? "bg-fit" : "bg-bg/20",
+            )}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -470,43 +528,66 @@ function StepReflect({
 }) {
   const ts = useTranslations("shutdown");
   return (
-    <Well>
-      <div className="flex flex-col gap-5 rounded-xl bg-surface p-5 shadow-soft sm:p-7">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-fg">{ts("moodQuestion")}</h2>
-          <p className="mt-1 text-sm text-muted">{ts("moodHint")}</p>
+    <Well className="rounded-[28px]">
+      <div className="flex flex-col gap-[18px] rounded-[22px] bg-surface p-5 shadow-soft sm:p-7">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg">
+            {ts("moodQuestion")}
+          </h2>
+          <p className="text-sm text-muted">{ts("moodHint")}</p>
         </div>
 
         <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-          {MOODS.map((m) => (
-            <button
-              key={m.value}
-              onClick={() => onMood(m.value)}
-              aria-pressed={mood === m.value}
-              aria-label={ts(m.labelKey)}
-              className={cn(
-                "flex min-w-0 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl px-1 py-4 transition-[background-color,color,transform,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none sm:py-5",
-                mood === m.value
-                  ? "-translate-y-0.5 bg-primary text-on-primary shadow-card"
-                  : "bg-bg text-fg hover:bg-surface-2",
-              )}
-            >
-              <span className="text-2xl leading-none" aria-hidden>
-                {m.emoji}
-              </span>
-              <span className="max-w-full truncate text-2xs font-semibold sm:text-xs">
-                {ts(m.labelKey)}
-              </span>
-            </button>
-          ))}
+          {MOODS.map((m, idx) => {
+            const on = mood === m.value;
+            return (
+              <button
+                key={m.value}
+                onClick={() => onMood(m.value)}
+                aria-pressed={on}
+                aria-label={ts(m.labelKey)}
+                className={cn(
+                  "flex h-[88px] min-w-0 cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl px-1 transition-[background-color,color,transform,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                  on
+                    ? "-translate-y-0.5 bg-primary text-on-primary shadow-card"
+                    : "bg-bg text-fg hover:bg-surface-2",
+                )}
+              >
+                {/* A rising five-bar meter instead of faces: it reads as "how
+                    much" at a glance and doesn't put an expression on your day. */}
+                <span className="flex h-[22px] items-end gap-[3px]" aria-hidden>
+                  {[0, 1, 2, 3, 4].map((k) => (
+                    <span
+                      key={k}
+                      style={{ height: 6 + k * 4 }}
+                      className={cn(
+                        "w-[5px] rounded-[3px]",
+                        k <= idx
+                          ? on
+                            ? "bg-on-primary"
+                            : "bg-fg"
+                          : on
+                            ? "bg-on-primary/35"
+                            : "bg-border",
+                      )}
+                    />
+                  ))}
+                </span>
+                <span className="max-w-full truncate text-2xs font-semibold sm:text-[13px]">
+                  {ts(m.labelKey)}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <textarea
           value={reflection}
           onChange={(e) => onReflection(e.target.value)}
           placeholder={ts("reflectionPlaceholder")}
+          aria-label={ts("moodHint")}
           rows={5}
-          className="w-full resize-none rounded-xl border-0 bg-bg px-4 py-3.5 text-sm leading-relaxed text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="w-full resize-none rounded-[16px] border-0 bg-bg p-3.5 text-sm leading-[21px] text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
       </div>
     </Well>
@@ -518,7 +599,7 @@ function StepReflect({
  *
  * It used to be one "Mover N a mañana" button: all or nothing. That's how
  * tomorrow ends up pre-loaded with today's failures before you've even planned
- * it. Each task now carries its own destination, and the footer shows what
+ * it. Each task now carries its own destination, and the bar below shows what
  * tomorrow would weigh once you apply them — so parking something in the
  * backlog is a visible relief rather than an admission.
  */
@@ -526,20 +607,23 @@ function StepTomorrow({
   pending,
   tomorrow,
   plan,
-  onToggle,
+  onPick,
   projectedMin,
   capacityTarget,
+  channelsById,
 }: {
   pending: Task[];
   tomorrow: string;
   plan: CarryPlan;
-  onToggle: (taskId: string) => void;
+  onPick: (taskId: string, dest: CarryDestination) => void;
   projectedMin: number;
   capacityTarget: number;
+  channelsById: Map<string, Channel>;
 }) {
   const ts = useTranslations("shutdown");
   const tnav = useTranslations("nav");
   const tcm = useTranslations("common");
+  const labels = useDateLabels();
   // Closing an old day carries its leftovers to today, not to "mañana" — so the
   // copy has to name the day it's actually moving them to. Compared as dates:
   // this used to lowercase the day's LABEL and test it against "hoy", which
@@ -547,14 +631,18 @@ function StepTomorrow({
   const toToday = tomorrow === todayISO();
   const targetName = toToday ? tcm("today") : tcm("tomorrow");
   const over = projectedMin > capacityTarget;
+  const options: { dest: CarryDestination; label: string }[] = [
+    { dest: "tomorrow", label: targetName },
+    { dest: "backlog", label: tnav("backlog") },
+  ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-fg">
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-1">
+        <h2 className="font-display text-[28px] leading-9 font-bold tracking-tight text-fg">
           {toToday ? ts("todayHeading") : ts("tomorrowHeading")}
         </h2>
-        <p className="mt-1 text-sm text-muted">
+        <p className="text-sm text-muted">
           {pending.length === 0 ? ts("nothingPending") : ts("pendingCount", { n: pending.length })}
         </p>
       </div>
@@ -568,54 +656,86 @@ function StepTomorrow({
         </p>
       ) : (
         <>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2.5">
             {pending.map((t) => {
               const dest = carryDestination(plan, t.id);
+              const channel = t.channel_id ? channelsById.get(t.channel_id) : undefined;
               return (
                 <li
                   key={t.id}
-                  className="flex items-center gap-3 rounded-2xl bg-surface-2 py-2 pr-2 pl-4"
+                  className="flex flex-wrap items-center gap-3 rounded-2xl bg-surface-2 py-2 pr-2 pl-[18px]"
                 >
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-[2px] bg-border-strong"
+                    style={channel ? { backgroundColor: channel.color } : undefined}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-[1_1_140px] truncate text-sm font-semibold text-fg">
                     {t.title}
                   </span>
                   {t.time_estimate_min ? (
-                    <span className="shrink-0 text-2xs font-semibold tabular-nums text-muted">
+                    <span className="shrink-0 font-mono text-xs text-muted">
                       {formatMinutes(t.time_estimate_min)}
                     </span>
                   ) : null}
-                  <button
-                    onClick={() => onToggle(t.id)}
+                  <div
+                    role="group"
                     aria-label={ts("destinationOf", { title: t.title })}
-                    className={cn(
-                      "h-9 w-24 shrink-0 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
-                      dest === "tomorrow"
-                        ? "bg-surface text-primary shadow-soft"
-                        : "bg-transparent text-muted hover:bg-surface/60",
-                    )}
+                    className="flex shrink-0 gap-0.5 rounded-pill bg-border p-[3px] max-sm:ml-auto"
                   >
-                    {dest === "tomorrow" ? targetName : tnav("backlog")}
-                  </button>
+                    {options.map((o) => (
+                      <button
+                        key={o.dest}
+                        onClick={() => onPick(t.id, o.dest)}
+                        aria-pressed={dest === o.dest}
+                        className={cn(
+                          "h-[34px] cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                          dest === o.dest
+                            ? "bg-surface text-fg shadow-soft"
+                            : "bg-transparent text-muted hover:text-fg",
+                        )}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
                 </li>
               );
             })}
           </ul>
 
-          {/* What you just decided, in minutes. */}
-          <p
+          {/* What you just decided, in minutes: the day it lands on, drawn
+              against your capacity. Over budget is said in words and drawn
+              hatched, never by colour alone. */}
+          <div
             className={cn(
-              "rounded-xl px-4 py-3 text-sm",
+              "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[20px] px-[18px] py-3.5",
               over ? "bg-accent-soft text-accent" : "bg-primary-soft text-fg",
             )}
           >
-            {ts.rich("wouldWeigh", {
-              day: targetName,
-              planned: formatMinutes(projectedMin),
-              capacity: formatMinutes(capacityTarget),
-              b: (chunks) => <strong className="font-semibold">{chunks}</strong>,
-            })}
-            {over && ts("wouldWeighOver")}
-          </p>
+            <div className="h-2 min-w-24 flex-1 overflow-hidden rounded-pill bg-surface/70">
+              <div
+                className={cn(
+                  "h-full rounded-pill transition-[width] duration-500",
+                  !over && "bg-fit",
+                )}
+                style={{
+                  width: `${Math.min(100, capacityTarget > 0 ? (projectedMin / capacityTarget) * 100 : 0)}%`,
+                  backgroundImage: over
+                    ? "repeating-linear-gradient(45deg, var(--accent) 0 5px, color-mix(in srgb, var(--accent) 70%, var(--surface)) 5px 10px)"
+                    : undefined,
+                }}
+              />
+            </div>
+            <p className="text-[13px] font-semibold">
+              {ts.rich(over ? "weighDayOver" : "weighDay", {
+                day: labels.weekdayName(tomorrow),
+                planned: formatMinutes(projectedMin),
+                capacity: formatMinutes(capacityTarget),
+                b: (chunks) => <strong className="font-bold">{chunks}</strong>,
+              })}
+            </p>
+          </div>
         </>
       )}
     </div>

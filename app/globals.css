@@ -375,6 +375,18 @@ h2,
 h3 {
   font-family: var(--font-schibsted), var(--font-figtree), ui-sans-serif, sans-serif;
   letter-spacing: -0.01em;
+  /* Schibsted's tabular set also makes "," and "." figure-wide, which opened a
+     visible gap before punctuation in headings ("calma ,"). Headings are prose,
+     not clocks. */
+  font-variant-numeric: normal;
+}
+
+/* Same punctuation gap as headings, for display-face text outside them (a
+   tile's sentence, a stat). Anything that must stay tabular says so. */
+/* Matched by attribute: Tailwind v4 drops a hand-written rule whose selector
+   is one of its own utility classes. */
+[class~="font-display"]:not(.tabular-nums) {
+  font-variant-numeric: normal;
 }
 
 /* The "it fits" fill: capacity that entered, a done check, a selected chip.

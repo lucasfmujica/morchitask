@@ -1,9 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CalendarClock, Camera, Check, LogOut, Music } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, LogOut } from "lucide-react";
 import { signIn, signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { disconnectCalendar as disconnectCalendarAction } from "@/lib/actions/google";
 import { profileKeys, useMe, useUpdateMyProfile, useUploadMyAvatar } from "@/lib/queries/profiles";
 import {
@@ -15,6 +17,7 @@ import {
 import { AVATAR_CONTENT_TYPES, avatarRejectionReason } from "@/lib/avatars";
 import { useHousehold, useUpdateHouseholdName } from "@/lib/queries/households";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
+import { cn } from "@/lib/utils";
 import { ThemeSelector } from "./theme-selector";
 import { ChannelsManager } from "./channels-manager";
 import { InviteCard } from "./invite-card";
@@ -22,11 +25,6 @@ import { NotificationsCard } from "./notifications-card";
 import { InboundEmailCard } from "./inbound-email-card";
 import { LanguageSelector } from "./language-selector";
 import { DangerZone } from "./danger-zone";
-import Link from "next/link";
-import { ArrowRight, CreditCard } from "lucide-react";
-import { Button } from "@/components/ui";
-import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
 
 export function SettingsView() {
   const t = useTranslations("settings");
@@ -80,47 +78,47 @@ export function SettingsView() {
     qc.invalidateQueries({ queryKey: profileKeys.me });
   }
 
-  // Shared shapes: a pill field on the white card, the "connected" chip and the
-  // quiet text actions beside it.
+  // A field on the white card sits on the page colour, one step back from the
+  // card, so it reads as a slot to type into rather than another card.
   const field =
-    "h-11 w-full rounded-pill bg-surface-2 px-4 text-sm text-fg placeholder:text-subtle outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus";
-  const connectedChip =
-    "inline-flex h-7 items-center gap-1 rounded-pill bg-primary-soft px-2.5 text-xs font-semibold text-primary";
-  const quietAction =
-    "h-7 cursor-pointer rounded-pill px-2.5 text-xs font-semibold text-muted transition-colors hover:bg-surface-2";
+    "h-11 w-full rounded-lg bg-bg px-3.5 text-sm text-fg placeholder:text-subtle outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus";
+  const fieldLabel = "flex flex-col gap-1.5 text-xs font-semibold text-muted";
 
   return (
-    <div className="flex max-w-5xl flex-col gap-4">
-      <h1 className="px-1 pt-1 text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+    <div className="flex flex-col gap-4">
+      <h1 className="px-2 pt-3 font-display text-[32px] leading-9 font-bold tracking-tight text-fg">
         {t("title")}
       </h1>
 
-      {/* Bento: two columns of wells on desktop, one on the phone. The DOM
-          order is the reading order, so the pairs fall out of it. */}
-      <div className="grid items-start gap-4 md:grid-cols-2">
-        {/* Profile */}
-        <Section title={t("profile")}>
+      {/* Bento: as many 300px columns as fit, so it is three on a desktop,
+          two on a tablet and one on the phone. The DOM order is the reading
+          order on the phone, which is why the stacked pairs are grouped. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))] items-start gap-4">
+        {/* Profile and the space's name: who you are and where you are. */}
+        <Well>
           <Card>
-            <div className="flex items-center gap-3">
-              {/* Avatar with a camera badge to upload a photo */}
-              <button
-                type="button"
-                onClick={() => fileInput.current?.click()}
-                disabled={uploadAvatar.isPending}
-                aria-label={t("changePhoto")}
-                title={t("changePhoto")}
-                className="group relative shrink-0 cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
-              >
-                <OwnerAvatar profile={me ?? undefined} size={48} />
-                <span className="absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-surface bg-fg text-bg">
-                  <Camera className="h-2.5 w-2.5" aria-hidden />
-                </span>
-                {uploadAvatar.isPending && (
-                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-scrim text-2xs font-semibold text-on-scrim">
-                    …
-                  </span>
+            <CardTitle>{t("profile")}</CardTitle>
+            <div className="flex items-center gap-3.5">
+              <OwnerAvatar profile={me ?? undefined} size={56} />
+              <div className="flex min-w-0 flex-col items-start gap-1">
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  disabled={uploadAvatar.isPending}
+                  className="h-9 cursor-pointer rounded-pill bg-surface-2 px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-border disabled:opacity-60"
+                >
+                  {uploadAvatar.isPending ? "…" : t("changePhoto")}
+                </button>
+                {me?.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={() => updateProfile.mutate({ avatar_url: null })}
+                    className="cursor-pointer px-1 text-xs font-medium text-muted transition-colors hover:text-danger"
+                  >
+                    {t("removePhoto")}
+                  </button>
                 )}
-              </button>
+              </div>
               <input
                 ref={fileInput}
                 type="file"
@@ -128,6 +126,10 @@ export function SettingsView() {
                 onChange={onPickAvatar}
                 className="hidden"
               />
+            </div>
+            {avatarError && <p className="text-xs text-danger">{avatarError}</p>}
+            <label className={fieldLabel}>
+              {t("yourName")}
               <input
                 key={me?.id}
                 defaultValue={me?.display_name ?? ""}
@@ -136,208 +138,212 @@ export function SettingsView() {
                   if (v && v !== me?.display_name) updateProfile.mutate({ display_name: v });
                 }}
                 placeholder={t("yourName")}
-                aria-label={t("yourName")}
-                className={cn(field, "flex-1")}
+                className={field}
               />
-            </div>
-            {(me?.avatar_url || avatarError) && (
-              <div className="flex items-center gap-3 pl-[60px]">
-                {me?.avatar_url && (
-                  <button
-                    type="button"
-                    onClick={() => updateProfile.mutate({ avatar_url: null })}
-                    className="cursor-pointer text-xs font-medium text-muted transition-colors hover:text-danger"
-                  >
-                    {t("removePhoto")}
-                  </button>
-                )}
-                {avatarError && <span className="text-xs text-danger">{avatarError}</span>}
-              </div>
-            )}
+            </label>
+            <label className={fieldLabel}>
+              {t("spaceName")}
+              <input
+                key={household?.id}
+                defaultValue={household?.name ?? ""}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== household?.name) updateHouseholdName.mutate(v);
+                }}
+                placeholder={t("spaceName")}
+                className={field}
+              />
+            </label>
+            <p className="text-xs leading-[17px] text-muted">{t("spaceHint")}</p>
           </Card>
-        </Section>
+        </Well>
 
-        {/* Shared space */}
-        <Section title={t("space")} hint={t("spaceHint")}>
-          <Card>
-            <input
-              key={household?.id}
-              defaultValue={household?.name ?? ""}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (v && v !== household?.name) updateHouseholdName.mutate(v);
-              }}
-              placeholder={t("spaceName")}
-              aria-label={t("spaceName")}
-              className={field}
-            />
-          </Card>
-        </Section>
+        {/* Two short preferences stacked, then who else is in the space. */}
+        <div className="flex flex-col gap-4">
+          <FlatWell title={t("appearance")}>
+            <ThemeSelector />
+          </FlatWell>
+          <FlatWell title={t("language")} hint={t("languageHint")}>
+            <LanguageSelector />
+          </FlatWell>
+          <Well>
+            <InviteCard />
+          </Well>
+        </div>
 
-        {/* Theme */}
-        <Section title={t("appearance")}>
-          <ThemeSelector />
-        </Section>
-
-        {/* Language */}
-        <Section title={t("language")} hint={t("languageHint")}>
-          <LanguageSelector />
-        </Section>
-
-        {/* Channels */}
-        <Section title={t("categories")}>
-          <ChannelsManager />
-        </Section>
-
-        {/* Integrations */}
-        <Section title={t("integrations")}>
-          <Card className="sm:flex-row sm:items-center">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-                <CalendarClock className="h-[18px] w-[18px]" aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-fg">Google Calendar</p>
-                <p className="text-xs text-muted">{t("calendarPitch")}</p>
-              </div>
-            </div>
-            {connected ? (
-              <div className="flex flex-wrap items-center gap-1 pl-12 sm:shrink-0 sm:pl-0">
-                <span className={connectedChip}>
-                  <Check className="h-3 w-3" aria-hidden /> {t("connected")}
-                </span>
-                <button
-                  onClick={connectCalendar}
-                  className={cn(quietAction, "hover:text-fg")}
-                  title={t("reconnectHint")}
-                >
-                  {t("reconnect")}
-                </button>
-                <button
-                  onClick={disconnectCalendar}
-                  className={cn(quietAction, "hover:text-danger")}
-                >
-                  {t("disconnect")}
-                </button>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                onClick={connectCalendar}
-                className="ml-12 w-fit sm:ml-0 sm:shrink-0"
-              >
-                {t("connect")}
-              </Button>
-            )}
-          </Card>
-
-          <Card className="sm:flex-row sm:items-center">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-                <Music className="h-[18px] w-[18px]" aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-fg">Spotify</p>
-                <p className="text-xs text-muted">{t("spotifyPitch")}</p>
-              </div>
-            </div>
-            {spotifyConnected ? (
-              <div className="flex flex-wrap items-center gap-1 pl-12 sm:shrink-0 sm:pl-0">
-                <span className={connectedChip}>
-                  <Check className="h-3 w-3" aria-hidden /> {t("connected")}
-                </span>
-                <button
-                  onClick={() =>
-                    disconnectSpotify.mutate(undefined, { onSuccess: clearSpotifyTokenCache })
-                  }
-                  className={cn(quietAction, "hover:text-danger")}
-                >
-                  {t("disconnect")}
-                </button>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                onClick={connectSpotify}
-                className="ml-12 w-fit sm:ml-0 sm:shrink-0"
-              >
-                {t("connect")}
-              </Button>
-            )}
-          </Card>
-        </Section>
-
-        {/* Sharing */}
-        <Section title={t("space")}>
-          <InviteCard />
-        </Section>
-
-        {/* Notifications */}
-        <Section title={t("notifications")}>
+        <Well>
           <NotificationsCard />
-        </Section>
+        </Well>
 
-        {/* Renders nothing until capture by email is configured on the server. */}
-        <InboundEmailCard />
+        <Well title={t("categories")}>
+          <ChannelsManager />
+        </Well>
 
-        {/* Plan and billing live on their own page — this is the way in. Not a
-            card with the price on it: that number belongs in one place, and
-            duplicating it here is how the two drift apart. */}
-        <Section title={t("billing")}>
+        <Well title={t("integrations")}>
+          <Integration
+            name="Google Calendar"
+            pitch={t("calendarPitch")}
+            connected={connected}
+            onConnect={connectCalendar}
+            onDisconnect={disconnectCalendar}
+            onReconnect={connectCalendar}
+          />
+          <Integration
+            name="Spotify"
+            pitch={t("spotifyPitch")}
+            connected={spotifyConnected}
+            onConnect={connectSpotify}
+            onDisconnect={() =>
+              disconnectSpotify.mutate(undefined, { onSuccess: clearSpotifyTokenCache })
+            }
+          />
+          {/* Renders nothing until capture by email is configured on the server. */}
+          <InboundEmailCard />
+        </Well>
+
+        <div className="flex flex-col gap-4">
+          {/* Plan and billing live on their own page; this is the way in. Not
+              a card with the price on it: that number belongs in one place,
+              and duplicating it here is how the two drift apart. */}
           <Link
             href="/billing"
-            className="group flex items-center gap-3 rounded-xl bg-fg p-4 text-bg transition-opacity hover:opacity-90"
+            className="group flex items-center gap-3 rounded-2xl bg-fg p-5 text-bg transition-opacity hover:opacity-90"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg/15">
-              <CreditCard className="h-[18px] w-[18px]" aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-sm font-semibold">{t("billingTitle")}</p>
-              <p className="text-xs text-bg/70">{t("billingDesc")}</p>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="font-display text-base font-semibold">{t("billingTitle")}</span>
+              <span className="text-xs text-bg/70">{t("billingDesc")}</span>
             </div>
             <ArrowRight
               className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
               aria-hidden
             />
           </Link>
-        </Section>
 
-        {/* Data rights. Last, because it is where you leave — and visible,
-            because the privacy policy says it is here. */}
-        <Section title={t("yourData")} className="md:col-span-2">
+          {/* Signing out lives here since the sidebar dropped it: next to the
+              plan and the way out for good, where people look for "leave". */}
+          <button
+            onClick={handleSignOut}
+            className="flex h-14 cursor-pointer items-center gap-3 rounded-2xl bg-surface-2 px-5 text-sm font-semibold text-fg transition-colors hover:bg-border"
+          >
+            <LogOut className="h-4 w-4 text-muted" aria-hidden />
+            {tcm("signOut")}
+          </button>
+
+          {/* Data rights. Last, because it is where you leave, and visible,
+              because the privacy policy says it is here. */}
           <DangerZone />
-        </Section>
+        </div>
       </div>
-
-      <button
-        onClick={handleSignOut}
-        className="inline-flex h-10 w-fit cursor-pointer items-center gap-2 rounded-pill bg-surface-2 px-4 text-sm font-semibold text-danger transition-colors hover:bg-danger/10"
-      >
-        <LogOut className="h-4 w-4" aria-hidden />
-        {tcm("signOut")}
-      </button>
     </div>
   );
 }
 
-/** A settings group: a well with its title inside and the controls as white
- *  cards. The hint sits under the cards, still inside the tray it explains. */
-function Section({
+/** One integration as a white card: a status dot, the name, its one action,
+ *  and what connecting it gets you underneath. */
+function Integration({
+  name,
+  pitch,
+  connected,
+  onConnect,
+  onDisconnect,
+  onReconnect,
+}: {
+  name: string;
+  pitch: string;
+  connected: boolean;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  onReconnect?: () => void;
+}) {
+  const t = useTranslations("settings");
+  const pill =
+    "h-[34px] shrink-0 cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors";
+  return (
+    <Card className="gap-2.5 rounded-[18px] p-3.5">
+      <div className="flex items-center gap-2.5">
+        <span
+          className={cn(
+            "h-2.5 w-2.5 shrink-0 rounded-full transition-colors duration-300",
+            connected ? "bg-fit-from" : "bg-border-strong",
+          )}
+          aria-hidden
+        />
+        <p className="min-w-0 flex-1 text-sm font-semibold text-fg">
+          {name}
+          {/* The dot is colour only; this is the same fact for a screen reader. */}
+          {connected && <span className="sr-only"> {t("connected")}</span>}
+        </p>
+        {connected ? (
+          <button
+            onClick={onDisconnect}
+            className={cn(pill, "bg-surface-2 text-fg hover:bg-border")}
+          >
+            {t("disconnect")}
+          </button>
+        ) : (
+          <button onClick={onConnect} className={cn(pill, "bg-fg text-bg hover:bg-fg/85")}>
+            {t("connect")}
+          </button>
+        )}
+      </div>
+      <p className="text-xs leading-[17px] text-muted">
+        {pitch}
+        {/* Quiet and after the pitch, not a third button in the row: it is
+            the rare fix for a connection made before two-way sync existed. */}
+        {connected && onReconnect && (
+          <>
+            {" "}
+            <button
+              onClick={onReconnect}
+              title={t("reconnectHint")}
+              className="cursor-pointer font-semibold text-fg underline decoration-border-strong underline-offset-2 transition-colors hover:decoration-fg"
+            >
+              {t("reconnect")}
+            </button>
+          </>
+        )}
+      </p>
+    </Card>
+  );
+}
+
+/** A settings group: a well holding white cards, with its title (if it has
+ *  one outside the card) set into the well itself. */
+function Well({
   title,
-  hint,
   className,
   children,
 }: {
-  title: string;
-  hint?: string;
+  title?: string;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className={cn("flex flex-col gap-2 rounded-2xl bg-surface-2 p-2", className)}>
-      <h2 className="px-3 pt-2 pb-0.5 text-base font-semibold text-fg">{title}</h2>
+    <section className={cn("flex flex-col gap-1.5 rounded-2xl bg-surface-2 p-2", className)}>
+      {title && (
+        <h2 className="px-2.5 pt-2.5 pb-1 font-display text-base font-semibold text-fg">{title}</h2>
+      )}
       {children}
-      {hint && <p className="px-3 pb-1.5 text-xs text-muted">{hint}</p>}
+    </section>
+  );
+}
+
+/** A well with no card in it: for a single control that is its own surface,
+ *  like the segmented theme and language pickers. */
+function FlatWell({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3 rounded-2xl bg-surface-2 p-[18px]">
+      <h2 className="font-display text-base font-semibold text-fg">{title}</h2>
+      {children}
+      {hint && <p className="text-xs text-muted">{hint}</p>}
     </section>
   );
 }
@@ -345,8 +351,14 @@ function Section({
 /** The white card inside a well. */
 function Card({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn("flex flex-col gap-3 rounded-xl bg-surface p-3.5 shadow-soft", className)}>
+    <div
+      className={cn("flex flex-col gap-3.5 rounded-xl bg-surface p-[18px] shadow-soft", className)}
+    >
       {children}
     </div>
   );
+}
+
+function CardTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="font-display text-base font-semibold text-fg">{children}</h2>;
 }

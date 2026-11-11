@@ -141,7 +141,10 @@ export function useBacklogTasks() {
 export type AnalyticsTask = Pick<
   Task,
   "planned_date" | "status" | "time_estimate_min" | "actual_time_min" | "channel_id" | "owner_id"
->;
+> &
+  // Mes names the tasks in each cell and marks deadlines; analytics ignores
+  // these, so fixtures built for it can leave them out.
+  Partial<Pick<Task, "id" | "title" | "due_date">>;
 
 /**
  * All tasks planned within [start, end] (inclusive ISO days) in ONE query —

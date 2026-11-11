@@ -199,7 +199,19 @@
     "uploading": "Uploading {name}…",
     "addTime": "+ time",
     "quickAddGoesTo": "\"{title}\" goes to {kind, select, today {today} tomorrow {tomorrow} backlog {the backlog} other {{day}}}",
-    "quickAddIgnore": "Ignore {label}"
+    "quickAddIgnore": "Ignore {label}",
+    "moreOptions": "More options",
+    "checklist": "Checklist",
+    "checklistProgress": "{done} of {total}",
+    "files": "Files",
+    "sharedWithPartner": "{name} can see it too",
+    "ofEstimate": "of {time} estimated",
+    "uploadFailed": "Couldn't upload {name}. Try again.",
+    "fileRejected": "{name}: {reason}",
+    "deleteFile": "Delete {name}",
+    "reminderAtTime": "At {time}",
+    "changeField": "Change {field}",
+    "sendComment": "Send comment"
   },
   "day": {
     "capacity": "Today's capacity",
@@ -303,7 +315,15 @@
     "sharedFailed": "Couldn't save what you shared. Try a smaller file.",
     "sharedSaved": "Saved to the backlog",
     "sharedFilesOnlyTitle": "Shared file",
-    "sharedEmptyTitle": "Something shared"
+    "sharedEmptyTitle": "Something shared",
+    "statUndated": "<big>{n}</big> undated",
+    "statEstimated": "<big>{time}</big> estimated",
+    "statUnestimated": "<big>{n}</big> unestimated",
+    "staleChip": "+{days} days",
+    "staleNotice": "{n, plural, =1 {<b>1 idea has been here over a month.</b> Either schedule it this week or archive it, guilt-free.} other {<b># ideas have been here over a month.</b> Either schedule them this week or archive them, guilt-free.}}",
+    "categoryFilter": "Filter by category",
+    "noEstimate": "no estimate",
+    "rowMeta": "{category} · {age}"
   },
   "week": {
     "title": "Week",
@@ -342,7 +362,14 @@
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "tapDayHint": "Tap a day to plan it.",
-    "taskCount": "{n, plural, =1 {# task} other {# tasks}}"
+    "taskCount": "{n, plural, =1 {# task} other {# tasks}}",
+    "cellLabel": "{day}: {n, plural, =0 {no tasks} =1 {# task} other {# tasks}}",
+    "moreCategories": "+{n} more",
+    "load": "{planned} of {target}",
+    "loadOver": "{planned} of {target} · {over} over",
+    "noLoad": "Nothing planned",
+    "planThatDay": "Plan that day",
+    "openDay": "Open the day"
   },
   "plan": {
     "title": "Plan your day",
@@ -364,7 +391,9 @@
     "capacityDelta": "{delta} capacity",
     "start": "Start the day",
     "saveAndStart": "Save and start",
-    "pullToToday": "Today"
+    "pullToToday": "Today",
+    "noTime": "no time",
+    "capacityHeading": "Capacity"
   },
   "shutdown": {
     "title": "Close the day",
@@ -408,8 +437,12 @@
     "pendingCount": "{n, plural, =1 {1 task didn't get finished. Pick where it goes.} other {# tasks didn't get finished. Pick where each one goes.}}",
     "allClosed": "All closed. Get some rest.",
     "destinationOf": "Where {title} goes",
-    "wouldWeigh": "{day} would come to <b>{planned}</b> of {capacity}",
-    "wouldWeighOver": " — worth sending something to the backlog."
+    "weighDay": "{day} would come to <b>{planned}</b> of {capacity}.",
+    "weighDayOver": "{day} would come to <b>{planned}</b> of {capacity}. Worth sending something to the backlog.",
+    "streakNone": "Today can start a new streak.",
+    "doneListToggle": "{n, plural, =1 {See the one you did} other {See the # you did}}",
+    "sharedDoneLove": "Shared: send some love.",
+    "saveErrorRetry": "That didn't save. Try again, your reflection is still here."
   },
   "focus": {
     "blockDoneTitle": "Focus block done! 🍅",
@@ -481,7 +514,11 @@
     "spotifyNoPlaylists": "No playlists found.",
     "break": "Break",
     "spotifyPlay": "Play",
-    "spotifyPause": "Pause"
+    "spotifyPause": "Pause",
+    "workedOf": "{actual} of {estimate}",
+    "spotifyOpen": "Open",
+    "spotifyClose": "Close",
+    "timerLabel": "Timer"
   },
   "settings": {
     "title": "Settings",
@@ -533,7 +570,7 @@
     "inviteSending": "Sending…",
     "inviteSend": "Invite",
     "inviteFailed": "That invite didn't go through.",
-    "inviteFull": "Your space is full. You can use the app on your own — sharing is optional.",
+    "inviteFull": "Your space is already full. You can use the app on your own: sharing is optional.",
     "invitePending": "Invite pending · expires {date}",
     "inviteCopy": "Copy the invite link for {email}",
     "inviteRevoke": "Cancel the invite for {email}",
@@ -562,7 +599,11 @@
     "inboundTitle": "Email your backlog",
     "inboundDesc": "Forward any email to this address and it shows up as a task in your backlog. It's yours alone: don't share it.",
     "inboundCopy": "Copy",
-    "inboundCopied": "Copied"
+    "inboundCopied": "Copied",
+    "dangerTitle": "Danger zone",
+    "dangerDesc": "Export your data or delete your account. Deleting can't be undone.",
+    "exportDataAction": "Download your data",
+    "changeColor": "Change the color of {name}"
   },
   "goals": {
     "title": "Goals",
@@ -606,7 +647,9 @@
     "byCategory": "Time by category",
     "byCategoryEmpty": "Give your tasks times and categories to see the breakdown.",
     "byPerson": "By person",
-    "personStats": "{done}/{total} done · {time}"
+    "personStats": "{done}/{total} done · {time}",
+    "byDay": "Completed by day",
+    "evrValue": "{estimated} / {actual}"
   },
   "routines": {
     "title": "Routines",
@@ -615,7 +658,7 @@
     "newLabel": "New routine",
     "add": "Add",
     "emptyTitle": "No routines yet",
-    "emptyHint": "A routine makes its own task on the days you pick — good for whatever you repeat without thinking.",
+    "emptyHint": "A routine makes its own task on the days you pick. Good for whatever you repeat without thinking.",
     "titleLabel": "Routine title",
     "streak": "{n, plural, =1 {1 day running} other {# days running}}",
     "delete": "Delete routine",
@@ -633,7 +676,22 @@
     "monthDayLabel": "Day of the month",
     "monthDayLast": "last day",
     "monthDaySuffix": "of each month",
-    "monthDayShortMonths": "(or the last one, in shorter months)"
+    "monthDayShortMonths": "(or the last one, in shorter months)",
+    "statusActive": "Active",
+    "statusPaused": "Paused",
+    "switchLabel": "Routine active: {title}",
+    "dailyHint": "Every day, it shows up in Today in the morning.",
+    "monthDayRule": "{last, select, true {On the <day></day> of every month} other {On day <day></day> of every month}}",
+    "noStreak": "No streak",
+    "weekdayNames": {
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday",
+      "sun": "Sunday"
+    }
   },
   "auth": {
     "tagline": "Plan your day calmly, focus, and finish it in peace.",
@@ -644,7 +702,9 @@
     "continueWithGoogle": "Continue with Google",
     "connecting": "Connecting…",
     "signInFailed": "We couldn't sign you in. Try again.",
-    "appDescription": "Plan your day calmly. A productivity app for getting organised together."
+    "appDescription": "Plan your day calmly. A productivity app for getting organised together.",
+    "ringTime": "5h 40m",
+    "ringLabel": "It fits in your day"
   },
   "errors": {
     "invalidEmail": "That email address doesn't look right.",
@@ -785,7 +845,20 @@
     "notConfigured": "Billing isn't configured in this environment yet.",
     "navBilling": "Plan and billing",
     "trialWarning": "{n, plural, =0 {Your trial ends today.} =1 {1 day left in your trial.} other {# days left in your trial.}}",
-    "trialWarningCta": "See plans"
+    "trialWarningCta": "See plans",
+    "perYearAbout": "per year, about {monthly} a month",
+    "subscribeMonthly": "Subscribe monthly",
+    "subscribeYearly": "Subscribe yearly",
+    "includedTitle": "What's included",
+    "included": {
+      "rituals": "Morning, shutdown and weekly rituals",
+      "calendar": "Two-way Google Calendar",
+      "shared": "A space shared with one other person",
+      "focus": "Focus with sounds and Spotify",
+      "capture": "Capture by email and by voice",
+      "export": "Export your data whenever you want"
+    },
+    "coverNote": "One plan covers your space: you and the person you invite."
   },
   "review": {
     "title": "Weekly review",
@@ -822,7 +895,11 @@
     "newGoalPlaceholder": "New goal for the week…",
     "newGoalLabel": "New goal for the week",
     "add": "Add",
-    "dayFor": "Day for {title}"
+    "dayFor": "Day for {title}",
+    "bestDayLine": "Your best day: <b>{day}</b>",
+    "pickDay": "Pick a day",
+    "saveErrorRetry": "Couldn't save. Try again, what you wrote is still here.",
+    "perDayChart": "Tasks finished per day"
   },
   "ai": {
     "errors": {
@@ -849,7 +926,8 @@
     "planPartial": "{n} were scheduled and the rest failed. Check the schedule.",
     "planFailed": "Couldn't apply the plan. Try again.",
     "planSkipped": "{n, plural, =1 {1 task didn't fit in the day.} other {# tasks didn't fit in the day.}}",
-    "planApply": "Apply"
+    "planApply": "Apply",
+    "planNoTimeLeft": "There's no room left before {time}."
   },
   "capture": {
     "open": "Dictate several",

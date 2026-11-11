@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Check, ChevronDown, Pause, Play, RotateCcw } from "lucide-react";
+import { Check, ChevronDown, RotateCcw } from "lucide-react";
 import { setActualTime as setActualTimeAction } from "@/lib/actions/tasks";
 import { taskKeys, useTasksForDate, useToggleTask } from "@/lib/queries/tasks";
 import { useChannels } from "@/lib/queries/channels";
@@ -79,6 +79,7 @@ export function FocusTimer() {
   const [completed, setCompleted] = useState(0);
   const toggle = useToggleTask();
   const toast = useToast();
+  const reduce = useReducedMotion();
 
   // Optional: let the focus timer nudge the background-sound player.
   const audioAutoStart = useAudio((s) => s.autoStartWithFocus);
@@ -158,10 +159,9 @@ export function FocusTimer() {
 
   const total = DURATION[mode];
   const progress = 1 - secondsLeft / total;
-  const R = 120;
+  const R = 130;
   const C = 2 * Math.PI * R;
   const selected = tasks.find((t) => t.id === taskId);
-  const selectedChannel = channels.find((c) => c.id === selected?.channel_id);
   const status = running
     ? mode === "focus"
       ? t("statusFocus")
@@ -169,6 +169,7 @@ export function FocusTimer() {
     : secondsLeft < total
       ? t("statusPaused")
       : t("statusIdle");
+  const currentBlock = Math.min(completed, BLOCKS_PER_SET - 1);
 
   /** Tick the block's task off without leaving the timer. */
   function finishTask() {
@@ -182,35 +183,49 @@ export function FocusTimer() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+    <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)] lg:items-start">
       {/* The one dark tile on the page: the timer is the screen's single big
-          number, so it gets the inverted hero card. Everything inside reads
-          off `text-bg` tints, which flip with the card in dark mode. */}
-      <section className="flex flex-col items-center gap-5 rounded-2xl bg-fg p-5 text-bg sm:p-7 lg:min-h-[640px] lg:justify-center">
-        <div className="flex gap-1 rounded-pill bg-bg/10 p-1">
-          {(["focus", "break"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => switchMode(m)}
-              aria-pressed={mode === m}
-              className={cn(
-                "cursor-pointer rounded-pill px-4 py-1.5 text-sm font-semibold transition-colors",
-                mode === m ? "bg-bg text-fg shadow-soft" : "text-bg/70 hover:text-bg",
-              )}
-            >
-              {m === "focus" ? tnav("focus") : t("break")}
-            </button>
-          ))}
-        </div>
+          number, so it gets the inverted hero card, as tall as the screen.
+          Everything inside reads off `text-bg` tints, which flip with the card
+          in dark mode. */}
+      <section
+        aria-label={t("timerLabel")}
+        className="flex flex-col items-center gap-[22px] rounded-2xl bg-fg px-4 py-7 text-bg sm:px-7 lg:sticky lg:top-6 lg:min-h-[calc(100dvh-3rem)] lg:justify-center"
+      >
+        {/* The task you're on, as the chip over the ring. In a break there is
+            no task to pick, so the chip steps aside. */}
+        {mode === "focus" && (
+          <TaskPicker tasks={tasks} channels={channels} value={taskId} onChange={setTaskId} />
+        )}
 
-        <div className="relative grid place-items-center">
-          <svg
-            viewBox="0 0 280 280"
-            className="h-[248px] w-[248px] -rotate-90 sm:h-[288px] sm:w-[288px]"
-          >
+        <div className="relative h-[260px] w-[260px] sm:h-[300px] sm:w-[300px]">
+          {/* A slow breath around the ring while a block runs: something alive
+              on screen that isn't the seconds ticking. */}
+          <motion.span
+            aria-hidden
+            className="absolute -inset-3.5 rounded-full border-[1.5px] border-fit-from"
+            initial={false}
+            animate={
+              running && !reduce
+                ? { scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }
+                : { scale: 1, opacity: 0.35 }
+            }
+            transition={
+              running && !reduce
+                ? { duration: 4, ease: "easeInOut", repeat: Infinity }
+                : { duration: 0.3 }
+            }
+          />
+          <svg viewBox="0 0 300 300" className="h-full w-full -rotate-90" aria-hidden>
+            <defs>
+              <linearGradient id="focus-ring" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="var(--color-fit-from)" />
+                <stop offset="1" stopColor="var(--color-primary)" />
+              </linearGradient>
+            </defs>
             <circle
-              cx="140"
-              cy="140"
+              cx="150"
+              cy="150"
               r={R}
               fill="none"
               stroke="var(--color-bg)"
@@ -218,11 +233,11 @@ export function FocusTimer() {
               strokeWidth="16"
             />
             <circle
-              cx="140"
-              cy="140"
+              cx="150"
+              cy="150"
               r={R}
               fill="none"
-              stroke="var(--color-primary)"
+              stroke="url(#focus-ring)"
               strokeWidth="16"
               strokeLinecap="round"
               strokeDasharray={C}
@@ -230,198 +245,170 @@ export function FocusTimer() {
               style={{ transition: "stroke-dashoffset 1s linear" }}
             />
           </svg>
-          <div className="absolute flex flex-col items-center gap-1.5">
-            <span className="font-display text-[56px] leading-none font-bold tracking-tight tabular-nums sm:text-[64px]">
-              {mmss(secondsLeft)}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+            <span className="font-display text-[56px] leading-none font-bold tracking-tight tabular-nums sm:text-[68px]">
+              {/* Digits stay tabular so the clock doesn't wobble each second,
+                  but the display face's tabular colon is figure-wide ("25 : 00"),
+                  so the colon alone goes back to proportional. */}
+              {mmss(secondsLeft)
+                .split(":")
+                .map((part, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <span className="[font-variant-numeric:normal]">{":"}</span>}
+                    {part}
+                  </Fragment>
+                ))}
             </span>
-            <span className="text-sm text-bg/75">{status}</span>
-            {mode === "focus" && (
-              <span className="text-2xs font-semibold text-bg/55">
-                {t("blockOf", {
-                  n: Math.min(completed + 1, BLOCKS_PER_SET),
-                  total: BLOCKS_PER_SET,
-                })}
-              </span>
-            )}
+            <span className="text-sm text-bg/80">{status}</span>
           </div>
         </div>
 
-        {/* The set, as four bars. A count in prose made you read a sentence to
-            learn something a shape says instantly. */}
-        <div className="flex items-center gap-2">
+        {/* The set, as four bars under its count: done, the one you're on,
+            and what's left. */}
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-xs text-bg/60">
+            {t("blockOf", { n: currentBlock + 1, total: BLOCKS_PER_SET })}
+          </span>
           <span className="flex gap-1.5" aria-hidden>
             {Array.from({ length: BLOCKS_PER_SET }, (_, i) => (
               <span
                 key={i}
-                className={cn("h-1.5 w-7 rounded-pill", i < completed ? "bg-fit" : "bg-bg/15")}
+                className={cn(
+                  "h-1.5 w-7 rounded-pill",
+                  i < completed
+                    ? "bg-fit"
+                    : i === currentBlock && mode === "focus"
+                      ? "bg-fit-from/45"
+                      : "bg-bg/15",
+                )}
               />
             ))}
           </span>
-          <span className="text-2xs font-semibold tabular-nums text-bg/60">
-            {t("setProgress", { done: completed, total: BLOCKS_PER_SET })}
-          </span>
         </div>
 
-        {/* The task you're on, as a card rather than a bare dropdown — with the
-            rail, the category and how far the block has got you against your
-            own estimate. */}
-        {mode === "focus" && (
-          <div className="mx-auto w-full max-w-xs">
-            <TaskPicker tasks={tasks} channels={channels} value={taskId} onChange={setTaskId} />
-            {selected && (
-              <div className="relative mt-2 overflow-hidden rounded-xl bg-bg/10 px-3.5 py-2.5">
-                <span
-                  className={cn(
-                    "absolute inset-y-0 left-0 w-[3px]",
-                    !selectedChannel && "bg-bg/20",
-                  )}
-                  style={selectedChannel ? { background: selectedChannel.color } : undefined}
-                  aria-hidden
-                />
-                <div className="flex items-baseline gap-2">
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                    {selected.title}
-                  </span>
-                  {selectedChannel && (
-                    <span className="shrink-0 text-2xs text-bg/60">#{selectedChannel.name}</span>
-                  )}
-                </div>
-                <TaskProgress task={selected} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* flex-wrap, not a fixed grid: three pills side by side are ~330px, and
-            an iPhone SE leaves the card about that much. */}
+        {/* flex-wrap, not a fixed grid: three pills side by side are ~370px, and
+            an iPhone SE leaves the card less than that. */}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-pill bg-bg/10 text-bg transition-colors hover:bg-bg/20"
+            className="inline-flex h-[52px] w-[52px] cursor-pointer items-center justify-center rounded-pill bg-bg/10 text-bg transition-colors hover:bg-bg/20"
             aria-label={t("reset")}
           >
-            <RotateCcw className="h-5 w-5" aria-hidden />
+            <RotateCcw className="h-[18px] w-[18px]" aria-hidden />
           </button>
           <button
             onClick={toggleRun}
-            className="inline-flex h-16 cursor-pointer items-center justify-center gap-2 rounded-pill bg-primary px-6 text-base font-bold text-on-primary shadow-card transition-[filter] hover:bg-primary-hover sm:px-8"
-            aria-label={running ? t("pause") : t("start")}
+            className="inline-flex h-16 min-w-40 cursor-pointer items-center justify-center rounded-pill bg-primary px-[34px] text-base font-bold text-on-primary shadow-[0_10px_30px_color-mix(in_srgb,var(--color-primary)_45%,transparent)] transition-colors hover:bg-primary-hover"
           >
-            {running ? (
-              <Pause className="h-5 w-5" aria-hidden />
-            ) : (
-              <Play className="h-5 w-5" aria-hidden />
-            )}
-            <span aria-hidden>{running ? t("pause") : t("start")}</span>
+            {running ? t("pause") : t("start")}
           </button>
           {/* You used to have to leave the timer, find the card and tick it. */}
           <button
             onClick={finishTask}
             disabled={!selected}
-            aria-label={t("finishTask")}
-            title={t("finishTask")}
-            className="inline-flex h-12 cursor-pointer items-center gap-1.5 rounded-pill bg-bg/10 px-4 text-sm font-semibold text-bg transition-colors hover:bg-bg/20 disabled:cursor-default disabled:opacity-40"
+            className="inline-flex h-[52px] cursor-pointer items-center rounded-pill bg-bg/10 px-[18px] text-sm font-semibold text-bg transition-colors hover:bg-bg/20 disabled:cursor-default disabled:opacity-40"
           >
-            <Check className="h-4 w-4" aria-hidden />
-            {t("finish")}
+            {t("finishTask")}
           </button>
+        </div>
+
+        {/* Focus or break. The canvas leaves this out, but a break is the other
+            half of the method, so it stays: small, under the controls. */}
+        <div className="flex gap-0.5 rounded-pill bg-bg/10 p-0.5">
+          {(["focus", "break"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => switchMode(m)}
+              aria-pressed={mode === m}
+              className={cn(
+                "cursor-pointer rounded-pill px-3 py-1 text-xs font-semibold transition-colors",
+                mode === m ? "bg-bg/90 text-fg" : "text-bg/60 hover:text-bg",
+              )}
+            >
+              {m === "focus" ? tnav("focus") : t("break")}
+            </button>
+          ))}
         </div>
       </section>
 
-      <FocusSidebar tasks={tasks} activeId={taskId} onPick={setTaskId} channels={channels} />
+      <FocusSidebar tasks={tasks} activeId={taskId} onPick={setTaskId} />
     </div>
   );
 }
 
-/** How far the day's tracked time has got you against your own estimate.
- *  Only rendered on the timer's dark card, hence the `text-bg` tints. */
-function TaskProgress({ task }: { task: Task }) {
+/** "45m de 2h", or "Sin estimar": a task's tracked time against its estimate.
+ *  `long` adds the trailing "estimated" for the chip, where there's room. */
+function useTaskTime() {
   const t = useTranslations("focus");
-  const actual = task.actual_time_min ?? 0;
-  const estimate = task.time_estimate_min;
-  if (!estimate) {
-    return (
-      <p className="mt-1.5 text-2xs text-bg/60">
-        {actual > 0 ? t("workedUnestimated", { time: formatMinutes(actual) }) : t("unestimated")}
-      </p>
-    );
-  }
-  const filled = Math.min(3, Math.round((actual / estimate) * 3));
-  return (
-    <div className="mt-1.5 flex items-center gap-2">
-      <span className="flex gap-0.5" aria-hidden>
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className={cn("h-1 w-3 rounded-pill", i < filled ? "bg-fit" : "bg-bg/15")}
-          />
-        ))}
-      </span>
-      <span className="text-2xs tabular-nums text-bg/60">
-        {t("workedOfEstimate", {
-          actual: formatMinutes(actual),
-          estimate: formatMinutes(estimate),
-        })}
-      </span>
-    </div>
-  );
+  return (task: Task, long = false) => {
+    const actual = task.actual_time_min ?? 0;
+    const estimate = task.time_estimate_min;
+    if (!estimate) {
+      return actual > 0
+        ? t("workedUnestimated", { time: formatMinutes(actual) })
+        : t("unestimated");
+    }
+    const values = { actual: formatMinutes(actual), estimate: formatMinutes(estimate) };
+    return long ? t("workedOfEstimate", values) : t("workedOf", values);
+  };
 }
 
 /**
- * The queue beside the timer: what's next, the background sound, and how
+ * The column beside the timer: what's next, the background sound, and how
  * today's estimates are holding up. All answer "should I keep going?" without
- * leaving the page. Each sits in its own well; on a phone they stack under the
- * timer in this same order.
+ * leaving the page. On a phone they stack under the timer in this same order.
  */
 function FocusSidebar({
   tasks,
   activeId,
   onPick,
-  channels,
 }: {
   tasks: Task[];
   activeId: string;
   onPick: (id: string) => void;
-  channels: Channel[];
 }) {
   const t = useTranslations("focus");
+  const taskTime = useTaskTime();
   const estimatedMin = tasks.reduce((sum, task) => sum + (task.time_estimate_min ?? 0), 0);
   const actualMin = tasks.reduce((sum, task) => sum + (task.actual_time_min ?? 0), 0);
   const max = Math.max(estimatedMin, actualMin, 1);
 
   return (
-    <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
+    <aside className="flex min-w-0 flex-col gap-4">
       <Well className="flex flex-col gap-1.5">
-        <h2 className="px-2.5 pt-2 pb-1 text-base font-semibold text-fg">{t("queue")}</h2>
+        <h2 className="px-2.5 pt-2.5 pb-1 text-base font-semibold text-fg">{t("queue")}</h2>
         {tasks.length === 0 ? (
           <p className="px-2.5 pb-2 text-xs text-subtle">{t("queueEmpty")}</p>
         ) : (
           <ul className="flex flex-col gap-1.5">
-            {tasks.slice(0, 6).map((t) => {
-              const channel = channels.find((c) => c.id === t.channel_id);
-              const active = t.id === activeId;
+            {tasks.slice(0, 6).map((task) => {
+              const active = task.id === activeId;
+              const estimate = task.time_estimate_min ?? 0;
+              const ratio = estimate ? Math.min(1, (task.actual_time_min ?? 0) / estimate) : 0;
               return (
-                <li key={t.id}>
+                <li key={task.id}>
                   <button
-                    onClick={() => onPick(t.id)}
+                    onClick={() => onPick(task.id)}
+                    aria-pressed={active}
                     className={cn(
-                      "relative flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-xl bg-surface py-2.5 pr-3 pl-3.5 text-left shadow-soft transition-shadow",
-                      active ? "ring-2 ring-primary ring-inset" : "hover:shadow-card",
+                      "flex w-full cursor-pointer flex-col gap-1.5 rounded-xl bg-surface px-3.5 py-2.5 text-left transition-shadow",
+                      active ? "ring-2 ring-fit-from ring-inset" : "shadow-soft hover:shadow-card",
                     )}
                   >
-                    <span
-                      className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
-                      style={channel ? { background: channel.color } : undefined}
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
-                      {t.title}
-                    </span>
-                    {t.time_estimate_min ? (
-                      <span className="shrink-0 text-2xs font-semibold tabular-nums text-muted">
-                        {formatMinutes(t.time_estimate_min)}
+                    <span className="flex w-full items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">
+                        {task.title}
                       </span>
-                    ) : null}
+                      <span className="shrink-0 font-mono text-[11px] text-muted tabular-nums">
+                        {taskTime(task)}
+                      </span>
+                    </span>
+                    <span className="block h-1 w-full overflow-hidden rounded-pill bg-surface-2">
+                      <span
+                        className="block h-full rounded-pill bg-fit transition-[width] duration-700"
+                        style={{ width: `${ratio * 100}%` }}
+                      />
+                    </span>
                   </button>
                 </li>
               );
@@ -430,36 +417,30 @@ function FocusSidebar({
         )}
       </Well>
 
-      {/* Moved here from under the ring: the bento layout gives the sound its
-          own well beside the timer, so the dark card holds only the block. */}
-      <Well>
-        <FocusAudioPanel />
-      </Well>
+      <FocusAudioPanel />
 
       {(estimatedMin > 0 || actualMin > 0) && (
-        <Well className="p-4">
+        <Well className="flex flex-col gap-2.5 p-4">
           <h2 className="text-base font-semibold text-fg">{t("estimateVsActual")}</h2>
-          <div className="mt-3 flex flex-col gap-2.5">
-            {(
-              [
-                [t("estimatedBar"), estimatedMin, "bg-border-strong"],
-                [t("actualBar"), actualMin, "bg-fit"],
-              ] as const
-            ).map(([label, value, tone]) => (
-              <div key={label}>
-                <div className="flex items-baseline justify-between gap-2 text-xs">
-                  <span className="text-muted">{label}</span>
-                  <span className="font-semibold tabular-nums text-fg">{formatMinutes(value)}</span>
-                </div>
-                <div className="mt-1 h-2.5 rounded-pill bg-border">
-                  <div
-                    className={cn("h-full rounded-pill transition-[width] duration-500", tone)}
-                    style={{ width: `${(value / max) * 100}%` }}
-                  />
-                </div>
+          {(
+            [
+              [t("estimatedBar"), estimatedMin, "bg-border-strong"],
+              [t("actualBar"), actualMin, "bg-fit"],
+            ] as const
+          ).map(([label, value, tone]) => (
+            <div key={label} className="flex flex-col gap-2.5">
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="text-muted">{label}</span>
+                <span className="font-mono text-fg tabular-nums">{formatMinutes(value)}</span>
               </div>
-            ))}
-          </div>
+              <div className="h-2.5 rounded-pill bg-border">
+                <div
+                  className={cn("h-full rounded-pill transition-[width] duration-500", tone)}
+                  style={{ width: `${(value / max) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
         </Well>
       )}
     </aside>
@@ -483,6 +464,7 @@ function TaskPicker({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
+  const taskTime = useTaskTime();
   const selected = tasks.find((t) => t.id === value);
   const colorFor = (channelId: string | null) =>
     channels.find((c) => c.id === channelId)?.color ?? "var(--color-subtle)";
@@ -504,33 +486,41 @@ function TaskPicker({
   }, [open]);
 
   return (
-    <div ref={ref} className="relative w-full max-w-xs">
+    <div ref={ref} className="relative max-w-full">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t("pickTask")}
         className={cn(
-          "flex w-full cursor-pointer items-center gap-2.5 rounded-pill px-4 py-2.5 text-left text-sm text-bg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          "flex max-w-full cursor-pointer items-center gap-2.5 rounded-pill py-1.5 pr-4 pl-1.5 text-left text-sm text-bg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
           open ? "bg-bg/20" : "bg-bg/10 hover:bg-bg/15",
         )}
       >
         {selected ? (
           <>
+            {/* The category's initial on its colour: the rail of the task
+                card, folded into the chip. */}
             <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
               style={{ backgroundColor: colorFor(selected.channel_id) }}
               aria-hidden
-            />
-            <span className="min-w-0 flex-1 truncate font-semibold">{selected.title}</span>
-            {selected.time_estimate_min && (
-              <span className="shrink-0 text-xs font-medium text-bg/60">
-                {formatMinutes(selected.time_estimate_min)}
-              </span>
-            )}
+            >
+              {channels
+                .find((c) => c.id === selected.channel_id)
+                ?.name.charAt(0)
+                .toUpperCase()}
+            </span>
+            <span className="min-w-0 truncate font-semibold">{selected.title}</span>
+            <span className="shrink-0 font-mono text-xs text-bg/60 tabular-nums">
+              {taskTime(selected, true)}
+            </span>
           </>
         ) : (
-          <span className="min-w-0 flex-1 truncate text-bg/75">{t("pickTaskPrompt")}</span>
+          <>
+            <span className="h-[30px] w-[30px] shrink-0 rounded-full bg-bg/15" aria-hidden />
+            <span className="min-w-0 truncate text-bg/75">{t("pickTaskPrompt")}</span>
+          </>
         )}
         <ChevronDown
           className={cn("h-4 w-4 shrink-0 text-bg/60 transition-transform", open && "rotate-180")}
@@ -546,7 +536,7 @@ function TaskPicker({
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
             transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-0 right-0 z-20 mt-2 max-h-64 origin-top overflow-y-auto rounded-xl bg-surface p-1 text-fg shadow-pop"
+            className="absolute left-1/2 z-20 mt-2 max-h-64 w-72 max-w-[calc(100vw-3rem)] -translate-x-1/2 origin-top overflow-y-auto rounded-xl bg-surface p-1 text-fg shadow-pop"
           >
             <li role="option" aria-selected={!value}>
               <button

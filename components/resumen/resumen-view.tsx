@@ -116,32 +116,56 @@ export function ResumenView() {
   ]
     .filter((r) => r.min > 0)
     .sort((a, b) => b.min - a.min);
-  const maxChannelMin = Math.max(1, ...channelRows.map((r) => r.min));
+  // Estimated vs actual, split by category. Same rule as the totals: only
+  // tasks with tracked time count, or an untracked task would read as a miss.
+  const accuracyRows = channelRows
+    .map((r) => ({
+      ...r,
+      ...estimatedVsActual(tasks.filter((task) => (task.channel_id ?? "none") === r.id)),
+    }))
+    .filter((r) => r.trackedCount > 0);
+  const maxAccuracyMin = Math.max(
+    1,
+    ...accuracyRows.map((r) => Math.max(r.estimatedMin, r.actualMin)),
+  );
 
   const owners = ownerStats(tasks);
   const ownerRows = profiles
     .map((p) => ({ profile: p, stat: owners.get(p.id) }))
     .filter((r) => r.stat && r.stat.total > 0);
 
-  const weekBars = shape.weeks.map((w) => {
-    const c = completion(filterByDays(tasks, new Set(w.days)));
-    return { key: w.key, label: w.label, ...c, rate: completionRate(c) };
-  });
+  // A single week is charted day by day: one bar for the whole week said
+  // nothing, which is why the chart used to hide itself on this period.
+  const weekdayNames = labels.weekdayHeaders();
+  const buckets =
+    period === "week"
+      ? shape.weeks[0].days.map((d, i) => ({ key: d, label: weekdayNames[i], days: [d] }))
+      : shape.weeks;
+  const bars = buckets.map((b) => ({
+    key: b.key,
+    label: b.label,
+    ...completion(filterByDays(tasks, new Set(b.days))),
+  }));
+  const maxDone = Math.max(0, ...bars.map((b) => b.done));
+  // The best bucket gets the "fit" fill; ties go to the first. Nothing is
+  // crowned when not a single task was done.
+  const bestKey = maxDone > 0 ? bars.find((b) => b.done === maxDone)?.key : undefined;
 
   const overallPct = Math.round(completionRate(overall) * 100);
-  // The best week gets the "fit" fill; ties go to the first. Nothing is crowned
-  // when no week has a single done task.
-  const bestWeekRate = Math.max(0, ...weekBars.map((w) => w.rate));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-3 px-1 pt-1">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight text-fg">{t("title")}</h1>
-          <p className="text-sm text-muted">{shape.label}</p>
+    <div className="flex flex-col gap-4">
+      <header className="flex flex-wrap items-end gap-x-3 gap-y-3 px-2 pt-1">
+        <div className="mr-auto flex min-w-0 flex-col gap-0.5">
+          <span className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+            {shape.label}
+          </span>
+          <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight text-fg">
+            {t("title")}
+          </h1>
         </div>
         <div className="-mx-1 max-w-full overflow-x-auto px-1">
-          <div className="flex w-max gap-1 rounded-pill bg-surface-2 p-1">
+          <div className="flex w-max gap-0.5 rounded-pill bg-surface-2 p-1">
             {PERIODS.map((p) => (
               <button
                 key={p.value}
@@ -161,23 +185,23 @@ export function ResumenView() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
         {/* The hero tile: completion is the number this screen exists for. */}
-        <section className="flex items-center gap-5 rounded-2xl bg-fg p-5 text-bg">
+        <section className="flex items-center gap-[18px] rounded-2xl bg-fg p-[22px] text-bg">
           <Ring pct={overallPct} />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="text-xs font-medium text-bg/65">{t("statDone")}</p>
-            <p className="font-display text-4xl leading-tight font-bold tracking-tight">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="text-xs text-bg/60">{t("statDone")}</p>
+            <p className="font-display text-[40px] leading-none font-bold tracking-tight tabular-nums">
               {overall.done}
             </p>
-            <p className="text-xs text-bg/75">
+            <p className="text-xs text-bg/80">
               {t("statDoneSub", { total: overall.total, pct: overallPct })}
             </p>
           </div>
         </section>
-        <Well className="flex flex-col justify-center gap-0.5 p-5">
-          <p className="text-xs font-medium text-muted">{t("statPlanned")}</p>
-          <p className="font-display text-4xl leading-tight font-bold tracking-tight text-fg">
+        <Well className="flex flex-col justify-center gap-1 p-[22px]">
+          <p className="text-xs text-muted">{t("statPlanned")}</p>
+          <p className="font-display text-[40px] leading-none font-bold tracking-tight text-fg tabular-nums">
             {plannedMin > 0 ? formatMinutes(plannedMin) : "—"}
           </p>
           <p className="text-xs text-muted">
@@ -188,101 +212,103 @@ export function ResumenView() {
         </Well>
       </div>
 
-      {(weekBars.length > 1 || accuracy.trackedCount > 0) && (
-        <div
-          className={cn(
-            "grid grid-cols-1 gap-4",
-            weekBars.length > 1 && accuracy.trackedCount > 0 && "md:grid-cols-2",
-          )}
-        >
-          {weekBars.length > 1 && (
-            <Section title={t("byWeek")}>
-              <div className="flex items-end gap-2 sm:gap-3">
-                {weekBars.map((w) => (
-                  <div key={w.key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                    <span className="text-2xs font-medium text-muted">
-                      {Math.round(w.rate * 100)}%
-                    </span>
-                    <div className="flex h-36 w-full max-w-14 items-end">
-                      <div
-                        className={cn(
-                          "min-h-1.5 w-full rounded-xl transition-[height] duration-500",
-                          bestWeekRate > 0 && w.rate === bestWeekRate ? "bg-fit" : "bg-surface-2",
-                        )}
-                        style={{ height: `${Math.max(w.rate * 100, w.done > 0 ? 6 : 0)}%` }}
-                        title={`${w.done}/${w.total}`}
-                      />
-                    </div>
-                    <span className="max-w-full truncate text-2xs font-semibold text-muted">
-                      {w.label}
-                    </span>
-                  </div>
-                ))}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))] gap-4">
+        <ChartCard title={period === "week" ? t("byDay") : t("byWeek")}>
+          <div className="flex h-[180px] items-end gap-2 sm:gap-3">
+            {bars.map((b) => (
+              <div
+                key={b.key}
+                className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
+                title={`${b.done}/${b.total}`}
+              >
+                <span className="font-mono text-[11px] text-muted tabular-nums">{b.done}</span>
+                <span
+                  className={cn(
+                    "w-full rounded-xl transition-[height] duration-500",
+                    b.key === bestKey ? "bg-fit" : "bg-surface-2",
+                  )}
+                  style={{ height: `${Math.max(4, maxDone > 0 ? (b.done / maxDone) * 100 : 0)}%` }}
+                />
+                <span className="max-w-full truncate text-[11px] font-semibold text-muted">
+                  {b.label}
+                </span>
               </div>
-            </Section>
-          )}
+            ))}
+          </div>
+        </ChartCard>
 
-          {accuracy.trackedCount > 0 && (
-            <Section
-              title={t("estimateVsActual")}
-              hint={t("trackedCount", { n: accuracy.trackedCount })}
-            >
-              <CompareBar
-                label={t("estimatedBar")}
-                min={accuracy.estimatedMin}
-                max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
-                tone="bg-border-strong"
-              />
-              <CompareBar
-                label={t("actualBar")}
-                min={accuracy.actualMin}
-                max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
-                tone="bg-fit"
-              />
-            </Section>
-          )}
-        </div>
-      )}
-
-      <div className={cn("grid grid-cols-1 gap-4", ownerRows.length > 0 && "md:grid-cols-2")}>
-        <Section title={t("byCategory")}>
-          {channelRows.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted">{t("byCategoryEmpty")}</p>
-          ) : (
+        {accuracy.trackedCount > 0 && (
+          <ChartCard
+            title={t("estimateVsActual")}
+            legend={
+              <>
+                <LegendSwatch className="bg-border-strong" label={t("estimatedBar")} />
+                <LegendSwatch className="bg-fit" label={t("actualBar")} />
+              </>
+            }
+          >
             <div className="flex flex-col gap-3">
-              {channelRows.map((r) => (
-                <div key={r.id}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="flex min-w-0 items-center gap-2 font-medium text-fg">
-                      <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: r.color }}
-                        aria-hidden
-                      />
-                      <span className="truncate">{r.name}</span>
-                    </span>
-                    <span className="shrink-0 pl-2 text-xs font-medium text-muted">
-                      {formatMinutes(r.min)}
+              {accuracyRows.map((r) => (
+                <div key={r.id} className="flex flex-col gap-[5px]">
+                  <div className="flex items-baseline justify-between gap-2 text-xs">
+                    <span className="truncate font-semibold text-fg">{r.name}</span>
+                    <span className="shrink-0 font-mono text-muted tabular-nums">
+                      {t("evrValue", {
+                        estimated: formatMinutes(r.estimatedMin),
+                        actual: formatMinutes(r.actualMin),
+                      })}
                     </span>
                   </div>
-                  <div className="h-2.5 overflow-hidden rounded-pill bg-surface-2">
-                    <div
-                      className="h-full rounded-pill"
-                      style={{
-                        width: `${(r.min / maxChannelMin) * 100}%`,
-                        backgroundColor: r.color,
-                      }}
-                    />
-                  </div>
+                  <Meter value={r.estimatedMin} max={maxAccuracyMin} tone="bg-border-strong" />
+                  <Meter value={r.actualMin} max={maxAccuracyMin} tone="bg-fit" />
                 </div>
               ))}
             </div>
+            <span className="mt-auto text-[11px] text-muted">
+              {t("trackedCount", { n: accuracy.trackedCount })}
+            </span>
+          </ChartCard>
+        )}
+      </div>
+
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))] gap-4">
+        <Well className="flex flex-col gap-3 p-[18px]">
+          <h2 className="text-base font-semibold text-fg">{t("byCategory")}</h2>
+          {channelRows.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted">{t("byCategoryEmpty")}</p>
+          ) : (
+            <>
+              {/* One stacked bar: the split is the point, and parallel bars made
+                  you compare lengths across rows to see it. */}
+              <div className="flex h-4 gap-[3px]" aria-hidden>
+                {channelRows.map((r) => (
+                  <span
+                    key={r.id}
+                    className="block h-full min-w-1 rounded-pill transition-[flex-grow] duration-500"
+                    style={{ flexGrow: r.min, backgroundColor: r.color }}
+                  />
+                ))}
+              </div>
+              {channelRows.map((r) => (
+                <div key={r.id} className="flex items-center gap-2 text-[13px]">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: r.color }}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1 truncate font-semibold text-fg">{r.name}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted tabular-nums">
+                    {formatMinutes(r.min)}
+                  </span>
+                </div>
+              ))}
+            </>
           )}
-        </Section>
+        </Well>
 
         {ownerRows.length > 0 && (
-          <Well className="flex flex-col gap-1.5">
-            <h2 className="px-2.5 pt-2 pb-1 text-base font-semibold text-fg">{t("byPerson")}</h2>
+          <Well className="flex flex-col gap-3.5 p-[18px]">
+            <h2 className="text-base font-semibold text-fg">{t("byPerson")}</h2>
             {ownerRows.map(({ profile, stat }) => (
               <div
                 key={profile.id}
@@ -290,8 +316,8 @@ export function ResumenView() {
               >
                 <OwnerAvatar profile={profile} size={34} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2">
-                    <p className="truncate text-sm font-semibold text-fg">{profile.display_name}</p>
+                  <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 text-[13px]">
+                    <p className="truncate font-semibold text-fg">{profile.display_name}</p>
                     <p className="text-xs text-muted">
                       {t("personStats", {
                         done: stat!.done,
@@ -302,7 +328,7 @@ export function ResumenView() {
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-pill bg-surface-2" aria-hidden>
                     <div
-                      className="h-full rounded-pill bg-fit"
+                      className="h-full rounded-pill bg-fit transition-[width] duration-500"
                       style={{ width: `${(stat!.done / stat!.total) * 100}%` }}
                     />
                   </div>
@@ -317,13 +343,20 @@ export function ResumenView() {
 }
 
 /** Completion as a ring on the dark hero tile. The track is a tint of the
- *  card's own ink so it flips with the tile in dark mode. */
+ *  card's own ink so it flips with the tile in dark mode; the arc is the same
+ *  "fit" ramp as `bg-fit`, which SVG strokes can't take as a class. */
 function Ring({ pct }: { pct: number }) {
   const R = 52;
   const C = 2 * Math.PI * R;
   return (
     <div className="relative h-[104px] w-[104px] shrink-0">
       <svg viewBox="0 0 132 132" className="h-full w-full -rotate-90" aria-hidden>
+        <defs>
+          <linearGradient id="resumen-ring" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="var(--color-fit-from)" />
+            <stop offset="1" stopColor="var(--color-primary)" />
+          </linearGradient>
+        </defs>
         <circle
           cx="66"
           cy="66"
@@ -338,7 +371,7 @@ function Ring({ pct }: { pct: number }) {
           cy="66"
           r={R}
           fill="none"
-          stroke="var(--color-primary)"
+          stroke="url(#resumen-ring)"
           strokeWidth="13"
           strokeLinecap="round"
           strokeDasharray={C}
@@ -346,7 +379,7 @@ function Ring({ pct }: { pct: number }) {
           style={{ transition: "stroke-dashoffset 0.6s ease-out" }}
         />
       </svg>
-      <span className="absolute inset-0 grid place-items-center font-display text-xl font-bold">
+      <span className="absolute inset-0 grid place-items-center font-display text-[22px] font-bold">
         {pct}%
       </span>
     </div>
@@ -354,21 +387,21 @@ function Ring({ pct }: { pct: number }) {
 }
 
 /** A well holding one white card: the bento unit for a titled chart. */
-function Section({
+function ChartCard({
   title,
-  hint,
+  legend,
   children,
 }: {
   title: string;
-  hint?: string;
+  legend?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Well>
-      <section className="flex h-full flex-col gap-3 rounded-xl bg-surface p-4 shadow-soft">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-          <h2 className="text-base font-semibold text-fg">{title}</h2>
-          {hint && <span className="text-xs text-subtle">{hint}</span>}
+      <section className="flex h-full flex-col gap-3.5 rounded-xl bg-surface p-[18px] shadow-soft">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 className="mr-auto text-base font-semibold text-fg">{title}</h2>
+          {legend}
         </div>
         {children}
       </section>
@@ -376,29 +409,22 @@ function Section({
   );
 }
 
-function CompareBar({
-  label,
-  min,
-  max,
-  tone,
-}: {
-  label: string;
-  min: number;
-  max: number;
-  tone: string;
-}) {
+function LegendSwatch({ className, label }: { className: string; label: string }) {
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="font-medium text-fg">{label}</span>
-        <span className="text-xs font-medium text-muted">{formatMinutes(min)}</span>
-      </div>
-      <div className="h-2.5 overflow-hidden rounded-pill bg-surface-2">
-        <div
-          className={cn("h-full rounded-pill transition-[width] duration-500", tone)}
-          style={{ width: `${max > 0 ? (min / max) * 100 : 0}%` }}
-        />
-      </div>
+    <span className="flex items-center gap-1 text-[11px] text-muted">
+      <span className={cn("h-2 w-2 rounded-[2px]", className)} aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+function Meter({ value, max, tone }: { value: number; max: number; tone: string }) {
+  return (
+    <div className="h-2 overflow-hidden rounded-pill bg-bg" aria-hidden>
+      <div
+        className={cn("h-full rounded-pill transition-[width] duration-500", tone)}
+        style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }}
+      />
     </div>
   );
 }

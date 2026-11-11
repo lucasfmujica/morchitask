@@ -1,9 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarClock, Check, Pause, Play, Plus, Trash2, UserPlus, X } from "lucide-react";
+import {
+  CalendarClock,
+  Check,
+  ChevronDown,
+  MoreHorizontal,
+  Pause,
+  Play,
+  Plus,
+  Trash2,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { CHANNEL_COLORS, useChannels, useCreateChannel } from "@/lib/queries/channels";
 import { useObjectives } from "@/lib/queries/objectives";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
@@ -13,6 +24,7 @@ import {
   tasksForDateQueryOptions,
   useDeleteTask,
   useMoveTaskToDate,
+  useToggleTask,
   useUpdateTask,
 } from "@/lib/queries/tasks";
 import {
@@ -49,6 +61,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Profile, Subtask, Task } from "@/lib/queries/types";
 import { ChecklistAiSuggest } from "./checklist-ai-suggest";
+import { DueDateBadge } from "./due-date-badge";
 import { TaskAttachments } from "./task-attachments";
 import { TaskCheckbox } from "./task-checkbox";
 import { OwnerAvatar } from "./owner-avatar";
@@ -95,8 +108,10 @@ export function TaskDetailSheet() {
             exit={{ opacity: 0 }}
             onClick={close}
           />
+          {/* A flex column so the header stays put and only the body scrolls:
+              the close button must never scroll away on a long task. */}
           <motion.aside
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[86dvh] overflow-y-auto overscroll-contain rounded-t-2xl bg-bg pb-safe shadow-pop md:inset-y-2 md:right-2 md:left-auto md:max-h-none md:w-[460px] md:rounded-2xl"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[86dvh] flex-col overflow-hidden rounded-t-2xl bg-bg pb-safe shadow-drag md:inset-y-4 md:right-4 md:left-auto md:max-h-none md:w-[520px] md:max-w-[calc(100%-2rem)] md:rounded-[28px] md:pb-0"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
@@ -112,6 +127,10 @@ export function TaskDetailSheet() {
   );
 }
 
+/** Which row of the settings card has its options open. One at a time, so
+ *  the card never turns back into the wall of chips it replaced. */
+type OpenRow = "due" | "category" | "priority" | "owner" | "reminder" | "goal" | "estimate";
+
 function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: () => void }) {
   const tc = useTranslations("common");
   const tch = useTranslations("channels");
@@ -121,6 +140,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   // Live row from the cache so chips/toggles reflect edits instantly.
   const task = useLiveTask(snapshot);
   const update = useUpdateTask();
+  const toggle = useToggleTask();
   const remove = useDeleteTask();
   const move = useMoveTaskToDate();
   const qc = useQueryClient();
@@ -146,9 +166,21 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   const [newChannel, setNewChannel] = useState("");
   const [editingReal, setEditingReal] = useState(false);
   const [realInput, setRealInput] = useState("");
+  const [openRow, setOpenRow] = useState<OpenRow | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const subtasks = subtasksQ.data ?? [];
   const channels = channelsQ.data ?? [];
+  const objectives = objectivesQ.data ?? [];
+  const done = task.status === "done";
+  const doneSubs = subtasks.filter((s) => s.done).length;
+  const channel = channels.find((c) => c.id === task.channel_id);
+  // A task with no owner row loaded yet reads as mine, which is who created it.
+  const owner =
+    profiles.find((p) => p.id === task.owner_id) ?? profiles.find((p) => p.id === me?.id);
+  const objective = objectives.find((o) => o.id === task.objective_id);
+
+  const rowToggle = (row: OpenRow) => () => setOpenRow((cur) => (cur === row ? null : row));
 
   async function addChannel() {
     const name = newChannel.trim();
@@ -180,6 +212,12 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
     reopen({ ...task, planned_date: toDate, block_start: null, block_end: null });
   }
 
+  function toggleDone() {
+    // Same as the card: finishing a task stops its stopwatch, or the time would
+    // keep counting on something that's already done.
+    if (timer.running) timer.stopTimer();
+    toggle.mutate(task);
+  }
   function saveTitle() {
     const t = title.trim();
     if (t && t !== task.title) update.mutate({ task, patch: { title: t } });
@@ -205,34 +243,307 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
     if (next !== cur) update.mutate({ task, patch: { actual_time_min: next } });
   }
 
+  // How far into the estimate the real time is. Clamped: past the estimate the
+  // bar is simply full, the numbers beside it say by how much.
+  const elapsedMin = timer.running ? timer.liveSeconds / 60 : (task.actual_time_min ?? 0);
+  const progress = task.time_estimate_min
+    ? Math.min(100, (elapsedMin / task.time_estimate_min) * 100)
+    : 0;
+
+  const reminderOffset = offsetFromRemindAt(task.block_start, task.remind_at);
+
   return (
-    <div className="flex flex-col gap-3 p-3 sm:p-4">
-      {/* Grab handle on the phone, where the sheet rises from the bottom. */}
-      <span className="mx-auto -mb-1 h-1 w-10 rounded-pill bg-border md:hidden" aria-hidden />
-      <div className="flex items-start justify-between gap-2 px-2 pt-1">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={saveTitle}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          aria-label={tt("titleLabel")}
-          className="min-w-0 flex-1 bg-transparent font-display text-xl font-bold tracking-tight text-fg outline-none"
+    <>
+      {/* Header: what this is, and the two ways out. Delete lives behind "more"
+          so it's never one stray tap away from the title. */}
+      <div className="shrink-0 px-3.5 pt-2 pb-1.5 md:pt-3.5">
+        {/* Grab handle on the phone, where the sheet rises from the bottom. */}
+        <span
+          className="mx-auto mb-2 block h-1 w-10 rounded-pill bg-border md:hidden"
+          aria-hidden
         />
-        <button
-          onClick={onClose}
-          aria-label={tc("close")}
-          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-surface text-muted shadow-soft transition-colors hover:text-fg"
-        >
-          <X className="h-5 w-5" aria-hidden />
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="mr-auto pl-1.5 text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+            {tt("detailTitle")}
+          </span>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label={tt("moreOptions")}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-surface-2 text-fg transition-colors hover:bg-border"
+            >
+              <MoreHorizontal className="h-4 w-4" aria-hidden />
+            </button>
+            {menuOpen && (
+              <>
+                <button
+                  className="fixed inset-0 z-10 cursor-default"
+                  aria-hidden
+                  tabIndex={-1}
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-1.5 w-48 rounded-lg bg-surface p-1 shadow-pop"
+                >
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      timer.cancel();
+                      remove.mutate(task);
+                      onClose();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-semibold text-danger transition-colors hover:bg-danger/10"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                    {tt("deleteTask")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label={tc("close")}
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-surface-2 text-fg transition-colors hover:bg-border"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
       </div>
 
-      {/* Every "where and when" setting lives in one white card, one row per
-          setting split by hairlines, instead of a stack of separate boxes. */}
-      <div className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-soft">
-        {/* Assign */}
-        {profiles.length > 1 && (
-          <Field label={tt("owner")}>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-3.5 pt-1.5 pb-3.5">
+        {/* Title, with the round check that finishes the task from here. */}
+        <div className="flex items-start gap-3 px-1.5 pt-1">
+          <DoneCircle done={done} onToggle={toggleDone} />
+          <textarea
+            value={title}
+            rows={1}
+            onChange={(e) => setTitle(e.target.value.replace(/\n/g, " "))}
+            onBlur={saveTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
+            aria-label={tt("titleLabel")}
+            // A textarea, not an input: a long title wraps like the heading it
+            // is instead of scrolling sideways out of sight.
+            className={cn(
+              "field-sizing-content min-w-0 flex-1 resize-none bg-transparent font-display text-[26px] leading-[31px] font-bold tracking-[-0.015em] outline-none transition-colors",
+              done ? "text-subtle line-through" : "text-fg",
+            )}
+          />
+        </div>
+
+        {/* Every "where and when" setting lives in one white card: label on the
+            left, current value on the right, one row each. Tapping a value opens
+            its options under the row, so the card stays a summary at rest. */}
+        <div className="flex flex-col divide-y divide-surface-2 rounded-xl bg-surface px-4 py-1.5">
+          {/* Scheduled day: the one setting changed often enough to stay inline */}
+          <MetaRow label={tt("scheduledFor")}>
+            <div className="flex flex-wrap gap-1">
+              <Segment
+                active={task.planned_date === today}
+                label={tcm("today")}
+                onClick={() => reschedule(today)}
+              />
+              <Segment
+                active={task.planned_date === tomorrow}
+                label={tcm("tomorrow")}
+                onClick={() => reschedule(tomorrow)}
+              />
+              <DateChip
+                label={
+                  task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
+                    ? labels.dueLabel(task.planned_date, today)
+                    : tt("otherDay")
+                }
+                active={
+                  !!task.planned_date &&
+                  task.planned_date !== today &&
+                  task.planned_date !== tomorrow
+                }
+                value={task.planned_date ?? today}
+                onChange={reschedule}
+              />
+            </div>
+          </MetaRow>
+
+          {/* Due date: a deadline, independent of the day it's planned for */}
+          <MetaRow
+            label={tt("dueLabel")}
+            open={openRow === "due"}
+            onToggle={rowToggle("due")}
+            value={
+              task.due_date ? (
+                <DueDateBadge dueDate={task.due_date} className="px-2 py-0.5 text-xs" />
+              ) : (
+                <Unset>{tt("noDate")}</Unset>
+              )
+            }
+          >
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Chip
+                active={!task.due_date}
+                label={tt("noDate")}
+                onClick={() => update.mutate({ task, patch: { due_date: null } })}
+              />
+              <Chip
+                active={task.due_date === today}
+                label={tcm("today")}
+                onClick={() => update.mutate({ task, patch: { due_date: today } })}
+              />
+              <Chip
+                active={task.due_date === tomorrow}
+                label={tcm("tomorrow")}
+                onClick={() => update.mutate({ task, patch: { due_date: tomorrow } })}
+              />
+              <DateChip
+                label={
+                  task.due_date && task.due_date !== today && task.due_date !== tomorrow
+                    ? labels.dueLabel(task.due_date, today)
+                    : tt("otherDate")
+                }
+                active={!!task.due_date && task.due_date !== today && task.due_date !== tomorrow}
+                value={task.due_date ?? today}
+                onChange={(d) => update.mutate({ task, patch: { due_date: d } })}
+                tone="chip"
+              />
+            </div>
+          </MetaRow>
+
+          {/* Category */}
+          <MetaRow
+            label={tt("category")}
+            open={openRow === "category"}
+            onToggle={rowToggle("category")}
+            value={
+              channel ? (
+                <>
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-[2px]"
+                    style={{ backgroundColor: channel.color }}
+                    aria-hidden
+                  />
+                  <span className="truncate">{channel.name}</span>
+                </>
+              ) : (
+                <Unset>{tt("noCategory")}</Unset>
+              )
+            }
+          >
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Chip
+                active={!task.channel_id}
+                label={tt("noCategory")}
+                onClick={() => update.mutate({ task, patch: { channel_id: null } })}
+              />
+              {channels.map((c) => (
+                <Chip
+                  key={c.id}
+                  active={task.channel_id === c.id}
+                  label={c.name}
+                  color={c.color}
+                  onClick={() => update.mutate({ task, patch: { channel_id: c.id } })}
+                />
+              ))}
+
+              {/* Create a new category right here */}
+              {addingChannel ? (
+                <span className="inline-flex min-h-8 items-center gap-1.5 rounded-pill bg-primary-soft px-3 py-1.5 ring-1 ring-primary ring-inset">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length],
+                    }}
+                    aria-hidden
+                  />
+                  <input
+                    autoFocus
+                    value={newChannel}
+                    onChange={(e) => setNewChannel(e.target.value)}
+                    onBlur={addChannel}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addChannel();
+                      if (e.key === "Escape") {
+                        setNewChannel("");
+                        setAddingChannel(false);
+                      }
+                    }}
+                    placeholder={tt("categoryNamePlaceholder")}
+                    aria-label={tch("newLabel")}
+                    className="w-24 bg-transparent text-xs font-medium text-primary placeholder:text-primary/50 outline-none"
+                  />
+                </span>
+              ) : (
+                <button
+                  onClick={() => setAddingChannel(true)}
+                  className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-pill border border-dashed border-border-strong px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-primary hover:text-primary"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  {tcm("new")}
+                </button>
+              )}
+            </div>
+          </MetaRow>
+
+          {/* Priority: drives where the task sits in the Day and Week lists. */}
+          <MetaRow
+            label={tt("priority")}
+            open={openRow === "priority"}
+            onToggle={rowToggle("priority")}
+            value={
+              task.priority ? (
+                <>
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: PRIORITY_DOT[task.priority] }}
+                    aria-hidden
+                  />
+                  {tt(PRIORITY_LABEL_KEY[task.priority])}
+                </>
+              ) : (
+                <Unset>{tt(NO_PRIORITY_LABEL_KEY)}</Unset>
+              )
+            }
+          >
+            <div className="flex flex-wrap gap-1.5">
+              <Chip
+                active={!task.priority}
+                label={tt(NO_PRIORITY_LABEL_KEY)}
+                onClick={() => update.mutate({ task, patch: { priority: null } })}
+              />
+              {TASK_PRIORITIES.map((p) => (
+                <Chip
+                  key={p}
+                  active={task.priority === p}
+                  label={tt(PRIORITY_LABEL_KEY[p])}
+                  color={PRIORITY_DOT[p]}
+                  onClick={() => update.mutate({ task, patch: { priority: p } })}
+                />
+              ))}
+            </div>
+          </MetaRow>
+
+          {/* Owner: a picker only when there's someone to hand it to */}
+          <MetaRow
+            label={tt("owner")}
+            open={openRow === "owner"}
+            onToggle={profiles.length > 1 ? rowToggle("owner") : undefined}
+            value={
+              <>
+                <OwnerAvatar profile={owner} size={24} />
+                <span className="truncate">
+                  {!owner || owner.id === me?.id ? tt("you") : owner.display_name}
+                </span>
+              </>
+            }
+          >
             <div className="flex flex-wrap gap-1.5">
               {profiles.map((p) => (
                 <button
@@ -251,232 +562,100 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                 </button>
               ))}
             </div>
-          </Field>
-        )}
+          </MetaRow>
 
-        {/* Share */}
-        {partner && (
-          <Field label={tt("share")}>
-            <button
-              onClick={() => update.mutate({ task, patch: { shared: !task.shared } })}
-              aria-pressed={task.shared}
-              className="flex cursor-pointer items-center gap-2.5 text-sm"
-            >
-              <span
-                className={cn(
-                  "relative h-[22px] w-10 shrink-0 rounded-pill transition-colors duration-300",
-                  task.shared ? "bg-fit" : "bg-border",
-                )}
+          {/* Share: not in the canvas; it sits beside the owner because both
+              answer "who is this for". A switch needs no options panel. */}
+          {partner && (
+            <MetaRow label={tt("share")}>
+              <button
+                onClick={() => update.mutate({ task, patch: { shared: !task.shared } })}
+                aria-pressed={task.shared}
+                className="flex min-w-0 cursor-pointer items-center gap-2.5 text-left"
               >
                 <span
                   className={cn(
-                    "absolute top-[3px] left-[3px] h-4 w-4 rounded-full bg-on-scrim shadow-card transition-transform duration-300 ease-out",
-                    task.shared && "translate-x-[18px]",
+                    "relative h-[22px] w-10 shrink-0 rounded-pill transition-colors duration-300",
+                    task.shared ? "bg-fit" : "bg-border",
                   )}
-                />
-              </span>
-              <span className="text-fg">
-                {task.shared ? `${partner.display_name} también la ve` : tt("privateNote")}
-              </span>
-            </button>
-          </Field>
-        )}
-
-        {/* Scheduled day — move the task to another day without dragging */}
-        <Field label={tt("scheduledFor")}>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Chip
-              active={task.planned_date === today}
-              label={tcm("today")}
-              onClick={() => reschedule(today)}
-            />
-            <Chip
-              active={task.planned_date === tomorrow}
-              label={tcm("tomorrow")}
-              onClick={() => reschedule(tomorrow)}
-            />
-            <DateChip
-              label={
-                task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
-                  ? labels.dueLabel(task.planned_date, today)
-                  : tt("otherDay")
-              }
-              active={
-                !!task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
-              }
-              value={task.planned_date ?? today}
-              onChange={reschedule}
-            />
-          </div>
-        </Field>
-
-        {/* Due date — a deadline, independent of the day it's planned for */}
-        <Field label={tt("dueLabel")}>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Chip
-              active={!task.due_date}
-              label={tt("noDate")}
-              onClick={() => update.mutate({ task, patch: { due_date: null } })}
-            />
-            <Chip
-              active={task.due_date === today}
-              label={tcm("today")}
-              onClick={() => update.mutate({ task, patch: { due_date: today } })}
-            />
-            <Chip
-              active={task.due_date === tomorrow}
-              label={tcm("tomorrow")}
-              onClick={() => update.mutate({ task, patch: { due_date: tomorrow } })}
-            />
-            <DateChip
-              label={
-                task.due_date && task.due_date !== today && task.due_date !== tomorrow
-                  ? labels.dueLabel(task.due_date, today)
-                  : tt("otherDate")
-              }
-              active={!!task.due_date && task.due_date !== today && task.due_date !== tomorrow}
-              value={task.due_date ?? today}
-              onChange={(d) => update.mutate({ task, patch: { due_date: d } })}
-            />
-          </div>
-        </Field>
-
-        {/* Channel */}
-        <Field label={tt("category")}>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Chip
-              active={!task.channel_id}
-              label={tt("noCategory")}
-              onClick={() => update.mutate({ task, patch: { channel_id: null } })}
-            />
-            {channels.map((c) => (
-              <Chip
-                key={c.id}
-                active={task.channel_id === c.id}
-                label={c.name}
-                color={c.color}
-                onClick={() => update.mutate({ task, patch: { channel_id: c.id } })}
-              />
-            ))}
-
-            {/* Create a new category right here */}
-            {addingChannel ? (
-              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-pill bg-primary-soft px-3 py-1.5 ring-1 ring-primary ring-inset">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{
-                    backgroundColor: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length],
-                  }}
-                  aria-hidden
-                />
-                <input
-                  autoFocus
-                  value={newChannel}
-                  onChange={(e) => setNewChannel(e.target.value)}
-                  onBlur={addChannel}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") addChannel();
-                    if (e.key === "Escape") {
-                      setNewChannel("");
-                      setAddingChannel(false);
-                    }
-                  }}
-                  placeholder={tt("categoryNamePlaceholder")}
-                  aria-label={tch("newLabel")}
-                  className="w-24 bg-transparent text-xs font-medium text-primary placeholder:text-primary/50 outline-none"
-                />
-              </span>
-            ) : (
-              <button
-                onClick={() => setAddingChannel(true)}
-                className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-pill border border-dashed border-border-strong px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-primary hover:text-primary"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                {tcm("new")}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-[3px] left-[3px] h-4 w-4 rounded-full bg-on-scrim shadow-card transition-transform duration-300 ease-out",
+                      task.shared && "translate-x-[18px]",
+                    )}
+                  />
+                </span>
+                <span className="truncate text-[13px] font-semibold text-fg">
+                  {task.shared
+                    ? tt("sharedWithPartner", { name: partner.display_name })
+                    : tt("privateNote")}
+                </span>
               </button>
-            )}
-          </div>
-        </Field>
+            </MetaRow>
+          )}
 
-        {/* Priority — drives where the task sits in the Day and Week lists. */}
-        <Field label={tt("priority")}>
-          <div className="flex flex-wrap gap-1.5">
-            <Chip
-              active={!task.priority}
-              label={tt(NO_PRIORITY_LABEL_KEY)}
-              onClick={() => update.mutate({ task, patch: { priority: null } })}
-            />
-            {TASK_PRIORITIES.map((p) => (
-              <Chip
-                key={p}
-                active={task.priority === p}
-                label={tt(PRIORITY_LABEL_KEY[p])}
-                color={PRIORITY_DOT[p]}
-                onClick={() => update.mutate({ task, patch: { priority: p } })}
-              />
-            ))}
-          </div>
-        </Field>
+          {/* Reminder */}
+          <MetaRow
+            label={tt("reminder")}
+            open={openRow === "reminder"}
+            onToggle={rowToggle("reminder")}
+            value={
+              !task.remind_at ? (
+                <Unset>{tt("noReminder")}</Unset>
+              ) : reminderOffset !== null ? (
+                tt(reminderOffsetLabelKey(reminderOffset), { n: reminderOffset })
+              ) : (
+                tt("reminderAtTime", { time: timeInTimeZone(task.remind_at, TZ) })
+              )
+            }
+          >
+            <ReminderControl task={task} update={update} />
+          </MetaRow>
 
-        {/* Estimate */}
-        <Field label={tt("estimate2")}>
-          <div className="flex flex-wrap gap-1.5">
-            <Chip
-              active={!task.time_estimate_min}
-              label={tt("none")}
-              onClick={() => update.mutate({ task, patch: { time_estimate_min: null } })}
-            />
-            {TIME_ESTIMATES.map((m) => (
-              <Chip
-                key={m}
-                active={task.time_estimate_min === m}
-                label={formatMinutes(m)}
-                onClick={() => update.mutate({ task, patch: { time_estimate_min: m } })}
-              />
-            ))}
-          </div>
-        </Field>
-
-        {/* Reminder */}
-        <Field label={tt("reminder")}>
-          <ReminderControl task={task} update={update} />
-        </Field>
-
-        {/* Objective */}
-        {(objectivesQ.data ?? []).length > 0 && (
-          <Field label={tt("goal")}>
-            <div className="flex flex-wrap gap-1.5">
-              <Chip
-                active={!task.objective_id}
-                label={tt("none")}
-                onClick={() => update.mutate({ task, patch: { objective_id: null } })}
-              />
-              {(objectivesQ.data ?? []).map((o) => (
+          {/* Goal: only once there's a goal to link to */}
+          {objectives.length > 0 && (
+            <MetaRow
+              label={tt("goal")}
+              open={openRow === "goal"}
+              onToggle={rowToggle("goal")}
+              value={
+                objective ? (
+                  <span className="truncate">{objective.title}</span>
+                ) : (
+                  <Unset>{tt("none")}</Unset>
+                )
+              }
+            >
+              <div className="flex flex-wrap gap-1.5">
                 <Chip
-                  key={o.id}
-                  active={task.objective_id === o.id}
-                  label={o.title}
-                  onClick={() => update.mutate({ task, patch: { objective_id: o.id } })}
+                  active={!task.objective_id}
+                  label={tt("none")}
+                  onClick={() => update.mutate({ task, patch: { objective_id: null } })}
                 />
-              ))}
-            </div>
-          </Field>
-        )}
-      </div>
+                {objectives.map((o) => (
+                  <Chip
+                    key={o.id}
+                    active={task.objective_id === o.id}
+                    label={o.title}
+                    onClick={() => update.mutate({ task, patch: { objective_id: o.id } })}
+                  />
+                ))}
+              </div>
+            </MetaRow>
+          )}
+        </div>
 
-      {/* Time tracking */}
-      <Section label={tt("time")}>
-        {/* The one dark card in the sheet: time is the live thing here, so it
-            gets the hero treatment (and flips with the theme like the others). */}
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-fg px-4 py-3.5 text-bg">
-          <div className="flex items-baseline gap-6">
-            <div className="flex flex-col">
-              <span className="text-2xs font-semibold uppercase tracking-wide text-bg/60">
-                {tt("actualTime")}
-              </span>
+        {/* Time tracking: the one dark card in the sheet. Time is the live thing
+            here, so it gets the hero treatment (and flips with the theme). The
+            estimate lives in it too, as the yardstick the bar measures against. */}
+        <section className="flex flex-col gap-3 rounded-xl bg-fg p-4 text-bg">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+            <div className="mr-auto flex flex-col gap-0.5">
+              <span className="text-xs text-bg/60">{tt("realTime")}</span>
               {timer.running ? (
-                <span className="flex items-center gap-1.5 font-display text-xl font-bold tabular-nums">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-fit" aria-hidden />
+                <span className="flex items-center gap-2 font-display text-[28px] leading-8 font-bold tabular-nums">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-accent" aria-hidden />
                   {formatClock(timer.liveSeconds)}
                 </span>
               ) : editingReal ? (
@@ -491,84 +670,133 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                   }}
                   placeholder={tt("timePlaceholder")}
                   aria-label={tt("realTime")}
-                  className="w-24 border-b border-bg/50 bg-transparent font-display text-xl font-bold tabular-nums text-bg outline-none placeholder:text-base placeholder:font-normal placeholder:text-bg/50"
+                  className="h-8 w-28 border-b border-bg/50 bg-transparent font-display text-[28px] font-bold tabular-nums text-bg outline-none placeholder:text-base placeholder:font-normal placeholder:text-bg/50"
                 />
               ) : (
                 <button
                   onClick={startEditReal}
                   title={tt("logTimeManually")}
-                  className="cursor-pointer text-left font-display text-xl font-bold tabular-nums text-bg underline decoration-bg/40 decoration-dotted decoration-from-font underline-offset-4 transition-opacity hover:opacity-80"
+                  className="cursor-pointer text-left font-display text-[28px] leading-8 font-bold tabular-nums text-bg underline decoration-bg/30 decoration-dotted decoration-from-font underline-offset-4 transition-opacity hover:opacity-80"
                 >
-                  {task.actual_time_min ? formatDuration(task.actual_time_min * 60) : "—"}
+                  {formatMinutes(task.actual_time_min ?? 0)}
                 </button>
               )}
             </div>
-            <div className="flex flex-col">
-              <span className="text-2xs font-semibold uppercase tracking-wide text-bg/60">
-                {tt("estimatedTime")}
-              </span>
-              <span className="font-display text-xl font-bold tabular-nums text-bg/70">
-                {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "—"}
-              </span>
-            </div>
+            <button
+              onClick={rowToggle("estimate")}
+              aria-expanded={openRow === "estimate"}
+              title={tt("changeField", { field: tt("estimate2") })}
+              className="cursor-pointer rounded-pill px-2 py-1 text-xs text-bg/60 transition-colors hover:bg-bg/10 hover:text-bg"
+            >
+              {task.time_estimate_min
+                ? tt("ofEstimate", { time: formatMinutes(task.time_estimate_min) })
+                : tt("estimateTime")}
+            </button>
+            <button
+              onClick={timer.toggle}
+              aria-pressed={timer.running}
+              className={cn(
+                "inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-4 text-[13px] font-bold transition-colors",
+                timer.running
+                  ? "bg-accent text-on-accent hover:bg-accent-hover"
+                  : "bg-bg text-fg hover:bg-bg/85",
+              )}
+            >
+              {timer.running ? (
+                <>
+                  <Pause className="h-4 w-4" aria-hidden /> {tt("stop")}
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" aria-hidden /> {tt("startTimerShort")}
+                </>
+              )}
+            </button>
           </div>
-          <button
-            onClick={timer.toggle}
-            aria-pressed={timer.running}
-            className={cn(
-              "inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-4 text-sm font-semibold transition-colors",
-              timer.running
-                ? "bg-danger text-on-danger hover:opacity-90"
-                : "bg-bg text-fg hover:bg-bg/85",
-            )}
-          >
-            {timer.running ? (
-              <>
-                <Pause className="h-4 w-4" aria-hidden /> {tt("stop")}
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4" aria-hidden /> {tt("startTimerShort")}
-              </>
-            )}
-          </button>
-        </div>
+
+          {task.time_estimate_min ? (
+            <div className="h-2 overflow-hidden rounded-pill bg-bg/15" aria-hidden>
+              <div
+                className="h-full rounded-pill bg-fit transition-[width] duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          ) : null}
+
+          {openRow === "estimate" && (
+            <div className="flex flex-wrap gap-1.5">
+              <DarkChip
+                active={!task.time_estimate_min}
+                label={tt("none")}
+                onClick={() => update.mutate({ task, patch: { time_estimate_min: null } })}
+              />
+              {TIME_ESTIMATES.map((m) => (
+                <DarkChip
+                  key={m}
+                  active={task.time_estimate_min === m}
+                  label={formatMinutes(m)}
+                  onClick={() => update.mutate({ task, patch: { time_estimate_min: m } })}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Day by day: not in the canvas, kept right under the total it splits. */}
         <TaskTimeBreakdown task={task} liveSegments={timer.liveSegments} meId={me?.id} />
-      </Section>
 
-      {/* Description */}
-      <Section label={tt("description")} card>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={saveNotes}
-          placeholder={tt("descriptionPlaceholder")}
-          rows={3}
-          className="w-full resize-none rounded-lg bg-transparent text-sm leading-relaxed text-fg placeholder:text-subtle outline-none"
-        />
-      </Section>
+        {/* Description */}
+        <Card>
+          <label htmlFor={`notes-${task.id}`} className="font-display text-sm font-semibold">
+            {tt("description")}
+          </label>
+          <textarea
+            id={`notes-${task.id}`}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onBlur={saveNotes}
+            placeholder={tt("descriptionPlaceholder")}
+            rows={2}
+            className="field-sizing-content min-h-[64px] w-full resize-none rounded-lg bg-bg p-3 text-sm leading-5 text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          />
+        </Card>
 
-      {/* Checklist */}
-      <Section
-        card
-        label={`Checklist${subtasks.length ? ` · ${subtasks.filter((s) => s.done).length}/${subtasks.length}` : ""}`}
-      >
-        <div className="flex flex-col gap-0.5">
-          {subtasks.map((s) => (
-            <ChecklistItemRow
-              key={s.id}
-              sub={s}
-              profiles={profiles}
-              meId={me?.id}
-              onToggle={() => toggleSub.mutate(s)}
-              onRename={(title) => updateSub.mutate({ id: s.id, title })}
-              onAssign={(assignee_id) => updateSub.mutate({ id: s.id, assignee_id })}
-              onDelete={() => deleteSub.mutate(s.id)}
-            />
-          ))}
+        {/* Checklist */}
+        <Card gap="gap-2">
+          <div className="flex items-center gap-2.5">
+            <h2 className="mr-auto font-display text-sm font-semibold">{tt("checklist")}</h2>
+            {subtasks.length > 0 && (
+              <span className="font-mono text-xs text-muted">
+                {tt("checklistProgress", { done: doneSubs, total: subtasks.length })}
+              </span>
+            )}
+          </div>
+          {subtasks.length > 0 && (
+            <div className="h-1.5 overflow-hidden rounded-pill bg-surface-2" aria-hidden>
+              <div
+                className="h-full rounded-pill bg-fit transition-[width] duration-500"
+                style={{ width: `${(doneSubs / subtasks.length) * 100}%` }}
+              />
+            </div>
+          )}
 
-          {/* Add item — clearly visible field with its own add button */}
-          <div className="mt-1.5 flex items-center gap-2 rounded-pill bg-surface-2 py-1 pr-1 pl-3.5 focus-within:ring-2 focus-within:ring-focus">
+          <div className="flex flex-col">
+            {subtasks.map((s) => (
+              <ChecklistItemRow
+                key={s.id}
+                sub={s}
+                profiles={profiles}
+                meId={me?.id}
+                onToggle={() => toggleSub.mutate(s)}
+                onRename={(title) => updateSub.mutate({ id: s.id, title })}
+                onAssign={(assignee_id) => updateSub.mutate({ id: s.id, assignee_id })}
+                onDelete={() => deleteSub.mutate(s.id)}
+              />
+            ))}
+          </div>
+
+          {/* Add item: a visible field with its own add button */}
+          <div className="flex items-center gap-2 rounded-pill bg-bg py-1 pr-1 pl-3.5 focus-within:ring-2 focus-within:ring-focus">
             <input
               value={newSub}
               onChange={(e) => setNewSub(e.target.value)}
@@ -588,40 +816,36 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           </div>
 
           <ChecklistAiSuggest task={task} notes={notes} subtasks={subtasks} />
-        </div>
-      </Section>
+        </Card>
 
-      {/* Files — photos, PDFs and documents that belong with the task */}
-      <Section card label={`Archivos${attachmentCount ? ` · ${attachmentCount}` : ""}`}>
-        <TaskAttachments taskId={task.id} />
-      </Section>
+        {/* Files: photos, PDFs and documents that belong with the task */}
+        <Card>
+          <div className="flex items-center gap-2.5">
+            <h2 className="mr-auto font-display text-sm font-semibold">{tt("files")}</h2>
+            {attachmentCount > 0 && (
+              <span className="font-mono text-xs text-muted">{attachmentCount}</span>
+            )}
+          </div>
+          <TaskAttachments taskId={task.id} />
+        </Card>
 
-      {/* Kudos — celebrate a finished shared task */}
-      {partner && task.shared && task.status === "done" && (
-        <Section card label={tt("reactions")}>
-          <TaskReactions taskId={task.id} />
-        </Section>
-      )}
+        {/* Kudos: celebrate a finished shared task */}
+        {partner && task.shared && task.status === "done" && (
+          <Card>
+            <h2 className="font-display text-sm font-semibold">{tt("reactions")}</h2>
+            <TaskReactions taskId={task.id} />
+          </Card>
+        )}
 
-      {/* Comments — discussion on a shared task */}
-      {partner && task.shared && (
-        <Section card label={tt("comments")}>
-          <TaskComments taskId={task.id} />
-        </Section>
-      )}
-
-      <button
-        onClick={() => {
-          timer.cancel();
-          remove.mutate(task);
-          onClose();
-        }}
-        className="mt-1 mb-2 ml-1 flex h-9 w-fit cursor-pointer items-center gap-2 rounded-pill bg-surface px-4 text-sm font-semibold text-danger shadow-soft transition-colors hover:bg-danger/10"
-      >
-        <Trash2 className="h-4 w-4" aria-hidden />
-        {tt("deleteTask")}
-      </button>
-    </div>
+        {/* Comments: discussion on a shared task */}
+        {partner && task.shared && (
+          <Card gap="gap-3">
+            <h2 className="font-display text-sm font-semibold">{tt("comments")}</h2>
+            <TaskComments taskId={task.id} />
+          </Card>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -683,23 +907,26 @@ function ReminderControl({
   );
 }
 
-/** A chip that opens the native date picker. Styled like {@link Chip} so it
- *  sits inline with the quick tt("todayTomorrow") options.
+/** A chip that opens the native date picker, styled to sit inline with the
+ *  quick today/tomorrow options next to it.
  *
  *  We open the picker with `showPicker()` on click instead of relying on the
  *  browser to open it when a stretched, transparent date input is clicked — on
  *  desktop that only focuses the field (the calendar opens from the hidden
- *  native icon), so tt("otherDay") appeared to do nothing. */
+ *  native icon), so "Otro día" appeared to do nothing. */
 function DateChip({
   label,
   value,
   active,
   onChange,
+  tone = "segment",
 }: {
   label: string;
   value: string;
   active: boolean;
   onChange: (date: string) => void;
+  /** "segment" sits in the scheduled-day control; "chip" among option chips. */
+  tone?: "segment" | "chip";
 }) {
   const tt = useTranslations("tasks");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -722,11 +949,18 @@ function DateChip({
       onClick={openPicker}
       aria-label={tt("pickDate")}
       className={cn(
-        "relative inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill px-3 py-1.5 text-xs font-semibold transition-colors",
-        active ? "bg-primary-soft text-primary" : "bg-surface-2 text-muted hover:bg-border",
+        "relative inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors",
+        tone === "segment" ? SEGMENT_BASE : "min-h-8 py-1.5",
+        tone === "segment"
+          ? active
+            ? SEGMENT_ON
+            : SEGMENT_OFF
+          : active
+            ? "bg-primary-soft text-primary"
+            : "bg-surface-2 text-muted hover:bg-border",
       )}
     >
-      <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+      {tone === "chip" && <CalendarClock className="h-3.5 w-3.5" aria-hidden />}
       {label}
       <input
         ref={inputRef}
@@ -778,10 +1012,8 @@ function ChecklistItemRow({
   }
 
   return (
-    <div className="group -mx-1 flex items-start gap-2.5 rounded-lg px-1 py-1.5 transition-colors hover:bg-surface-2">
-      <span className="mt-0.5">
-        <TaskCheckbox checked={sub.done} onToggle={onToggle} size="sm" />
-      </span>
+    <div className="group -mx-1.5 flex min-h-9 items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors hover:bg-bg">
+      <TaskCheckbox checked={sub.done} onToggle={onToggle} />
 
       {editing ? (
         <input
@@ -807,7 +1039,7 @@ function ChecklistItemRow({
           }}
           title={tt("tapToEdit")}
           className={cn(
-            "min-w-0 flex-1 cursor-text break-words text-left text-sm leading-snug",
+            "min-w-0 flex-1 cursor-text break-words text-left text-[13px] leading-snug",
             sub.done ? "text-subtle line-through" : "text-fg",
           )}
         >
@@ -820,8 +1052,10 @@ function ChecklistItemRow({
         <div className="relative shrink-0">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label={assignee ? `Asignado a ${assignee.display_name}` : tt("assignTo")}
-            title={assignee ? `Asignado a ${assignee.display_name}` : tt("assignTo")}
+            aria-label={
+              assignee ? tt("assignedTo", { name: assignee.display_name }) : tt("assignTo")
+            }
+            title={assignee ? tt("assignedTo", { name: assignee.display_name }) : tt("assignTo")}
             className={cn(
               "flex h-7 w-7 items-center justify-center rounded-full transition-opacity",
               assignee
@@ -896,34 +1130,150 @@ function ChecklistItemRow({
   );
 }
 
-/** One row of the settings card: its label on top, the control under it. The
- *  hairline between rows comes from the parent's `divide-y`. */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** One row of the settings card: the label in a fixed column on the left and
+ *  the current value on the right. With `onToggle` the value is a button and
+ *  `children` (its options) open under the row. The hairline between rows
+ *  comes from the parent's `divide-y`. */
+function MetaRow({
+  label,
+  value,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  value?: React.ReactNode;
+  open?: boolean;
+  onToggle?: () => void;
+  children?: React.ReactNode;
+}) {
+  const tt = useTranslations("tasks");
+  const id = useId();
+  // Rows without a value prop put their control (segments, switch) inline.
+  const inline = value === undefined;
   return (
-    <div className="py-3">
-      <p className="mb-2 text-xs font-semibold text-muted">{label}</p>
-      {children}
+    <div>
+      <div className="flex min-h-[46px] items-center gap-2.5 py-1.5">
+        <span id={`${id}-l`} className="w-24 shrink-0 text-xs text-muted sm:w-[120px]">
+          {label}
+        </span>
+        {inline ? (
+          <div className="min-w-0 flex-1">{children}</div>
+        ) : onToggle ? (
+          <button
+            onClick={onToggle}
+            aria-expanded={!!open}
+            // Named "Categoría Trabajo", not just "Trabajo": the label sits
+            // outside the button.
+            aria-labelledby={`${id}-l ${id}-v`}
+            title={tt("changeField", { field: label })}
+            className="group/row -my-1 -mr-2 flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md py-1 pr-2 text-left text-[13px] font-semibold text-fg"
+          >
+            <span id={`${id}-v`} className="flex min-w-0 items-center gap-2">
+              {value}
+            </span>
+            <ChevronDown
+              className={cn(
+                "ml-auto h-4 w-4 shrink-0 text-subtle transition-transform group-hover/row:text-fg",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-[13px] font-semibold text-fg">
+            {value}
+          </div>
+        )}
+      </div>
+      {!inline && open && <div className="pb-3 sm:pl-[130px]">{children}</div>}
     </div>
   );
 }
 
-/** A block of the sheet outside the settings card. With `card`, its content
- *  sits on a white card; without, it is laid straight on the sheet's paper
- *  (the time block brings its own dark card). */
-function Section({
+/** The value of a row that has nothing set yet: quieter than a real value. */
+function Unset({ children }: { children: React.ReactNode }) {
+  return <span className="truncate font-medium text-muted">{children}</span>;
+}
+
+/** A white card on the sheet's paper, with its heading as the first child. */
+function Card({ children, gap = "gap-2.5" }: { children: React.ReactNode; gap?: string }) {
+  return (
+    <section className={cn("flex flex-col rounded-xl bg-surface p-4", gap)}>{children}</section>
+  );
+}
+
+/** The finish check beside the title: round and big, like the canvas, unlike
+ *  the square checkbox of a checklist item. */
+function DoneCircle({ done, onToggle }: { done: boolean; onToggle: () => void }) {
+  const t = useTranslations("tasks");
+  return (
+    <motion.button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={done}
+      aria-label={done ? t("markPending") : t("complete")}
+      whileTap={{ scale: 0.85 }}
+      className={cn(
+        "mt-0.5 flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors",
+        done ? "bg-fit" : "ring-2 ring-border-strong ring-inset hover:ring-primary",
+      )}
+    >
+      {done && <Check className="h-3.5 w-3.5 text-on-primary" strokeWidth={3} aria-hidden />}
+    </motion.button>
+  );
+}
+
+const SEGMENT_BASE = "h-[30px]";
+const SEGMENT_ON = "bg-fg text-bg";
+const SEGMENT_OFF = "bg-surface-2 text-fg hover:bg-border";
+
+/** One option of the scheduled-day control: ink when chosen, like the canvas. */
+function Segment({
+  active,
   label,
-  card,
-  children,
+  onClick,
 }: {
+  active: boolean;
   label: string;
-  card?: boolean;
-  children: React.ReactNode;
+  onClick: () => void;
 }) {
   return (
-    <section className={cn(card && "rounded-xl bg-surface p-4 shadow-soft")}>
-      <p className={cn("mb-2 text-xs font-semibold text-muted", !card && "px-2")}>{label}</p>
-      {children}
-    </section>
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex cursor-pointer items-center rounded-pill px-3 text-xs font-semibold transition-colors",
+        SEGMENT_BASE,
+        active ? SEGMENT_ON : SEGMENT_OFF,
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** {@link Chip} for the dark time card, where the paper colours would vanish. */
+function DarkChip({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex min-h-8 cursor-pointer items-center rounded-pill px-3 py-1.5 text-xs font-semibold transition-colors",
+        active ? "bg-bg text-fg" : "bg-bg/10 text-bg hover:bg-bg/20",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 

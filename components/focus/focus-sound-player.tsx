@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Check, ChevronDown, Pause, Play, Volume2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { SOUNDSCAPES, getSoundscape, type Soundscape } from "@/lib/audio/soundscapes";
 import * as engine from "@/lib/audio/engine";
 import { useAudio } from "@/lib/stores/audio";
 import { cn } from "@/lib/utils";
+import { Well } from "@/components/ui";
 import { useTranslations } from "next-intl";
 
 export function FocusSoundPlayer() {
@@ -55,192 +55,137 @@ export function FocusSoundPlayer() {
     engine.play(sc);
   }, [playing, soundscapeId, source]);
 
-  const selected = getSoundscape(soundscapeId);
+  const isPlaying = playing && source === "soundscape";
 
-  function onToggle() {
-    if (!selected) {
-      // Nothing picked yet — start the first synth soundscape.
-      setSoundscape(SOUNDSCAPES[0].id);
+  /** A tile picks its sound; tapping the one already on pauses or resumes it,
+   *  which is what the separate play button used to do. */
+  function onTile(id: string) {
+    if (id !== soundscapeId) {
+      setSoundscape(id);
       return;
     }
-    if (source !== "soundscape") setSource("soundscape");
+    if (source !== "soundscape") {
+      setSource("soundscape");
+      setPlaying(true);
+      return;
+    }
     setPlaying(!playing);
   }
 
-  const isPlaying = playing && source === "soundscape";
-
   return (
-    // No card of its own: the audio panel already wraps it in a white card inside
-    // a well, and a third nested frame read as clutter.
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex items-center gap-3">
+    <Well className="flex flex-col gap-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h2 className="text-base font-semibold text-fg">{t("audioTitle")}</h2>
+        {/* The canvas shows this as a plain caption; it's the auto-start switch,
+            so it says what it does and can be flipped where it's read. */}
         <button
-          onClick={onToggle}
-          aria-label={isPlaying ? t("pauseSound") : t("playSound")}
-          className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-pill bg-fg text-bg transition-colors hover:bg-fg/85"
+          type="button"
+          role="switch"
+          aria-checked={autoStart}
+          onClick={() => setAutoStart(!autoStart)}
+          className="flex cursor-pointer items-center gap-2 text-xs text-muted transition-colors hover:text-fg"
         >
-          {isPlaying ? (
-            <Pause className="h-5 w-5" aria-hidden />
-          ) : (
-            <Play className="ml-0.5 h-5 w-5" aria-hidden />
-          )}
+          {t("audioAuto")}
+          <span
+            className={cn(
+              "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors",
+              autoStart ? "bg-primary" : "bg-border-strong",
+            )}
+            aria-hidden
+          >
+            <span
+              className={cn(
+                "inline-block h-3 w-3 rounded-full bg-surface shadow-soft transition-transform",
+                autoStart ? "translate-x-3.5" : "translate-x-0.5",
+              )}
+            />
+          </span>
         </button>
-
-        <SoundscapePicker
-          value={soundscapeId}
-          available={available}
-          onChange={(id) => setSoundscape(id)}
-        />
       </div>
 
-      <div className="flex items-center gap-3 px-1">
-        <Volume2 className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+      <div className="grid grid-cols-3 gap-2">
+        {SOUNDSCAPES.map((s) => {
+          const selected = s.id === soundscapeId;
+          const on = selected && isPlaying;
+          const locked = s.kind === "file" && available[s.id] === false;
+          return (
+            <button
+              key={s.id}
+              onClick={() => onTile(s.id)}
+              disabled={locked}
+              aria-pressed={on}
+              title={
+                locked
+                  ? t("soundMissingFile")
+                  : selected
+                    ? on
+                      ? t("pauseSound")
+                      : t("playSound")
+                    : undefined
+              }
+              className={cn(
+                "flex h-[72px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl px-1 text-xs font-semibold text-fg transition-colors",
+                locked
+                  ? "cursor-not-allowed bg-surface/60 text-subtle"
+                  : selected
+                    ? "cursor-pointer bg-primary-soft"
+                    : "cursor-pointer bg-surface hover:bg-surface/70",
+              )}
+            >
+              <Bars active={on} lit={selected && !locked} />
+              <span className="max-w-full truncate">{t(s.labelKey)}</span>
+              {locked && <span className="sr-only">{t("soundMissingFile")}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2.5">
+        <label htmlFor="focus-volume" className="text-xs font-semibold text-fg">
+          {t("volume")}
+        </label>
         <input
+          id="focus-volume"
           type="range"
           min={0}
           max={1}
           step={0.01}
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
-          aria-label={t("volume")}
-          className="h-1.5 w-full cursor-pointer"
-          style={{ accentColor: "var(--color-primary)" }}
+          className="h-2 min-w-0 flex-1 cursor-pointer appearance-none rounded-pill [&::-moz-range-thumb]:h-[22px] [&::-moz-range-thumb]:w-[22px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-surface [&::-moz-range-thumb]:shadow-card [&::-webkit-slider-thumb]:h-[22px] [&::-webkit-slider-thumb]:w-[22px] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-surface [&::-webkit-slider-thumb]:shadow-card"
+          // The filled part of the track is the "fit" ramp, the rest the card:
+          // a native accent-color can't take a gradient.
+          style={{
+            background: `linear-gradient(90deg, var(--color-fit-from) 0%, var(--color-primary) ${volume * 100}%, var(--color-surface) ${volume * 100}%)`,
+          }}
         />
       </div>
-
-      <label className="flex cursor-pointer items-center justify-between gap-3 px-1 text-sm">
-        <span className="text-muted">{t("startWithFocus")}</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={autoStart}
-          onClick={() => setAutoStart(!autoStart)}
-          className={cn(
-            "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors",
-            autoStart ? "bg-fit" : "bg-border-strong",
-          )}
-        >
-          <span
-            className={cn(
-              "inline-block h-3.5 w-3.5 rounded-full bg-surface shadow-soft transition-transform",
-              autoStart ? "translate-x-[18px]" : "translate-x-1",
-            )}
-          />
-        </button>
-      </label>
-    </div>
+    </Well>
   );
 }
 
-/** Soundscape dropdown — same visual language as the TaskPicker in focus-timer. */
-function SoundscapePicker({
-  value,
-  available,
-  onChange,
-}: {
-  value: string | null;
-  available: Record<string, boolean>;
-  onChange: (id: string) => void;
-}) {
-  const t = useTranslations("focus");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+/** Four bars per tile: they move while that sound plays, and sit still in a
+ *  rising row otherwise. */
+function Bars({ active, lit }: { active: boolean; lit: boolean }) {
   const reduce = useReducedMotion();
-  const selected = getSoundscape(value);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  const isLocked = (s: Soundscape) => s.kind === "file" && available[s.id] === false;
-
   return (
-    <div ref={ref} className="relative min-w-0 flex-1">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={t("pickSound")}
-        className={cn(
-          "flex w-full cursor-pointer items-center gap-2.5 rounded-pill px-4 py-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
-          open ? "bg-border" : "bg-surface-2 hover:bg-border",
-        )}
-      >
-        {selected ? (
-          <>
-            <selected.icon className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-fg">{t(selected.labelKey)}</span>
-          </>
-        ) : (
-          <span className="min-w-0 flex-1 truncate text-muted">{t("pickSoundPrompt")}</span>
-        )}
-        <ChevronDown
-          className={cn("h-4 w-4 shrink-0 text-muted transition-transform", open && "rotate-180")}
-          aria-hidden
+    <span className="flex h-3.5 items-end gap-0.5" aria-hidden>
+      {[0, 1, 2, 3].map((k) => (
+        <motion.span
+          key={k}
+          className={cn(
+            "h-full w-[3px] origin-bottom rounded-[2px]",
+            lit ? "bg-fg" : "bg-border-strong",
+          )}
+          initial={false}
+          animate={active && !reduce ? { scaleY: [0.35, 1, 0.35] } : { scaleY: 0.4 + k * 0.15 }}
+          transition={
+            active && !reduce
+              ? { duration: 1, ease: "easeInOut", repeat: Infinity, delay: k * 0.15 }
+              : { duration: 0.3 }
+          }
         />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.ul
-            role="listbox"
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
-            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-0 right-0 z-20 mt-2 max-h-64 origin-top overflow-y-auto rounded-xl bg-surface p-1 shadow-pop"
-          >
-            {SOUNDSCAPES.map((s) => {
-              const active = s.id === value;
-              const locked = isLocked(s);
-              return (
-                <li key={s.id} role="option" aria-selected={active}>
-                  <button
-                    disabled={locked}
-                    onClick={() => {
-                      if (locked) return;
-                      onChange(s.id);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
-                      locked
-                        ? "cursor-not-allowed text-subtle"
-                        : active
-                          ? "cursor-pointer bg-primary-soft text-primary"
-                          : "cursor-pointer text-fg hover:bg-surface-2",
-                    )}
-                  >
-                    <s.icon
-                      className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted")}
-                      aria-hidden
-                    />
-                    <span className={cn("min-w-0 flex-1 truncate", active && "font-medium")}>
-                      {t(s.labelKey)}
-                    </span>
-                    {locked && (
-                      <span className="shrink-0 text-xs text-subtle">{t("soundMissingFile")}</span>
-                    )}
-                    {active && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
-                  </button>
-                </li>
-              );
-            })}
-          </motion.ul>
-        )}
-      </AnimatePresence>
-    </div>
+      ))}
+    </span>
   );
 }
