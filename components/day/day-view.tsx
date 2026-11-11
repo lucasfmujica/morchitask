@@ -404,6 +404,7 @@ export function DayView({ date }: { date: string }) {
               profilesById={profilesById}
               subtasksByTaskId={subtasksByTaskId}
               onReorder={handleReorder}
+              grouped
               scope={date}
               dragging={!!activeTask}
               // Three different "nothing here": a filter that matches nothing,
