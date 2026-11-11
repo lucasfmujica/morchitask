@@ -12,7 +12,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { taskBlocks, taskTimeEntries, tasks } from "@/lib/db/schema";
+import { channels, taskBlocks, taskTimeEntries, tasks } from "@/lib/db/schema";
 import type { PriorityKey } from "@/lib/priority";
 import { applyDayEdit } from "@/lib/time-entries";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
@@ -338,6 +338,62 @@ export async function workedMinutesByDay(
     )
     .groupBy(taskTimeEntries.day)
     .orderBy(asc(taskTimeEntries.day));
+}
+
+/**
+ * Minutes the user tracked on each task within [start, end], with the task's
+ * category and estimate: one row per task. Resumen sums these per category and
+ * pairs them with the estimate for "estimado vs real".
+ *
+ * Read from the per-day entries, not `tasks.actual_time_min` over the tasks
+ * planned in range: that missed everything worked on a task planned another
+ * day (or never planned), and credited the period with a task's lifetime total.
+ *
+ * Scoped by household AND user: tracked time is personal, and a shared task is
+ * exactly where two people's minutes sit on the same row. The task and channel
+ * joins repeat the household filter so a mismatched id can't pull a name from
+ * another household.
+ */
+export async function trackedMinutesByTask(
+  householdId: string,
+  userId: string,
+  start: string,
+  end: string,
+) {
+  return db
+    .select({
+      task_id: taskTimeEntries.task_id,
+      channel_id: tasks.channel_id,
+      channel_name: channels.name,
+      channel_color: channels.color,
+      estimate_min: tasks.time_estimate_min,
+      // numeric → string over the wire; the cast keeps the JSON a number.
+      minutes: sql<number>`coalesce(sum(${taskTimeEntries.minutes}), 0)::float8`.mapWith(Number),
+    })
+    .from(taskTimeEntries)
+    .innerJoin(
+      tasks,
+      and(eq(tasks.id, taskTimeEntries.task_id), eq(tasks.household_id, householdId)),
+    )
+    .leftJoin(
+      channels,
+      and(eq(channels.id, tasks.channel_id), eq(channels.household_id, householdId)),
+    )
+    .where(
+      and(
+        eq(taskTimeEntries.household_id, householdId),
+        eq(taskTimeEntries.user_id, userId),
+        gte(taskTimeEntries.day, start),
+        lte(taskTimeEntries.day, end),
+      ),
+    )
+    .groupBy(
+      taskTimeEntries.task_id,
+      tasks.channel_id,
+      channels.name,
+      channels.color,
+      tasks.time_estimate_min,
+    );
 }
 
 export async function setActiveSince(householdId: string, taskId: string, active: boolean) {

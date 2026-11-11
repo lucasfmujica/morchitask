@@ -3,18 +3,24 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { tasksInRangeQueryOptions } from "@/lib/queries/tasks";
-import { useChannels } from "@/lib/queries/channels";
+import {
+  tasksInRangeQueryOptions,
+  trackedInRangeQueryOptions,
+  workedInRangeQueryOptions,
+} from "@/lib/queries/tasks";
 import { useProfiles } from "@/lib/queries/profiles";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import {
+  bestWorkedDay,
   completion,
   completionRate,
-  estimatedVsActual,
+  estimateVsTracked,
   filterByDays,
-  minutesByChannel,
   ownerStats,
+  trackedByCategory,
+  workedSummary,
 } from "@/lib/analytics";
+import { canHaveWorked, WORK_GOAL_MIN, workedState } from "@/lib/worked";
 import { addDays, addMonths, todayISO, weekRange, type DayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -87,47 +93,35 @@ export function ResumenView() {
   const [period, setPeriod] = useState<Period>("week");
   const today = todayISO();
   const shape = useMemo(() => buildPeriod(today, period, labels), [today, period, labels]);
+  const days = useMemo(() => [...shape.days], [shape.days]);
 
-  const channels = useChannels().data ?? [];
   const profiles = useProfiles().data ?? [];
   const tasksQ = useQuery(tasksInRangeQueryOptions(shape.start, shape.end));
   const tasks = useMemo(
     () => filterByDays(tasksQ.data ?? [], shape.days),
     [tasksQ.data, shape.days],
   );
+  // Worked time leads the screen: it is the one number every day has, whether
+  // or not its tasks were planned or estimated. Same key as the day strips, so
+  // this week's bars and the hero share one cache entry.
+  const workedQ = useQuery(workedInRangeQueryOptions(shape.start, shape.end));
+  const byDay = workedQ.data ?? EMPTY_WORKED;
+  const trackedQ = useQuery(trackedInRangeQueryOptions(shape.start, shape.end));
 
   const overall = completion(tasks);
-  const plannedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
-  const accuracy = estimatedVsActual(tasks);
+  const overallPct = Math.round(completionRate(overall) * 100);
+  const worked = workedSummary(byDay, days, today);
+  const goalLabel = formatMinutes(WORK_GOAL_MIN);
 
-  const byChannel = minutesByChannel(tasks);
-  const channelRows = [
-    ...channels.map((c) => ({
-      id: c.id,
-      name: c.name,
-      color: c.color,
-      min: byChannel.get(c.id) ?? 0,
-    })),
-    {
-      id: "none",
-      name: t("noCategory"),
-      color: "var(--color-subtle)",
-      min: byChannel.get("none") ?? 0,
-    },
-  ]
-    .filter((r) => r.min > 0)
-    .sort((a, b) => b.min - a.min);
-  // Estimated vs actual, split by category. Same rule as the totals: only
-  // tasks with tracked time count, or an untracked task would read as a miss.
-  const accuracyRows = channelRows
-    .map((r) => ({
-      ...r,
-      ...estimatedVsActual(tasks.filter((task) => (task.channel_id ?? "none") === r.id)),
-    }))
-    .filter((r) => r.trackedCount > 0);
+  const channelRows = trackedByCategory(trackedQ.data ?? []).map((r) => ({
+    ...r,
+    name: r.name ?? t("noCategory"),
+    color: r.color ?? "var(--color-subtle)",
+  }));
+  const accuracy = estimateVsTracked(trackedQ.data ?? []);
   const maxAccuracyMin = Math.max(
     1,
-    ...accuracyRows.map((r) => Math.max(r.estimatedMin, r.actualMin)),
+    ...accuracy.byCategory.map((r) => Math.max(r.estimatedMin, r.actualMin)),
   );
 
   const owners = ownerStats(tasks);
@@ -135,24 +129,20 @@ export function ResumenView() {
     .map((p) => ({ profile: p, stat: owners.get(p.id) }))
     .filter((r) => r.stat && r.stat.total > 0);
 
-  // A single week is charted day by day: one bar for the whole week said
-  // nothing, which is why the chart used to hide itself on this period.
+  // A single week is labelled day by day; longer periods only at the start of
+  // each week, or thirty labels would collide on a phone.
   const weekdayNames = labels.weekdayHeaders();
-  const buckets =
-    period === "week"
-      ? shape.weeks[0].days.map((d, i) => ({ key: d, label: weekdayNames[i], days: [d] }))
-      : shape.weeks;
-  const bars = buckets.map((b) => ({
-    key: b.key,
-    label: b.label,
-    ...completion(filterByDays(tasks, new Set(b.days))),
+  // A stub week at a month's edge (Sunday the 1st, Monday the 30th) gets no
+  // label: it would sit flush against its neighbour's, or past the card edge.
+  const weekStarts = new Map(
+    shape.weeks.filter((w) => w.days.length >= 4).map((w) => [w.days[0], w.label]),
+  );
+  const columns = days.map((d, i) => ({
+    day: d,
+    label: period === "week" ? weekdayNames[i] : weekStarts.get(d),
+    min: byDay.get(d) ?? 0,
+    future: !canHaveWorked(d, today),
   }));
-  const maxDone = Math.max(0, ...bars.map((b) => b.done));
-  // The best bucket gets the "fit" fill; ties go to the first. Nothing is
-  // crowned when not a single task was done.
-  const bestKey = maxDone > 0 ? bars.find((b) => b.done === maxDone)?.key : undefined;
-
-  const overallPct = Math.round(completionRate(overall) * 100);
 
   return (
     <div className="flex flex-col gap-4">
@@ -187,22 +177,34 @@ export function ResumenView() {
         </div>
       </header>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
-        {/* The hero tile: completion is the number this screen exists for.
-            The canvas's #A9AFA2 / #CDD2C6 labels are the tile's ink at 65% and
-            80%, so they flip with it in dark mode. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))] gap-4">
+        {/* The hero tile: worked time over the period's goal. The canvas's
+            #A9AFA2 / #CDD2C6 labels are the tile's ink at 65% and 80%, so they
+            flip with it in dark mode. */}
         <section
           className="flex animate-up items-center gap-[18px] rounded-[28px] bg-fg p-[22px] text-bg"
           style={{ animationDelay: "60ms" }}
         >
-          <Ring pct={overallPct} />
-          <div className="flex min-w-0 flex-col gap-1">
-            <p className="text-2xs text-bg/65">{t("statDone")}</p>
-            <p className="font-display text-[40px] leading-none font-bold tracking-[-0.02em] tabular-nums">
-              {overall.done}
+          <Ring pct={worked.pct} />
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <p className="text-2xs text-bg/65">{t("statWorked")}</p>
+            <p className="text-sm text-bg/80">
+              {t.rich("statWorkedOf", {
+                worked: formatMinutes(worked.workedMin),
+                goal: formatMinutes(worked.goalMin),
+                big: (chunks) => (
+                  <span className="font-display text-[30px] leading-none font-bold tracking-[-0.02em] whitespace-nowrap text-bg tabular-nums sm:text-[36px]">
+                    {chunks}
+                  </span>
+                ),
+              })}
             </p>
             <p className="text-2xs text-bg/80">
-              {t("statDoneSub", { total: overall.total, pct: overallPct })}
+              {t("statDaysReached", {
+                reached: worked.daysReached,
+                days: worked.elapsedDays,
+                goal: goalLabel,
+              })}
             </p>
           </div>
         </section>
@@ -210,86 +212,46 @@ export function ResumenView() {
           className="flex animate-up flex-col justify-center gap-1 rounded-[28px] p-[22px]"
           style={{ animationDelay: "120ms" }}
         >
-          <p className="text-2xs text-muted">{t("statPlanned")}</p>
+          <p className="text-2xs text-muted">{t("statDone")}</p>
           <p className="font-display text-[40px] leading-none font-bold tracking-[-0.02em] text-fg tabular-nums">
-            {plannedMin > 0 ? formatMinutes(plannedMin) : "—"}
+            {overall.done}
           </p>
           <p className="text-2xs text-muted">
-            {accuracy.actualMin > 0
-              ? t("statPlannedMeasured", { time: formatMinutes(accuracy.actualMin) })
-              : t("statPlannedSub")}
+            {t("statDoneSub", { total: overall.total, pct: overallPct })}
           </p>
         </Well>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))] gap-4">
-        <ChartCard title={period === "week" ? t("byDay") : t("byWeek")} delay={180}>
-          <div className="flex h-[180px] items-end gap-2 sm:gap-3">
-            {bars.map((b) => (
-              <div
-                key={b.key}
-                className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
-                title={`${b.done}/${b.total}`}
-              >
-                <span className="font-mono text-[11px] text-muted tabular-nums">{b.done}</span>
-                <span
-                  className={cn(
-                    "w-full rounded-[12px] transition-[height] duration-[600ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]",
-                    // Top-down on a bar, as the canvas draws it (180deg), not
-                    // the diagonal of bg-fit.
-                    b.key === bestKey ? "bg-linear-to-b from-fit-from to-primary" : "bg-surface-2",
-                  )}
-                  style={{ height: `${Math.max(4, maxDone > 0 ? (b.done / maxDone) * 100 : 0)}%` }}
-                />
-                <span className="max-w-full truncate text-[11px] font-semibold text-muted">
-                  {b.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </ChartCard>
-
-        {accuracy.trackedCount > 0 && (
-          <ChartCard
-            title={t("estimateVsActual")}
-            delay={220}
-            gap="gap-3"
-            legend={
-              <>
-                <LegendSwatch className="bg-border-strong" label={t("estimatedBar")} />
-                <LegendSwatch className={FIT_MID} label={t("actualBar")} />
-              </>
-            }
-          >
-            {accuracyRows.map((r) => (
-              <div key={r.id} className="flex flex-col gap-[5px]">
-                <div className="flex items-baseline justify-between gap-2 text-2xs">
-                  <span className="truncate font-semibold text-fg">{r.name}</span>
-                  <span className="shrink-0 font-mono text-muted tabular-nums">
-                    {t("evrValue", {
-                      estimated: formatMinutes(r.estimatedMin),
-                      actual: formatMinutes(r.actualMin),
-                    })}
-                  </span>
-                </div>
-                <Meter value={r.estimatedMin} max={maxAccuracyMin} tone="bg-border-strong" />
-                <Meter value={r.actualMin} max={maxAccuracyMin} tone={FIT_BAR} />
-              </div>
-            ))}
-            <span className="mt-auto text-[11px] text-muted">
-              {t("trackedCount", { n: accuracy.trackedCount })}
-            </span>
-          </ChartCard>
-        )}
-      </div>
+      <ChartCard
+        title={t("workedByDay")}
+        delay={180}
+        legend={
+          <span className="flex items-center gap-1.5 text-[11px] text-muted">
+            <span className="w-3 border-t-2 border-dashed border-border-strong" aria-hidden />
+            {t("goalLine", { goal: goalLabel })}
+          </span>
+        }
+      >
+        <WorkedChart
+          columns={columns}
+          best={bestWorkedDay(byDay, days)}
+          dense={period !== "week"}
+          titleFor={(c) =>
+            t("dayWorkedTitle", {
+              day: labels.shortDayLabel(c.day),
+              time: formatMinutes(c.min),
+            })
+          }
+        />
+      </ChartCard>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))] gap-4">
         <Well
           className="flex animate-up flex-col gap-3 rounded-[28px] p-[18px]"
-          style={{ animationDelay: "260ms" }}
+          style={{ animationDelay: "220ms" }}
         >
           <h2 className="text-base font-semibold text-fg">{t("byCategory")}</h2>
-          {channelRows.length === 0 ? (
+          {!trackedQ.isSuccess ? null : channelRows.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted">{t("byCategoryEmpty")}</p>
           ) : (
             <>
@@ -321,12 +283,60 @@ export function ResumenView() {
           )}
         </Well>
 
-        {ownerRows.length > 0 && (
-          <Well
-            className="flex animate-up flex-col gap-3.5 rounded-[28px] p-[18px]"
-            style={{ animationDelay: "300ms" }}
-          >
-            <h2 className="text-base font-semibold text-fg">{t("byPerson")}</h2>
+        {/* Always drawn: it used to vanish, or show a title over nothing, for
+            whoever tracks without estimating. Now it says what would fill it. */}
+        <ChartCard
+          title={t("estimateVsActual")}
+          delay={260}
+          gap="gap-3"
+          legend={
+            accuracy.trackedCount > 0 && (
+              <>
+                <LegendSwatch className="bg-border-strong" label={t("estimatedBar")} />
+                <LegendSwatch className={FIT_MID} label={t("actualBar")} />
+              </>
+            )
+          }
+        >
+          {!trackedQ.isSuccess ? null : accuracy.trackedCount === 0 ? (
+            <p className="py-4 text-center text-sm text-muted">{t("evrEmpty")}</p>
+          ) : (
+            <>
+              {accuracy.byCategory.map((r) => (
+                <div key={r.id} className="flex flex-col gap-[5px]">
+                  <div className="flex items-baseline justify-between gap-2 text-2xs">
+                    <span className="truncate font-semibold text-fg">
+                      {r.name ?? t("noCategory")}
+                    </span>
+                    <span className="shrink-0 font-mono text-muted tabular-nums">
+                      {t("evrValue", {
+                        estimated: formatMinutes(r.estimatedMin),
+                        actual: formatMinutes(r.actualMin),
+                      })}
+                    </span>
+                  </div>
+                  <Meter value={r.estimatedMin} max={maxAccuracyMin} tone="bg-border-strong" />
+                  <Meter value={r.actualMin} max={maxAccuracyMin} tone={FIT_BAR} />
+                </div>
+              ))}
+              <span className="mt-auto text-[11px] text-muted">
+                {t("trackedCount", { n: accuracy.trackedCount })}
+              </span>
+            </>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* Counts only. Tracked hours are personal, so a partner's never show
+          here, and the estimated hours this card used to print meant nothing
+          for whoever doesn't estimate. */}
+      {ownerRows.length > 0 && (
+        <Well
+          className="flex animate-up flex-col gap-3.5 rounded-[28px] p-[18px]"
+          style={{ animationDelay: "300ms" }}
+        >
+          <h2 className="text-base font-semibold text-fg">{t("byPerson")}</h2>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3">
             {ownerRows.map(({ profile, stat }) => (
               <div
                 key={profile.id}
@@ -337,11 +347,7 @@ export function ResumenView() {
                   <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 text-[13px]">
                     <p className="truncate font-semibold text-fg">{profile.display_name}</p>
                     <p className="text-2xs text-muted">
-                      {t("personStats", {
-                        done: stat!.done,
-                        total: stat!.total,
-                        time: formatMinutes(stat!.plannedMin),
-                      })}
+                      {t("personStats", { done: stat!.done, total: stat!.total })}
                     </p>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-pill bg-surface-2" aria-hidden>
@@ -356,8 +362,99 @@ export function ResumenView() {
                 </div>
               </div>
             ))}
-          </Well>
-        )}
+          </div>
+        </Well>
+      )}
+    </div>
+  );
+}
+
+/** Stable empty map while the worked query loads. */
+const EMPTY_WORKED: ReadonlyMap<string, number> = new Map();
+
+type WorkedColumn = { day: DayISO; label?: string; min: number; future: boolean };
+
+/**
+ * Worked minutes per day against the daily goal, drawn as a dashed line. The
+ * scale always reaches past the goal so the line sits inside the chart even on
+ * a slow week, and a short bar reads as short against it rather than as full.
+ */
+function WorkedChart({
+  columns,
+  best,
+  dense,
+  titleFor,
+}: {
+  columns: WorkedColumn[];
+  best?: DayISO;
+  /** A month of bars: thinner gaps and radii, and only the best day's value. */
+  dense: boolean;
+  titleFor: (c: WorkedColumn) => string;
+}) {
+  const top = Math.max(WORK_GOAL_MIN, ...columns.map((c) => c.min)) * 1.15;
+  const goalPct = (WORK_GOAL_MIN / top) * 100;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div
+        className={cn("relative flex h-[170px] items-end", dense ? "gap-[3px]" : "gap-2 sm:gap-3")}
+      >
+        <span
+          className="pointer-events-none absolute inset-x-0 border-t-2 border-dashed border-border-strong"
+          style={{ bottom: `${goalPct}%` }}
+          aria-hidden
+        />
+        {columns.map((c) => {
+          const isBest = c.day === best;
+          const reached = workedState(c.min).reached;
+          const h = c.future || c.min <= 0 ? 0 : (c.min / top) * 100;
+          const showValue = c.min > 0 && (!dense || isBest);
+          return (
+            <div
+              key={c.day}
+              className="relative flex h-full min-w-0 flex-1 items-end"
+              title={c.future ? undefined : titleFor(c)}
+            >
+              {/* On the card's own fill, so a value just under the goal
+                  masks the dashed line instead of being struck through. */}
+              {showValue && (
+                <span
+                  className="absolute left-1/2 mb-1 -translate-x-1/2 rounded-[4px] bg-surface px-1 font-mono text-[11px] whitespace-nowrap text-muted tabular-nums"
+                  style={{ bottom: `${h}%` }}
+                >
+                  {formatMinutes(c.min)}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "relative w-full transition-[height] duration-[600ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+                  dense ? "rounded-[4px]" : "rounded-[12px]",
+                  // Top-down on a bar, as the canvas draws it (180deg), not
+                  // the diagonal of bg-fit.
+                  isBest
+                    ? "bg-linear-to-b from-fit-from to-primary"
+                    : reached
+                      ? "bg-fit-from/60"
+                      : "bg-surface-2",
+                  c.future && "opacity-50",
+                )}
+                style={{ height: `max(4px, ${h}%)` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className={cn("flex", dense ? "gap-[3px]" : "gap-2 sm:gap-3")}>
+        {columns.map((c) => (
+          <span
+            key={c.day}
+            className={cn(
+              "min-w-0 flex-1 text-[11px] font-semibold whitespace-nowrap text-muted",
+              dense ? "overflow-visible text-left" : "truncate text-center",
+            )}
+          >
+            {c.label}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -380,7 +477,7 @@ function Ring({ pct }: { pct: number }) {
   const R = 52;
   const C = 2 * Math.PI * R;
   return (
-    <div className="relative h-[104px] w-[104px] shrink-0">
+    <div className="relative h-[88px] w-[88px] shrink-0 sm:h-[104px] sm:w-[104px]">
       <svg viewBox="0 0 132 132" className="h-full w-full -rotate-90" aria-hidden>
         <defs>
           <linearGradient id="resumen-ring" x1="0" y1="0" x2="1" y2="1">
