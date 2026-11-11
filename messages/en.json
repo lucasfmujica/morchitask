@@ -36,7 +36,8 @@
     "settings": "Settings",
     "plan": "Plan the day",
     "shutdown": "Shut down",
-    "review": "Weekly review"
+    "review": "Weekly review",
+    "capture": "Capture"
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",
@@ -272,7 +273,16 @@
     "replanKeep": "Keep",
     "replanCancel": "Cancel",
     "replanApply": "Apply",
-    "replanDone": "{moved, plural, =0 {Nothing to move} =1 {Moved 1 block} other {Moved # blocks}}{parked, plural, =0 {.} =1 { and took 1 task off the day.} other { and took # tasks off the day.}}"
+    "replanDone": "{moved, plural, =0 {Nothing to move} =1 {Moved 1 block} other {Moved # blocks}}{parked, plural, =0 {.} =1 { and took 1 task off the day.} other { and took # tasks off the day.}}",
+    "planned": "Planned",
+    "plannedOf": "<big>{planned}</big> <small>of <goal>{target}</goal></small>",
+    "tasksTitle": "Tasks",
+    "dragHint": "Drag onto the agenda",
+    "agendaTitle": "Agenda",
+    "agendaRange": "{from} to {to}",
+    "brokeDay": "My day fell apart",
+    "viewDay": "Day",
+    "viewSwitch": "Switch view"
   },
   "backlog": {
     "title": "Backlog",

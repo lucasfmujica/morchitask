@@ -154,3 +154,14 @@ describe("monthLabel, dueLabel and ageLabel", () => {
     expect(es.ageLabel(daysBefore(74), MON)).toBe("hace 2 meses");
   });
 });
+
+describe("day heading parts", () => {
+  it("splits the weekday from the day and month, with each language's grammar", () => {
+    const es = createDateLabels("es", ES);
+    const en = createDateLabels("en", EN);
+    expect(es.dayMonthLabel("2026-11-11")).toBe("11 de noviembre");
+    expect(es.weekdayName("2026-11-11")).toBe("miércoles");
+    expect(en.dayMonthLabel("2026-11-11")).toBe("November 11");
+    expect(en.weekdayName("2026-11-11")).toBe("Wednesday");
+  });
+});

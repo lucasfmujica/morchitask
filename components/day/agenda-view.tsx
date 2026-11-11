@@ -68,6 +68,8 @@ export function AgendaView({
   channelsById,
   activeTask,
   activeBlockId,
+  replanOpen,
+  onReplanOpenChange,
 }: {
   date: string;
   tasks: Task[];
@@ -76,6 +78,9 @@ export function AgendaView({
   /** The task/block currently being dragged in the parent context (null when idle). */
   activeTask: Task | null;
   activeBlockId: string | null;
+  /** "Se me rompió el día" lives in the day's header; the panel opens here. */
+  replanOpen?: boolean;
+  onReplanOpenChange?: (open: boolean) => void;
 }) {
   const td = useTranslations("day");
   const me = useMe().data;
@@ -94,6 +99,7 @@ export function AgendaView({
     () => (calendarQ.data ?? []).filter((e) => !ownEventIds.has(e.id)),
     [calendarQ.data, ownEventIds],
   );
+  const scrollRef = useRef<HTMLDivElement>(null);
   const noteQ = useDailyNote(date);
   const upsertNote = useUpsertDailyNote(date);
   const toast = useToast();
@@ -161,6 +167,17 @@ export function AgendaView({
     );
     return () => clearInterval(id);
   }, []);
+  // Open the window at the morning (or the first block, if it starts earlier),
+  // not at 06:00 — the early hours are almost always empty.
+  const firstMin = scheduled.length ? blockStartMin(scheduled[0].block) : DAY_START_MIN;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const from = Math.min(firstMin, DAY_START_MIN) - 30;
+    el.scrollTop = Math.max(0, ((from - START_HOUR * 60) / 60) * PX_PER_HOUR);
+    // Only on mount: once you've scrolled, the agenda shouldn't jump back.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const showNow = hydrated && isToday && nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60;
   const nowTop = ((nowMin - START_HOUR * 60) / 60) * PX_PER_HOUR;
 
@@ -214,27 +231,8 @@ export function AgendaView({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-card border border-border bg-surface p-3 shadow-soft">
-        <span className="text-sm text-muted">{td("endAt")}</span>
-        <TimePicker
-          value={minutesToHHMM(targetMin)}
-          onChange={(v) => {
-            const [h, m] = v.split(":").map(Number);
-            upsertNote.mutate({ end_target_min: h * 60 + m });
-          }}
-        />
-        <button
-          onClick={autoSchedule}
-          disabled={myUnscheduled.length === 0}
-          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
-        >
-          <Wand2 className="h-4 w-4" aria-hidden />
-          {td("autoSchedule")}
-        </button>
-      </div>
-
-      {hydrated && isToday && (
+    <div className="flex flex-col gap-2">
+      {hydrated && isToday && replanOpen !== false && (
         <ReplanPanel
           date={date}
           tasks={tasks}
@@ -245,6 +243,8 @@ export function AgendaView({
           meId={me?.id}
           moveBlock={moveBlock}
           scheduleNewBlock={scheduleNewBlock}
+          open={replanOpen}
+          onOpenChange={onReplanOpenChange}
         />
       )}
 
@@ -298,46 +298,7 @@ export function AgendaView({
         </section>
       )}
 
-      {/* The openings, spelled out. "Where does this fit?" is the question the
-          calendar is worst at answering by eye. */}
-      {openings.length > 0 && myUnscheduled.length > 0 && (
-        <section className="rounded-card border border-border bg-surface p-3 shadow-soft">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-subtle">
-            {td("openings")}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {openings.map((slot) => (
-              <span
-                key={slot.startMin}
-                className="inline-flex items-center gap-1.5 rounded-pill bg-surface-2 px-2.5 py-1 text-2xs font-semibold tabular-nums text-muted"
-              >
-                {minutesToHHMM(slot.startMin)}
-                <span className="text-subtle">·</span>
-                {formatMinutes(slot.lenMin)}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <div className="rounded-2xl border border-border bg-surface p-3.5 shadow-soft">
-        {/* Legend + the clock, so a glance tells you what the two block styles
-            mean and where "now" is without hunting for the line. */}
-        <div className="mb-3 flex items-center gap-3 text-2xs text-subtle">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm border border-l-[3px] border-primary/40 border-l-primary bg-primary/15" />
-            {td("legendPlanned")}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-l-[3px] border-subtle border-l-subtle bg-surface-2" />
-            Google
-          </span>
-          {showNow && (
-            <span className="ml-auto font-semibold tabular-nums text-accent">
-              {td("nowAt", { time: minutesToHHMM(nowMin) })}
-            </span>
-          )}
-        </div>
+      <div className="rounded-xl bg-surface p-3 shadow-soft">
         {events.filter((e) => e.allDay).length > 0 && (
           <div className="mb-3 flex flex-col gap-1 border-b border-border pb-3">
             {events
@@ -358,114 +319,137 @@ export function AgendaView({
               ))}
           </div>
         )}
-        <div className="relative" style={{ height: (END_HOUR - START_HOUR) * PX_PER_HOUR }}>
-          {hours.map((h, i) => {
-            // The hour you said you want to be done — the one line on the grid
-            // that is a decision rather than a tick mark.
-            const isTarget = h === Math.floor(targetMin / 60);
-            return (
-              <div
-                key={h}
-                className="absolute inset-x-0 flex items-start gap-2"
-                style={{ top: i * PX_PER_HOUR }}
-              >
-                <span
-                  className={cn(
-                    "-mt-1.5 w-10 shrink-0 text-right text-2xs tabular-nums",
-                    isTarget ? "font-bold text-accent" : "text-subtle",
-                  )}
-                >
-                  {String(h).padStart(2, "0")}:00
-                </span>
-                <div
-                  className={cn(
-                    "flex-1 border-t",
-                    isTarget ? "border-dashed border-accent/50" : "border-border",
-                  )}
-                />
-              </div>
-            );
-          })}
-
-          {/* The first opening that would actually hold something, drawn where
-              it is. Only while there's something to put in it. */}
-          {suggestedGap && (
-            <div
-              className="pointer-events-none absolute right-1 left-12 z-0 flex items-center justify-center rounded-xl border-[1.5px] border-dashed border-primary bg-primary/[0.07] px-2 text-2xs font-semibold text-primary"
-              style={{
-                top: ((suggestedGap.startMin - START_HOUR * 60) / 60) * PX_PER_HOUR,
-                height: Math.max((suggestedGap.lenMin / 60) * PX_PER_HOUR, 28),
-              }}
-              aria-hidden
-            >
-              {td("gapHint", { length: formatMinutes(suggestedGap.lenMin) })}
-            </div>
-          )}
-
-          {/* Drop slots (every 30 min) — receive dragged tasks/blocks. */}
-          {slots.map((min) => (
-            <DropSlot key={min} min={min} dragging={!!activeTask} />
-          ))}
-
-          {/* Google Calendar events (read-only) — under the planned blocks. */}
-          {events
-            .filter((e) => !e.allDay && e.start)
-            .map((e) => {
-              const sMin = minutesFromMidnight(e.start!, TZ);
-              const eMin = e.end ? minutesFromMidnight(e.end, TZ) : sMin + 30;
-              const top = Math.max(0, ((sMin - START_HOUR * 60) / 60) * PX_PER_HOUR);
-              const height = Math.max(((eMin - sMin) / 60) * PX_PER_HOUR, MIN_BLOCK_PX);
-              const ec = e.color ?? "#94a3b8";
+        {/* The full day scrolls inside a fixed window, opened at the morning,
+            so the card measures the same whatever the day holds. */}
+        <div ref={scrollRef} className="max-h-[520px] overflow-y-auto pr-1">
+          <div className="relative" style={{ height: (END_HOUR - START_HOUR) * PX_PER_HOUR }}>
+            {hours.map((h, i) => {
+              // The hour you said you want to be done — the one line on the grid
+              // that is a decision rather than a tick mark.
+              const isTarget = h === Math.floor(targetMin / 60);
               return (
                 <div
-                  key={e.id}
-                  className="pointer-events-none absolute right-1 left-12 z-[1] overflow-hidden rounded-xl px-2.5 py-2 text-xs"
-                  style={{
-                    top,
-                    height,
-                    boxSizing: "border-box",
-                    backgroundColor: `color-mix(in srgb, ${ec} 14%, var(--color-surface))`,
-                    borderColor: `color-mix(in srgb, ${ec} 28%, var(--color-surface))`,
-                    borderLeftColor: ec,
-                    borderWidth: 1,
-                    borderLeftWidth: 3,
-                    borderStyle: "dashed",
-                  }}
+                  key={h}
+                  className="absolute inset-x-0 flex items-start gap-2"
+                  style={{ top: i * PX_PER_HOUR }}
                 >
-                  <span className="block truncate font-medium text-muted">{e.title}</span>
-                  <span className="text-2xs text-subtle">
-                    {timeInTimeZone(e.start!, TZ)}
-                    {e.end ? `–${timeInTimeZone(e.end, TZ)}` : ""}
+                  <span
+                    className={cn(
+                      "-mt-1.5 w-10 shrink-0 text-right font-mono text-2xs",
+                      isTarget ? "font-bold text-accent" : "text-subtle",
+                    )}
+                  >
+                    {String(h).padStart(2, "0")}:00
                   </span>
+                  <div
+                    className={cn(
+                      "flex-1 border-t",
+                      isTarget ? "border-dashed border-accent/50" : "border-border",
+                    )}
+                  />
                 </div>
               );
             })}
 
-          {scheduled.map(({ task, block }) => (
-            <ScheduledBlock
-              key={block.id}
-              task={task}
-              block={block}
-              channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
-              onUnschedule={() => removeBlock(block)}
-              onResize={(endMin) => resizeBlock(block, endMin)}
-              dragging={activeBlockId === block.id}
-            />
-          ))}
+            {/* The first opening that would actually hold something, drawn where
+              it is. Only while there's something to put in it. */}
+            {suggestedGap && activeTask && (
+              <div
+                className="pointer-events-none absolute right-1 left-12 z-0 flex items-center justify-center rounded-xl border-[1.5px] border-dashed border-primary bg-primary/[0.07] px-2 text-2xs font-semibold text-primary"
+                style={{
+                  top: ((suggestedGap.startMin - START_HOUR * 60) / 60) * PX_PER_HOUR,
+                  height: Math.max((suggestedGap.lenMin / 60) * PX_PER_HOUR, 28),
+                }}
+                aria-hidden
+              >
+                {td("gapHint", { length: formatMinutes(suggestedGap.lenMin) })}
+              </div>
+            )}
 
-          {showNow && (
-            // z-[5] keeps it UNDER the blocks (z-10): drawn over them it read
-            // as a strikethrough across whatever you're doing right now.
-            <div
-              className="pointer-events-none absolute inset-x-0 z-[5] flex items-center"
-              style={{ top: nowTop }}
-              aria-hidden
-            >
-              <span className="ml-9 h-2 w-2 shrink-0 rounded-full bg-accent" />
-              <span className="h-[1.5px] flex-1 bg-accent" />
-            </div>
-          )}
+            {/* Drop slots (every 30 min) — receive dragged tasks/blocks. */}
+            {slots.map((min) => (
+              <DropSlot key={min} min={min} dragging={!!activeTask} />
+            ))}
+
+            {/* Google Calendar events (read-only) — under the planned blocks. */}
+            {events
+              .filter((e) => !e.allDay && e.start)
+              .map((e) => {
+                const sMin = minutesFromMidnight(e.start!, TZ);
+                const eMin = e.end ? minutesFromMidnight(e.end, TZ) : sMin + 30;
+                const top = Math.max(0, ((sMin - START_HOUR * 60) / 60) * PX_PER_HOUR);
+                const height = Math.max(((eMin - sMin) / 60) * PX_PER_HOUR, MIN_BLOCK_PX);
+                const ec = e.color ?? "#94a3b8";
+                return (
+                  <div
+                    key={e.id}
+                    className="pointer-events-none absolute right-1 left-12 z-[1] overflow-hidden rounded-[10px] px-3 py-1.5 text-xs"
+                    style={{
+                      top,
+                      height,
+                      boxSizing: "border-box",
+                      backgroundColor: "var(--color-surface)",
+                      borderColor: `color-mix(in srgb, ${ec} 45%, var(--color-surface))`,
+                      borderWidth: 1.5,
+                      borderStyle: "dashed",
+                    }}
+                  >
+                    <span className="block truncate font-medium text-muted">{e.title}</span>
+                    <span className="text-2xs text-subtle">
+                      {timeInTimeZone(e.start!, TZ)}
+                      {e.end ? `–${timeInTimeZone(e.end, TZ)}` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+
+            {scheduled.map(({ task, block }) => (
+              <ScheduledBlock
+                key={block.id}
+                task={task}
+                block={block}
+                channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
+                onUnschedule={() => removeBlock(block)}
+                onResize={(endMin) => resizeBlock(block, endMin)}
+                dragging={activeBlockId === block.id}
+              />
+            ))}
+
+            {showNow && (
+              // z-[5] keeps it UNDER the blocks (z-10): drawn over them it read
+              // as a strikethrough across whatever you're doing right now.
+              <div
+                className="pointer-events-none absolute inset-x-0 z-[5] flex items-center"
+                style={{ top: nowTop }}
+                aria-hidden
+              >
+                <span className="ml-9 h-2 w-2 shrink-0 rounded-full bg-danger" />
+                <span className="h-[1.5px] flex-1 bg-danger" />
+              </div>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* The day's end and the packer, kept quiet at the foot: the canvas has
+          the agenda as just the day, and these are tools you reach for. */}
+      <div className="flex flex-wrap items-center gap-2 px-2 text-xs text-muted">
+        <span>{td("endAt")}</span>
+        <TimePicker
+          value={minutesToHHMM(targetMin)}
+          onChange={(v) => {
+            const [h, m] = v.split(":").map(Number);
+            upsertNote.mutate({ end_target_min: h * 60 + m });
+          }}
+        />
+        <button
+          onClick={autoSchedule}
+          disabled={myUnscheduled.length === 0}
+          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-3 py-1.5 font-semibold text-fg transition-colors hover:bg-surface disabled:cursor-default disabled:opacity-40"
+        >
+          <Wand2 className="h-3.5 w-3.5" aria-hidden />
+          {td("autoSchedule")}
+        </button>
       </div>
     </div>
   );
@@ -580,7 +564,7 @@ function ScheduledBlock({
       {...attributes}
       {...listeners}
       className={cn(
-        "group absolute right-1 left-12 z-10 cursor-grab touch-none overflow-hidden rounded-xl px-2.5 py-2 text-xs active:cursor-grabbing",
+        "group absolute right-1 left-12 z-10 cursor-grab touch-none overflow-hidden rounded-[10px] px-3 py-1.5 text-xs active:cursor-grabbing",
         done && "opacity-60",
         dragging && "opacity-40",
         resizing && "ring-2 ring-primary",
@@ -589,20 +573,18 @@ function ScheduledBlock({
         top,
         height,
         boxSizing: "border-box",
-        backgroundColor: `color-mix(in srgb, ${tc} 14%, var(--color-surface))`,
-        borderColor: `color-mix(in srgb, ${tc} 32%, var(--color-surface))`,
-        borderLeftColor: tc,
-        borderWidth: 1,
-        borderLeftWidth: 3,
-        borderStyle: "solid",
+        // A soft tint of the category, nothing else: no border, no rail.
+        backgroundColor: `color-mix(in srgb, ${tc} 16%, var(--color-surface))`,
       }}
     >
       <div className={cn("flex gap-1.5", oneLine ? "items-baseline" : "items-start")}>
-        <span className={cn("min-w-0 flex-1 truncate font-medium text-fg", done && "line-through")}>
+        <span
+          className={cn("min-w-0 flex-1 truncate font-semibold text-fg", done && "line-through")}
+        >
           {task.title}
         </span>
         {oneLine && (
-          <span className="shrink-0 text-2xs tabular-nums text-muted">
+          <span className="shrink-0 font-mono text-2xs text-muted">
             {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
           </span>
         )}
@@ -610,13 +592,13 @@ function ScheduledBlock({
           onClick={onUnschedule}
           onPointerDown={(e) => e.stopPropagation()}
           aria-label={td("removeBlock")}
-          className="shrink-0 cursor-pointer text-muted hover:text-danger"
+          className="shrink-0 cursor-pointer text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger focus-visible:opacity-100 touch:opacity-100"
         >
           <X className="h-3 w-3" aria-hidden />
         </button>
       </div>
       {!oneLine && (
-        <span className="text-2xs tabular-nums text-muted">
+        <span className="font-mono text-2xs text-muted">
           {minutesToHHMM(startMin)}–{minutesToHHMM(shownEnd)}
         </span>
       )}

@@ -49,7 +49,6 @@ export function LoginForm() {
         <span className="flex-1 text-center">
           {loading ? t("connecting") : t("continueWithGoogle")}
         </span>
-        {loading ? t("connecting") : t("continueWithGoogle")}
       </Button>
       {error && (
         <p role="alert" className="text-center text-sm text-danger">

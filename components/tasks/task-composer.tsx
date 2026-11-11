@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, SlidersHorizontal, X } from "lucide-react";
+import { Mic, Plus, SlidersHorizontal, X } from "lucide-react";
 import type { Channel } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
 import { useDateLabels } from "@/lib/use-date-labels";
@@ -31,11 +31,15 @@ export type ComposerSubmit = {
 export function TaskComposer({
   channels,
   onSubmit,
+  onDictate,
 }: {
   channels: Channel[];
   onSubmit: (input: ComposerSubmit) => void;
+  /** Shows a mic that opens the dictation sheet. */
+  onDictate?: () => void;
 }) {
   const t = useTranslations("tasks");
+  const tc = useTranslations("capture");
   const labels = useDateLabels();
   const [title, setTitle] = useState("");
   const [channelId, setChannelId] = useState<string | null>(null);
@@ -125,6 +129,16 @@ export function TaskComposer({
           aria-label={t("newTask")}
           className="h-9 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
+        {onDictate && (
+          <button
+            onClick={onDictate}
+            aria-label={tc("open")}
+            title={tc("open")}
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-pill text-subtle transition-colors hover:bg-surface-2 hover:text-muted"
+          >
+            <Mic className="h-4 w-4" aria-hidden />
+          </button>
+        )}
         <button
           onClick={() => setShowChips((v) => !v)}
           aria-expanded={chipsOpen}

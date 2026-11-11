@@ -36,7 +36,8 @@
     "settings": "Ajustes",
     "plan": "Planificar",
     "shutdown": "Cerrar día",
-    "review": "Revisión semanal"
+    "review": "Revisión semanal",
+    "capture": "Capturar"
   },
   "shortcuts": {
     "title": "Atajos de teclado",
@@ -272,7 +273,16 @@
     "replanKeep": "Dejar",
     "replanCancel": "Cancelar",
     "replanApply": "Aplicar",
-    "replanDone": "{moved, plural, =0 {Nada que mover} =1 {Reacomodé 1 bloque} other {Reacomodé # bloques}}{parked, plural, =0 {.} =1 { y saqué 1 tarea del día.} other { y saqué # tareas del día.}}"
+    "replanDone": "{moved, plural, =0 {Nada que mover} =1 {Reacomodé 1 bloque} other {Reacomodé # bloques}}{parked, plural, =0 {.} =1 { y saqué 1 tarea del día.} other { y saqué # tareas del día.}}",
+    "planned": "Planeado",
+    "plannedOf": "<big>{planned}</big> <small>de <goal>{target}</goal></small>",
+    "tasksTitle": "Tareas",
+    "dragHint": "Arrastrá a la agenda",
+    "agendaTitle": "Agenda",
+    "agendaRange": "{from} a {to}",
+    "brokeDay": "Se me rompió el día",
+    "viewDay": "Día",
+    "viewSwitch": "Cambiar de vista"
   },
   "backlog": {
     "title": "Backlog",

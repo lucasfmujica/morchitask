@@ -33,12 +33,7 @@ import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekRange } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
-import {
-  parsePriorityDropId,
-  priorityRows,
-  resolveTaskDrop,
-  type PriorityDropTarget,
-} from "@/lib/priority";
+import { parsePriorityDropId, resolveTaskDrop, type PriorityDropTarget } from "@/lib/priority";
 import { orderTasksForDisplay } from "@/lib/week-filter";
 import { useChannelFilter } from "@/lib/channel-filter";
 import { useCoarsePointer } from "@/lib/use-coarse-pointer";
@@ -48,8 +43,6 @@ import { TaskCard } from "@/components/tasks/task-card";
 import { TaskDragPreview } from "@/components/dnd/task-drag-preview";
 import { SkeletonList } from "@/components/ui";
 import { DROP_ANIMATION } from "@/lib/motion";
-import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
-import { ChannelFilterBar } from "@/components/tasks/channel-filter-bar";
 import { createTaskCollision } from "@/components/dnd/collision";
 import { CarryoverNotice } from "@/components/day/carryover-notice";
 import { DayLoadBar } from "./day-progress-bar";
@@ -68,6 +61,7 @@ const weekCollision = createTaskCollision({ fallback: closestCorners });
 export function WeekView({ date }: { date: string }) {
   const labels = useDateLabels();
   const t = useTranslations("week");
+  const tnav = useTranslations("nav");
   const router = useRouter();
   const today = todayISO();
   const week = weekRange(date, 1);
@@ -90,7 +84,9 @@ export function WeekView({ date }: { date: string }) {
   const capacityTarget = resolveCapacity(null, me?.capacity_target_min);
   // One query for the whole week: which days you already closed.
   const closedDays = useShutdownDays(week[0], week[week.length - 1]);
-  const [hideClosed, setHideClosed] = useState(false);
+  // Closed days start folded: they are settled, and the canvas shows them as
+  // one "N hechas" chip so the week ahead gets the room.
+  const [hideClosed, setHideClosed] = useState(true);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   // Category filter — shared via context with the sidebar and the top filter
   // bar. Empty = "Todas".
@@ -151,12 +147,20 @@ export function WeekView({ date }: { date: string }) {
     <div className="flex flex-col gap-4">
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="text-2xs font-semibold tracking-wide text-muted uppercase">
-            {labels.weekRangeLabel(week)}
+          <p className="text-2xs font-semibold tracking-[0.06em] text-muted uppercase">
+            {t("weekOf", { date: labels.dayMonthLabel(week[0]) })}
           </p>
-          <h1 className="text-2xl font-bold tracking-tight text-fg md:text-3xl">{t("title")}</h1>
+          <h1 className="font-display text-[32px] leading-9 font-bold tracking-tight text-fg">
+            {t("title")}
+          </h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/review"
+            className="hidden h-10 items-center rounded-pill px-3 text-xs font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-fg sm:inline-flex"
+          >
+            {tnav("review")}
+          </Link>
           {closedDays.size > 0 && (
             <button
               onClick={() => setHideClosed((v) => !v)}
@@ -164,11 +168,10 @@ export function WeekView({ date }: { date: string }) {
               className={cn(
                 "inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors md:px-4",
                 hideClosed
-                  ? "bg-primary-soft text-primary"
-                  : "bg-surface-2 text-fg hover:bg-border",
+                  ? "bg-surface-2 text-fg hover:bg-border"
+                  : "bg-surface text-fg shadow-soft",
               )}
             >
-              <Check className="h-3.5 w-3.5" aria-hidden />
               <span className="hidden sm:inline">
                 {hideClosed ? t("showClosed") : t("hideClosed")}
               </span>
@@ -211,9 +214,6 @@ export function WeekView({ date }: { date: string }) {
         </div>
       </header>
 
-      {/* Category filter at the top (mirrors the sidebar list, shared state). */}
-      <ChannelFilterBar />
-
       {/* On the current week, the sweep of earlier days' leftovers happens here
           too — whichever of Week and Day you open first does it, and the other
           finds it already done. */}
@@ -236,7 +236,7 @@ export function WeekView({ date }: { date: string }) {
                 a swipe per day and fought the page's own scrolling.
               Tablet: horizontal strip of 320px columns.
               Desktop: fixed 5-column grid (Mon–Fri), no scrolling. */}
-          <div className="flex flex-col gap-3 md:-mx-8 md:flex-row md:snap-x md:snap-proximity md:gap-3 md:overflow-x-auto md:overscroll-x-contain md:scroll-pl-8 md:px-8 md:pb-4 md:[-webkit-overflow-scrolling:touch] md:[scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 md:[&::-webkit-scrollbar]:hidden">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:snap-x md:snap-proximity md:gap-3 md:overflow-x-auto md:overscroll-x-contain md:pb-3">
             {week.map((d, i) => {
               const all = (results[i].data ?? []) as Task[];
               return (
@@ -245,7 +245,6 @@ export function WeekView({ date }: { date: string }) {
                   date={d}
                   today={today}
                   weekday={weekdays[i]}
-                  weekend={i >= 5}
                   loading={results[i].isLoading}
                   tasks={columns[i]}
                   subsMap={(subResults[i].data ?? NO_SUBTASKS) as Map<string, Subtask[]>}
@@ -311,7 +310,6 @@ function DayColumn({
   date,
   today,
   weekday,
-  weekend,
   loading,
   tasks,
   subsMap,
@@ -327,7 +325,6 @@ function DayColumn({
   today: string;
   /** Abbreviated weekday name ("lun" / "Mon"), already in the reader's language. */
   weekday: string;
-  weekend: boolean;
   loading: boolean;
   tasks: Task[];
   subsMap: Map<string, Subtask[]>;
@@ -354,6 +351,7 @@ function DayColumn({
   const relative = isToday || date === addDays(today, 1) || date === addDays(today, -1);
   const dayLabel = relative ? labels.weekDayHeading(date, today) : weekday;
   const dayNum = Number(date.slice(8, 10));
+  const hasDeadline = tasks.some((t) => t.due_date === date && t.status !== "done");
 
   const heading = (
     <Link
@@ -369,16 +367,16 @@ function DayColumn({
         >
           {dayLabel}
         </span>
-        {tasks.length > 0 && (
-          <span className="shrink-0 text-2xs font-semibold text-subtle tabular-nums">
-            {done}/{tasks.length}
-          </span>
-        )}
       </span>
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-pill font-display text-lg font-bold tabular-nums transition-colors",
-          isToday ? "bg-primary text-on-primary shadow-soft" : "text-fg group-hover:bg-surface",
+          isToday
+            ? "bg-primary text-on-primary shadow-soft"
+            : // A day with a deliverable gets the highlighter, like the canvas.
+              hasDeadline
+              ? "bg-marker text-on-marker"
+              : "text-fg group-hover:bg-surface",
         )}
       >
         {dayNum}
@@ -391,12 +389,10 @@ function DayColumn({
       className={cn(
         // Phone: a full-width block in a vertical stack — no fixed width, no
         // snap. Tablet and up: a fixed-width column in the horizontal strip.
-        "flex flex-col gap-1.5 rounded-2xl bg-surface-2 p-2 transition-opacity md:w-[320px] md:shrink-0 md:snap-start lg:w-auto lg:min-w-0 lg:shrink",
+        "flex flex-col gap-1.5 rounded-2xl bg-surface-2 p-2 transition-opacity md:w-[188px] md:shrink-0 md:snap-start",
         // Today is the only lit well; a closed day is settled, so it recedes.
         isToday && "ring-2 ring-fit-from ring-inset",
         closed && !isToday && "opacity-85",
-        // Weekends exist on phone and tablet; the desktop grid is Mon–Fri.
-        weekend && "lg:hidden",
       )}
     >
       {heading}
@@ -430,9 +426,6 @@ function DayColumn({
             />
           </div>
 
-          {/* Add task at the top of each day. */}
-          <QuickAdd onAdd={onAdd} />
-
           <div
             ref={setNodeRef}
             className={cn(
@@ -448,28 +441,15 @@ function DayColumn({
               {/* Columns are narrow, so separators stay compact and only appear
                   when the day actually mixes priorities (or while dragging, so
                   an empty group still has somewhere to drop). */}
-              {priorityRows(tasks, { includeEmpty: dragging }).map((row) =>
-                row.kind === "header" ? (
-                  <PriorityGroupHeader
-                    key={`prio-${row.priority ?? "none"}`}
-                    scope={date}
-                    priority={row.priority}
-                    count={row.empty ? undefined : row.count}
-                    empty={row.empty}
-                    compact
-                  />
-                ) : (
-                  <WeekCard
-                    key={row.task.id}
-                    task={row.task}
-                    channel={
-                      row.task.channel_id ? channelsById.get(row.task.channel_id) : undefined
-                    }
-                    owner={profilesById.get(row.task.owner_id)}
-                    subtasks={subsMap.get(row.task.id) ?? []}
-                  />
-                ),
-              )}
+              {tasks.map((task) => (
+                <WeekCard
+                  key={task.id}
+                  task={task}
+                  channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
+                  owner={profilesById.get(task.owner_id)}
+                  subtasks={subsMap.get(task.id) ?? []}
+                />
+              ))}
             </SortableContext>
 
             {/* A day that hasn't loaded is NOT an empty day. Without this branch
@@ -484,6 +464,7 @@ function DayColumn({
               !dragging && <EmptyDay date={date} today={today} capacityMin={capacityMin} />
             )}
           </div>
+          {!closed && <QuickAdd onAdd={onAdd} />}
         </>
       )}
     </section>
@@ -578,6 +559,7 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
   const t = useTranslations("week");
   const tt = useTranslations("tasks");
   const [title, setTitle] = useState("");
+  const [editing, setEditing] = useState(false);
 
   function submit() {
     const value = title.trim();
@@ -586,28 +568,43 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
     setTitle("");
   }
 
-  return (
-    // A quiet pill on the well that turns into a white field once you type —
-    // the add affordance shouldn't outshine the cards below it.
-    <div className="flex items-center gap-2 rounded-pill bg-surface/50 px-3 py-1.5 transition-[background-color,box-shadow] duration-150 focus-within:bg-surface focus-within:shadow-soft hover:bg-surface/80">
+  // At the foot of the column, as the canvas has it: a quiet "+ Agregar tarea"
+  // that becomes a field when you need it, so it never outshines the cards.
+  if (!editing) {
+    return (
       <button
-        onClick={submit}
-        disabled={!title.trim()}
-        aria-label={t("addTaskToDay")}
-        className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors hover:text-primary disabled:opacity-60"
+        onClick={() => setEditing(true)}
+        className="flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-pill text-xs font-semibold text-muted transition-colors hover:bg-surface/70 hover:text-fg"
       >
-        <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+        {tt("add")}
       </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-pill bg-surface px-3 py-1.5 shadow-soft">
       <input
+        autoFocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") submit();
+          if (e.key === "Escape") setEditing(false);
         }}
+        onBlur={() => !title.trim() && setEditing(false)}
         placeholder={t("addTaskPlaceholder")}
         aria-label={tt("newTask")}
         className="h-6 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
       />
+      <button
+        onClick={submit}
+        disabled={!title.trim()}
+        aria-label={t("addTaskToDay")}
+        className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-pill bg-primary text-on-primary transition-opacity disabled:opacity-40"
+      >
+        <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+      </button>
     </div>
   );
 }
