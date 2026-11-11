@@ -112,7 +112,8 @@ export function useTaskTimer(task: Task) {
       baseActualMin: task.actual_time_min ?? 0,
       startedAt: Date.now(),
     });
-    if (task.shared) void setTaskActiveSince(task.id, true); // let my partner see it
+    // Shared: let my partner see it. From Stint: move it to "doing" there.
+    if (task.shared || task.stint_task_id) void setTaskActiveSince(task.id, true);
   }
   function stopTimer() {
     if (running) stopOne(task.id);

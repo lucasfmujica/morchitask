@@ -200,3 +200,39 @@ describe("household isolation", () => {
     expect(after).toHaveLength(before.length);
   });
 });
+
+describe("Stint link", () => {
+  const STINT_B = "cccccccc-0000-4000-8000-000000000001";
+
+  it("never reads, moves, removes or unlinks another household's mirrored tasks", async () => {
+    const stint = await import("./stint");
+    await stint.saveStintLink(B.household, B.user, "stint_token_of_b");
+    await client.exec(
+      `update tasks set stint_task_id = '${STINT_B}', stint_status = 'todo' where title = 'private-bbbb'`,
+    );
+    const [bTask] = await testDb
+      .select({ id: schema.tasks.id })
+      .from(schema.tasks)
+      .where((await import("drizzle-orm")).eq(schema.tasks.stint_task_id, STINT_B));
+
+    expect(await stint.getStintLink(A.household, B.user)).toBeNull();
+    expect(await stint.linkedTasks(A.household, A.user)).toEqual([]);
+    expect(await stint.linkedTasks(A.household, B.user)).toEqual([]);
+    expect(await stint.stintStateOf(A.household, A.user, bTask.id)).toBeNull();
+
+    // Aimed at B's task with A's session: nothing may happen to it.
+    await stint.applyStintPlan(A.household, A.user, "00000000-0000-4000-8000-000000000000", {
+      create: [],
+      update: [{ id: bTask.id, set: { title: "hijacked", stint_status: "done" } }],
+      remove: [bTask.id],
+      unlink: [],
+    });
+    await stint.setStintStatus(A.household, A.user, bTask.id, "done");
+    await stint.deleteStintLink(A.household, B.user);
+
+    const still = await stint.linkedTasks(B.household, B.user);
+    expect(still).toHaveLength(1);
+    expect(still[0]).toMatchObject({ title: "private-bbbb", stint_status: "todo" });
+    expect(await stint.getStintLink(B.household, B.user)).not.toBeNull();
+  });
+});

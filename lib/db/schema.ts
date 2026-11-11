@@ -13,6 +13,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
@@ -458,6 +459,10 @@ export const tasks = pgTable(
     rollover_origin_date: date("rollover_origin_date", { mode: "string" }),
     gcal_event_id: text("gcal_event_id"),
     gcal_synced_at: timestamp("gcal_synced_at", { withTimezone: true, mode: "string" }),
+    /** The Stint task this mirrors (lib/stint.ts). Null for every ordinary task. */
+    stint_task_id: uuid("stint_task_id"),
+    /** Stint's status at the last sync: how a change THERE is told from one here. */
+    stint_status: text("stint_status"),
     created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -472,6 +477,9 @@ export const tasks = pgTable(
     index("tasks_household_channel_idx").on(t.household_id, t.channel_id),
     index("tasks_household_owner_planned_idx").on(t.household_id, t.owner_id, t.planned_date),
     index("tasks_household_planned_idx").on(t.household_id, t.planned_date),
+    uniqueIndex("tasks_owner_stint_unique")
+      .on(t.owner_id, t.stint_task_id)
+      .where(sql`${t.stint_task_id} is not null`),
     index("tasks_objective_id_idx").on(t.objective_id),
     index("tasks_due_date_idx")
       .on(t.due_date)
@@ -676,6 +684,26 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   endpoint: text("endpoint").notNull().unique(),
   p256dh: text("p256dh").notNull(),
   auth_key: text("auth_key").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
+ * One person's link to Stint (lib/stint.ts): their personal Stint token and
+ * the channel their Stint tasks land in. The token is revocable from Stint at
+ * any time and only reaches that person's own tasks there.
+ */
+export const stintLinks = pgTable("stint_links", {
+  owner_id: uuid("owner_id")
+    .primaryKey()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  household_id: uuid("household_id")
+    .notNull()
+    .references(() => households.id),
+  token: text("token").notNull(),
+  channel_id: uuid("channel_id").references(() => channels.id, { onDelete: "set null" }),
+  last_synced_at: timestamp("last_synced_at", { withTimezone: true, mode: "string" }),
   created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),

@@ -78,6 +78,13 @@
       "when": 1793138459213,
       "tag": "0010_weekly_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794416821425,
+      "tag": "0011_stint_link",
+      "breakpoints": true
     }
   ]
 }

@@ -209,6 +209,8 @@ function buildOptimisticTask(input: NewTask, ownerId: string, householdId: strin
     objective_id: null,
     gcal_event_id: null,
     gcal_synced_at: null,
+    stint_task_id: null,
+    stint_status: null,
     remind_at: null,
     reminder_sent_at: null,
     active_since: null,

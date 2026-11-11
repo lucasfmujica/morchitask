@@ -23,6 +23,7 @@ import { ChannelsManager } from "./channels-manager";
 import { InviteCard } from "./invite-card";
 import { NotificationsCard } from "./notifications-card";
 import { InboundEmailCard } from "./inbound-email-card";
+import { StintCard } from "./stint-card";
 import { LanguageSelector } from "./language-selector";
 import { DangerZone } from "./danger-zone";
 
@@ -199,6 +200,7 @@ export function SettingsView() {
           />
           {/* Renders nothing until capture by email is configured on the server. */}
           <InboundEmailCard />
+          <StintCard />
         </Well>
 
         <div className="flex flex-col gap-4">
