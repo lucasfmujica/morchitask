@@ -307,6 +307,39 @@ export async function timeEntriesForTask(householdId: string, taskId: string) {
     .orderBy(asc(taskTimeEntries.day));
 }
 
+/**
+ * Minutes *this user* tracked per day within [start, end] (inclusive ISO days),
+ * across all their tasks: the "worked" the day strips draw.
+ *
+ * Scoped by household AND user. Tracked time is personal: a shared task carries
+ * both people's rows, and summing those would show your partner's hours as
+ * yours. Days with nothing tracked are simply absent.
+ */
+export async function workedMinutesByDay(
+  householdId: string,
+  userId: string,
+  start: string,
+  end: string,
+) {
+  return db
+    .select({
+      day: taskTimeEntries.day,
+      // numeric → string over the wire; the cast keeps the JSON a number.
+      minutes: sql<number>`coalesce(sum(${taskTimeEntries.minutes}), 0)::float8`.mapWith(Number),
+    })
+    .from(taskTimeEntries)
+    .where(
+      and(
+        eq(taskTimeEntries.household_id, householdId),
+        eq(taskTimeEntries.user_id, userId),
+        gte(taskTimeEntries.day, start),
+        lte(taskTimeEntries.day, end),
+      ),
+    )
+    .groupBy(taskTimeEntries.day)
+    .orderBy(asc(taskTimeEntries.day));
+}
+
 export async function setActiveSince(householdId: string, taskId: string, active: boolean) {
   await db
     .update(tasks)

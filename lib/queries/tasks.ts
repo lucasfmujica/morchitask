@@ -23,6 +23,7 @@ import { profileKeys } from "./profiles";
 import { syncBlockCalendar } from "./calendar";
 import { useActiveTimers } from "@/lib/stores/active-timer";
 import { applyDayEdit, totalMinutes, type TimeSegment } from "@/lib/time-entries";
+import { workedByDay } from "@/lib/worked";
 import type { PriorityKey } from "@/lib/priority";
 import type { NewTask, Profile, Task, TaskPatch, TaskTimeEntry } from "./types";
 
@@ -36,6 +37,16 @@ export const taskKeys = {
 /** Per-day tracked time, cached per task (the detail sheet is the only reader). */
 export const taskTimeKeys = {
   task: (taskId: string) => ["task-time", taskId] as const,
+};
+
+/**
+ * Minutes I tracked per day, for the day strips (Hoy, Semana, Mes). Everything
+ * that writes tracked time invalidates `workedKeys.all`, so every visible range
+ * refetches whichever view logged it.
+ */
+export const workedKeys = {
+  all: ["worked"] as const,
+  range: (start: string, end: string) => ["worked", start, end] as const,
 };
 
 /** Below this, every query matches everything — see app/api/tasks/search. */
@@ -157,6 +168,28 @@ export function tasksInRangeQueryOptions(start: string, end: string) {
     queryFn: () => fetchJson<AnalyticsTask[]>(`/api/tasks/range?start=${start}&end=${end}`),
     staleTime: 30_000,
   };
+}
+
+export type WorkedDay = { day: string; minutes: number };
+
+/**
+ * My tracked minutes per day within [start, end], as a day → minutes map.
+ *
+ * Read from the per-day time entries, not `actual_time_min`: that is a task's
+ * total across every day it was worked, so a task that rolled over would
+ * credit today with yesterday's hours.
+ */
+export function workedInRangeQueryOptions(start: string, end: string) {
+  return {
+    queryKey: workedKeys.range(start, end),
+    queryFn: () => fetchJson<WorkedDay[]>(`/api/time/worked?start=${start}&end=${end}`),
+    select: workedByDay,
+    staleTime: 30_000,
+  };
+}
+
+export function useWorkedInRange(start: string, end: string) {
+  return useQuery(workedInRangeQueryOptions(start, end));
 }
 
 /**
@@ -310,8 +343,10 @@ export function useSetActualTime() {
     onError: (_e, _v, ctx) => {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
-    onSettled: (_d, _e, { plannedDate }) =>
-      qc.invalidateQueries({ queryKey: listKey(plannedDate) }),
+    onSettled: (_d, _e, { plannedDate }) => {
+      qc.invalidateQueries({ queryKey: listKey(plannedDate) });
+      qc.invalidateQueries({ queryKey: workedKeys.all });
+    },
   });
 }
 
@@ -350,6 +385,7 @@ export function useLogTaskTime() {
     onSettled: (_d, _e, { taskId, plannedDate }) => {
       qc.invalidateQueries({ queryKey: listKey(plannedDate) });
       qc.invalidateQueries({ queryKey: taskTimeKeys.task(taskId) });
+      qc.invalidateQueries({ queryKey: workedKeys.all });
     },
   });
 }
@@ -405,6 +441,7 @@ export function useSetTaskDayTime(taskId: string, plannedDate: string | null) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: listKey(plannedDate) });
+      qc.invalidateQueries({ queryKey: workedKeys.all });
     },
   });
 }
@@ -451,6 +488,8 @@ export function useDeleteTask() {
     },
     onSettled: (_d, _e, task) => {
       qc.invalidateQueries({ queryKey: listKey(task.planned_date) });
+      // Its time entries go with it (on delete cascade), so the day strips drop them.
+      if (task.actual_time_min) qc.invalidateQueries({ queryKey: workedKeys.all });
       if (task.planned_date) {
         qc.invalidateQueries({ queryKey: ["blocks", "date", task.planned_date] });
       }

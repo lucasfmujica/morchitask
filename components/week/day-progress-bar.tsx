@@ -3,58 +3,62 @@
 import type { CSSProperties } from "react";
 import { formatMinutes } from "@/lib/format";
 import { capacityState } from "@/lib/capacity";
+import { workedState } from "@/lib/worked";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
 /**
- * How LOADED a day is, per column in the Week view.
+ * How much of each day you WORKED, per column in the Week view.
  *
- * It used to track completed/total, which answered the wrong question here:
- * planning a week is about where the work fits, and a day at 0% done tells you
- * nothing about whether you can put anything else on it. This tracks planned
- * minutes against the daily capacity budget, so a full Thursday looks full
- * before you drop a fifth task on it.
+ * It used to track planned minutes against the capacity budget, with a hatched
+ * overrun. That only spoke to whoever plans; the bar now draws tracked time
+ * against the daily goal (5h), which every past day and today has an answer
+ * to. Reaching the goal fills it in the same mint: more than the goal is not
+ * an error, so there is no hatch any more.
  *
- * Drawn exactly as the canvas has it: one 6px bar that fills from the left on
- * mount (staggered per column), mint gradient while it fits, the hatched
- * overflow over budget, and a quiet grey once the day is closed and the
- * budget stops being the point.
+ * A future day has no worked time by definition. Its bar stays empty and the
+ * plan moves into the label ("Planeado 3h 30m"), still flagged in words when
+ * it runs past the budget, so planning a week is not left blind.
+ *
+ * Drawn as the canvas has it: one 6px bar that fills from the left on mount
+ * (staggered per column), and a quiet grey once the day is closed.
  */
 
-// Over budget the whole fill turns hatched, so "too much" reads without colour.
-// The canvas's second stripe is #d9682f, which has no token yet; this mix is
-// the closest themed stand-in.
-const OVER_FILL =
-  "repeating-linear-gradient(45deg, var(--accent) 0 5px, color-mix(in srgb, var(--accent) 70%, var(--marker)) 5px 10px)";
 // The canvas's #9aa294: a settled grey between --subtle and --border-strong,
 // mixed from both so it follows the theme.
 const CLOSED_FILL = "color-mix(in srgb, var(--subtle) 38%, var(--border-strong))";
 
-export function DayLoadBar({
+export function DayWorkedBar({
+  workedMin,
+  goalMin,
   plannedMin,
   capacityMin,
-  measuredMin = 0,
+  future = false,
   closed = false,
   index = 0,
 }: {
+  /** Minutes I tracked that day. */
+  workedMin: number;
+  goalMin: number;
+  /** Only read for future days, where it becomes the label. */
   plannedMin: number;
   capacityMin: number;
-  /** Tracked minutes, shown instead of the budget once the day is closed. */
-  measuredMin?: number;
+  future?: boolean;
   closed?: boolean;
   /** Column position, for the fill's staggered entrance. */
   index?: number;
 }) {
   const t = useTranslations("week");
-  const { pct, over, overByMin } = capacityState(plannedMin, capacityMin);
-  const empty = plannedMin === 0;
+  const { pct, reached } = workedState(future ? 0 : workedMin, goalMin);
+  const plan = capacityState(plannedMin, capacityMin);
 
   const fill: CSSProperties = {
     width: `${pct}%`,
     animationDuration: "1.1s",
     animationDelay: `${300 + index * 80}ms`,
-    background: closed ? CLOSED_FILL : over ? OVER_FILL : undefined,
+    background: closed ? CLOSED_FILL : undefined,
   };
+  const worked = { worked: formatMinutes(workedMin), goal: formatMinutes(goalMin) };
 
   return (
     <>
@@ -63,7 +67,7 @@ export function DayLoadBar({
         <div
           className={cn(
             "h-full animate-fill rounded-pill transition-[width] duration-300",
-            !closed && !over && "bg-fit",
+            !closed && "bg-fit",
           )}
           style={fill}
         />
@@ -71,23 +75,21 @@ export function DayLoadBar({
       <span
         className={cn(
           "text-[11px] font-semibold tabular-nums",
-          over && !closed ? "text-accent" : "text-muted",
+          future && plan.over ? "text-accent" : reached && !closed ? "text-primary" : "text-muted",
         )}
       >
-        {closed
-          ? t("closed", { time: formatMinutes(measuredMin || plannedMin) })
-          : empty
+        {future
+          ? plannedMin === 0
             ? t("noLoad")
-            : over
-              ? t("loadOver", {
+            : plan.over
+              ? t("plannedOver", {
                   planned: formatMinutes(plannedMin),
-                  capacity: formatMinutes(capacityMin),
-                  over: formatMinutes(overByMin),
+                  over: formatMinutes(plan.overByMin),
                 })
-              : t("loadOf", {
-                  planned: formatMinutes(plannedMin),
-                  capacity: formatMinutes(capacityMin),
-                })}
+              : t("plannedOnly", { planned: formatMinutes(plannedMin) })
+          : closed
+            ? t("workedClosed", worked)
+            : t("workedOf", worked)}
       </span>
     </>
   );

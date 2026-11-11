@@ -1,11 +1,10 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, ChevronDown, RotateCcw } from "lucide-react";
-import { setActualTime as setActualTimeAction } from "@/lib/actions/tasks";
-import { taskKeys, useTasksForDate, useToggleTask } from "@/lib/queries/tasks";
+import { useLogTaskTime, useTasksForDate, useToggleTask } from "@/lib/queries/tasks";
+import { splitRunByDay } from "@/lib/time-entries";
 import { useChannels } from "@/lib/queries/channels";
 import { useToast } from "@/lib/stores/toast";
 import { useAudio } from "@/lib/stores/audio";
@@ -73,7 +72,8 @@ export function FocusTimer() {
   const t = useTranslations("focus");
   const tt = useTranslations("tasks");
   const tnav = useTranslations("nav");
-  const qc = useQueryClient();
+  // `mutate` is stable, so the completion effect below does not re-run per render.
+  const logTime = useLogTaskTime().mutate;
   const today = todayISO();
   const tasksQ = useTasksForDate(today);
   const tasks = (tasksQ.data ?? []).filter((t) => t.status === "todo");
@@ -116,9 +116,16 @@ export function FocusTimer() {
     if (mode === "focus" && taskId) {
       const task = tasks.find((candidate) => candidate.id === taskId);
       if (task) {
-        setActualTimeAction(task.id, (task.actual_time_min ?? 0) + DURATION.focus / 60).then(() =>
-          qc.invalidateQueries({ queryKey: taskKeys.date(today) }),
-        );
+        // Logged like a stopwatch run, as per-day entries plus the total. It
+        // used to write only the task total (and absolutely, from a cached
+        // value), so a focus block never reached the day-by-day breakdown nor
+        // the "worked" strips, which read those entries.
+        const end = Date.now();
+        logTime({
+          taskId: task.id,
+          plannedDate: task.planned_date,
+          segments: splitRunByDay(end - DURATION.focus * 1000, end),
+        });
       }
     }
   }, [
@@ -128,8 +135,7 @@ export function FocusTimer() {
     mode,
     taskId,
     tasks,
-    qc,
-    today,
+    logTime,
     audioAutoStart,
     audioSource,
     setAudioPlaying,

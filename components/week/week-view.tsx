@@ -23,11 +23,13 @@ import {
   useCreateTask,
   useMoveTaskToDate,
   useReorderTask,
+  useWorkedInRange,
 } from "@/lib/queries/tasks";
 import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useShutdownDays } from "@/lib/queries/daily-notes";
 import { resolveCapacity } from "@/lib/capacity";
+import { canHaveWorked, resolveWorkGoal } from "@/lib/worked";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekRange } from "@/lib/date";
@@ -49,7 +51,7 @@ import { SkeletonList } from "@/components/ui";
 import { DROP_ANIMATION } from "@/lib/motion";
 import { createTaskCollision } from "@/components/dnd/collision";
 import { CarryoverNotice } from "@/components/day/carryover-notice";
-import { DayLoadBar } from "./day-progress-bar";
+import { DayWorkedBar } from "./day-progress-bar";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
 
@@ -85,6 +87,9 @@ export function WeekView({ date }: { date: string }) {
   const capacityTarget = resolveCapacity(null, me?.capacity_target_min);
   // One query for the whole week: which days you already closed.
   const closedDays = useShutdownDays(week[0], week[week.length - 1]);
+  // And one for what I tracked on each day: the bars draw worked, not planned.
+  const workedByDay = useWorkedInRange(week[0], week[week.length - 1]).data;
+  const workGoal = resolveWorkGoal();
   // Closed days start folded: they are settled, and the canvas shows them as
   // one "N hechas" chip so the week ahead gets the room.
   const [hideClosed, setHideClosed] = useState(true);
@@ -248,6 +253,8 @@ export function WeekView({ date }: { date: string }) {
                   channelsById={channelsById}
                   dragging={!!activeTask}
                   capacityMin={capacityTarget}
+                  workedMin={workedByDay?.get(d) ?? 0}
+                  workGoalMin={workGoal}
                   closed={closedDays.has(d)}
                   hideClosed={hideClosed}
                   onAdd={(title) =>
@@ -313,6 +320,8 @@ function DayColumn({
   channelsById,
   dragging,
   capacityMin,
+  workedMin,
+  workGoalMin,
   closed,
   hideClosed,
   onAdd,
@@ -328,6 +337,8 @@ function DayColumn({
   channelsById: Map<string, Channel>;
   dragging: boolean;
   capacityMin: number;
+  workedMin: number;
+  workGoalMin: number;
   closed: boolean;
   hideClosed: boolean;
   onAdd: (title: string) => void;
@@ -338,7 +349,6 @@ function DayColumn({
   const isToday = date === today;
   const done = tasks.filter((task) => task.status === "done").length;
   const plannedMin = tasks.reduce((sum, task) => sum + (task.time_estimate_min ?? 0), 0);
-  const measuredMin = tasks.reduce((sum, task) => sum + (task.actual_time_min ?? 0), 0);
   // A closed day only folds away when you asked for it, otherwise you'd lose
   // the drop target for "actually, move that to Tuesday".
   const folded = closed && hideClosed;
@@ -382,11 +392,13 @@ function DayColumn({
           </span>
         </Link>
 
-        {/* How full the day is, not how much of it you've ticked off. */}
-        <DayLoadBar
+        {/* How much of the day you worked; ahead of today, the plan in words. */}
+        <DayWorkedBar
+          workedMin={workedMin}
+          goalMin={workGoalMin}
           plannedMin={plannedMin}
           capacityMin={capacityMin}
-          measuredMin={measuredMin}
+          future={!canHaveWorked(date, today)}
           closed={closed}
           index={index}
         />
