@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Inbox, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -327,21 +335,29 @@ export function DayView({ date }: { date: string }) {
             {t("viewDay")}
           </span>
           <Link
-            href="/week"
+            href={`/week/${date}`}
             className="h-8 rounded-pill px-3.5 text-xs leading-8 font-semibold text-muted transition-colors hover:text-fg"
           >
             {tnav("week")}
           </Link>
           <Link
-            href="/month"
+            href={`/month/${date}`}
             className="h-8 rounded-pill px-3.5 text-xs leading-8 font-semibold text-muted transition-colors hover:text-fg"
           >
             {tnav("month")}
           </Link>
         </nav>
         {isToday && (
-          <Button variant="secondary" size="sm" onClick={() => setReplanOpen((o) => !o)}>
-            {t("brokeDay")}
+          // Says what it does. "Se me rompió el día" was the feeling, not the
+          // action, and nobody could tell what the button would do.
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-expanded={replanOpen}
+            onClick={() => setReplanOpen((o) => !o)}
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden />
+            {t("replanButton")}
           </Button>
         )}
         <Link href={`/shutdown/${date}`}>

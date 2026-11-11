@@ -293,7 +293,6 @@
     "dragHint": "Arrastrá a la agenda",
     "agendaTitle": "Agenda",
     "agendaRange": "{from} a {to}",
-    "brokeDay": "Se me rompió el día",
     "viewDay": "Día",
     "viewSwitch": "Cambiar de vista"
   },
