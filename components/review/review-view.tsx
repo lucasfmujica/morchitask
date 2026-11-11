@@ -24,7 +24,7 @@ import { orderForAppend } from "@/lib/ordering";
 import { projectedDayLoads, weekLeftovers, weekSummary, type WeekAssignments } from "@/lib/review";
 import { cn } from "@/lib/utils";
 import { Confetti } from "@/components/ui/confetti";
-import { SkeletonList } from "@/components/ui";
+import { Button, SkeletonList, Well } from "@/components/ui";
 import { CompareBar } from "@/components/shutdown/shutdown-view";
 
 const STEPS = ["stepLookBack", "stepLeftovers", "stepNextWeek"] as const;
@@ -177,12 +177,12 @@ function WeeklyReview({
   const isLast = step === STEPS.length - 1;
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-6 py-2">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-2">
       {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
 
       <header className="flex flex-col gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-fg">{t("title")}</h1>
           <p className="text-sm text-muted">{t("weekOf", { range: weekRangeLabel(days) })}</p>
         </div>
         <StepBar step={step} onJump={setStep} />
@@ -224,22 +224,25 @@ function WeeklyReview({
 
       <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-3 border-t border-border bg-bg/95 px-4 py-3 pb-safe backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         {step > 0 && (
-          <button
+          <Button
+            variant="ghost"
+            size="lg"
             onClick={() => setStep(step - 1)}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+            className="px-4 text-muted hover:text-fg"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             {ts("back")}
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          size="lg"
           onClick={() => (isLast ? finish() : setStep(step + 1))}
           disabled={saving}
-          className="ml-auto inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-on-primary transition-colors hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none disabled:opacity-60"
+          className="ml-auto"
         >
           {isLast ? (note?.completed_at ? t("saveAndSee") : t("close")) : ts("next")}
           <ArrowRight className="h-4 w-4" aria-hidden />
-        </button>
+        </Button>
       </div>
 
       {saveError && <p className="text-right text-sm text-danger">{t("saveError")}</p>}
@@ -251,22 +254,35 @@ function StepBar({ step, onJump }: { step: number; onJump: (i: number) => void }
   const t = useTranslations("review");
   const ts = useTranslations("shutdown");
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex flex-1 items-center gap-1.5">
+    <div className="flex flex-col gap-2">
+      {/* Same bar as the daily shutdown: each segment names its step below. */}
+      <div className="grid grid-cols-3 gap-2">
         {STEPS.map((label, i) => (
           <button
             key={label}
             onClick={() => onJump(i)}
             aria-label={ts("stepAria", { n: i + 1, name: t(label) })}
             aria-current={i === step ? "step" : undefined}
-            className={cn(
-              "h-1.5 flex-1 cursor-pointer rounded-pill transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
-              i <= step ? "bg-primary" : "bg-surface-2",
-            )}
-          />
+            className="group flex min-w-0 cursor-pointer flex-col gap-2 rounded-md text-left focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none"
+          >
+            <span
+              className={cn(
+                "block h-1.5 w-full rounded-pill transition-colors duration-300",
+                i <= step ? "bg-fit" : "bg-border group-hover:bg-border-strong",
+              )}
+            />
+            <span
+              className={cn(
+                "truncate text-xs font-semibold",
+                i === step ? "text-fg" : "text-subtle",
+              )}
+            >
+              {t(label)}
+            </span>
+          </button>
         ))}
       </div>
-      <span className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-subtle">
+      <span className="sr-only" aria-live="polite">
         {ts("stepOf", { step: step + 1, total: STEPS.length, name: t(STEPS[step]) })}
       </span>
     </div>
@@ -296,9 +312,9 @@ function StepLookBack({
   const ts = useTranslations("shutdown");
   const { fullDayLabel } = useDateLabels();
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-extrabold tracking-tight text-fg">
+        <h2 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
           {done === 0 ? t("quietWeek") : t("doneCount", { n: done })}
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -310,17 +326,17 @@ function StepLookBack({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <Well className="grid grid-cols-2 gap-2">
         <Stat icon={Moon} label={t("closedDays")} value={t("closedDaysValue", { n: closedDays })} />
         <Stat
           icon={Trophy}
           label={t("bestDay")}
           value={bestDay ? fullDayLabel(bestDay).split(" ")[0].replace(",", "") : "—"}
         />
-      </div>
+      </Well>
 
       {(estimatedMin > 0 || actualMin > 0) && (
-        <div className="flex flex-col gap-2.5 rounded-card border border-border bg-surface p-4 shadow-soft">
+        <Well className="flex flex-col gap-2.5 p-4">
           <CompareBar
             label={ts("estimatedBar")}
             min={estimatedMin}
@@ -333,43 +349,55 @@ function StepLookBack({
             max={Math.max(estimatedMin, actualMin)}
             tone="solid"
           />
-        </div>
+        </Well>
       )}
 
       <WeekGoals week={week} />
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold text-fg">{t("winsQuestion")}</span>
-        <textarea
-          value={wins}
-          onChange={(e) => onWins(e.target.value)}
-          placeholder={t("winsPlaceholder")}
-          rows={3}
-          className="w-full resize-none rounded-card border border-border bg-surface px-3.5 py-3 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        />
-      </label>
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold text-fg">{t("lessonsQuestion")}</span>
-        <textarea
-          value={lessons}
-          onChange={(e) => onLessons(e.target.value)}
-          placeholder={t("lessonsPlaceholder")}
-          rows={3}
-          className="w-full resize-none rounded-card border border-border bg-surface px-3.5 py-3 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        />
-      </label>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Well>
+          <label className="flex h-full flex-col gap-2 rounded-xl bg-surface p-4 shadow-soft">
+            <span className="font-display text-base font-semibold text-fg">
+              {t("winsQuestion")}
+            </span>
+            <textarea
+              value={wins}
+              onChange={(e) => onWins(e.target.value)}
+              placeholder={t("winsPlaceholder")}
+              rows={3}
+              className="w-full resize-none rounded-lg border-0 bg-bg px-3.5 py-3 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            />
+          </label>
+        </Well>
+        <Well>
+          <label className="flex h-full flex-col gap-2 rounded-xl bg-surface p-4 shadow-soft">
+            <span className="font-display text-base font-semibold text-fg">
+              {t("lessonsQuestion")}
+            </span>
+            <textarea
+              value={lessons}
+              onChange={(e) => onLessons(e.target.value)}
+              placeholder={t("lessonsPlaceholder")}
+              rows={3}
+              className="w-full resize-none rounded-lg border-0 bg-bg px-3.5 py-3 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            />
+          </label>
+        </Well>
+      </div>
     </div>
   );
 }
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Moon; label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-card border border-border bg-surface p-3.5 shadow-soft">
-      <span className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-subtle">
+    <div className="flex flex-col gap-1.5 rounded-xl bg-surface p-4 shadow-soft">
+      <span className="flex items-center gap-1.5 text-xs font-medium text-muted">
         <Icon className="h-3.5 w-3.5" aria-hidden />
         {label}
       </span>
-      <span className="text-lg font-bold capitalize text-fg">{value}</span>
+      <span className="font-display text-2xl leading-tight font-bold capitalize text-fg">
+        {value}
+      </span>
     </div>
   );
 }
@@ -385,8 +413,10 @@ function WeekGoals({ week }: { week: string[] }) {
   if (goals.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-2xs font-semibold uppercase tracking-wide text-subtle">{t("yourGoals")}</p>
+    <Well className="flex flex-col gap-1.5">
+      <p className="px-2.5 pt-1.5 pb-0.5 font-display text-base font-semibold text-fg">
+        {t("yourGoals")}
+      </p>
       <ul className="flex flex-col gap-1.5">
         {goals.map((o) => {
           const p = progress?.get(o.id);
@@ -394,14 +424,14 @@ function WeekGoals({ week }: { week: string[] }) {
           return (
             <li
               key={o.id}
-              className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 shadow-soft"
+              className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3 shadow-soft"
             >
               <Target className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-sm text-fg">{o.title}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">{o.title}</span>
               <span
                 className={cn(
-                  "shrink-0 text-sm font-bold tabular-nums",
-                  pct === 100 ? "text-success" : "text-muted",
+                  "shrink-0 rounded-pill px-2 py-0.5 text-xs font-bold tabular-nums",
+                  pct === 100 ? "bg-fit text-on-primary" : "bg-surface-2 text-muted",
                 )}
               >
                 {pct}%
@@ -410,7 +440,7 @@ function WeekGoals({ week }: { week: string[] }) {
           );
         })}
       </ul>
-    </div>
+    </Well>
   );
 }
 
@@ -432,17 +462,20 @@ function StepLeftovers({
 }) {
   const t = useTranslations("review");
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-extrabold tracking-tight text-fg">{t("leftoversTitle")}</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-fg">{t("leftoversTitle")}</h2>
         <p className="mt-1 text-sm text-muted">
           {leftovers.length === 0 ? t("leftoversNone") : t("leftoversHint")}
         </p>
       </div>
 
       {leftovers.length === 0 ? (
-        <p className="flex items-center gap-2 rounded-card border border-border bg-surface p-4 text-sm text-success shadow-soft">
-          <Check className="h-4 w-4 shrink-0" aria-hidden /> {t("leftoversClean")}
+        <p className="flex items-center gap-3 rounded-2xl bg-surface-2 p-4 text-sm font-medium text-fg">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-pill bg-fit text-on-primary">
+            <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+          </span>
+          {t("leftoversClean")}
         </p>
       ) : (
         <>
@@ -477,9 +510,9 @@ function StepNextWeek({
   const t = useTranslations("review");
   const { weekRangeLabel } = useDateLabels();
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-extrabold tracking-tight text-fg">{t("nextTitle")}</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-fg">{t("nextTitle")}</h2>
         <p className="mt-1 text-sm text-muted">
           {t("weekOf", { range: weekRangeLabel(nextDays) })}
         </p>
@@ -491,19 +524,19 @@ function StepNextWeek({
           value={focus}
           onChange={(e) => onFocus(e.target.value)}
           placeholder={t("focusPlaceholder")}
-          className="h-11 w-full rounded-card border border-border bg-surface px-3.5 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="h-12 w-full rounded-pill border-0 bg-surface px-5 text-sm text-fg shadow-soft placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
       </label>
 
       <NextWeekGoals nextDays={nextDays} />
 
       <div className="flex flex-col gap-2">
-        <p className="text-2xs font-semibold uppercase tracking-wide text-subtle">
+        <p className="px-1 font-display text-base font-semibold text-fg">
           {t("fromBacklog", { n: backlog.length })}
         </p>
         <DayLoads days={nextDays} loads={loads} capacity={capacity} />
         {backlog.length === 0 ? (
-          <p className="text-sm text-muted">{t("backlogEmpty")}</p>
+          <p className="px-1 text-sm text-muted">{t("backlogEmpty")}</p>
         ) : (
           <TaskDayList tasks={backlog} days={nextDays} assign={assign} onToggle={onToggle} />
         )}
@@ -531,14 +564,16 @@ function NextWeekGoals({ nextDays }: { nextDays: string[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-2xs font-semibold uppercase tracking-wide text-subtle">{t("weekGoals")}</p>
+    <Well className="flex flex-col gap-1.5">
+      <p className="px-2.5 pt-1.5 pb-0.5 font-display text-base font-semibold text-fg">
+        {t("weekGoals")}
+      </p>
       {goals.length > 0 && (
         <ul className="flex flex-col gap-1.5">
           {goals.map((o) => (
             <li
               key={o.id}
-              className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-fg shadow-soft"
+              className="flex items-center gap-2.5 rounded-xl bg-surface px-3.5 py-3 text-sm font-medium text-fg shadow-soft"
             >
               <Target className="h-4 w-4 shrink-0 text-primary" aria-hidden />
               <span className="min-w-0 flex-1 truncate">{o.title}</span>
@@ -546,7 +581,7 @@ function NextWeekGoals({ nextDays }: { nextDays: string[] }) {
           ))}
         </ul>
       )}
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-surface p-1.5 shadow-soft">
+      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-3 shadow-soft">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -558,12 +593,12 @@ function NextWeekGoals({ nextDays }: { nextDays: string[] }) {
         <button
           onClick={add}
           disabled={!title.trim() || create.isPending}
-          className="h-8 shrink-0 cursor-pointer rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
+          className="h-8 shrink-0 cursor-pointer rounded-pill bg-fg px-4 text-sm font-semibold text-bg transition-colors hover:bg-fg/85 disabled:opacity-40"
         >
           {t("add")}
         </button>
       </div>
-    </div>
+    </Well>
   );
 }
 
@@ -579,16 +614,19 @@ function DayLoads({
 }) {
   const tw = useTranslations("week");
   return (
-    <div className="grid grid-cols-7 gap-1.5 rounded-card border border-border bg-surface p-3 shadow-soft">
+    <Well className="grid grid-cols-7 gap-1.5 p-3">
       {days.map((d, i) => {
         const min = loads.get(d) ?? 0;
         const over = min > capacity;
         const pct = Math.min(100, (min / capacity) * 100);
         return (
           <div key={d} className="flex flex-col items-center gap-1" title={formatMinutes(min)}>
-            <div className="flex h-12 w-full items-end overflow-hidden rounded-md bg-surface-2">
+            <div className="flex h-14 w-full items-end overflow-hidden rounded-lg bg-surface">
               <div
-                className={cn("w-full rounded-md", over ? "bg-danger" : "bg-primary/60")}
+                className={cn(
+                  "w-full rounded-lg transition-[height] duration-300",
+                  over ? "bg-danger" : "bg-fit",
+                )}
                 style={{ height: `${pct}%` }}
               />
             </div>
@@ -606,7 +644,7 @@ function DayLoads({
           </div>
         );
       })}
-    </div>
+    </Well>
   );
 }
 
@@ -629,10 +667,12 @@ function TaskDayList({
       {tasks.map((task) => (
         <li
           key={task.id}
-          className="flex flex-col gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 shadow-soft sm:flex-row sm:items-center"
+          className="flex flex-col gap-2 rounded-2xl bg-surface-2 py-2 pr-2 pl-4 sm:flex-row sm:items-center"
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-sm text-fg">{task.title}</span>
+          <div className="flex min-w-0 flex-1 items-center gap-2 pt-1 sm:pt-0">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">
+              {task.title}
+            </span>
             {task.time_estimate_min ? (
               <span className="shrink-0 text-2xs font-semibold tabular-nums text-muted">
                 {formatMinutes(task.time_estimate_min)}
@@ -651,10 +691,10 @@ function TaskDayList({
                 aria-pressed={assign[task.id] === d}
                 aria-label={fullDayLabel(d)}
                 className={cn(
-                  "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+                  "flex h-9 w-9 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
                   assign[task.id] === d
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-2 text-muted hover:bg-border",
+                    ? "bg-fit text-on-primary"
+                    : "bg-surface text-muted hover:text-fg",
                 )}
               >
                 {tw(`weekdayInitials.${DAY_KEYS[i]}`)}

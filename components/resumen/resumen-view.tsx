@@ -17,6 +17,7 @@ import {
 import { addDays, addMonths, todayISO, weekRange, type DayISO } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Well } from "@/components/ui";
 import type { DateLabels } from "@/lib/date-labels";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
@@ -127,22 +128,27 @@ export function ResumenView() {
     return { key: w.key, label: w.label, ...c, rate: completionRate(c) };
   });
 
+  const overallPct = Math.round(completionRate(overall) * 100);
+  // The best week gets the "fit" fill; ties go to the first. Nothing is crowned
+  // when no week has a single done task.
+  const bestWeekRate = Math.max(0, ...weekBars.map((w) => w.rate));
+
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+    <div className="flex max-w-4xl flex-col gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-3 px-1 pt-1">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold tracking-tight text-fg">{t("title")}</h1>
           <p className="text-sm text-muted">{shape.label}</p>
         </div>
-        <div className="-mx-1 overflow-x-auto px-1">
-          <div className="flex w-max gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
+        <div className="-mx-1 max-w-full overflow-x-auto px-1">
+          <div className="flex w-max gap-1 rounded-pill bg-surface-2 p-1">
             {PERIODS.map((p) => (
               <button
                 key={p.value}
                 onClick={() => setPeriod(p.value)}
                 aria-pressed={period === p.value}
                 className={cn(
-                  "cursor-pointer rounded-pill px-3 py-1 text-sm font-medium transition-colors",
+                  "h-9 cursor-pointer rounded-pill px-4 text-sm font-semibold transition-colors",
                   period === p.value
                     ? "bg-surface text-fg shadow-soft"
                     : "text-muted hover:text-fg",
@@ -155,126 +161,199 @@ export function ResumenView() {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Stat
-          label={t("statDone")}
-          value={`${overall.done}`}
-          sub={t("statDoneSub", {
-            total: overall.total,
-            pct: Math.round(completionRate(overall) * 100),
-          })}
-        />
-        <Stat
-          label={t("statPlanned")}
-          value={plannedMin > 0 ? formatMinutes(plannedMin) : "—"}
-          sub={
-            accuracy.actualMin > 0
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* The hero tile: completion is the number this screen exists for. */}
+        <section className="flex items-center gap-5 rounded-2xl bg-fg p-5 text-bg">
+          <Ring pct={overallPct} />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="text-xs font-medium text-bg/65">{t("statDone")}</p>
+            <p className="font-display text-4xl leading-tight font-bold tracking-tight">
+              {overall.done}
+            </p>
+            <p className="text-xs text-bg/75">
+              {t("statDoneSub", { total: overall.total, pct: overallPct })}
+            </p>
+          </div>
+        </section>
+        <Well className="flex flex-col justify-center gap-0.5 p-5">
+          <p className="text-xs font-medium text-muted">{t("statPlanned")}</p>
+          <p className="font-display text-4xl leading-tight font-bold tracking-tight text-fg">
+            {plannedMin > 0 ? formatMinutes(plannedMin) : "—"}
+          </p>
+          <p className="text-xs text-muted">
+            {accuracy.actualMin > 0
               ? t("statPlannedMeasured", { time: formatMinutes(accuracy.actualMin) })
-              : t("statPlannedSub")
-          }
-        />
+              : t("statPlannedSub")}
+          </p>
+        </Well>
       </div>
 
-      {weekBars.length > 1 && (
-        <Section title={t("byWeek")}>
-          <div className="flex items-end gap-2 sm:gap-3">
-            {weekBars.map((w) => (
-              <div key={w.key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                <div className="flex h-28 w-full max-w-12 items-end overflow-hidden rounded-lg bg-surface-2">
-                  <div
-                    className="w-full rounded-lg bg-primary transition-[height]"
-                    style={{ height: `${Math.max(w.rate * 100, w.done > 0 ? 6 : 0)}%` }}
-                    title={`${w.done}/${w.total}`}
-                  />
-                </div>
-                <span className="text-2xs font-medium text-muted">{Math.round(w.rate * 100)}%</span>
-                <span className="truncate text-2xs text-subtle">{w.label}</span>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {accuracy.trackedCount > 0 && (
-        <Section
-          title={t("estimateVsActual")}
-          hint={t("trackedCount", { n: accuracy.trackedCount })}
+      {(weekBars.length > 1 || accuracy.trackedCount > 0) && (
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4",
+            weekBars.length > 1 && accuracy.trackedCount > 0 && "md:grid-cols-2",
+          )}
         >
-          <CompareBar
-            label={t("estimatedBar")}
-            min={accuracy.estimatedMin}
-            max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
-            tone="bg-subtle"
-          />
-          <CompareBar
-            label={t("actualBar")}
-            min={accuracy.actualMin}
-            max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
-            tone="bg-primary"
-          />
-        </Section>
+          {weekBars.length > 1 && (
+            <Section title={t("byWeek")}>
+              <div className="flex items-end gap-2 sm:gap-3">
+                {weekBars.map((w) => (
+                  <div key={w.key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                    <span className="text-2xs font-medium text-muted">
+                      {Math.round(w.rate * 100)}%
+                    </span>
+                    <div className="flex h-36 w-full max-w-14 items-end">
+                      <div
+                        className={cn(
+                          "min-h-1.5 w-full rounded-xl transition-[height] duration-500",
+                          bestWeekRate > 0 && w.rate === bestWeekRate ? "bg-fit" : "bg-surface-2",
+                        )}
+                        style={{ height: `${Math.max(w.rate * 100, w.done > 0 ? 6 : 0)}%` }}
+                        title={`${w.done}/${w.total}`}
+                      />
+                    </div>
+                    <span className="max-w-full truncate text-2xs font-semibold text-muted">
+                      {w.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {accuracy.trackedCount > 0 && (
+            <Section
+              title={t("estimateVsActual")}
+              hint={t("trackedCount", { n: accuracy.trackedCount })}
+            >
+              <CompareBar
+                label={t("estimatedBar")}
+                min={accuracy.estimatedMin}
+                max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
+                tone="bg-border-strong"
+              />
+              <CompareBar
+                label={t("actualBar")}
+                min={accuracy.actualMin}
+                max={Math.max(accuracy.estimatedMin, accuracy.actualMin)}
+                tone="bg-fit"
+              />
+            </Section>
+          )}
+        </div>
       )}
 
-      <Section title={t("byCategory")}>
-        {channelRows.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted">{t("byCategoryEmpty")}</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {channelRows.map((r) => (
-              <div key={r.id}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="flex min-w-0 items-center gap-2 text-fg">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: r.color }}
-                      aria-hidden
+      <div className={cn("grid grid-cols-1 gap-4", ownerRows.length > 0 && "md:grid-cols-2")}>
+        <Section title={t("byCategory")}>
+          {channelRows.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted">{t("byCategoryEmpty")}</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {channelRows.map((r) => (
+                <div key={r.id}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="flex min-w-0 items-center gap-2 font-medium text-fg">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: r.color }}
+                        aria-hidden
+                      />
+                      <span className="truncate">{r.name}</span>
+                    </span>
+                    <span className="shrink-0 pl-2 text-xs font-medium text-muted">
+                      {formatMinutes(r.min)}
+                    </span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-pill bg-surface-2">
+                    <div
+                      className="h-full rounded-pill"
+                      style={{
+                        width: `${(r.min / maxChannelMin) * 100}%`,
+                        backgroundColor: r.color,
+                      }}
                     />
-                    <span className="truncate">{r.name}</span>
-                  </span>
-                  <span className="shrink-0 pl-2 font-medium text-muted">
-                    {formatMinutes(r.min)}
-                  </span>
+                  </div>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${(r.min / maxChannelMin) * 100}%`, backgroundColor: r.color }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
+              ))}
+            </div>
+          )}
+        </Section>
 
-      {ownerRows.length > 0 && (
-        <Section title={t("byPerson")}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {ownerRows.length > 0 && (
+          <Well className="flex flex-col gap-1.5">
+            <h2 className="px-2.5 pt-2 pb-1 text-base font-semibold text-fg">{t("byPerson")}</h2>
             {ownerRows.map(({ profile, stat }) => (
               <div
                 key={profile.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-surface-2 p-3"
+                className="flex items-center gap-3 rounded-xl bg-surface px-3.5 py-3 shadow-soft"
               >
-                <OwnerAvatar profile={profile} size={32} />
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-fg">{profile.display_name}</p>
-                  <p className="text-xs text-muted">
-                    {t("personStats", {
-                      done: stat!.done,
-                      total: stat!.total,
-                      time: formatMinutes(stat!.plannedMin),
-                    })}
-                  </p>
+                <OwnerAvatar profile={profile} size={34} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2">
+                    <p className="truncate text-sm font-semibold text-fg">{profile.display_name}</p>
+                    <p className="text-xs text-muted">
+                      {t("personStats", {
+                        done: stat!.done,
+                        total: stat!.total,
+                        time: formatMinutes(stat!.plannedMin),
+                      })}
+                    </p>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-pill bg-surface-2" aria-hidden>
+                    <div
+                      className="h-full rounded-pill bg-fit"
+                      style={{ width: `${(stat!.done / stat!.total) * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
-          </div>
-        </Section>
-      )}
+          </Well>
+        )}
+      </div>
     </div>
   );
 }
 
+/** Completion as a ring on the dark hero tile. The track is a tint of the
+ *  card's own ink so it flips with the tile in dark mode. */
+function Ring({ pct }: { pct: number }) {
+  const R = 52;
+  const C = 2 * Math.PI * R;
+  return (
+    <div className="relative h-[104px] w-[104px] shrink-0">
+      <svg viewBox="0 0 132 132" className="h-full w-full -rotate-90" aria-hidden>
+        <circle
+          cx="66"
+          cy="66"
+          r={R}
+          fill="none"
+          stroke="var(--color-bg)"
+          strokeOpacity={0.12}
+          strokeWidth="13"
+        />
+        <circle
+          cx="66"
+          cy="66"
+          r={R}
+          fill="none"
+          stroke="var(--color-primary)"
+          strokeWidth="13"
+          strokeLinecap="round"
+          strokeDasharray={C}
+          strokeDashoffset={C * (1 - Math.min(pct, 100) / 100)}
+          style={{ transition: "stroke-dashoffset 0.6s ease-out" }}
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center font-display text-xl font-bold">
+        {pct}%
+      </span>
+    </div>
+  );
+}
+
+/** A well holding one white card: the bento unit for a titled chart. */
 function Section({
   title,
   hint,
@@ -285,13 +364,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-soft">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="font-semibold text-fg">{title}</h2>
-        {hint && <span className="text-xs text-subtle">{hint}</span>}
-      </div>
-      {children}
-    </section>
+    <Well>
+      <section className="flex h-full flex-col gap-3 rounded-xl bg-surface p-4 shadow-soft">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+          <h2 className="text-base font-semibold text-fg">{title}</h2>
+          {hint && <span className="text-xs text-subtle">{hint}</span>}
+        </div>
+        {children}
+      </section>
+    </Well>
   );
 }
 
@@ -309,25 +390,15 @@ function CompareBar({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="text-fg">{label}</span>
-        <span className="font-medium text-muted">{formatMinutes(min)}</span>
+        <span className="font-medium text-fg">{label}</span>
+        <span className="text-xs font-medium text-muted">{formatMinutes(min)}</span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-surface-2">
+      <div className="h-2.5 overflow-hidden rounded-pill bg-surface-2">
         <div
-          className={cn("h-full rounded-full", tone)}
+          className={cn("h-full rounded-pill transition-[width] duration-500", tone)}
           style={{ width: `${max > 0 ? (min / max) * 100 : 0}%` }}
         />
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
-  return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-soft">
-      <p className="text-xs font-medium uppercase tracking-wide text-subtle">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold text-fg">{value}</p>
-      <p className="text-xs text-muted">{sub}</p>
     </div>
   );
 }

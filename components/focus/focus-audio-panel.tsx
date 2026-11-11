@@ -37,11 +37,11 @@ export function FocusAudioPanel() {
   ].join(" · ");
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+    <div className="flex w-full flex-col gap-2">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-3 rounded-card border border-border bg-surface px-3.5 py-2.5 text-left shadow-soft transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+        className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface px-4 py-3 text-left shadow-soft transition-shadow hover:shadow-card focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         <Equalizer active={playing} />
         <span className="min-w-0 flex-1">
@@ -58,8 +58,8 @@ export function FocusAudioPanel() {
       </button>
 
       {open && (
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
+        <div className="flex flex-col items-center gap-4 rounded-xl bg-surface p-3 shadow-soft">
+          <div className="flex gap-1 rounded-pill bg-surface-2 p-1">
             {(
               [
                 ["sounds", t("tabSounds")],
@@ -71,7 +71,7 @@ export function FocusAudioPanel() {
                 onClick={() => setTab(value)}
                 aria-pressed={tab === value}
                 className={cn(
-                  "cursor-pointer rounded-pill px-4 py-1.5 text-sm font-medium transition-colors",
+                  "cursor-pointer rounded-pill px-4 py-1.5 text-sm font-semibold transition-colors",
                   tab === value ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
                 )}
               >
@@ -96,7 +96,7 @@ function Equalizer({ active }: { active: boolean }) {
           key={i}
           className={cn(
             "w-[3px] rounded-pill",
-            active ? "animate-pulse bg-primary" : "bg-border-strong",
+            active ? "animate-pulse bg-fit" : "bg-border-strong",
           )}
           style={{
             height: active ? [10, 16, 7, 13][i] : 6,
