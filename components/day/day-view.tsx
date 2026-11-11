@@ -48,6 +48,7 @@ import { CarryoverNotice } from "./carryover-notice";
 import { PastDayNotice } from "./past-day-notice";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { useComposerCreate } from "@/components/tasks/use-composer-create";
+import { CaptureSheet } from "@/components/tasks/capture-sheet";
 import { TaskListSection } from "@/components/tasks/task-list-section";
 import { createTaskCollision } from "@/components/dnd/collision";
 import { TaskDragPreview } from "@/components/dnd/task-drag-preview";
@@ -311,6 +312,7 @@ export function DayView({ date }: { date: string }) {
       )}
 
       <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
+      <CaptureSheet viewDate={date} channels={channelsQ.data ?? []} viewTasks={tasks} />
 
       {/* Mobile: tabs switch Lista/Agenda. Desktop: both side by side — so the
           tabs go away and only the score stays. */}

@@ -16,6 +16,7 @@ import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { useComposerCreate } from "@/components/tasks/use-composer-create";
+import { CaptureSheet } from "@/components/tasks/capture-sheet";
 import { Button, EmptyState, SkeletonList } from "@/components/ui";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
@@ -93,6 +94,7 @@ export function BacklogView() {
       </header>
 
       <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
+      <CaptureSheet viewDate={null} channels={channelsQ.data ?? []} viewTasks={tasks} />
 
       {tasksQ.isLoading ? (
         <SkeletonList />

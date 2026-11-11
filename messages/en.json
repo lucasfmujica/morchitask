@@ -836,5 +836,21 @@
     "planFailed": "Couldn't apply the plan. Try again.",
     "planSkipped": "{n, plural, =1 {1 task didn't fit in the day.} other {# tasks didn't fit in the day.}}",
     "planApply": "Apply"
+  },
+  "capture": {
+    "open": "Dictate several",
+    "title": "Say it all at once",
+    "close": "Close",
+    "hint": "Say or type everything together. On your phone you can use the keyboard's microphone.",
+    "placeholder": "Tomorrow at 10 call the accountant, half an hour. Thursday dentist appointment…",
+    "listen": "Listen",
+    "stop": "Stop listening",
+    "understand": "Split into tasks",
+    "reading": "Reading…",
+    "nothing": "I didn't find any tasks in what you dictated.",
+    "fallback": "I split them by sentence.",
+    "edit": "Back to the text",
+    "create": "{n, plural, =0 {Pick at least one} =1 {Create 1 task} other {Create # tasks}}",
+    "created": "{n, plural, =1 {Created 1 task.} other {Created # tasks.}}"
   }
 }

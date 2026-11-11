@@ -836,5 +836,21 @@
     "planFailed": "No se pudo aplicar el plan. Probá de nuevo.",
     "planSkipped": "{n, plural, =1 {1 tarea no entró en el día.} other {# tareas no entraron en el día.}}",
     "planApply": "Aplicar"
+  },
+  "capture": {
+    "open": "Dictar varias",
+    "title": "Decilo de corrido",
+    "close": "Cerrar",
+    "hint": "Decí o escribí todo junto. En el celular podés usar el micrófono del teclado.",
+    "placeholder": "Mañana a las 10 llamar al contador, media hora. El jueves turno con la dentista…",
+    "listen": "Escuchar",
+    "stop": "Dejar de escuchar",
+    "understand": "Separar en tareas",
+    "reading": "Leyendo…",
+    "nothing": "No encontré tareas en lo que dictaste.",
+    "fallback": "Las separé por frases.",
+    "edit": "Volver al texto",
+    "create": "{n, plural, =0 {Elegí al menos una} =1 {Crear 1 tarea} other {Crear # tareas}}",
+    "created": "{n, plural, =1 {Creé 1 tarea.} other {Creé # tareas.}}"
   }
 }
