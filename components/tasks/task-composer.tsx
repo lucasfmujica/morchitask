@@ -102,16 +102,15 @@ export function TaskComposer({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-2 shadow-soft">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={submit}
-          disabled={!title.trim()}
-          aria-label={t("add")}
-          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-primary text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-        </button>
+    // A white pill while it's one line; once previews or chips open below, the
+    // corners relax to a card so the extra rows don't sit inside a capsule.
+    <div
+      className={cn(
+        "bg-surface p-1.5 pl-4 shadow-soft transition-[border-radius] duration-150 focus-within:shadow-card",
+        previews.length > 0 || chipsOpen ? "rounded-2xl pb-3" : "rounded-[1.75rem]",
+      )}
+    >
+      <div className="flex items-center gap-1.5">
         <input
           data-task-composer
           value={title}
@@ -124,7 +123,7 @@ export function TaskComposer({
           }}
           placeholder={t("addPlaceholder")}
           aria-label={t("newTask")}
-          className="h-8 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
+          className="h-9 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
         <button
           onClick={() => setShowChips((v) => !v)}
@@ -132,17 +131,27 @@ export function TaskComposer({
           aria-label={t("categoryAndPriority")}
           title={t("categoryAndPriority")}
           className={cn(
-            "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors",
+            "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-pill transition-colors",
             chipsOpen ? "bg-surface-2 text-fg" : "text-subtle hover:bg-surface-2 hover:text-muted",
           )}
         >
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
         </button>
+        {/* Adding is the "it fits" green: the one gradient, on the one verb
+            that puts something into the day. */}
+        <button
+          onClick={submit}
+          disabled={!title.trim()}
+          aria-label={t("add")}
+          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-pill bg-fit text-on-primary shadow-soft transition-[opacity,transform] duration-150 hover:scale-105 active:scale-95 disabled:cursor-default disabled:opacity-40 disabled:hover:scale-100"
+        >
+          <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+        </button>
       </div>
 
       {/* What the text will set — "Mañana · 18:00 · 30m · Alta". × keeps the words in the title instead. */}
       {previews.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5 pl-10" aria-live="polite">
+        <div className="mt-2 flex flex-wrap gap-1.5 pr-2" aria-live="polite">
           {previews.map((m) => {
             const label = previewLabel(m);
             const color =
@@ -180,7 +189,7 @@ export function TaskComposer({
       )}
 
       {chipsOpen && channels.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
+        <div className="mt-2 flex flex-wrap gap-1.5 pr-2">
           <ChannelChip
             label={t("noCategory")}
             active={effectiveChannel === null}
@@ -206,7 +215,7 @@ export function TaskComposer({
 
       {/* Priority — set it here and the task lands in the right group straight away. */}
       {chipsOpen && (
-        <div className="mt-2 flex flex-wrap gap-1.5 pl-10">
+        <div className="mt-2 flex flex-wrap gap-1.5 pr-2">
           <ChannelChip
             label={t(NO_PRIORITY_LABEL_KEY)}
             active={effectivePriority === null}
@@ -249,10 +258,10 @@ function ChannelChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1 rounded-pill border px-2.5 py-1 text-xs font-medium transition-colors",
+        "inline-flex cursor-pointer items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
         active
-          ? "border-transparent bg-primary-soft text-primary"
-          : "border-border text-muted hover:bg-surface-2",
+          ? "bg-primary-soft text-primary"
+          : "bg-surface-2 text-muted hover:bg-border hover:text-fg",
       )}
     >
       {color && (

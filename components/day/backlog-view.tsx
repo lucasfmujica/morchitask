@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { TaskComposer, type ComposerSubmit } from "@/components/tasks/task-composer";
 import { useComposerCreate } from "@/components/tasks/use-composer-create";
 import { CaptureSheet } from "@/components/tasks/capture-sheet";
-import { Button, EmptyState, SkeletonList } from "@/components/ui";
+import { Button, EmptyState, SkeletonList, Well } from "@/components/ui";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
 
@@ -61,11 +61,11 @@ export function BacklogView() {
   return (
     <div className="flex max-w-3xl flex-col gap-5">
       <header className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-primary-soft text-primary">
           <Inbox className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-fg md:text-3xl">{t("title")}</h1>
           {/* Real numbers, not "N tareas": what's here, how long it'd take, and
               how much of it you can't even weigh yet. */}
           <p className="truncate text-sm text-muted">
@@ -96,33 +96,41 @@ export function BacklogView() {
       <TaskComposer channels={channelsQ.data ?? []} onSubmit={handleAdd} />
       <CaptureSheet viewDate={null} channels={channelsQ.data ?? []} viewTasks={tasks} />
 
+      {/* The list is one well with the ideas as white rows on it. */}
       {tasksQ.isLoading ? (
-        <SkeletonList />
+        <Well>
+          <SkeletonList />
+        </Well>
       ) : visibleTasks.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title={filtering ? t("emptyCategory") : t("emptyTitle")}
-          hint={filtering ? t("emptyCategoryHint") : t("emptyHint")}
-          kbd="N"
-          kbdHint={tt("kbdNewTask")}
-        />
+        <Well>
+          <EmptyState
+            icon={Inbox}
+            title={filtering ? t("emptyCategory") : t("emptyTitle")}
+            hint={filtering ? t("emptyCategoryHint") : t("emptyHint")}
+            kbd="N"
+            kbdHint={tt("kbdNewTask")}
+            className="border-transparent bg-surface/60"
+          />
+        </Well>
       ) : (
-        <ul className="flex flex-col gap-1.5">
-          {visibleTasks.map((task) => (
-            <BacklogRow
-              key={task.id}
-              task={task}
-              channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
-              today={today}
-              estimating={estimating}
-            />
-          ))}
-        </ul>
+        <Well>
+          <ul className="flex flex-col gap-1.5">
+            {visibleTasks.map((task) => (
+              <BacklogRow
+                key={task.id}
+                task={task}
+                channel={task.channel_id ? channelsById.get(task.channel_id) : undefined}
+                today={today}
+                estimating={estimating}
+              />
+            ))}
+          </ul>
+        </Well>
       )}
 
       {/* The honest question nobody asks themselves unprompted. */}
       {stale.length > 0 && (
-        <section className="rounded-card border border-border bg-surface p-4 shadow-soft">
+        <section className="rounded-2xl bg-accent-soft p-4">
           <p className="text-sm font-semibold text-fg">{t("staleWarning", { n: stale.length })}</p>
           <p className="mt-1 text-xs text-muted">{t("staleAction")}</p>
         </section>
@@ -216,10 +224,10 @@ function BacklogRow({
   return (
     <li
       className={cn(
-        "relative flex items-center gap-2.5 overflow-hidden rounded-card border bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft",
+        "relative flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2 pr-2 pl-3.5 shadow-soft transition-shadow",
         // While estimating, the rows still missing a number are the ones to
         // look at — everything else steps back.
-        estimating && task.time_estimate_min == null ? "border-primary" : "border-border",
+        estimating && task.time_estimate_min == null && "ring-2 ring-primary ring-inset",
       )}
     >
       <span
@@ -231,7 +239,7 @@ function BacklogRow({
         onClick={() => openDetail(task)}
         className="min-w-0 flex-1 cursor-pointer rounded text-left focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
-        <span className="block truncate text-sm text-fg">{task.title}</span>
+        <span className="block truncate text-sm font-medium text-fg">{task.title}</span>
         <span className="block truncate text-2xs text-muted">
           {channel ? `#${channel.name} · ` : ""}
           {labels.ageLabel(task.created_at, today)}
@@ -254,7 +262,7 @@ function BacklogRow({
       <div className="flex shrink-0 items-center gap-1">
         <button
           onClick={() => schedule(today, tcm("todayLower"))}
-          className="cursor-pointer rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+          className="h-7 cursor-pointer rounded-pill bg-primary-soft px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
         >
           {td("plusToday")}
         </button>
@@ -262,7 +270,7 @@ function BacklogRow({
           onClick={() => schedule(addDays(today, 1), tcm("tomorrowLower"))}
           aria-label={t("moveToTomorrow")}
           title={t("moveToTomorrow")}
-          className="flex h-6 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-2 text-2xs font-bold text-muted transition-colors hover:bg-border hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+          className="flex h-7 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-2.5 text-xs font-semibold text-fg transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
         >
           <CalendarClock className="h-3 w-3" aria-hidden />
           {tcm("tomorrow")}

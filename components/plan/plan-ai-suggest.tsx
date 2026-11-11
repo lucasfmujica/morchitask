@@ -159,19 +159,20 @@ export function PlanAiSuggest({
 
   if (!proposal) {
     return (
-      <section className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
+      <section className="rounded-2xl bg-surface-2 p-4">
         <div className="flex items-start gap-2.5">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
           <div className="min-w-0 flex-1">
-            <h2 className="text-xs font-bold text-fg">{t("planTitle")}</h2>
+            <h2 className="text-base font-semibold text-fg">{t("planTitle")}</h2>
             <p className="mt-0.5 text-xs text-muted">{t("planHint", { n: pending.length })}</p>
           </div>
         </div>
+        {/* White on the grey well — "secondary" would vanish into it. */}
         <Button
-          variant="secondary"
+          variant="ghost"
           onClick={ask}
           disabled={loading}
-          className="mt-3 w-full"
+          className="mt-3 w-full bg-surface shadow-soft hover:bg-surface hover:shadow-card"
           size="sm"
         >
           {loading ? (
@@ -191,20 +192,21 @@ export function PlanAiSuggest({
   }
 
   return (
-    <section className="rounded-2xl border border-accent/40 bg-surface p-4 shadow-soft">
+    // Same well, lit with the accent ring while there's a proposal waiting.
+    <section className="rounded-2xl bg-surface-2 p-4 ring-1 ring-accent/40 ring-inset">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-accent" aria-hidden />
-        <h2 className="flex-1 text-xs font-bold text-fg">{t("proposal")}</h2>
+        <h2 className="flex-1 text-base font-semibold text-fg">{t("proposal")}</h2>
         <button
           onClick={() => setProposal(null)}
           aria-label={t("dismiss")}
-          className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors hover:bg-surface hover:text-fg"
         >
           <X className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
       {proposal.note && <p className="mt-1.5 text-xs text-muted">{proposal.note}</p>}
-      <ol className="mt-3 flex flex-col gap-1.5">
+      <ol className="mt-3 flex flex-col gap-1.5 rounded-xl bg-surface p-3 shadow-soft">
         {proposal.blocks.map((b) => (
           <li key={b.taskId} className="flex items-baseline gap-2.5 text-xs">
             <span className="shrink-0 font-semibold tabular-nums text-accent">

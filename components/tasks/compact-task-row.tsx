@@ -26,7 +26,7 @@ export function CompactTaskRow({
   const done = task.status === "done";
 
   return (
-    <div className="flex items-center gap-2 py-1">
+    <div className="flex items-center gap-2 rounded-lg py-1 transition-colors">
       {/* A pill would crowd this row, so priority shows as a thin colour rail. */}
       {task.priority && !done && (
         <span
@@ -46,7 +46,7 @@ export function CompactTaskRow({
       <button
         onClick={() => openDetail(task)}
         className={cn(
-          "min-w-0 flex-1 cursor-pointer truncate text-left text-sm",
+          "min-w-0 flex-1 cursor-pointer truncate text-left text-sm font-medium",
           done ? "text-subtle line-through" : "text-fg",
         )}
       >

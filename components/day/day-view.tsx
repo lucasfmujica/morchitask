@@ -273,7 +273,7 @@ export function DayView({ date }: { date: string }) {
             <Link
               href={`/plan/${date}`}
               aria-label={t("planDay")}
-              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-accent-soft text-accent transition-colors hover:bg-accent hover:text-on-accent"
+              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-pill bg-accent-soft text-accent transition-colors hover:bg-accent hover:text-on-accent"
             >
               <Sun className="h-5 w-5" aria-hidden />
             </Link>
@@ -282,7 +282,7 @@ export function DayView({ date }: { date: string }) {
             <Link
               href={`/shutdown/${date}`}
               aria-label={t("shutdownDay")}
-              className="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-fg md:flex"
+              className="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-pill bg-surface-2 text-fg transition-colors hover:bg-border md:flex"
             >
               <Moon className="h-5 w-5" aria-hidden />
             </Link>
@@ -321,7 +321,7 @@ export function DayView({ date }: { date: string }) {
           <ModeToggle mode={mode} onChange={setMode} />
         </div>
         {tasks.length > 0 && (
-          <span className="ml-auto text-xs font-semibold text-muted">
+          <span className="ml-auto text-xs font-semibold text-muted tabular-nums">
             {t("doneOfTotal", { done: doneCount, total: tasks.length })}
           </span>
         )}
@@ -337,7 +337,7 @@ export function DayView({ date }: { date: string }) {
           setActiveBlockId(null);
         }}
       >
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-7">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-5">
           <div className={cn("space-y-3 lg:block", mode === "list" ? "block" : "hidden")}>
             <CalendarEventsSection date={date} tasks={tasks} />
             <TaskListSection
@@ -400,7 +400,7 @@ export function DayView({ date }: { date: string }) {
             <UnscheduledSection date={date} channelsById={channelsById} defaultOpen={wideScreen} />
           </div>
           <div className={cn("lg:block", mode === "agenda" ? "block" : "hidden")}>
-            <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-subtle lg:block">
+            <p className="mb-2 hidden px-2 text-2xs font-semibold tracking-wide text-muted uppercase lg:block">
               {t("agendaHint")}
             </p>
             <AgendaView
@@ -449,14 +449,14 @@ function emptyHint(
 function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
   const t = useTranslations("day");
   return (
-    <div className="flex w-fit gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
+    <div className="flex w-fit gap-0.5 rounded-pill bg-surface-2 p-1">
       {(["list", "agenda"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           aria-pressed={mode === m}
           className={cn(
-            "cursor-pointer rounded-pill px-3 py-1 text-sm font-medium transition-colors",
+            "h-8 cursor-pointer rounded-pill px-4 text-sm font-semibold transition-colors",
             mode === m ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
           )}
         >

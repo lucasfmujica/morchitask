@@ -56,8 +56,9 @@ import { DayLoadBar } from "./day-progress-bar";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
 
+// Prev / this week / next share one pill track, like every segmented control.
 const arrow =
-  "flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
+  "flex h-9 w-9 cursor-pointer items-center justify-center rounded-pill text-fg transition-colors hover:bg-surface";
 
 const NO_SUBTASKS = new Map<string, Subtask[]>();
 
@@ -100,6 +101,8 @@ export function WeekView({ date }: { date: string }) {
     orderTasksForDisplay((results[i].data ?? []) as Task[], selected),
   );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  // Monday-first, same as `week`, so index i names column i.
+  const weekdays = labels.weekdayHeaders();
 
   function onDragStart(e: DragStartEvent) {
     setActiveTask((e.active.data.current?.task as Task) ?? null);
@@ -147,9 +150,11 @@ export function WeekView({ date }: { date: string }) {
   return (
     <div className="flex flex-col gap-4">
       <header className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
-          <p className="text-sm text-muted">{labels.weekRangeLabel(week)}</p>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="text-2xs font-semibold tracking-wide text-muted uppercase">
+            {labels.weekRangeLabel(week)}
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-fg md:text-3xl">{t("title")}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {closedDays.size > 0 && (
@@ -157,10 +162,10 @@ export function WeekView({ date }: { date: string }) {
               onClick={() => setHideClosed((v) => !v)}
               aria-pressed={hideClosed}
               className={cn(
-                "inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-2.5 py-1.5 text-xs font-semibold transition-colors md:px-3",
+                "inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors md:px-4",
                 hideClosed
                   ? "bg-primary-soft text-primary"
-                  : "bg-surface-2 text-muted hover:text-fg",
+                  : "bg-surface-2 text-fg hover:bg-border",
               )}
             >
               <Check className="h-3.5 w-3.5" aria-hidden />
@@ -173,30 +178,36 @@ export function WeekView({ date }: { date: string }) {
               </span>
             </button>
           )}
-          <button
-            onClick={() => router.push(`/week/${addDays(week[0], -7)}`)}
-            aria-label={t("prevWeek")}
-            className={arrow}
-          >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
-          </button>
-          <button
-            onClick={() => router.push(`/week/${today}`)}
-            disabled={thisWeek}
-            className={cn(
-              "h-9 cursor-pointer rounded-lg px-2.5 text-sm font-medium transition-colors",
-              thisWeek ? "cursor-default text-subtle" : "text-primary hover:bg-primary-soft",
-            )}
-          >
-            {t("thisWeek")}
-          </button>
-          <button
-            onClick={() => router.push(`/week/${addDays(week[0], 7)}`)}
-            aria-label={t("nextWeek")}
-            className={arrow}
-          >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          </button>
+          <div className="flex items-center gap-0.5 rounded-pill bg-surface-2 p-1">
+            <button
+              onClick={() => router.push(`/week/${addDays(week[0], -7)}`)}
+              aria-label={t("prevWeek")}
+              className={arrow}
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <button
+              onClick={() => router.push(`/week/${today}`)}
+              disabled={thisWeek}
+              className={cn(
+                "h-9 cursor-pointer rounded-pill px-3 text-sm font-semibold transition-colors",
+                // On the current week it reads as the selected segment; elsewhere
+                // it's the way back.
+                thisWeek
+                  ? "cursor-default bg-surface text-fg shadow-soft"
+                  : "text-fg hover:bg-surface",
+              )}
+            >
+              {t("thisWeek")}
+            </button>
+            <button
+              onClick={() => router.push(`/week/${addDays(week[0], 7)}`)}
+              aria-label={t("nextWeek")}
+              className={arrow}
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -225,7 +236,7 @@ export function WeekView({ date }: { date: string }) {
                 a swipe per day and fought the page's own scrolling.
               Tablet: horizontal strip of 320px columns.
               Desktop: fixed 5-column grid (Mon–Fri), no scrolling. */}
-          <div className="flex flex-col gap-6 md:-mx-8 md:flex-row md:snap-x md:snap-proximity md:gap-3 md:overflow-x-auto md:overscroll-x-contain md:scroll-pl-8 md:px-8 md:pb-4 md:[-webkit-overflow-scrolling:touch] md:[scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 md:[&::-webkit-scrollbar]:hidden">
+          <div className="flex flex-col gap-3 md:-mx-8 md:flex-row md:snap-x md:snap-proximity md:gap-3 md:overflow-x-auto md:overscroll-x-contain md:scroll-pl-8 md:px-8 md:pb-4 md:[-webkit-overflow-scrolling:touch] md:[scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:px-0 lg:pb-0 md:[&::-webkit-scrollbar]:hidden">
             {week.map((d, i) => {
               const all = (results[i].data ?? []) as Task[];
               return (
@@ -233,6 +244,7 @@ export function WeekView({ date }: { date: string }) {
                   key={d}
                   date={d}
                   today={today}
+                  weekday={weekdays[i]}
                   weekend={i >= 5}
                   loading={results[i].isLoading}
                   tasks={columns[i]}
@@ -283,13 +295,14 @@ export function WeekView({ date }: { date: string }) {
 }
 
 /**
- * One day of the week, as a card.
+ * One day of the week, as a well.
  *
  * The columns used to be bare stacks separated by whitespace, which made a busy
  * Thursday and an empty Friday look like the same object. Now each day is a
- * bordered card and today is the only lit one, so the week reads as five
+ * grey well with its tasks as white cards inside, so the week reads as seven
  * containers with different amounts in them — which is the question you open
- * this screen to answer.
+ * this screen to answer. Today's well carries a green ring and its date sits in
+ * the "fits" circle; a day you closed steps back a little.
  *
  * A day you already closed collapses to one line: it's settled, and five
  * settled days shouldn't cost the same screen space as five open ones.
@@ -297,6 +310,7 @@ export function WeekView({ date }: { date: string }) {
 function DayColumn({
   date,
   today,
+  weekday,
   weekend,
   loading,
   tasks,
@@ -311,6 +325,8 @@ function DayColumn({
 }: {
   date: string;
   today: string;
+  /** Abbreviated weekday name ("lun" / "Mon"), already in the reader's language. */
+  weekday: string;
   weekend: boolean;
   loading: boolean;
   tasks: Task[];
@@ -333,32 +349,40 @@ function DayColumn({
   // A closed day only folds away when you asked for it — otherwise you'd lose
   // the drop target for "actually, move that to Tuesday".
   const folded = closed && hideClosed;
+  // Yesterday / today / tomorrow keep their word ("Hoy") instead of the bare
+  // weekday — decided by comparing dates, never labels.
+  const relative = isToday || date === addDays(today, 1) || date === addDays(today, -1);
+  const dayLabel = relative ? labels.weekDayHeading(date, today) : weekday;
+  const dayNum = Number(date.slice(8, 10));
 
   const heading = (
     <Link
       href={isToday ? "/today" : `/day/${date}`}
-      className="group sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 block bg-bg/95 py-1 backdrop-blur md:static md:bg-transparent md:py-0 md:backdrop-blur-none"
+      className="group sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 -mx-2 -mt-2 flex items-center justify-between gap-2 rounded-t-2xl bg-surface-2/95 px-4 pt-3 pb-1 backdrop-blur md:static md:mx-0 md:mt-0 md:rounded-none md:bg-transparent md:px-2 md:pt-1.5 md:backdrop-blur-none"
     >
-      <div className="flex items-baseline justify-between gap-2">
+      <span className="flex min-w-0 items-baseline gap-1.5">
         <span
           className={cn(
-            "text-base font-extrabold tracking-tight transition-colors group-hover:text-primary",
-            isToday ? "text-primary" : "text-fg",
+            "truncate text-2xs font-semibold tracking-wide uppercase transition-colors group-hover:text-fg",
+            isToday ? "text-fg" : "text-muted",
           )}
         >
-          {labels.weekDayHeading(date, today)}
+          {dayLabel}
         </span>
         {tasks.length > 0 && (
-          <span
-            className={cn(
-              "shrink-0 text-2xs font-bold tabular-nums",
-              isToday ? "text-fg" : "text-subtle",
-            )}
-          >
+          <span className="shrink-0 text-2xs font-semibold text-subtle tabular-nums">
             {done}/{tasks.length}
           </span>
         )}
-      </div>
+      </span>
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-pill font-display text-lg font-bold tabular-nums transition-colors",
+          isToday ? "bg-fit text-on-primary shadow-soft" : "text-fg group-hover:bg-surface",
+        )}
+      >
+        {dayNum}
+      </span>
     </Link>
   );
 
@@ -367,10 +391,10 @@ function DayColumn({
       className={cn(
         // Phone: a full-width block in a vertical stack — no fixed width, no
         // snap. Tablet and up: a fixed-width column in the horizontal strip.
-        "flex flex-col gap-2.5 rounded-2xl border p-3 md:w-[320px] md:shrink-0 md:snap-start lg:w-auto lg:min-w-0 lg:shrink",
-        // Today is the only column that gets a surface — everything else is a
-        // hairline on the page background.
-        isToday ? "border-primary/45 bg-surface shadow-card" : "border-border",
+        "flex flex-col gap-1.5 rounded-2xl bg-surface-2 p-2 transition-opacity md:w-[320px] md:shrink-0 md:snap-start lg:w-auto lg:min-w-0 lg:shrink",
+        // Today is the only lit well; a closed day is settled, so it recedes.
+        isToday && "ring-2 ring-fit-from ring-inset",
+        closed && !isToday && "opacity-85",
         // Weekends exist on phone and tablet; the desktop grid is Mon–Fri.
         weekend && "lg:hidden",
       )}
@@ -381,12 +405,14 @@ function DayColumn({
         <div
           ref={setNodeRef}
           className={cn(
-            "flex items-center gap-2 rounded-xl bg-surface-2 px-2.5 py-2 transition-colors",
+            "flex items-center gap-2 rounded-xl bg-surface px-2.5 py-2.5 shadow-soft transition-colors",
             isOver && "bg-primary-soft",
           )}
         >
-          <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-2xs font-semibold text-muted">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-pill bg-fit text-on-primary">
+            <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-xs font-semibold text-fg">
             {t("doneCount", { n: done })}
             {measuredMin > 0 && ` · ${formatMinutes(measuredMin)}`}
           </span>
@@ -395,12 +421,14 @@ function DayColumn({
       ) : (
         <>
           {/* How full the day is, not how much of it you've ticked off. */}
-          <DayLoadBar
-            plannedMin={plannedMin}
-            capacityMin={capacityMin}
-            measuredMin={measuredMin}
-            closed={closed}
-          />
+          <div className="px-2 pb-1">
+            <DayLoadBar
+              plannedMin={plannedMin}
+              capacityMin={capacityMin}
+              measuredMin={measuredMin}
+              closed={closed}
+            />
+          </div>
 
           {/* Add task at the top of each day. */}
           <QuickAdd onAdd={onAdd} />
@@ -408,9 +436,9 @@ function DayColumn({
           <div
             ref={setNodeRef}
             className={cn(
-              "flex flex-1 flex-col gap-2 rounded-xl transition-colors",
+              "flex flex-1 flex-col gap-1.5 rounded-xl transition-colors",
               dragging && "outline-dashed outline-1 outline-transparent",
-              isOver && "bg-primary-soft/50 outline-primary",
+              isOver && "bg-primary-soft/60 outline-primary",
             )}
           >
             <SortableContext
@@ -478,8 +506,8 @@ function EmptyDay({
   const labels = useDateLabels();
   const t = useTranslations("week");
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border-strong px-3 py-3.5 text-center">
-      <p className="text-xs font-semibold text-muted">{t("freeDay")}</p>
+    <div className="flex flex-col gap-2 rounded-xl bg-surface/40 px-3 py-3.5 ring-1 ring-border-strong ring-inset">
+      <p className="font-display text-sm font-semibold text-fg">{t("freeDay")}</p>
       <p className="text-2xs leading-4 text-muted">
         {t("freeDayHint", {
           day: labels.compactDayLabel(date, today),
@@ -488,7 +516,7 @@ function EmptyDay({
       </p>
       <Link
         href="/backlog"
-        className="self-center rounded-pill bg-primary/12 px-3 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+        className="mt-0.5 flex h-8 items-center justify-center rounded-pill bg-fg px-3 text-2xs font-semibold text-bg transition-colors hover:bg-fg/85 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         {t("fromBacklog")}
       </Link>
@@ -534,7 +562,7 @@ function WeekCard({
         <button
           {...handle}
           aria-label={tt("moveToDay")}
-          className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 touch:opacity-100 active:cursor-grabbing"
+          className="absolute top-1 left-1 z-10 cursor-grab touch-none rounded-md bg-surface/80 p-0.5 text-subtle opacity-0 transition-opacity hover:text-muted group-hover/wk:opacity-100 touch:opacity-100 active:cursor-grabbing"
         >
           <GripVertical className="h-3.5 w-3.5" aria-hidden />
         </button>
@@ -559,12 +587,14 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2 transition-colors focus-within:border-primary/60">
+    // A quiet pill on the well that turns into a white field once you type —
+    // the add affordance shouldn't outshine the cards below it.
+    <div className="flex items-center gap-2 rounded-pill bg-surface/50 px-3 py-1.5 transition-[background-color,box-shadow] duration-150 focus-within:bg-surface focus-within:shadow-soft hover:bg-surface/80">
       <button
         onClick={submit}
         disabled={!title.trim()}
         aria-label={t("addTaskToDay")}
-        className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-subtle transition-colors hover:text-primary disabled:opacity-40"
+        className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors hover:text-primary disabled:opacity-60"
       >
         <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
       </button>

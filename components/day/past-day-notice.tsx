@@ -27,7 +27,7 @@ export function PastDayNotice({ date, children }: { date: string; children?: Rea
   if (date >= today) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-warning/30 bg-accent-soft p-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-accent-soft p-2 pl-3.5">
       <CalendarClock className="h-4 w-4 shrink-0 text-warning" aria-hidden />
       <p className="min-w-0 flex-1 text-sm text-fg">
         {/* One message, not three fragments around a <span>: the emphasis
@@ -40,7 +40,7 @@ export function PastDayNotice({ date, children }: { date: string; children?: Rea
       </p>
       <button
         onClick={() => router.push("/today")}
-        className="shrink-0 cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+        className="h-9 shrink-0 cursor-pointer rounded-pill bg-fg px-4 text-sm font-semibold text-bg transition-colors hover:bg-fg/85 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         {t("goToToday")}
       </button>
