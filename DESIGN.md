@@ -12,23 +12,23 @@ Calma, fría, intencional. Papel de oficina limpio, no SaaS neon. Quietud alrede
 
 ## Tokens (usar nombres semánticos, no paleta Tailwind cruda)
 
-- Canvas: `#f7f8fa` (`bg-surface` / fondo de marketing)
-- Superficie: blanco
-- Texto: casi negro
-- Texto secundario: `text-muted`
-- Acento / CTA / foco: teal `#0d9488` (`--primary`, teal-600)
-- Hover CTA: teal-700
-- Alerta / overflow / Alta: naranja `#ea580c` (`--accent`)
-- Bloques de agenda: pasteles suaves (durazno, menta), nunca saturados
-- Barra de capacidad OK: teal/verde
-- Barra de capacidad overflow: rojo rayado + copy en naranja/rojo
-- Tipografía: DM Sans. Nunca Inter, Arial, Geist, ni system-ui como voz de marca.
-- Radio: el de la app (cards de día, chips). No subir el radius en marketing para que "se vea más friendly".
-- Sombra: la mínima que ya usa una card de Semana. Nada de mockup flotando con shadow-2xl.
+Rediseño bento (noviembre 2026). Fuente de verdad: `app/globals.css`.
+
+- Canvas: `#f4f5f1` (`bg-bg`), papel frío con un toque verde.
+- Pozo: `#eceee8` (`bg-surface-2`). Agrupa cosas: sidebar, secciones, segmentados.
+- Superficie: blanco (`bg-surface`). La card que vive adentro del pozo.
+- Texto: `#1c1f1a` (`text-fg`), secundario `text-muted`.
+- Acción principal: pastilla de tinta (`bg-fg text-bg`), una por pantalla. No es verde: el verde es estado.
+- Verde `#2c7a4b` (`--primary`): lo que entra. Check hecho, capacidad OK, selección. El degradé `bg-fit` es el único de la app y siempre significa eso.
+- Alerta / overflow / Alta: `#b3400f` (`--accent`), siempre con texto, nunca solo color.
+- Bloques de agenda: pasteles suaves, nunca saturados.
+- Tipografía: Figtree para la interfaz, Schibsted Grotesk para títulos (h1 a h3), IBM Plex Mono para horas sueltas. Números tabulares en todo el body. Nunca Inter, Arial ni system-ui como voz de marca.
+- Radio: 20px las cards (`rounded-xl`, `rounded-card`), 24px pozos y paneles (`rounded-2xl`), pastilla para botones y navegación.
+- Sombra: la mínima (`shadow-soft`) para la card dentro del pozo. Nada de mockup flotando.
 
 ## Firma visual (una sola)
 
-La barra de capacidad del día. Verde cuando entra. Roja y rayada cuando te pasaste. Esa barra es el único gesto que la landing puede poner en el fold. No hay segunda firma (no hay patrón geométrico, no hay gradiente, no hay ilustración).
+La barra de capacidad del día. Verde (degradé `bg-fit`) cuando entra. Rayada en `--danger` cuando te pasaste. Esa barra es el único gesto que la landing puede poner en el fold. No hay segunda firma (no hay patrón geométrico, no hay gradiente, no hay ilustración).
 
 ## Composición de marketing
 
@@ -38,7 +38,7 @@ Cinco superficies, en este orden, nada más:
 2. Ritual: tres bloques full-bleed, un screenshot grande por momento.
 3. Semana: la tira Lun–Vie a ancho completo. Prueba de que no es otra lista.
 4. Honestidad: tipografía, una columna o lista, sin cards 2×2.
-5. Precio + cierre: misma superficie clara. CTA teal. Sin banda `#000`.
+5. Precio + cierre: misma superficie clara. CTA de tinta. Sin banda `#000`.
 
 ## Screenshots
 
