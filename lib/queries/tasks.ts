@@ -47,6 +47,10 @@ export const taskTimeKeys = {
 export const workedKeys = {
   all: ["worked"] as const,
   range: (start: string, end: string) => ["worked", start, end] as const,
+  // Under the same root on purpose: every write that invalidates
+  // `workedKeys.all` refreshes Resumen's per-task split too, with no second
+  // list of call sites to keep in step.
+  tasks: (start: string, end: string) => ["worked", "tasks", start, end] as const,
 };
 
 /** Below this, every query matches everything — see app/api/tasks/search. */
@@ -190,6 +194,33 @@ export function workedInRangeQueryOptions(start: string, end: string) {
 
 export function useWorkedInRange(start: string, end: string) {
   return useQuery(workedInRangeQueryOptions(start, end));
+}
+
+/** One task's tracked minutes in a range, as `/api/time/tracked` returns it. */
+export type TrackedTask = {
+  task_id: string;
+  channel_id: string | null;
+  channel_name: string | null;
+  channel_color: string | null;
+  estimate_min: number | null;
+  minutes: number;
+};
+
+/**
+ * Minutes I tracked per task within [start, end], with category and estimate:
+ * Resumen's "tiempo por categoría" and "estimado vs real". Per-day entries,
+ * like the worked strips, so a period only counts what was worked in it.
+ */
+export function trackedInRangeQueryOptions(start: string, end: string) {
+  return {
+    queryKey: workedKeys.tasks(start, end),
+    queryFn: () => fetchJson<TrackedTask[]>(`/api/time/tracked?start=${start}&end=${end}`),
+    staleTime: 30_000,
+  };
+}
+
+export function useTrackedInRange(start: string, end: string) {
+  return useQuery(trackedInRangeQueryOptions(start, end));
 }
 
 /**

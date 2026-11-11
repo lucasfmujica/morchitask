@@ -273,4 +273,37 @@ describe("worked time", () => {
       { day: TODAY, minutes: 90 },
     ]);
   });
+
+  it("splits only the asking user's own minutes per task, in their own household", async () => {
+    // Reuses the entries above: A 30 and A2 45 on A's shared task, B 90 on B's.
+    // A category on both tasks, so the channel join is under test as well.
+    await client.exec(`
+      insert into channels (id, household_id, owner_id, name, color) values
+        ('aaaaaaaa-0000-4000-8000-0000000000c1', '${A.household}', '${A.user}', 'chan-aaaa', '#111111'),
+        ('bbbbbbbb-0000-4000-8000-0000000000c1', '${B.household}', '${B.user}', 'chan-bbbb', '#222222');
+      update tasks set channel_id = 'aaaaaaaa-0000-4000-8000-0000000000c1', time_estimate_min = 20
+        where household_id = '${A.household}';
+      update tasks set channel_id = 'bbbbbbbb-0000-4000-8000-0000000000c1'
+        where household_id = '${B.household}';
+    `);
+
+    const mine = await tasksQueries.trackedMinutesByTask(A.household, A.user, TODAY, TODAY);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({
+      channel_id: "aaaaaaaa-0000-4000-8000-0000000000c1",
+      channel_name: "chan-aaaa",
+      estimate_min: 20,
+      minutes: 30,
+    });
+    // The partner on the same shared task sees their own 45, never A's 30.
+    expect(
+      (await tasksQueries.trackedMinutesByTask(A.household, A2, TODAY, TODAY)).map(
+        (r) => r.minutes,
+      ),
+    ).toEqual([45]);
+    // B's user id through A's household: nothing, not B's 90 or B's category.
+    expect(await tasksQueries.trackedMinutesByTask(A.household, B.user, TODAY, TODAY)).toEqual([]);
+    const theirs = await tasksQueries.trackedMinutesByTask(B.household, B.user, TODAY, TODAY);
+    expect(theirs.map((r) => [r.channel_name, r.minutes])).toEqual([["chan-bbbb", 90]]);
+  });
 });
