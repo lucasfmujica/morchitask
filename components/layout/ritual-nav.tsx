@@ -81,10 +81,6 @@ function useRitualStatus(): Ritual[] {
   ];
 }
 
-const LIT_TONE: Record<Tone, string> = {
-  accent: "bg-accent-soft font-semibold text-accent",
-  primary: "bg-primary-soft font-semibold text-primary",
-};
 const DOT_TONE: Record<Tone, string> = {
   accent: "bg-accent",
   primary: "bg-primary",
@@ -112,38 +108,6 @@ function RitualStatus({ ritual }: { ritual: Ritual }) {
       />
       <span className="sr-only">{t("ritualPending")}</span>
     </>
-  );
-}
-
-/** Desktop sidebar: the ritual links matching the SidebarLink visual grammar. */
-export function SidebarRituals({ pathname }: { pathname: string }) {
-  const t = useTranslations("nav");
-  const rituals = useRitualStatus();
-  return (
-    <div className="flex flex-col gap-0.5">
-      {rituals.map((r) => {
-        const active = pathname.startsWith(r.base);
-        const lit = active || r.emphasized;
-        const Icon = r.icon;
-        return (
-          <Link
-            key={r.key}
-            href={r.href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
-              lit ? LIT_TONE[r.tone] : "font-medium text-muted hover:bg-surface-2 hover:text-fg",
-            )}
-          >
-            <Icon className="h-[18px] w-[18px]" strokeWidth={lit ? 2.4 : 2} aria-hidden />
-            <span>{t(r.labelKey)}</span>
-            <span className="ml-auto flex items-center">
-              <RitualStatus ritual={r} />
-            </span>
-          </Link>
-        );
-      })}
-    </div>
   );
 }
 

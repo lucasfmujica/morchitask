@@ -34,6 +34,8 @@ export function ReplanPanel({
   meId,
   moveBlock,
   scheduleNewBlock,
+  open: openProp,
+  onOpenChange,
 }: {
   date: string;
   tasks: Task[];
@@ -44,11 +46,22 @@ export function ReplanPanel({
   meId: string | undefined;
   moveBlock: (block: TaskBlock, startMin: number) => void;
   scheduleNewBlock: (task: Task, startMin: number, durMin: number) => void;
+  /** Controlled from the day's header ("Se me rompió el día"); the panel then
+   *  draws no trigger of its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const td = useTranslations("day");
   const move = useMoveTaskToDate();
   const toast = useToast();
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = (v: boolean | ((o: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(open) : v;
+    if (controlled) onOpenChange?.(next);
+    else setOpenState(next);
+  };
   const [dest, setDest] = useState<Record<string, Destination>>({});
 
   const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
@@ -138,23 +151,25 @@ export function ReplanPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className={cn(
-          "inline-flex cursor-pointer items-center gap-1.5 self-start rounded-pill px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
-          lateCount > 0
-            ? "bg-accent-soft text-accent hover:bg-accent hover:text-on-accent"
-            : "bg-surface-2 text-fg hover:bg-border",
-        )}
-      >
-        <RotateCcw className="h-4 w-4" aria-hidden />
-        {td("replanButton")}
-        {lateCount > 0 && (
-          <span className="text-2xs font-medium">· {td("replanLate", { n: lateCount })}</span>
-        )}
-      </button>
+      {!controlled && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-1.5 self-start rounded-pill px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
+            lateCount > 0
+              ? "bg-accent-soft text-accent hover:bg-accent hover:text-on-accent"
+              : "bg-surface-2 text-fg hover:bg-border",
+          )}
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden />
+          {td("replanButton")}
+          {lateCount > 0 && (
+            <span className="text-2xs font-medium">· {td("replanLate", { n: lateCount })}</span>
+          )}
+        </button>
+      )}
 
       {open && (
         <section

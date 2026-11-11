@@ -10,35 +10,32 @@ import {
   CalendarRange,
   Inbox,
   Menu,
+  Mic,
   Moon,
   PanelLeft,
   PanelLeftClose,
   Repeat,
   Search,
   Settings,
+  Sun,
   Target,
   Timer,
   X,
 } from "lucide-react";
-import { useChannels } from "@/lib/queries/channels";
-import { useMe } from "@/lib/queries/profiles";
+import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useHousehold } from "@/lib/queries/households";
 import { ChannelFilterProvider } from "@/lib/channel-filter";
 import { useSidebar } from "@/lib/stores/sidebar";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
-import { Kbd } from "@/components/ui";
 import { Toaster } from "@/components/ui/toaster";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
-import { WeekCalendarRail } from "@/components/week/week-calendar-rail";
 import { CommandPalette } from "./command-palette";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { PresenceBanner } from "./presence-banner";
-import { MobileRitualIcons, SidebarRituals } from "./ritual-nav";
-import { SidebarChannels } from "./sidebar-channels";
-import { SignOutButton } from "./sign-out-button";
+import { MobileRitualIcons } from "./ritual-nav";
 import { TimerBar } from "./timer-bar";
 import { useTranslations } from "next-intl";
 
@@ -78,6 +75,32 @@ const TOOL_NAV: NavItem[] = [
     match: (p) => p.startsWith("/resumen"),
   },
 ];
+
+/** The desktop sidebar, in the canvas order. Planificar carries today's date. */
+function sidebarNav(today: string): NavItem[] {
+  return [
+    PLAN_NAV[0], // Hoy
+    {
+      href: `/plan/${today}`,
+      labelKey: "plan",
+      icon: Sun,
+      match: (p) => p.startsWith("/plan"),
+    },
+    PLAN_NAV[1], // Semana
+    PLAN_NAV[2], // Mes
+    TOOL_NAV[0], // Foco
+    TOOL_NAV[1], // Backlog
+    TOOL_NAV[3], // Metas
+    TOOL_NAV[2], // Rutinas
+    TOOL_NAV[4], // Resumen
+    {
+      href: "/settings",
+      labelKey: "settings",
+      icon: Settings,
+      match: (p) => p.startsWith("/settings"),
+    },
+  ];
+}
 
 /**
  * The phone's five: the day, the week, the two inboxes you pull from, and the
@@ -230,23 +253,6 @@ function SearchButton() {
   );
 }
 
-/** The same palette, discoverable on desktop — nobody finds ⌘K on their own. */
-function SidebarSearchButton() {
-  const tcm = useTranslations("common");
-  const open = useCommandPalette((s) => s.open);
-  return (
-    <button
-      onClick={open}
-      aria-label={tcm("search")}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-    >
-      <Search className="h-[18px] w-[18px] shrink-0" aria-hidden />
-      <span className="flex-1 text-left">{tcm("search")}</span>
-      <Kbd>⌘K</Kbd>
-    </button>
-  );
-}
-
 function DesktopSidebar({
   pathname,
   forceCollapsed = false,
@@ -294,24 +300,14 @@ function SidebarBody({
 }) {
   const tc = useTranslations("chrome");
   const tn = useTranslations("nav");
-  const channelsQ = useChannels();
   const me = useMe().data;
+  const profiles = useProfiles().data ?? [];
   const household = useHousehold().data;
-  const onWeek = pathname.startsWith("/week");
-  const onSettings = pathname.startsWith("/settings");
-  // Views where clicking a category filters the task list.
-  const filterable =
-    pathname.startsWith("/today") ||
-    pathname.startsWith("/day") ||
-    onWeek ||
-    pathname.startsWith("/backlog");
 
   return (
     <>
       <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon.svg" alt="" className="h-8 w-8 rounded-xl shadow-soft" />
-        <span className="font-display text-lg font-bold tracking-tight text-fg">Morchitask</span>
+        <span className="font-display text-xl font-bold tracking-tight text-fg">Morchitask</span>
         <div className="ml-auto">
           {onToggleCollapsed && (
             <button
@@ -335,58 +331,46 @@ function SidebarBody({
         </div>
       </div>
 
-      {/* Scrollable middle — keeps the bottom (Ajustes + perfil) reachable when
-          the Week mini-calendar is shown and/or the category list is long. */}
+      {/* The canvas sidebar: one flat list of places, the capture verb, and the
+          two of you at the foot. Search lives on ⌘K and in the phone's top bar;
+          categories and sign-out live in Ajustes. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <nav className="flex flex-col gap-0.5 px-3">
-          <SidebarSearchButton />
-          <div className="my-2 border-t border-border/70" />
-          {PLAN_NAV.map((item) => (
-            <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
-          ))}
-          <div className="my-2 border-t border-border/70" />
-          <SidebarRituals pathname={pathname} />
-          <div className="my-2 border-t border-border/70" />
-          {TOOL_NAV.map((item) => (
+          {sidebarNav(todayISO()).map((item) => (
             <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
           ))}
         </nav>
-
-        {/* Mini month-calendar lives in the sidebar (Sunsama-style) on the Week
-            view — picking a day jumps the columns to that week. */}
-        {onWeek && (
-          <div className="mt-3 px-3">
-            <WeekCalendarRail date={pathname.split("/")[2] || todayISO()} />
-          </div>
-        )}
-
-        <SidebarChannels channels={channelsQ.data ?? []} filterable={filterable} />
+        <div className="mt-4 px-3">
+          <Link
+            href="/today?capture=1"
+            onClick={onNavigate}
+            className="flex h-10 items-center gap-2.5 rounded-pill bg-fg px-3.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
+          >
+            <Mic className="h-4 w-4" aria-hidden />
+            {tn("capture")}
+          </Link>
+        </div>
       </div>
 
-      {/* Pinned bottom — el bloque del perfil es el acceso a Ajustes; el botón de
-          salir queda al lado (no anidado en el link). */}
-      <div className="flex shrink-0 items-center gap-1 border-t border-border px-2 py-2">
+      <div className="shrink-0 p-3">
         <Link
           href="/settings"
           onClick={onNavigate}
-          aria-current={onSettings ? "page" : undefined}
           title={tn("settings")}
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors",
-            onSettings ? "bg-primary-soft" : "hover:bg-surface-2",
-          )}
+          className="flex flex-col gap-2 rounded-xl bg-surface p-3 shadow-soft transition-shadow hover:shadow-card"
         >
-          <OwnerAvatar profile={me ?? undefined} size={32} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-fg">{me?.display_name ?? "…"}</p>
-            <p className="truncate text-xs text-subtle">{household?.name || tc("yourSpace")}</p>
-          </div>
-          <Settings
-            className={cn("h-4 w-4 shrink-0", onSettings ? "text-primary" : "text-subtle")}
-            aria-hidden
-          />
+          <span className="flex">
+            {(profiles.length ? profiles : me ? [me] : []).map((p, i) => (
+              <span
+                key={p.id}
+                className={cn("rounded-full ring-2 ring-surface", i > 0 && "-ml-1.5")}
+              >
+                <OwnerAvatar profile={p} size={26} />
+              </span>
+            ))}
+          </span>
+          <span className="truncate text-xs text-muted">{household?.name || tc("yourSpace")}</span>
         </Link>
-        <SignOutButton />
       </div>
     </>
   );

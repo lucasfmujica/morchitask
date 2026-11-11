@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Minus, Plus, TriangleAlert } from "lucide-react";
+import { Check, Minus, Plus } from "lucide-react";
 import { formatMinutes } from "@/lib/format";
 import {
   CAPACITY_MAX_MIN,
@@ -22,7 +22,8 @@ import { useTranslations } from "next-intl";
 export { DEFAULT_CAPACITY_MIN };
 
 /**
- * The day's capacity, as a band that sits above the list and stays there.
+ * The day's capacity, as the bento tile at the top of Hoy: the planned time as
+ * a big number, the bar beside it.
  *
  * It replaces the old pair of thin bars (capacity + completion). The completion
  * count moved next to the list tabs, because the two answered different
@@ -65,107 +66,109 @@ export function CapacityBar({
   // while over — that's the only time the bar runs past the target.
   const targetPct = over ? (targetMin / plannedMin) * 100 : 100;
 
-  return (
-    <div
-      className={cn(
-        "sticky top-0 z-10 border-b px-4 py-2.5 shadow-soft md:px-8 md:py-3",
-        over ? "border-b-[color-mix(in_srgb,var(--danger)_28%,transparent)]" : "border-border",
-        className,
-      )}
-      style={{
-        background: over
-          ? "color-mix(in srgb, var(--danger) 5%, var(--surface))"
-          : "var(--surface)",
-      }}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-fg">{t("capacity")}</span>
-        <span
-          className={cn(
-            "flex items-center gap-1.5 text-xs font-semibold",
-            over ? "text-danger" : near ? "text-warning" : "text-muted",
-          )}
-        >
-          <span className="tabular-nums">{formatMinutes(plannedMin)} /</span>
-          {onTargetChange ? (
-            <CapacityTarget value={targetMin} onChange={onTargetChange} />
-          ) : (
-            <span className="tabular-nums">{formatMinutes(targetMin)}</span>
-          )}
-          {over && (
-            <span className="inline-flex items-center rounded-pill bg-danger/12 px-1.5 py-0.5 text-2xs font-bold tabular-nums">
-              +{formatMinutes(overByMin)}
-            </span>
-          )}
-        </span>
-      </div>
+  const doneCount = tasks.filter((t) => t.status === "done").length;
 
-      {/* The bar. Under budget it's one fill; over, it splits at the target. */}
-      <div className="relative mt-2 h-2 rounded-pill bg-surface-2">
-        <motion.div
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-pill",
-            over ? "rounded-r-none bg-fit" : near ? "bg-warning" : "bg-fit",
-          )}
-          initial={false}
-          animate={{ width: `${over ? targetPct : pct}%` }}
-          transition={{ duration: 0.4, ease: EASE_OUT }}
-        />
-        {over && (
-          <>
+  return (
+    <section aria-label={t("capacity")} className={cn("rounded-2xl bg-surface-2 p-2", className)}>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl bg-surface px-5 py-4 shadow-soft">
+        {/* The number is the point: how much of the day is already spoken for. */}
+        <div className="flex flex-col">
+          <span className="text-xs text-muted">{t("planned")}</span>
+          <span
+            className={cn("flex items-baseline gap-1.5 whitespace-nowrap", over && "text-danger")}
+          >
+            {t.rich("plannedOf", {
+              planned: formatMinutes(plannedMin),
+              target: formatMinutes(targetMin),
+              big: (chunks) => (
+                <span className="font-display text-[28px] leading-8 font-bold tracking-tight">
+                  {chunks}
+                </span>
+              ),
+              small: (chunks) => <span className="text-sm font-semibold text-muted">{chunks}</span>,
+              goal: () =>
+                onTargetChange ? (
+                  <CapacityTarget value={targetMin} onChange={onTargetChange} />
+                ) : (
+                  <span>{formatMinutes(targetMin)}</span>
+                ),
+            })}
+          </span>
+        </div>
+
+        <div className="flex min-w-[240px] flex-1 flex-col gap-2">
+          {/* Under budget it's one fill; over, it splits at the target and the
+              overrun is drawn outside the budget as a hatched stretch. */}
+          <div className="relative h-2.5 rounded-pill bg-surface-2">
             <motion.div
-              className="absolute inset-y-0 rounded-r-pill"
+              className={cn(
+                "absolute inset-y-0 left-0 rounded-pill",
+                over ? "rounded-r-none bg-fit" : near ? "bg-warning" : "bg-fit",
+              )}
               initial={false}
-              animate={{ left: `${targetPct}%`, width: `${100 - targetPct}%` }}
+              animate={{ width: `${over ? targetPct : pct}%` }}
               transition={{ duration: 0.4, ease: EASE_OUT }}
-              style={{
-                background:
-                  "repeating-linear-gradient(115deg, var(--danger) 0 4px, color-mix(in srgb, var(--danger) 55%, var(--surface)) 4px 8px)",
-              }}
             />
-            {/* The budget line itself, sticking out top and bottom. */}
-            <span
-              className="absolute -top-[3px] -bottom-[3px] w-[2px] bg-fg/55"
-              style={{ left: `${targetPct}%` }}
-              aria-hidden
-            />
-          </>
+            {over && (
+              <>
+                <motion.div
+                  className="absolute inset-y-0 rounded-r-pill"
+                  initial={false}
+                  animate={{ left: `${targetPct}%`, width: `${100 - targetPct}%` }}
+                  transition={{ duration: 0.4, ease: EASE_OUT }}
+                  style={{
+                    background:
+                      "repeating-linear-gradient(115deg, var(--danger) 0 4px, color-mix(in srgb, var(--danger) 55%, var(--surface)) 4px 8px)",
+                  }}
+                />
+                <span
+                  className="absolute -top-[3px] -bottom-[3px] w-[2px] bg-fg/55"
+                  style={{ left: `${targetPct}%` }}
+                  aria-hidden
+                />
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+            {over ? (
+              <p className="min-w-0 text-fg">
+                <span className="font-semibold text-danger">
+                  {t("overBy", { over: formatMinutes(overByMin) })}
+                </span>{" "}
+                {/* One message per case, not a shared prefix plus a glued tail:
+                    the emphasised word moves in another language. */}
+                {suggestion?.task
+                  ? t.rich("overMoveSuggestion", {
+                      title: suggestion.task.title,
+                      b: (chunks) => <span className="font-semibold">{chunks}</span>,
+                    })
+                  : t("overGeneric")}
+              </p>
+            ) : (
+              <p className="font-semibold text-primary">
+                {t("leftOver", { time: formatMinutes(targetMin - plannedMin), n: pendingCount })}
+              </p>
+            )}
+            <span className="text-muted tabular-nums">
+              {t("doneOfTotal", { done: doneCount, total: tasks.length })}
+            </span>
+          </div>
+        </div>
+
+        {over && suggestion?.task && onMoveOverflow && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            onClick={() => onMoveOverflow(suggestion.task!)}
+          >
+            {t("moveAmount", {
+              time: formatMinutes(suggestion.task.time_estimate_min ?? overByMin),
+            })}
+          </Button>
         )}
       </div>
-
-      {over ? (
-        <div className="mt-2 flex items-center gap-2">
-          <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-danger" aria-hidden />
-          <p className="min-w-0 flex-1 text-xs leading-[17px] text-fg">
-            {t("overBy", { over: formatMinutes(overByMin) })}{" "}
-            {/* One message per case, not a shared prefix plus a glued tail:
-                the emphasised word moves in another language. */}
-            {suggestion?.task
-              ? t.rich("overMoveSuggestion", {
-                  title: suggestion.task.title,
-                  b: (chunks) => <span className="font-semibold">{chunks}</span>,
-                })
-              : t("overGeneric")}
-          </p>
-          {suggestion?.task && onMoveOverflow && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="shrink-0"
-              onClick={() => onMoveOverflow(suggestion.task!)}
-            >
-              {t("moveAmount", {
-                time: formatMinutes(suggestion.task.time_estimate_min ?? overByMin),
-              })}
-            </Button>
-          )}
-        </div>
-      ) : (
-        <p className="mt-1.5 text-xs text-muted">
-          {t("leftOver", { time: formatMinutes(targetMin - plannedMin), n: pendingCount })}
-        </p>
-      )}
-    </div>
+    </section>
   );
 }
 
