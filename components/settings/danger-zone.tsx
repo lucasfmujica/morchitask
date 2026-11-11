@@ -66,13 +66,13 @@ export function DangerZone() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 rounded-xl bg-surface p-3.5 shadow-soft sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-            <Download className="h-5 w-5" aria-hidden />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <Download className="h-[18px] w-[18px]" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-fg">{t("exportTitle")}</p>
+            <p className="text-sm font-semibold text-fg">{t("exportTitle")}</p>
             <p className="text-xs text-muted">
               {exportError ? t("exportFailed") : t("exportDesc")}
             </p>
@@ -81,25 +81,27 @@ export function DangerZone() {
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="ml-12 w-fit cursor-pointer rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-60 sm:ml-0 sm:shrink-0"
+          className="ml-12 h-9 w-fit cursor-pointer rounded-pill bg-surface-2 px-4 text-sm font-semibold text-fg transition-colors hover:bg-border disabled:opacity-60 sm:ml-0 sm:shrink-0"
         >
           {exporting ? t("exporting") : t("exportAction")}
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-danger/30 bg-surface p-3">
+      {/* The one card outlined in danger: nothing else on the page is
+          bordered any more, so the outline alone marks it as different. */}
+      <div className="flex flex-col gap-3 rounded-xl bg-surface p-3.5 ring-[1.5px] ring-danger/40 ring-inset">
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-danger/10 text-danger">
-            <Trash2 className="h-5 w-5" aria-hidden />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+            <Trash2 className="h-[18px] w-[18px]" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-fg">{t("deleteTitle")}</p>
+            <p className="text-sm font-semibold text-danger">{t("deleteTitle")}</p>
             <p className="text-xs text-muted">{t("deleteDesc")}</p>
           </div>
           {!confirming && (
             <button
               onClick={() => setConfirming(true)}
-              className="shrink-0 cursor-pointer rounded-lg border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+              className="h-9 shrink-0 cursor-pointer rounded-pill bg-danger/10 px-4 text-sm font-semibold text-danger transition-colors hover:bg-danger/20"
             >
               {t("deleteAction")}
             </button>
@@ -117,12 +119,12 @@ export function DangerZone() {
                 disabled={deleting}
                 placeholder={confirmWord}
                 aria-label={t("deleteConfirmLabel")}
-                className="h-9 w-40 rounded-lg border border-border bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="h-9 w-40 rounded-pill bg-surface-2 px-4 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-danger"
               />
               <button
                 onClick={handleDelete}
                 disabled={!canDelete || deleting}
-                className="cursor-pointer rounded-lg bg-danger px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="h-9 cursor-pointer rounded-pill bg-danger px-4 text-sm font-semibold text-on-danger transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {deleting ? t("deleting") : t("deleteConfirmAction")}
               </button>
@@ -133,7 +135,7 @@ export function DangerZone() {
                   setDeleteError(false);
                 }}
                 disabled={deleting}
-                className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-fg"
+                className="h-9 cursor-pointer rounded-pill px-3 text-sm font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-fg"
               >
                 {t("deleteCancel")}
               </button>

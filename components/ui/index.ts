@@ -6,3 +6,4 @@ export { Badge, type BadgeProps } from "./badge";
 export { EmptyState, EmptyHint } from "./empty-state";
 export { Skeleton, SkeletonList } from "./skeleton";
 export { Kbd } from "./kbd";
+export { Well } from "./well";

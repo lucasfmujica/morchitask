@@ -54,6 +54,9 @@ export function DoneSection({
       icon={Check}
       iconClassName="text-success"
       defaultOpen={defaultOpen}
+      // A well like the list above it: the header sits flush on the grey tray
+      // and the finished rows open as white cards inside.
+      className="rounded-2xl bg-surface-2 p-1"
       label={
         <>
           {tasks.length} {tasks.length === 1 ? "hecha" : "hechas"}
@@ -66,7 +69,7 @@ export function DoneSection({
         return (
           <div
             key={task.id}
-            className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-border bg-surface py-2.5 pr-3 pl-3.5 opacity-70 transition-opacity hover:opacity-100"
+            className="relative mx-1 flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2.5 pr-3 pl-3.5 opacity-70 shadow-soft transition-opacity last:mb-1 hover:opacity-100"
           >
             <Rail channel={channel} />
             <TaskCheckbox
@@ -159,14 +162,14 @@ export function UnscheduledSection({
         return (
           <div
             key={task.id}
-            className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-border bg-surface py-2 pr-2.5 pl-3.5"
+            className="relative flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2 pr-2 pl-3.5 shadow-soft"
           >
             <Rail channel={channel} />
             <button
               onClick={() => openDetail(task)}
               className="min-w-0 flex-1 cursor-pointer rounded text-left focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
-              <span className="block truncate text-sm text-fg">{task.title}</span>
+              <span className="block truncate text-sm font-medium text-fg">{task.title}</span>
               <span className="block truncate text-2xs text-muted">
                 {channel ? `#${channel.name} · ` : ""}
                 {labels.ageLabel(task.created_at)}
@@ -179,7 +182,7 @@ export function UnscheduledSection({
             ) : null}
             <button
               onClick={() => bringToDay(task)}
-              className="shrink-0 cursor-pointer rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+              className="h-8 shrink-0 cursor-pointer rounded-pill bg-surface-2 px-3 text-xs font-semibold text-fg transition-colors hover:bg-primary-soft hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
               {td("plusToday")}
             </button>

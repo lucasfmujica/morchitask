@@ -70,12 +70,14 @@ export function FocusSoundPlayer() {
   const isPlaying = playing && source === "soundscape";
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-2xl border border-border bg-surface p-4 shadow-soft">
+    // No card of its own: the audio panel already wraps it in a white card inside
+    // a well, and a third nested frame read as clutter.
+    <div className="flex w-full flex-col gap-4">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggle}
           aria-label={isPlaying ? t("pauseSound") : t("playSound")}
-          className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary text-on-primary shadow-soft transition-colors hover:bg-primary-hover"
+          className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-pill bg-fg text-bg transition-colors hover:bg-fg/85"
         >
           {isPlaying ? (
             <Pause className="h-5 w-5" aria-hidden />
@@ -115,7 +117,7 @@ export function FocusSoundPlayer() {
           onClick={() => setAutoStart(!autoStart)}
           className={cn(
             "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors",
-            autoStart ? "bg-primary" : "bg-surface-2 border border-border",
+            autoStart ? "bg-fit" : "bg-border-strong",
           )}
         >
           <span
@@ -172,8 +174,8 @@ function SoundscapePicker({
         aria-expanded={open}
         aria-label={t("pickSound")}
         className={cn(
-          "flex w-full cursor-pointer items-center gap-2.5 rounded-xl border bg-surface px-3.5 py-2.5 text-left text-sm shadow-soft transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
-          open ? "border-primary" : "border-border hover:bg-surface-2",
+          "flex w-full cursor-pointer items-center gap-2.5 rounded-pill px-4 py-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          open ? "bg-border" : "bg-surface-2 hover:bg-border",
         )}
       >
         {selected ? (
@@ -198,7 +200,7 @@ function SoundscapePicker({
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
             transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-0 right-0 z-20 mt-2 max-h-64 origin-top overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-card"
+            className="absolute left-0 right-0 z-20 mt-2 max-h-64 origin-top overflow-y-auto rounded-xl bg-surface p-1 shadow-pop"
           >
             {SOUNDSCAPES.map((s) => {
               const active = s.id === value;

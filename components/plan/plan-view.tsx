@@ -35,6 +35,9 @@ import { useTranslations } from "next-intl";
 /** Where the projection starts when the day has no blocks and hasn't begun. */
 const DAY_START_MIN = 9 * 60;
 
+/** The `Well` look on a real <section>: these are page sections, not boxes. */
+const WELL = "rounded-2xl bg-surface-2 p-2";
+
 export function PlanView({ date }: { date: string }) {
   const qc = useQueryClient();
   const yesterday = addDays(date, -1);
@@ -171,15 +174,17 @@ function PlanForm({
   }
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
-      <div className="flex min-w-0 flex-col gap-5">
+    <div className="flex max-w-5xl flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
+      <div className="flex min-w-0 flex-col gap-4">
         <header className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-accent-soft text-accent">
             <Sun className="h-5 w-5" aria-hidden />
           </span>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
-            <p className="truncate text-sm text-muted">{labels.fullDayLabel(date)}</p>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="truncate text-2xs font-semibold tracking-wide text-muted uppercase">
+              {labels.fullDayLabel(date)}
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-fg md:text-3xl">{t("title")}</h1>
           </div>
         </header>
 
@@ -192,30 +197,30 @@ function PlanForm({
 
         {/* Focus. Once it says something it stops looking like an empty field
             and starts looking like a commitment. */}
-        <section className="flex flex-col gap-2.5">
-          <h2 className="text-sm font-bold text-fg">{t("focusHeading")}</h2>
-          <textarea
-            value={intention}
-            onChange={(e) => setIntention(e.target.value)}
-            onBlur={() => upsert.mutate({ intention: intention || null })}
-            placeholder={t("intentionPlaceholder")}
-            rows={2}
-            className={cn(
-              "w-full resize-none rounded-card border px-3 py-2.5 text-sm text-fg placeholder:text-subtle outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-              intention.trim()
-                ? "border-primary bg-primary-soft"
-                : "border-border bg-surface shadow-soft",
-            )}
-          />
+        <section className={WELL}>
+          <div className="flex flex-col gap-2 rounded-xl bg-surface p-3.5 shadow-soft">
+            <h2 className="text-base font-semibold text-fg">{t("focusHeading")}</h2>
+            <textarea
+              value={intention}
+              onChange={(e) => setIntention(e.target.value)}
+              onBlur={() => upsert.mutate({ intention: intention || null })}
+              placeholder={t("intentionPlaceholder")}
+              rows={2}
+              className={cn(
+                "w-full resize-none rounded-lg px-3 py-2.5 text-sm text-fg placeholder:text-subtle outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                intention.trim() ? "bg-primary-soft" : "bg-bg",
+              )}
+            />
+          </div>
         </section>
 
         {/* One place to pull from, with the counts on the tabs — two separate
             cards made you scroll past the second one every morning. */}
         {!isPast && (yesterdayPending.length > 0 || backlog.length > 0) && (
-          <section className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-fg">{t("pullHeading")}</h2>
-              <div className="ml-auto flex gap-0.5 rounded-pill bg-surface-2 p-0.5">
+          <section className={cn(WELL, "flex flex-col gap-1.5")}>
+            <div className="flex items-center gap-2 px-2 pt-1.5 pb-1">
+              <h2 className="text-base font-semibold text-fg">{t("pullHeading")}</h2>
+              <div className="ml-auto flex gap-0.5 rounded-pill bg-border p-0.5">
                 <SourceTab
                   label={tcm("yesterday")}
                   count={yesterdayPending.length}
@@ -231,21 +236,6 @@ function PlanForm({
               </div>
             </div>
 
-            {source === "yesterday" && yesterdayPending.length > 0 && (
-              <div className="flex justify-end">
-                {rolledCount === null ? (
-                  <button
-                    onClick={pullAllFromYesterday}
-                    className="cursor-pointer text-xs font-semibold text-primary hover:underline"
-                  >
-                    {t("pullAll", { n: yesterdayPending.length })}
-                  </button>
-                ) : (
-                  <span className="text-xs font-semibold text-success">{t("pulled")}</span>
-                )}
-              </div>
-            )}
-
             <ul className="flex flex-col gap-1.5">
               {pullable.slice(0, 8).map((t) => (
                 <PullRow
@@ -256,21 +246,37 @@ function PlanForm({
                 />
               ))}
               {pullable.length === 0 && (
-                <li className="rounded-card border border-dashed border-border px-3 py-4 text-center text-xs text-subtle">
+                <li className="px-3 py-4 text-center text-xs text-muted">
                   {source === "yesterday" ? t("emptyYesterday") : t("emptyBacklog")}
                 </li>
               )}
             </ul>
+
+            {/* The bulk move sits under the list it empties, as a white pill. */}
+            {source === "yesterday" &&
+              yesterdayPending.length > 0 &&
+              (rolledCount === null ? (
+                <button
+                  onClick={pullAllFromYesterday}
+                  className="mt-0.5 h-10 cursor-pointer rounded-pill bg-surface text-sm font-semibold text-fg shadow-soft transition-shadow hover:shadow-card focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                >
+                  {t("pullAll", { n: yesterdayPending.length })}
+                </button>
+              ) : (
+                <span className="py-2 text-center text-xs font-semibold text-success">
+                  {t("pulled")}
+                </span>
+              ))}
           </section>
         )}
 
         {/* The day itself — this is where estimates get filled in. */}
-        <section className="flex flex-col gap-2.5">
-          <h2 className="text-sm font-bold text-fg">{t("dayHeading", { n: mine.length })}</h2>
+        <section className={cn(WELL, "flex flex-col gap-1.5")}>
+          <h2 className="px-2 pt-1.5 pb-1 text-base font-semibold text-fg">
+            {t("dayHeading", { n: mine.length })}
+          </h2>
           {mine.length === 0 ? (
-            <p className="rounded-card border border-dashed border-border px-3 py-5 text-center text-sm text-muted">
-              {t("emptyDay")}
-            </p>
+            <p className="px-3 py-5 text-center text-sm text-muted">{t("emptyDay")}</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
               {mine.map((t) => (
@@ -288,13 +294,17 @@ function PlanForm({
       {/* The consequence panel. Sticky on desktop so it's never off-screen
           while you're deciding. */}
       <aside className="flex flex-col gap-3 lg:sticky lg:top-6">
-        <section className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
-          <CapacityDial
-            plannedMin={plannedMin}
-            targetMin={capacityTarget}
-            onTargetChange={(capacity_min) => upsert.mutate({ capacity_min })}
-          />
-          <dl className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
+        <section className={WELL}>
+          <div className="rounded-xl bg-surface p-4 shadow-soft">
+            <CapacityDial
+              plannedMin={plannedMin}
+              targetMin={capacityTarget}
+              onTargetChange={(capacity_min) => upsert.mutate({ capacity_min })}
+            />
+          </div>
+          {/* Three small tiles under the dial: what's placed, what isn't, and
+              when that would have you finishing. */}
+          <dl className="mt-2 grid grid-cols-3 gap-2">
             <Stat label={t("statBooked")} value={formatMinutes(bookedMin)} />
             <Stat label={t("statLoose")} value={looseMin > 0 ? formatMinutes(looseMin) : "—"} />
             <Stat
@@ -306,27 +316,28 @@ function PlanForm({
         </section>
 
         {byCategory.length > 0 && (
-          <section className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
-            <h2 className="text-xs font-bold text-fg">{t("categoryHeading")}</h2>
-            <div className="mt-2.5 flex h-2.5 overflow-hidden rounded-pill bg-surface-2">
+          <section className="rounded-2xl bg-surface-2 p-4">
+            <h2 className="text-base font-semibold text-fg">{t("categoryHeading")}</h2>
+            <div className="mt-3 flex h-3 gap-[3px] overflow-hidden rounded-pill">
               {byCategory.map((c) => (
                 <span
                   key={c.id}
+                  className="rounded-pill"
                   style={{ width: `${(c.minutes / plannedMin) * 100}%`, background: c.color }}
                   title={`${c.name}: ${formatMinutes(c.minutes)}`}
                 />
               ))}
             </div>
-            <ul className="mt-3 flex flex-col gap-1.5">
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
               {byCategory.map((c) => (
-                <li key={c.id} className="flex items-center gap-2 text-xs">
+                <li key={c.id} className="flex min-w-0 items-center gap-1.5 text-xs">
                   <span
                     className="h-2 w-2 shrink-0 rounded-full"
                     style={{ background: c.color }}
                     aria-hidden
                   />
-                  <span className="min-w-0 flex-1 truncate text-muted">{c.name}</span>
-                  <span className="shrink-0 font-semibold tabular-nums text-fg">
+                  <span className="min-w-0 truncate font-semibold text-fg">{c.name}</span>
+                  <span className="shrink-0 tabular-nums text-muted">
                     {formatMinutes(c.minutes)}
                   </span>
                 </li>
@@ -371,7 +382,7 @@ function CapacityDial({
       <div className="flex items-baseline gap-2">
         <span
           className={cn(
-            "text-3xl font-extrabold tabular-nums",
+            "font-display text-3xl font-bold tracking-tight tabular-nums",
             over ? "text-danger" : near ? "text-warning" : "text-fg",
           )}
         >
@@ -390,8 +401,8 @@ function CapacityDial({
       <div className="relative mt-2.5 h-2.5 rounded-pill bg-surface-2">
         <div
           className={cn(
-            "absolute inset-y-0 left-0 rounded-pill",
-            over ? "rounded-r-none bg-primary" : near ? "bg-warning" : "bg-primary",
+            "absolute inset-y-0 left-0 rounded-pill transition-[width] duration-300",
+            over ? "rounded-r-none bg-fit" : near ? "bg-warning" : "bg-fit",
           )}
           style={{ width: `${over ? targetPct : pct}%` }}
         />
@@ -432,10 +443,13 @@ function CapacityDial({
 
 function Stat({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <dt className="text-muted">{label}</dt>
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-xl bg-surface px-3 py-2.5 shadow-soft">
+      <dt className="truncate text-2xs text-muted">{label}</dt>
       <dd
-        className={cn("tabular-nums", strong ? "font-bold text-accent" : "font-semibold text-fg")}
+        className={cn(
+          "font-display text-lg leading-6 font-bold tracking-tight tabular-nums",
+          strong ? "text-accent" : "text-fg",
+        )}
       >
         {value}
       </dd>
@@ -459,7 +473,7 @@ function SourceTab({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "cursor-pointer rounded-pill px-2.5 py-1 text-xs font-semibold transition-colors",
+        "h-7 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors",
         active ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
       )}
     >
@@ -472,7 +486,7 @@ function SourceTab({
 function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onPull: () => void }) {
   const t = useTranslations("plan");
   return (
-    <li className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-border bg-surface py-2 pr-2 pl-3.5">
+    <li className="relative flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2 pr-2 pl-3.5 shadow-soft">
       <span
         className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
         style={channel ? { background: channel.color } : undefined}
@@ -486,7 +500,7 @@ function PullRow({ task, channel, onPull }: { task: Task; channel?: Channel; onP
       ) : null}
       <button
         onClick={onPull}
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-pill bg-primary/12 px-2.5 py-1 text-2xs font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary"
+        className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-pill bg-surface-2 px-3 text-xs font-semibold text-fg transition-colors hover:bg-primary-soft hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         <Plus className="h-3 w-3" aria-hidden />
         {t("pullToToday")}
@@ -515,7 +529,7 @@ function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
   }
 
   return (
-    <li className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-border bg-surface py-2 pr-2.5 pl-3.5 shadow-soft">
+    <li className="relative flex items-center gap-2.5 overflow-hidden rounded-xl bg-surface py-2.5 pr-2.5 pl-3.5 shadow-soft">
       <span
         className={cn("absolute inset-y-0 left-0 w-[3px]", !channel && "bg-border")}
         style={channel ? { background: channel.color } : undefined}
@@ -524,7 +538,7 @@ function PlanTaskRow({ task, channel }: { task: Task; channel?: Channel }) {
       <TaskCheckbox checked={done} onToggle={() => toggle.mutate(task)} size="sm" />
       <span
         className={cn(
-          "min-w-0 flex-1 truncate text-sm",
+          "min-w-0 flex-1 truncate text-sm font-medium",
           done ? "text-subtle line-through" : "text-fg",
         )}
       >

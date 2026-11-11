@@ -25,11 +25,13 @@ export async function TrialBanner() {
   return (
     <Link
       href="/billing"
-      className="flex items-center gap-2.5 rounded-card border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-fg transition-colors hover:bg-warning/15"
+      className="flex items-center gap-2.5 rounded-xl bg-accent-soft py-2 pr-2 pl-3 text-sm text-fg transition-opacity hover:opacity-90"
     >
-      <Clock className="h-4 w-4 shrink-0 text-warning" aria-hidden />
+      <Clock className="h-4 w-4 shrink-0 text-accent" aria-hidden />
       <span className="min-w-0 flex-1">{t("trialWarning", { n: days })}</span>
-      <span className="shrink-0 text-xs font-semibold text-primary">{t("trialWarningCta")}</span>
+      <span className="shrink-0 rounded-pill bg-fg px-3 py-1 text-xs font-semibold text-bg">
+        {t("trialWarningCta")}
+      </span>
     </Link>
   );
 }

@@ -96,7 +96,7 @@ export function TaskDetailSheet() {
             onClick={close}
           />
           <motion.aside
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[86dvh] overflow-y-auto rounded-t-2xl border border-border bg-surface pb-safe shadow-pop md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[440px] md:rounded-none md:border-y-0 md:border-r-0"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[86dvh] overflow-y-auto overscroll-contain rounded-t-2xl bg-bg pb-safe shadow-pop md:inset-y-2 md:right-2 md:left-auto md:max-h-none md:w-[460px] md:rounded-2xl"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
@@ -206,247 +206,277 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   }
 
   return (
-    <div className="flex flex-col gap-5 p-5">
-      <div className="flex items-start justify-between gap-2">
+    <div className="flex flex-col gap-3 p-3 sm:p-4">
+      {/* Grab handle on the phone, where the sheet rises from the bottom. */}
+      <span className="mx-auto -mb-1 h-1 w-10 rounded-pill bg-border md:hidden" aria-hidden />
+      <div className="flex items-start justify-between gap-2 px-2 pt-1">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={saveTitle}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           aria-label={tt("titleLabel")}
-          className="min-w-0 flex-1 bg-transparent text-lg font-bold text-fg outline-none"
+          className="min-w-0 flex-1 bg-transparent font-display text-xl font-bold tracking-tight text-fg outline-none"
         />
         <button
           onClick={onClose}
           aria-label={tc("close")}
-          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-surface text-muted shadow-soft transition-colors hover:text-fg"
         >
           <X className="h-5 w-5" aria-hidden />
         </button>
       </div>
 
-      {/* Assign */}
-      {profiles.length > 1 && (
-        <Field label={tt("owner")}>
-          <div className="flex flex-wrap gap-1.5">
-            {profiles.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => update.mutate({ task, patch: { owner_id: p.id } })}
-                aria-pressed={task.owner_id === p.id}
+      {/* Every "where and when" setting lives in one white card, one row per
+          setting split by hairlines, instead of a stack of separate boxes. */}
+      <div className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-soft">
+        {/* Assign */}
+        {profiles.length > 1 && (
+          <Field label={tt("owner")}>
+            <div className="flex flex-wrap gap-1.5">
+              {profiles.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => update.mutate({ task, patch: { owner_id: p.id } })}
+                  aria-pressed={task.owner_id === p.id}
+                  className={cn(
+                    "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill px-3 py-1.5 text-xs font-semibold transition-colors",
+                    task.owner_id === p.id
+                      ? "bg-primary-soft text-primary"
+                      : "bg-surface-2 text-muted hover:bg-border",
+                  )}
+                >
+                  <OwnerAvatar profile={p} size={16} />
+                  {p.id === me?.id ? tt("you") : p.display_name}
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
+
+        {/* Share */}
+        {partner && (
+          <Field label={tt("share")}>
+            <button
+              onClick={() => update.mutate({ task, patch: { shared: !task.shared } })}
+              aria-pressed={task.shared}
+              className="flex cursor-pointer items-center gap-2.5 text-sm"
+            >
+              <span
                 className={cn(
-                  "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
-                  task.owner_id === p.id
-                    ? "border-primary bg-primary-soft text-primary"
-                    : "border-border text-muted hover:bg-surface-2",
+                  "relative h-[22px] w-10 shrink-0 rounded-pill transition-colors duration-300",
+                  task.shared ? "bg-fit" : "bg-border",
                 )}
               >
-                <OwnerAvatar profile={p} size={16} />
-                {p.id === me?.id ? tt("you") : p.display_name}
+                <span
+                  className={cn(
+                    "absolute top-[3px] left-[3px] h-4 w-4 rounded-full bg-on-scrim shadow-card transition-transform duration-300 ease-out",
+                    task.shared && "translate-x-[18px]",
+                  )}
+                />
+              </span>
+              <span className="text-fg">
+                {task.shared ? `${partner.display_name} también la ve` : tt("privateNote")}
+              </span>
+            </button>
+          </Field>
+        )}
+
+        {/* Scheduled day — move the task to another day without dragging */}
+        <Field label={tt("scheduledFor")}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Chip
+              active={task.planned_date === today}
+              label={tcm("today")}
+              onClick={() => reschedule(today)}
+            />
+            <Chip
+              active={task.planned_date === tomorrow}
+              label={tcm("tomorrow")}
+              onClick={() => reschedule(tomorrow)}
+            />
+            <DateChip
+              label={
+                task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
+                  ? labels.dueLabel(task.planned_date, today)
+                  : tt("otherDay")
+              }
+              active={
+                !!task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
+              }
+              value={task.planned_date ?? today}
+              onChange={reschedule}
+            />
+          </div>
+        </Field>
+
+        {/* Due date — a deadline, independent of the day it's planned for */}
+        <Field label={tt("dueLabel")}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Chip
+              active={!task.due_date}
+              label={tt("noDate")}
+              onClick={() => update.mutate({ task, patch: { due_date: null } })}
+            />
+            <Chip
+              active={task.due_date === today}
+              label={tcm("today")}
+              onClick={() => update.mutate({ task, patch: { due_date: today } })}
+            />
+            <Chip
+              active={task.due_date === tomorrow}
+              label={tcm("tomorrow")}
+              onClick={() => update.mutate({ task, patch: { due_date: tomorrow } })}
+            />
+            <DateChip
+              label={
+                task.due_date && task.due_date !== today && task.due_date !== tomorrow
+                  ? labels.dueLabel(task.due_date, today)
+                  : tt("otherDate")
+              }
+              active={!!task.due_date && task.due_date !== today && task.due_date !== tomorrow}
+              value={task.due_date ?? today}
+              onChange={(d) => update.mutate({ task, patch: { due_date: d } })}
+            />
+          </div>
+        </Field>
+
+        {/* Channel */}
+        <Field label={tt("category")}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Chip
+              active={!task.channel_id}
+              label={tt("noCategory")}
+              onClick={() => update.mutate({ task, patch: { channel_id: null } })}
+            />
+            {channels.map((c) => (
+              <Chip
+                key={c.id}
+                active={task.channel_id === c.id}
+                label={c.name}
+                color={c.color}
+                onClick={() => update.mutate({ task, patch: { channel_id: c.id } })}
+              />
+            ))}
+
+            {/* Create a new category right here */}
+            {addingChannel ? (
+              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-pill bg-primary-soft px-3 py-1.5 ring-1 ring-primary ring-inset">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length],
+                  }}
+                  aria-hidden
+                />
+                <input
+                  autoFocus
+                  value={newChannel}
+                  onChange={(e) => setNewChannel(e.target.value)}
+                  onBlur={addChannel}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addChannel();
+                    if (e.key === "Escape") {
+                      setNewChannel("");
+                      setAddingChannel(false);
+                    }
+                  }}
+                  placeholder={tt("categoryNamePlaceholder")}
+                  aria-label={tch("newLabel")}
+                  className="w-24 bg-transparent text-xs font-medium text-primary placeholder:text-primary/50 outline-none"
+                />
+              </span>
+            ) : (
+              <button
+                onClick={() => setAddingChannel(true)}
+                className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-pill border border-dashed border-border-strong px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-primary hover:text-primary"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                {tcm("new")}
               </button>
+            )}
+          </div>
+        </Field>
+
+        {/* Priority — drives where the task sits in the Day and Week lists. */}
+        <Field label={tt("priority")}>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={!task.priority}
+              label={tt(NO_PRIORITY_LABEL_KEY)}
+              onClick={() => update.mutate({ task, patch: { priority: null } })}
+            />
+            {TASK_PRIORITIES.map((p) => (
+              <Chip
+                key={p}
+                active={task.priority === p}
+                label={tt(PRIORITY_LABEL_KEY[p])}
+                color={PRIORITY_DOT[p]}
+                onClick={() => update.mutate({ task, patch: { priority: p } })}
+              />
             ))}
           </div>
         </Field>
-      )}
 
-      {/* Share */}
-      {partner && (
-        <Field label={tt("share")}>
-          <button
-            onClick={() => update.mutate({ task, patch: { shared: !task.shared } })}
-            aria-pressed={task.shared}
-            className="flex cursor-pointer items-center gap-2.5 text-sm"
-          >
-            <span
-              className={cn(
-                "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                task.shared ? "bg-primary" : "bg-surface-2",
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-surface shadow-soft transition-transform",
-                  task.shared && "translate-x-4",
-                )}
+        {/* Estimate */}
+        <Field label={tt("estimate2")}>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={!task.time_estimate_min}
+              label={tt("none")}
+              onClick={() => update.mutate({ task, patch: { time_estimate_min: null } })}
+            />
+            {TIME_ESTIMATES.map((m) => (
+              <Chip
+                key={m}
+                active={task.time_estimate_min === m}
+                label={formatMinutes(m)}
+                onClick={() => update.mutate({ task, patch: { time_estimate_min: m } })}
               />
-            </span>
-            <span className="text-fg">
-              {task.shared ? `${partner.display_name} también la ve` : tt("privateNote")}
-            </span>
-          </button>
+            ))}
+          </div>
         </Field>
-      )}
 
-      {/* Scheduled day — move the task to another day without dragging */}
-      <Field label={tt("scheduledFor")}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Chip
-            active={task.planned_date === today}
-            label={tcm("today")}
-            onClick={() => reschedule(today)}
-          />
-          <Chip
-            active={task.planned_date === tomorrow}
-            label={tcm("tomorrow")}
-            onClick={() => reschedule(tomorrow)}
-          />
-          <DateChip
-            label={
-              task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
-                ? labels.dueLabel(task.planned_date, today)
-                : tt("otherDay")
-            }
-            active={
-              !!task.planned_date && task.planned_date !== today && task.planned_date !== tomorrow
-            }
-            value={task.planned_date ?? today}
-            onChange={reschedule}
-          />
-        </div>
-      </Field>
+        {/* Reminder */}
+        <Field label={tt("reminder")}>
+          <ReminderControl task={task} update={update} />
+        </Field>
 
-      {/* Due date — a deadline, independent of the day it's planned for */}
-      <Field label={tt("dueLabel")}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Chip
-            active={!task.due_date}
-            label={tt("noDate")}
-            onClick={() => update.mutate({ task, patch: { due_date: null } })}
-          />
-          <Chip
-            active={task.due_date === today}
-            label={tcm("today")}
-            onClick={() => update.mutate({ task, patch: { due_date: today } })}
-          />
-          <Chip
-            active={task.due_date === tomorrow}
-            label={tcm("tomorrow")}
-            onClick={() => update.mutate({ task, patch: { due_date: tomorrow } })}
-          />
-          <DateChip
-            label={
-              task.due_date && task.due_date !== today && task.due_date !== tomorrow
-                ? labels.dueLabel(task.due_date, today)
-                : tt("otherDate")
-            }
-            active={!!task.due_date && task.due_date !== today && task.due_date !== tomorrow}
-            value={task.due_date ?? today}
-            onChange={(d) => update.mutate({ task, patch: { due_date: d } })}
-          />
-        </div>
-      </Field>
-
-      {/* Channel */}
-      <Field label={tt("category")}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Chip
-            active={!task.channel_id}
-            label={tt("noCategory")}
-            onClick={() => update.mutate({ task, patch: { channel_id: null } })}
-          />
-          {channels.map((c) => (
-            <Chip
-              key={c.id}
-              active={task.channel_id === c.id}
-              label={c.name}
-              color={c.color}
-              onClick={() => update.mutate({ task, patch: { channel_id: c.id } })}
-            />
-          ))}
-
-          {/* Create a new category right here */}
-          {addingChannel ? (
-            <span className="inline-flex min-h-8 items-center gap-1.5 rounded-pill border border-primary bg-primary-soft px-3 py-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{
-                  backgroundColor: CHANNEL_COLORS[channels.length % CHANNEL_COLORS.length],
-                }}
-                aria-hidden
+        {/* Objective */}
+        {(objectivesQ.data ?? []).length > 0 && (
+          <Field label={tt("goal")}>
+            <div className="flex flex-wrap gap-1.5">
+              <Chip
+                active={!task.objective_id}
+                label={tt("none")}
+                onClick={() => update.mutate({ task, patch: { objective_id: null } })}
               />
-              <input
-                autoFocus
-                value={newChannel}
-                onChange={(e) => setNewChannel(e.target.value)}
-                onBlur={addChannel}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") addChannel();
-                  if (e.key === "Escape") {
-                    setNewChannel("");
-                    setAddingChannel(false);
-                  }
-                }}
-                placeholder={tt("categoryNamePlaceholder")}
-                aria-label={tch("newLabel")}
-                className="w-24 bg-transparent text-xs font-medium text-primary placeholder:text-primary/50 outline-none"
-              />
-            </span>
-          ) : (
-            <button
-              onClick={() => setAddingChannel(true)}
-              className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-pill border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-primary hover:text-primary"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              {tcm("new")}
-            </button>
-          )}
-        </div>
-      </Field>
-
-      {/* Priority — drives where the task sits in the Day and Week lists. */}
-      <Field label={tt("priority")}>
-        <div className="flex flex-wrap gap-1.5">
-          <Chip
-            active={!task.priority}
-            label={tt(NO_PRIORITY_LABEL_KEY)}
-            onClick={() => update.mutate({ task, patch: { priority: null } })}
-          />
-          {TASK_PRIORITIES.map((p) => (
-            <Chip
-              key={p}
-              active={task.priority === p}
-              label={tt(PRIORITY_LABEL_KEY[p])}
-              color={PRIORITY_DOT[p]}
-              onClick={() => update.mutate({ task, patch: { priority: p } })}
-            />
-          ))}
-        </div>
-      </Field>
-
-      {/* Estimate */}
-      <Field label={tt("estimate2")}>
-        <div className="flex flex-wrap gap-1.5">
-          <Chip
-            active={!task.time_estimate_min}
-            label={tt("none")}
-            onClick={() => update.mutate({ task, patch: { time_estimate_min: null } })}
-          />
-          {TIME_ESTIMATES.map((m) => (
-            <Chip
-              key={m}
-              active={task.time_estimate_min === m}
-              label={formatMinutes(m)}
-              onClick={() => update.mutate({ task, patch: { time_estimate_min: m } })}
-            />
-          ))}
-        </div>
-      </Field>
-
-      {/* Reminder */}
-      <Field label={tt("reminder")}>
-        <ReminderControl task={task} update={update} />
-      </Field>
+              {(objectivesQ.data ?? []).map((o) => (
+                <Chip
+                  key={o.id}
+                  active={task.objective_id === o.id}
+                  label={o.title}
+                  onClick={() => update.mutate({ task, patch: { objective_id: o.id } })}
+                />
+              ))}
+            </div>
+          </Field>
+        )}
+      </div>
 
       {/* Time tracking */}
-      <Field label={tt("time")}>
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3.5 py-3">
+      <Section label={tt("time")}>
+        {/* The one dark card in the sheet: time is the live thing here, so it
+            gets the hero treatment (and flips with the theme like the others). */}
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-fg px-4 py-3.5 text-bg">
           <div className="flex items-baseline gap-6">
             <div className="flex flex-col">
-              <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
+              <span className="text-2xs font-semibold uppercase tracking-wide text-bg/60">
                 {tt("actualTime")}
               </span>
               {timer.running ? (
-                <span className="text-lg font-bold tabular-nums text-primary">
+                <span className="flex items-center gap-1.5 font-display text-xl font-bold tabular-nums">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-fit" aria-hidden />
                   {formatClock(timer.liveSeconds)}
                 </span>
               ) : editingReal ? (
@@ -461,23 +491,23 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                   }}
                   placeholder={tt("timePlaceholder")}
                   aria-label={tt("realTime")}
-                  className="w-24 border-b border-primary bg-transparent text-lg font-bold tabular-nums text-fg outline-none placeholder:text-base placeholder:font-normal placeholder:text-subtle"
+                  className="w-24 border-b border-bg/50 bg-transparent font-display text-xl font-bold tabular-nums text-bg outline-none placeholder:text-base placeholder:font-normal placeholder:text-bg/50"
                 />
               ) : (
                 <button
                   onClick={startEditReal}
                   title={tt("logTimeManually")}
-                  className="cursor-pointer text-left text-lg font-bold tabular-nums text-fg underline decoration-dotted decoration-from-font underline-offset-4 transition-colors hover:text-primary"
+                  className="cursor-pointer text-left font-display text-xl font-bold tabular-nums text-bg underline decoration-bg/40 decoration-dotted decoration-from-font underline-offset-4 transition-opacity hover:opacity-80"
                 >
                   {task.actual_time_min ? formatDuration(task.actual_time_min * 60) : "—"}
                 </button>
               )}
             </div>
             <div className="flex flex-col">
-              <span className="text-2xs font-semibold uppercase tracking-wide text-subtle">
+              <span className="text-2xs font-semibold uppercase tracking-wide text-bg/60">
                 {tt("estimatedTime")}
               </span>
-              <span className="text-lg font-bold tabular-nums text-muted">
+              <span className="font-display text-xl font-bold tabular-nums text-bg/70">
                 {task.time_estimate_min ? formatMinutes(task.time_estimate_min) : "—"}
               </span>
             </div>
@@ -486,10 +516,10 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             onClick={timer.toggle}
             aria-pressed={timer.running}
             className={cn(
-              "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-4 py-2 text-sm font-semibold transition-colors",
+              "inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-4 text-sm font-semibold transition-colors",
               timer.running
-                ? "bg-danger/10 text-danger hover:bg-danger/15"
-                : "bg-primary text-on-primary hover:bg-primary-hover",
+                ? "bg-danger text-on-danger hover:opacity-90"
+                : "bg-bg text-fg hover:bg-bg/85",
             )}
           >
             {timer.running ? (
@@ -504,43 +534,23 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           </button>
         </div>
         <TaskTimeBreakdown task={task} liveSegments={timer.liveSegments} meId={me?.id} />
-      </Field>
-
-      {/* Objective */}
-      {(objectivesQ.data ?? []).length > 0 && (
-        <Field label={tt("goal")}>
-          <div className="flex flex-wrap gap-1.5">
-            <Chip
-              active={!task.objective_id}
-              label={tt("none")}
-              onClick={() => update.mutate({ task, patch: { objective_id: null } })}
-            />
-            {(objectivesQ.data ?? []).map((o) => (
-              <Chip
-                key={o.id}
-                active={task.objective_id === o.id}
-                label={o.title}
-                onClick={() => update.mutate({ task, patch: { objective_id: o.id } })}
-              />
-            ))}
-          </div>
-        </Field>
-      )}
+      </Section>
 
       {/* Description */}
-      <Field label={tt("description")}>
+      <Section label={tt("description")} card>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onBlur={saveNotes}
           placeholder={tt("descriptionPlaceholder")}
           rows={3}
-          className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-subtle outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="w-full resize-none rounded-lg bg-transparent text-sm leading-relaxed text-fg placeholder:text-subtle outline-none"
         />
-      </Field>
+      </Section>
 
       {/* Checklist */}
-      <Field
+      <Section
+        card
         label={`Checklist${subtasks.length ? ` · ${subtasks.filter((s) => s.done).length}/${subtasks.length}` : ""}`}
       >
         <div className="flex flex-col gap-0.5">
@@ -558,7 +568,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           ))}
 
           {/* Add item — clearly visible field with its own add button */}
-          <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-focus">
+          <div className="mt-1.5 flex items-center gap-2 rounded-pill bg-surface-2 py-1 pr-1 pl-3.5 focus-within:ring-2 focus-within:ring-focus">
             <input
               value={newSub}
               onChange={(e) => setNewSub(e.target.value)}
@@ -571,7 +581,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               onClick={addSub}
               disabled={!newSub.trim()}
               aria-label={tt("addChecklistItem")}
-              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-primary text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-fg text-bg transition-colors hover:bg-fg/85 disabled:opacity-40"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
             </button>
@@ -579,25 +589,25 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
           <ChecklistAiSuggest task={task} notes={notes} subtasks={subtasks} />
         </div>
-      </Field>
+      </Section>
 
       {/* Files — photos, PDFs and documents that belong with the task */}
-      <Field label={`Archivos${attachmentCount ? ` · ${attachmentCount}` : ""}`}>
+      <Section card label={`Archivos${attachmentCount ? ` · ${attachmentCount}` : ""}`}>
         <TaskAttachments taskId={task.id} />
-      </Field>
+      </Section>
 
       {/* Kudos — celebrate a finished shared task */}
       {partner && task.shared && task.status === "done" && (
-        <Field label={tt("reactions")}>
+        <Section card label={tt("reactions")}>
           <TaskReactions taskId={task.id} />
-        </Field>
+        </Section>
       )}
 
       {/* Comments — discussion on a shared task */}
       {partner && task.shared && (
-        <Field label={tt("comments")}>
+        <Section card label={tt("comments")}>
           <TaskComments taskId={task.id} />
-        </Field>
+        </Section>
       )}
 
       <button
@@ -606,7 +616,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
           remove.mutate(task);
           onClose();
         }}
-        className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+        className="mt-1 mb-2 ml-1 flex h-9 w-fit cursor-pointer items-center gap-2 rounded-pill bg-surface px-4 text-sm font-semibold text-danger shadow-soft transition-colors hover:bg-danger/10"
       >
         <Trash2 className="h-4 w-4" aria-hidden />
         {tt("deleteTask")}
@@ -712,10 +722,8 @@ function DateChip({
       onClick={openPicker}
       aria-label={tt("pickDate")}
       className={cn(
-        "relative inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
-        active
-          ? "border-primary bg-primary-soft text-primary"
-          : "border-border text-muted hover:bg-surface-2",
+        "relative inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-pill px-3 py-1.5 text-xs font-semibold transition-colors",
+        active ? "bg-primary-soft text-primary" : "bg-surface-2 text-muted hover:bg-border",
       )}
     >
       <CalendarClock className="h-3.5 w-3.5" aria-hidden />
@@ -770,7 +778,7 @@ function ChecklistItemRow({
   }
 
   return (
-    <div className="group flex items-start gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-2">
+    <div className="group -mx-1 flex items-start gap-2.5 rounded-lg px-1 py-1.5 transition-colors hover:bg-surface-2">
       <span className="mt-0.5">
         <TaskCheckbox checked={sub.done} onToggle={onToggle} size="sm" />
       </span>
@@ -789,7 +797,7 @@ function ChecklistItemRow({
             }
           }}
           aria-label={tt("editItem")}
-          className="min-w-0 flex-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="min-w-0 flex-1 rounded-md bg-surface-2 px-1.5 py-0.5 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
         />
       ) : (
         <button
@@ -836,7 +844,7 @@ function ChecklistItemRow({
                 tabIndex={-1}
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-pop">
+              <div className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl bg-surface p-1 shadow-pop">
                 {profiles.map((p) => (
                   <button
                     key={p.id}
@@ -844,7 +852,7 @@ function ChecklistItemRow({
                       onAssign(p.id);
                       setMenuOpen(false);
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-fg hover:bg-surface-2"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-fg hover:bg-surface-2"
                   >
                     <OwnerAvatar profile={p} size={18} />
                     <span className="min-w-0 flex-1 truncate">
@@ -860,7 +868,7 @@ function ChecklistItemRow({
                     onAssign(null);
                     setMenuOpen(false);
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-surface-2"
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-muted hover:bg-surface-2"
                 >
                   <span
                     className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-dashed border-border"
@@ -888,12 +896,34 @@ function ChecklistItemRow({
   );
 }
 
+/** One row of the settings card: its label on top, the control under it. The
+ *  hairline between rows comes from the parent's `divide-y`. */
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">{label}</p>
+    <div className="py-3">
+      <p className="mb-2 text-xs font-semibold text-muted">{label}</p>
       {children}
     </div>
+  );
+}
+
+/** A block of the sheet outside the settings card. With `card`, its content
+ *  sits on a white card; without, it is laid straight on the sheet's paper
+ *  (the time block brings its own dark card). */
+function Section({
+  label,
+  card,
+  children,
+}: {
+  label: string;
+  card?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={cn(card && "rounded-xl bg-surface p-4 shadow-soft")}>
+      <p className={cn("mb-2 text-xs font-semibold text-muted", !card && "px-2")}>{label}</p>
+      {children}
+    </section>
   );
 }
 
@@ -916,12 +946,10 @@ function Chip({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "inline-flex min-h-8 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors",
-        disabled ? "cursor-not-allowed border-border text-subtle opacity-50" : "cursor-pointer",
+        "inline-flex min-h-8 items-center gap-1.5 rounded-pill px-3 py-1.5 text-xs font-semibold transition-colors",
+        disabled ? "cursor-not-allowed bg-surface-2 text-subtle opacity-50" : "cursor-pointer",
         !disabled &&
-          (active
-            ? "border-primary bg-primary-soft text-primary"
-            : "border-border text-muted hover:bg-surface-2"),
+          (active ? "bg-primary-soft text-primary" : "bg-surface-2 text-muted hover:bg-border"),
       )}
     >
       {color && (

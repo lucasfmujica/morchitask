@@ -44,7 +44,7 @@ export function PaletteTaskRow({
       />
       {channel && (
         <span
-          className="h-2 w-2 shrink-0 rounded-full"
+          className="h-2 w-2 shrink-0 rounded-[3px]"
           style={{ backgroundColor: channel.color }}
           aria-hidden
         />
@@ -52,7 +52,9 @@ export function PaletteTaskRow({
       <span className={cn("min-w-0 flex-1 truncate", done && "text-subtle line-through")}>
         <Highlight text={task.title} ranges={ranges} />
       </span>
-      <span className="shrink-0 text-2xs text-subtle">{where}</span>
+      <span className="shrink-0 rounded-pill bg-surface-2 px-2 py-0.5 text-2xs font-medium text-muted">
+        {where}
+      </span>
     </span>
   );
 }

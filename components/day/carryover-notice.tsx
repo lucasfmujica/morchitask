@@ -74,8 +74,8 @@ export function CarryoverNotice({ date }: { date: string }) {
   const oldest = [...days].sort()[0];
 
   return (
-    <div className="flex items-center gap-3 rounded-card border border-accent/30 bg-accent-soft/60 p-3 shadow-soft">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
+    <div className="flex items-center gap-3 rounded-2xl bg-accent-soft/70 p-2 pl-2.5">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-pill bg-surface text-accent shadow-soft">
         <ArrowDownToLine className="h-5 w-5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
@@ -89,7 +89,7 @@ export function CarryoverNotice({ date }: { date: string }) {
       <button
         onClick={undo}
         disabled={undoing}
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
+        className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill bg-surface px-3.5 text-sm font-semibold text-fg shadow-soft transition-shadow hover:shadow-card disabled:opacity-50"
       >
         <Undo2 className="h-4 w-4" aria-hidden />
         {t("carriedUndo")}
@@ -97,7 +97,7 @@ export function CarryoverNotice({ date }: { date: string }) {
       <button
         onClick={() => setDismissed(true)}
         aria-label={t("carriedDismiss")}
-        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors hover:bg-surface hover:text-fg"
       >
         <X className="h-4 w-4" aria-hidden />
       </button>

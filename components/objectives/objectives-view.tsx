@@ -16,6 +16,7 @@ import { addDays, addMonths, todayISO, weekRange } from "@/lib/date";
 import { formatMinutes } from "@/lib/format";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui";
 import type { DateLabels } from "@/lib/date-labels";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
@@ -50,35 +51,39 @@ export function ObjectivesView() {
   const month = objectives.filter((o) => o.period === "month");
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex items-center gap-3">
+    <div className="flex max-w-5xl flex-col gap-4">
+      <header className="flex items-center gap-3 px-1 pt-1">
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
           <Target className="h-5 w-5" aria-hidden />
         </span>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">{t("title")}</h1>
           <p className="text-sm text-muted">{t("subtitle")}</p>
         </div>
       </header>
 
       <NewObjective />
 
-      <Group
-        title={t("thisWeek")}
-        objectives={week}
-        progress={progress}
-        emptyTitle={t("emptyWeek")}
-        emptyHint={t("emptyWeekHint")}
-      />
-      <Group
-        title={t("thisMonth")}
-        objectives={month}
-        progress={progress}
-        emptyTitle={t("emptyMonth", { month: labels.monthLabel(todayISO()) })}
-        emptyHint={
-          week.length > 0 ? t("emptyMonthFromWeek", { n: week.length }) : t("emptyMonthHint")
-        }
-      />
+      {/* Two wells side by side on desktop; stacked on the phone, where a
+          second column would squeeze every title to a couple of words. */}
+      <div className="grid items-start gap-4 md:grid-cols-2">
+        <Group
+          title={t("thisWeek")}
+          objectives={week}
+          progress={progress}
+          emptyTitle={t("emptyWeek")}
+          emptyHint={t("emptyWeekHint")}
+        />
+        <Group
+          title={t("thisMonth")}
+          objectives={month}
+          progress={progress}
+          emptyTitle={t("emptyMonth", { month: labels.monthLabel(todayISO()) })}
+          emptyHint={
+            week.length > 0 ? t("emptyMonthFromWeek", { n: week.length }) : t("emptyMonthHint")
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -98,24 +103,24 @@ function NewObjective() {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface p-3 shadow-soft sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-2 rounded-2xl bg-surface p-2 pl-4 shadow-soft sm:flex-row sm:items-center sm:rounded-pill">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && add()}
         placeholder={t("newPlaceholder")}
         aria-label={t("newLabel")}
-        className="min-w-0 flex-1 bg-transparent px-1 text-sm text-fg placeholder:text-subtle outline-none"
+        className="h-10 min-w-0 flex-1 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
       />
       <div className="flex items-center gap-2">
-        <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
+        <div className="flex gap-0.5 rounded-pill bg-surface-2 p-1">
           {(["week", "month"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               aria-pressed={period === p}
               className={cn(
-                "cursor-pointer rounded-pill px-2.5 py-1 text-xs font-medium transition-colors",
+                "h-8 cursor-pointer rounded-pill px-3.5 text-xs font-semibold transition-colors",
                 period === p ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
               )}
             >
@@ -123,13 +128,10 @@ function NewObjective() {
             </button>
           ))}
         </div>
-        <button
-          onClick={add}
-          className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover"
-        >
+        <Button onClick={add} className="ml-auto shrink-0">
           <Plus className="h-4 w-4" aria-hidden />
           {t("add")}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -149,12 +151,13 @@ function Group({
   emptyHint: string;
 }) {
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-subtle">{title}</h2>
+    // Same shape as <Well>, kept a <section> so the heading still scopes it.
+    <section className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-2">
+      <h2 className="px-3 pt-2 pb-1 text-lg font-semibold text-fg">{title}</h2>
       {objectives.length === 0 ? (
         // A muted one-liner said "nothing here" and stopped. This says what a
         // goal for this period would be for.
-        <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-center">
+        <div className="rounded-xl border border-dashed border-border-strong px-4 py-5 text-center">
           <p className="text-sm font-semibold text-fg">{emptyTitle}</p>
           <p className="mx-auto mt-1 max-w-sm text-xs text-muted">{emptyHint}</p>
         </div>
@@ -185,7 +188,28 @@ function ObjectiveRow({
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="group flex items-start gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft">
+    <div className="group flex items-center gap-3 rounded-xl bg-surface p-3.5 shadow-soft sm:gap-3.5">
+      <ProgressRing pct={done ? 100 : pct} label={done ? null : `${pct}%`} done={done} />
+
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "truncate text-[15px] font-semibold",
+            done ? "text-muted line-through" : "text-fg",
+          )}
+        >
+          {objective.title}
+        </p>
+
+        {/* Tasks AND the hours they absorbed: the count alone made a goal you
+            poured 6 hours into look identical to one you touched twice. */}
+        <p className="mt-0.5 text-xs text-muted">
+          {total > 0 ? t("taskProgress", { done: completed, total }) : t("noTasks")}
+          {actualMin > 0 && t("contributed", { time: formatMinutes(actualMin) })}
+          <span className="text-subtle"> · {rangeLabel(objective, labels)}</span>
+        </p>
+      </div>
+
       <button
         onClick={() =>
           update.mutate({ id: objective.id, patch: { status: done ? "active" : "done" } })
@@ -193,52 +217,18 @@ function ObjectiveRow({
         aria-pressed={done}
         aria-label={done ? t("markActive") : t("markDone")}
         className={cn(
-          "mt-0.5 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition-colors",
-          done
-            ? "border-primary bg-primary text-on-primary"
-            : "border-border text-transparent hover:border-primary",
+          "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
+          done ? "bg-primary text-on-primary" : "bg-surface-2 text-fg hover:bg-border",
         )}
       >
-        <Check className="h-3.5 w-3.5" aria-hidden />
+        {done && <Check className="h-3 w-3" strokeWidth={3} aria-hidden />}
+        {/* On the phone the label would crowd the title out; the ring and the
+            green pill already say which state it is in. */}
+        <span className={cn(!done && "hidden sm:inline")}>
+          {done ? t("achieved") : t("markDone")}
+        </span>
+        {!done && <Check className="h-3.5 w-3.5 text-subtle sm:hidden" aria-hidden />}
       </button>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <p
-            className={cn(
-              "min-w-0 flex-1 truncate text-base font-bold",
-              done ? "text-subtle line-through" : "text-fg",
-            )}
-          >
-            {objective.title}
-          </p>
-          <span
-            className={cn(
-              "shrink-0 text-sm font-bold tabular-nums",
-              done ? "text-success" : "text-fg",
-            )}
-          >
-            {done ? t("achieved") : `${pct}%`}
-          </span>
-        </div>
-
-        <div className="mt-2 h-2 overflow-hidden rounded-pill bg-surface-2">
-          <motion.div
-            className={cn("h-full rounded-pill", done ? "bg-success" : "bg-primary")}
-            initial={false}
-            animate={{ width: `${done ? 100 : pct}%` }}
-            transition={{ duration: 0.4, ease: EASE_OUT }}
-          />
-        </div>
-
-        {/* Tasks AND the hours they absorbed: the count alone made a goal you
-            poured 6 hours into look identical to one you touched twice. */}
-        <p className="mt-2 text-xs text-muted">
-          {total > 0 ? t("taskProgress", { done: completed, total }) : t("noTasks")}
-          {actualMin > 0 && t("contributed", { time: formatMinutes(actualMin) })}
-          <span className="text-subtle"> · {rangeLabel(objective, labels)}</span>
-        </p>
-      </div>
 
       <button
         onClick={() => remove.mutate(objective.id)}
@@ -247,6 +237,44 @@ function ObjectiveRow({
       >
         <Trash2 className="h-4 w-4" aria-hidden />
       </button>
+    </div>
+  );
+}
+
+const RING_R = 18;
+const RING_C = 2 * Math.PI * RING_R;
+
+/** Small progress ring: a full green ring means the goal is met. Drawn with the
+ *  theme tokens so it flips with dark mode like everything else. */
+function ProgressRing({ pct, label, done }: { pct: number; label: string | null; done: boolean }) {
+  return (
+    <div className="relative h-11 w-11 shrink-0">
+      <svg viewBox="0 0 44 44" className="h-11 w-11 -rotate-90" aria-hidden>
+        <circle
+          cx="22"
+          cy="22"
+          r={RING_R}
+          fill="none"
+          strokeWidth="5"
+          className="stroke-surface-2"
+        />
+        <motion.circle
+          cx="22"
+          cy="22"
+          r={RING_R}
+          fill="none"
+          strokeWidth="5"
+          strokeLinecap="round"
+          stroke="var(--primary)"
+          strokeDasharray={RING_C}
+          initial={false}
+          animate={{ strokeDashoffset: RING_C * (1 - Math.min(pct, 100) / 100) }}
+          transition={{ duration: 0.6, ease: EASE_OUT }}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] font-medium tabular-nums text-fg">
+        {done ? <Check className="h-4 w-4 text-primary" strokeWidth={3} aria-hidden /> : label}
+      </span>
     </div>
   );
 }

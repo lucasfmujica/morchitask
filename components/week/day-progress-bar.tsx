@@ -16,8 +16,8 @@ import { useTranslations } from "next-intl";
  * minutes against the daily capacity budget, so a full Thursday looks full
  * before you drop a fifth task on it.
  *
- * A closed day is settled — it reads green with what it actually took, and the
- * budget stops being the point.
+ * A closed day is settled — it reads green (done) with what it actually took,
+ * and the budget stops being the point.
  */
 export function DayLoadBar({
   plannedMin,
@@ -40,27 +40,42 @@ export function DayLoadBar({
 
   return (
     <div>
-      <div className="relative h-1.5 rounded-pill bg-surface-2">
+      {/* Sits on the grey well, so the track is one step darker than it. */}
+      <div className="relative h-1.5 rounded-pill bg-border">
         <motion.div
           className={cn(
-            "absolute inset-y-0 left-0 rounded-pill",
-            closed ? "bg-success" : over ? "bg-danger" : "bg-primary",
+            "absolute inset-y-0 left-0 rounded-pill bg-fit",
+            over && !closed && "rounded-r-none",
           )}
           initial={false}
-          animate={{ width: `${closed ? 100 : over ? 100 : pct}%` }}
+          animate={{ width: `${closed ? 100 : over ? targetPct : pct}%` }}
           transition={{ duration: 0.4, ease: EASE_OUT }}
         />
         {over && !closed && (
-          <span
-            className="absolute -top-[2px] -bottom-[2px] w-[2px] bg-fg/50"
-            style={{ left: `${targetPct}%` }}
-            aria-hidden
-          />
+          <>
+            {/* Past the budget the bar turns to the same striped overflow as the
+                day's capacity band, so "too much" looks the same everywhere. */}
+            <motion.div
+              className="absolute inset-y-0 rounded-r-pill"
+              initial={false}
+              animate={{ left: `${targetPct}%`, width: `${100 - targetPct}%` }}
+              transition={{ duration: 0.4, ease: EASE_OUT }}
+              style={{
+                background:
+                  "repeating-linear-gradient(115deg, var(--danger) 0 4px, color-mix(in srgb, var(--danger) 55%, var(--surface)) 4px 8px)",
+              }}
+            />
+            <span
+              className="absolute -top-[2px] -bottom-[2px] w-[2px] bg-fg/50"
+              style={{ left: `${targetPct}%` }}
+              aria-hidden
+            />
+          </>
         )}
       </div>
       <p
         className={cn(
-          "mt-1.5 text-2xs font-semibold",
+          "mt-1.5 text-2xs font-semibold tabular-nums",
           closed ? "text-success" : over ? "text-danger" : "text-muted",
         )}
       >

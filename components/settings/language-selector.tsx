@@ -39,7 +39,7 @@ export function LanguageSelector() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-0.5 rounded-pill bg-border p-1">
       {LOCALES.map((locale) => {
         const active = locale === current;
         return (
@@ -49,10 +49,8 @@ export function LanguageSelector() {
             disabled={pending}
             aria-pressed={active}
             className={cn(
-              "cursor-pointer rounded-xl border p-3 text-sm font-medium transition-colors disabled:cursor-wait disabled:opacity-60",
-              active
-                ? "border-primary bg-primary-soft text-primary"
-                : "border-border text-muted hover:bg-surface-2 hover:text-fg",
+              "h-10 cursor-pointer rounded-pill px-3 text-sm font-semibold transition-colors duration-200 disabled:cursor-wait disabled:opacity-60",
+              active ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
             )}
           >
             {t(LABEL_KEY[locale])}

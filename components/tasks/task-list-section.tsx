@@ -5,7 +5,7 @@ import { ListChecks, type LucideIcon } from "lucide-react";
 import type { PriorityKey } from "@/lib/priority";
 import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
 import { SortableTaskList } from "@/components/dnd/sortable-task-list";
-import { EmptyState, SkeletonList } from "@/components/ui";
+import { EmptyState, SkeletonList, Well } from "@/components/ui";
 import { useTranslations } from "next-intl";
 
 export function TaskListSection({
@@ -45,30 +45,43 @@ export function TaskListSection({
   dragging?: boolean;
 }) {
   const t = useTranslations("tasks");
-  if (isLoading) return <SkeletonList />;
+  // The list lives in a well: a grey tray with the cards as white tiles on it.
+  // Loading and empty states sit in the same tray so the page doesn't jump
+  // between a bare skeleton and a framed list once the query lands.
+  if (isLoading)
+    return (
+      <Well>
+        <SkeletonList />
+      </Well>
+    );
   if (tasks.length === 0)
     return (
-      <EmptyState
-        icon={emptyIcon ?? ListChecks}
-        title={emptyTitle}
-        hint={emptyHint}
-        action={emptyAction}
-        kbd="N"
-        kbdHint={t("kbdNewTask")}
-      />
+      <Well>
+        <EmptyState
+          icon={emptyIcon ?? ListChecks}
+          title={emptyTitle}
+          hint={emptyHint}
+          action={emptyAction}
+          kbd="N"
+          kbdHint={t("kbdNewTask")}
+          className="border-transparent bg-surface/60"
+        />
+      </Well>
     );
 
   return (
-    <SortableTaskList
-      tasks={tasks}
-      channelsById={channelsById}
-      profilesById={profilesById}
-      subtasksByTaskId={subtasksByTaskId}
-      onReorder={onReorder}
-      hosted={hosted}
-      grouped={grouped}
-      scope={scope}
-      dragging={dragging}
-    />
+    <Well>
+      <SortableTaskList
+        tasks={tasks}
+        channelsById={channelsById}
+        profilesById={profilesById}
+        subtasksByTaskId={subtasksByTaskId}
+        onReorder={onReorder}
+        hosted={hosted}
+        grouped={grouped}
+        scope={scope}
+        dragging={dragging}
+      />
+    </Well>
   );
 }

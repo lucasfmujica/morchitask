@@ -15,7 +15,7 @@ import { todayISO } from "@/lib/date";
 import { currentStreak, recentOccurrences } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
 import type { Channel, RecurringTemplate } from "@/lib/queries/types";
-import { EmptyState } from "@/components/ui";
+import { Button, EmptyState } from "@/components/ui";
 import { useTranslations } from "next-intl";
 
 /** Monday..Sunday. The letters come from the `week` catalog, the same ones the
@@ -49,40 +49,36 @@ export function RoutinesView() {
   const routines = routinesQ.data ?? [];
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
-      <header className="flex items-center gap-3">
+    <div className="flex max-w-5xl flex-col gap-4">
+      <header className="flex items-center gap-3 px-1 pt-1">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
           <Repeat className="h-5 w-5" aria-hidden />
         </span>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{t("title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">{t("title")}</h1>
           <p className="text-sm text-muted">{t("subtitle")}</p>
         </div>
       </header>
 
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-surface p-2 shadow-soft">
-        <Repeat className="ml-1 h-4 w-4 shrink-0 text-subtle" aria-hidden />
+      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-4 shadow-soft">
+        <Repeat className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder={t("newPlaceholder")}
           aria-label={t("newLabel")}
-          className="h-8 w-full bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
+          className="h-10 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-subtle outline-none"
         />
-        <button
-          onClick={add}
-          disabled={!title.trim()}
-          className="h-8 shrink-0 cursor-pointer rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-40"
-        >
+        <Button onClick={add} disabled={!title.trim()} className="shrink-0">
           {t("add")}
-        </button>
+        </Button>
       </div>
 
       {routines.length === 0 ? (
         <EmptyState icon={Repeat} title={t("emptyTitle")} hint={t("emptyHint")} />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="grid items-start gap-4 lg:grid-cols-2">
           {routines.map((r) => (
             <RoutineRow
               key={r.id}
@@ -139,157 +135,161 @@ function RoutineRow({
   }
 
   return (
+    // Each routine sits in its own well: the grey tray is what tells one routine
+    // from the next now that the cards have no border.
     <li
       className={cn(
-        "flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-soft",
+        "rounded-2xl bg-surface-2 p-2 transition-opacity",
         routine.paused && "opacity-60",
       )}
     >
-      <div className="flex items-center gap-2">
-        <input
-          defaultValue={routine.title}
-          onBlur={(e) => {
-            const v = e.target.value.trim();
-            if (v && v !== routine.title) patch({ title: v });
-          }}
-          className="min-w-0 flex-1 bg-transparent text-base font-medium text-fg outline-none"
-          aria-label={t("titleLabel")}
-        />
-        {streak > 0 && (
-          <span
-            title={t("streak", { n: streak })}
-            className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning tabular-nums"
-          >
-            🔥 {streak}
-          </span>
-        )}
-        <button
-          onClick={cycleEstimate}
-          className={cn(
-            "shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
-            routine.time_estimate_min
-              ? "bg-surface-2 text-muted hover:bg-border"
-              : "text-subtle hover:text-muted",
-          )}
-        >
-          {routine.time_estimate_min ? formatMinutes(routine.time_estimate_min) : tt("addTime")}
-        </button>
-        <button
-          onClick={() => remove.mutate(routine.id)}
-          aria-label={t("delete")}
-          className="shrink-0 cursor-pointer text-muted transition-colors hover:text-danger"
-        >
-          <Trash2 className="h-4 w-4" aria-hidden />
-        </button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Seg
-          options={[
-            { value: "daily", label: t("freqDaily") },
-            { value: "weekly", label: t("freqWeekly") },
-            { value: "monthly", label: t("freqMonthly") },
-          ]}
-          value={routine.freq}
-          onChange={(v) => patch({ freq: v })}
-        />
-
-        <EveryStepper
-          value={every}
-          freq={routine.freq}
-          onChange={(n) => patch({ repeat_every: n })}
-        />
-
-        {monthly && (
-          <label className="flex items-center gap-1.5 text-xs text-muted">
-            {t("monthDayPrefix")}
-            <select
-              value={monthDay}
-              onChange={(e) => patch({ month_day: Number(e.target.value) })}
-              aria-label={t("monthDayLabel")}
-              className="h-7 cursor-pointer rounded-lg border border-border bg-surface-2 px-1.5 text-xs font-medium text-fg outline-none"
+      <div className="flex flex-col gap-3.5 rounded-xl bg-surface p-4 shadow-soft">
+        <div className="flex items-center gap-2">
+          <input
+            defaultValue={routine.title}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v && v !== routine.title) patch({ title: v });
+            }}
+            className="min-w-0 flex-1 bg-transparent font-display text-base font-semibold text-fg outline-none"
+            aria-label={t("titleLabel")}
+          />
+          {streak > 0 && (
+            <span
+              title={t("streak", { n: streak })}
+              className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning tabular-nums"
             >
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {n === 31 ? t("monthDayLast") : n}
-                </option>
-              ))}
-            </select>
-            {monthDay !== 31 && t("monthDaySuffix")}
-            {monthDay >= 29 && monthDay < 31 && (
-              <span className="text-subtle">{t("monthDayShortMonths")}</span>
+              🔥 {streak}
+            </span>
+          )}
+          <button
+            onClick={cycleEstimate}
+            className={cn(
+              "h-7 shrink-0 cursor-pointer rounded-pill px-2.5 text-xs font-medium transition-colors",
+              routine.time_estimate_min
+                ? "bg-surface-2 text-muted hover:bg-border"
+                : "text-subtle hover:text-muted",
             )}
-          </label>
-        )}
+          >
+            {routine.time_estimate_min ? formatMinutes(routine.time_estimate_min) : tt("addTime")}
+          </button>
+          <button
+            onClick={() => remove.mutate(routine.id)}
+            aria-label={t("delete")}
+            className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
 
-        {weekly && (
-          <div className="flex gap-1">
-            {WEEKDAYS.map((d) => (
-              <button
-                key={d.n}
-                onClick={() => toggleDay(d.n)}
-                aria-pressed={days.includes(d.n)}
-                className={cn(
-                  "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-xs font-medium transition-colors",
-                  days.includes(d.n)
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-2 text-muted hover:bg-border",
-                )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Seg
+            options={[
+              { value: "daily", label: t("freqDaily") },
+              { value: "weekly", label: t("freqWeekly") },
+              { value: "monthly", label: t("freqMonthly") },
+            ]}
+            value={routine.freq}
+            onChange={(v) => patch({ freq: v })}
+          />
+
+          <EveryStepper
+            value={every}
+            freq={routine.freq}
+            onChange={(n) => patch({ repeat_every: n })}
+          />
+
+          {monthly && (
+            <label className="flex items-center gap-1.5 text-xs text-muted">
+              {t("monthDayPrefix")}
+              <select
+                value={monthDay}
+                onChange={(e) => patch({ month_day: Number(e.target.value) })}
+                aria-label={t("monthDayLabel")}
+                className="h-7 cursor-pointer rounded-pill bg-surface-2 px-2 font-mono text-xs font-medium text-fg outline-none"
               >
-                {tw(`weekdayInitials.${d.key}`)}
-              </button>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n === 31 ? t("monthDayLast") : n}
+                  </option>
+                ))}
+              </select>
+              {monthDay !== 31 && t("monthDaySuffix")}
+              {monthDay >= 29 && monthDay < 31 && (
+                <span className="text-subtle">{t("monthDayShortMonths")}</span>
+              )}
+            </label>
+          )}
+
+          {weekly && (
+            <div className="flex w-full gap-1.5">
+              {WEEKDAYS.map((d) => (
+                <button
+                  key={d.n}
+                  onClick={() => toggleDay(d.n)}
+                  aria-pressed={days.includes(d.n)}
+                  className={cn(
+                    "flex h-9 max-w-11 flex-1 cursor-pointer items-center justify-center rounded-pill text-xs font-bold transition-colors duration-200",
+                    days.includes(d.n)
+                      ? "bg-primary text-on-primary"
+                      : "bg-surface-2 text-muted hover:bg-border",
+                  )}
+                >
+                  {tw(`weekdayInitials.${d.key}`)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={() => patch({ paused: !routine.paused })}
+            className="ml-auto h-7 cursor-pointer rounded-pill bg-surface-2 px-3 text-xs font-semibold text-muted transition-colors hover:bg-border hover:text-fg"
+          >
+            {routine.paused ? t("resume") : t("pause")}
+          </button>
+        </div>
+
+        {completed !== undefined && history.length > 0 && (
+          <div
+            className="flex flex-wrap gap-1"
+            role="img"
+            aria-label={t("history", {
+              n: history.length,
+              done: history.filter((c) => c.done).length,
+            })}
+          >
+            {history.map((c) => (
+              <span
+                key={c.date}
+                title={c.date}
+                className={cn(
+                  "h-3 w-3 rounded-[4px] transition-colors",
+                  c.done ? "bg-fit" : "bg-surface-2",
+                )}
+              />
             ))}
           </div>
         )}
 
-        <button
-          onClick={() => patch({ paused: !routine.paused })}
-          className="ml-auto cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2"
-        >
-          {routine.paused ? t("resume") : t("pause")}
-        </button>
-      </div>
-
-      {completed !== undefined && history.length > 0 && (
-        <div
-          className="flex flex-wrap gap-1"
-          role="img"
-          aria-label={t("history", {
-            n: history.length,
-            done: history.filter((c) => c.done).length,
-          })}
-        >
-          {history.map((c) => (
-            <span
-              key={c.date}
-              title={c.date}
-              className={cn(
-                "h-3.5 w-3.5 rounded-[4px]",
-                c.done ? "bg-success" : "bg-surface-2 ring-1 ring-inset ring-border",
-              )}
-            />
-          ))}
-        </div>
-      )}
-
-      {channels.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <Chip
-            active={!routine.channel_id}
-            label={tt("noCategory")}
-            onClick={() => patch({ channel_id: null })}
-          />
-          {channels.map((c) => (
+        {channels.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
             <Chip
-              key={c.id}
-              active={routine.channel_id === c.id}
-              label={c.name}
-              color={c.color}
-              onClick={() => patch({ channel_id: c.id })}
+              active={!routine.channel_id}
+              label={tt("noCategory")}
+              onClick={() => patch({ channel_id: null })}
             />
-          ))}
-        </div>
-      )}
+            {channels.map((c) => (
+              <Chip
+                key={c.id}
+                active={routine.channel_id === c.id}
+                label={c.name}
+                color={c.color}
+                onClick={() => patch({ channel_id: c.id })}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </li>
   );
 }
@@ -306,7 +306,7 @@ function EveryStepper({
 }) {
   const t = useTranslations("routines");
   const btn =
-    "flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-sm text-muted transition-colors hover:bg-border disabled:cursor-default disabled:opacity-30";
+    "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-surface-2 text-sm text-muted transition-colors hover:bg-border hover:text-fg disabled:cursor-default disabled:opacity-30";
   return (
     <div className="flex items-center gap-1 text-xs text-muted">
       {t("everyPrefix")}
@@ -342,14 +342,14 @@ function Seg<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex gap-1 rounded-pill border border-border bg-surface-2 p-0.5">
+    <div className="flex gap-0.5 rounded-pill bg-surface-2 p-1">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
           className={cn(
-            "cursor-pointer rounded-pill px-2.5 py-0.5 text-xs font-medium transition-colors",
+            "h-7 cursor-pointer rounded-pill px-3 text-xs font-semibold transition-colors duration-200",
             value === o.value ? "bg-surface text-fg shadow-soft" : "text-muted hover:text-fg",
           )}
         >
@@ -376,10 +376,8 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1.5 rounded-pill border px-2.5 py-1 text-xs font-medium transition-colors",
-        active
-          ? "border-transparent bg-primary-soft text-primary"
-          : "border-border text-muted hover:bg-surface-2",
+        "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-pill px-3 text-xs font-medium transition-colors",
+        active ? "bg-primary-soft text-primary" : "bg-surface-2 text-muted hover:bg-border",
       )}
     >
       {color && (

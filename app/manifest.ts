@@ -21,7 +21,7 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     background_color: "#f7f8fa",
-    theme_color: "#0d9488",
+    theme_color: "#2c7a4b",
     lang: "es",
     // "Compartir → Morchitask" from other apps (installed PWA only). The OS
     // POSTs the share to app/share/route.ts, which files it in the backlog.

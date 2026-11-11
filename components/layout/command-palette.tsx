@@ -69,7 +69,7 @@ export function CommandPalette() {
             // max-h in dvh + a flex column: on a phone the on-screen keyboard
             // eats ~40% of the viewport, and a fixed vh panel would push the
             // results out of reach.
-            className="flex max-h-[80dvh] w-full max-w-lg flex-col overflow-hidden rounded-card border border-border bg-surface shadow-pop"
+            className="flex max-h-[80dvh] w-full max-w-xl flex-col gap-1 overflow-hidden rounded-2xl bg-bg p-2 shadow-drag"
             initial={{ opacity: 0, scale: 0.97, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
@@ -225,8 +225,9 @@ function PaletteBody({ close }: { close: () => void }) {
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-4">
-        <Search className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
+      {/* The input is the one white card on the paper panel: it's where you are. */}
+      <div className="flex shrink-0 items-center gap-2.5 rounded-xl bg-surface pr-2 pl-4 shadow-soft">
+        <Search className="h-[18px] w-[18px] shrink-0 text-muted" aria-hidden />
         <input
           autoFocus
           value={query}
@@ -241,7 +242,7 @@ function PaletteBody({ close }: { close: () => void }) {
           aria-expanded
           aria-controls="palette-list"
           aria-activedescendant={flat[active] ? `palette-item-${active}` : undefined}
-          className="w-full bg-transparent py-3.5 text-sm text-fg placeholder:text-subtle outline-none"
+          className="w-full min-w-0 bg-transparent py-3.5 text-base text-fg placeholder:text-subtle outline-none"
         />
       </div>
 
@@ -250,12 +251,12 @@ function PaletteBody({ close }: { close: () => void }) {
         id="palette-list"
         role="listbox"
         aria-label={tp("results")}
-        className="min-h-0 flex-1 overflow-y-auto p-1.5"
+        className="min-h-0 flex-1 overflow-y-auto px-0.5 py-1"
       >
         {showSkeleton ? (
           <div className="flex flex-col gap-1 p-1.5">
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-9" />
+              <Skeleton key={i} className="h-10 rounded-lg" />
             ))}
           </div>
         ) : flat.length === 0 ? (
@@ -265,7 +266,7 @@ function PaletteBody({ close }: { close: () => void }) {
         ) : (
           sections.map((section) => (
             <div key={section.id} role="group" aria-label={tp(section.headingKey)}>
-              <p className="px-3 pt-2 pb-1 text-2xs font-semibold uppercase tracking-wide text-subtle">
+              <p className="px-3 pt-2.5 pb-1 text-2xs font-semibold uppercase tracking-wide text-muted">
                 {tp(section.headingKey)}
               </p>
               {section.items.map((item) => {
@@ -282,15 +283,15 @@ function PaletteBody({ close }: { close: () => void }) {
                     onClick={() => runItem(item)}
                     onMouseMove={(e) => onMouseMove(i, e)}
                     className={cn(
-                      "relative flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                      isActive ? "text-primary" : "text-fg hover:bg-surface-2",
+                      "relative flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-fg transition-colors",
+                      !isActive && "hover:bg-surface-2",
                     )}
                   >
                     {isActive && (
                       <motion.span
                         layoutId="palette-active"
                         transition={SPRING_SOFT}
-                        className="absolute inset-0 -z-10 rounded-lg bg-primary-soft"
+                        className="absolute inset-0 -z-10 rounded-lg bg-surface shadow-soft"
                         aria-hidden
                       />
                     )}
@@ -303,7 +304,7 @@ function PaletteBody({ close }: { close: () => void }) {
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3 border-t border-border px-3 py-2 text-2xs text-subtle">
+      <div className="flex shrink-0 items-center gap-3 px-3 pt-1 pb-0.5 text-2xs text-muted">
         <span className="flex items-center gap-1">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd> {tp("navigate")}
@@ -340,8 +341,13 @@ function PaletteRowContent({
   if (item.kind === "create") {
     return (
       <>
-        <Plus className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{tp("createTask", { title: item.title })}</span>
+        {/* Green disc: creating it is the "yes, add this" of the palette. */}
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fit text-on-primary">
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 truncate font-semibold">
+          {tp("createTask", { title: item.title })}
+        </span>
         <span className="shrink-0 text-2xs text-subtle">{tcm("today")}</span>
       </>
     );
@@ -349,7 +355,9 @@ function PaletteRowContent({
   const Icon = NAV_ICONS[item.id] ?? CalendarCheck;
   return (
     <>
-      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-muted">
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+      </span>
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
     </>
   );

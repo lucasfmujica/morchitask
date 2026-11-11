@@ -12,7 +12,7 @@ import { useTranslations } from "next-intl";
 /** Monday first, matching `monthGrid`. */
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const navBtn =
-  "flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-fg";
+  "flex h-7 w-7 cursor-pointer items-center justify-center rounded-pill text-muted transition-colors hover:bg-surface-2 hover:text-fg";
 
 /**
  * Compact month picker for the Week view's left rail. Highlights the active
@@ -42,9 +42,11 @@ export function WeekCalendarRail({ date }: { date: string }) {
   const counts = useMonthCounts(gridStart, gridEnd).data;
 
   return (
-    <div className="rounded-card border border-border bg-surface p-3 shadow-soft">
+    // A white card rather than a well: it sits alone in the sidebar, where a
+    // grey tray would read as one more nav group instead of a picker.
+    <div className="rounded-2xl bg-surface p-3 shadow-soft">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-bold tracking-tight text-fg">
+        <span className="font-display text-sm font-bold tracking-tight text-fg">
           {labels.monthLabel(cursor)}
         </span>
         <div className="flex items-center gap-0.5">
@@ -90,8 +92,8 @@ export function WeekCalendarRail({ date }: { date: string }) {
               className={cn(
                 "flex flex-col items-center gap-0.5 py-0.5 transition-colors",
                 inWeek && "bg-primary-soft",
-                inWeek && col === 0 && "rounded-l-lg",
-                inWeek && col === 6 && "rounded-r-lg",
+                inWeek && col === 0 && "rounded-l-pill",
+                inWeek && col === 6 && "rounded-r-pill",
               )}
             >
               <span

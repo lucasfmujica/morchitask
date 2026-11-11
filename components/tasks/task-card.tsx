@@ -106,7 +106,9 @@ export function TaskCard({
     <div
       className={cn(
         "group relative grid gap-x-2.5 gap-y-1 overflow-hidden",
-        "rounded-card border border-border bg-surface shadow-soft",
+        // A white tile on a well: the shadow separates it, so no hairline border
+        // (kept transparent so the box doesn't shift if a border state returns).
+        "rounded-card border border-transparent bg-surface shadow-soft",
         // Scoped to transform/shadow: `transition-all` also animated colour, so
         // every theme toggle played a 200ms fade across every card on screen.
         "transition-[transform,box-shadow] duration-200 hover:-translate-y-px hover:shadow-card",
