@@ -637,7 +637,8 @@
     "stintConnected": "Conectado.",
     "stintSynced": "Conectado. Última sincronización: {when}.",
     "stintErrorToken": "Ese token no sirve. Generá uno nuevo en Stint, en Ajustes.",
-    "stintErrorNetwork": "No se pudo hablar con Stint. Probá de nuevo en un rato."
+    "stintErrorNetwork": "No se pudo hablar con Stint. Probá de nuevo en un rato.",
+    "calendarDeclined": "El calendario no se conectó: Google no nos dio permiso para verlo y editarlo. Tocá Conectar de nuevo y dejá tildadas las dos casillas del calendario."
   },
   "goals": {
     "title": "Metas",

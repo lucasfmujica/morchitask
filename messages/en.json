@@ -637,7 +637,8 @@
     "stintConnected": "Connected.",
     "stintSynced": "Connected. Last synced {when}.",
     "stintErrorToken": "That token doesn't work. Generate a new one in Stint, under Settings.",
-    "stintErrorNetwork": "Couldn't reach Stint. Try again in a bit."
+    "stintErrorNetwork": "Couldn't reach Stint. Try again in a bit.",
+    "calendarDeclined": "Your calendar isn't connected: Google didn't give us permission to see and edit it. Tap Connect again and leave both calendar boxes ticked."
   },
   "goals": {
     "title": "Goals",
