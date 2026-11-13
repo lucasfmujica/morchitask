@@ -57,7 +57,7 @@ export function HelpView() {
   return (
     <div className="flex flex-col gap-4">
       <header className="flex animate-up flex-col gap-1 px-2 pt-3 [animation-duration:600ms]">
-        <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em] text-fg">
+        <h1 className="font-display text-[32px] leading-9 font-semibold tracking-[-0.01em] text-fg">
           {t("title")}
         </h1>
         <p className="text-sm text-muted">{t("lead")}</p>

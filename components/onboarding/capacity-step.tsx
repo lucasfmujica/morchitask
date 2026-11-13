@@ -76,7 +76,7 @@ export function CapacityStep({
       }
     >
       <div className="mt-[34px] flex animate-up flex-col gap-2.5" style={delay(100)}>
-        <h1 className="font-display text-[34px] leading-[38px] font-bold tracking-[-0.02em]">
+        <h1 className="font-display text-[34px] leading-[38px] font-semibold tracking-[-0.01em]">
           {name ? t("greeting", { name }) : t("greetingNoName")}
         </h1>
         <p className="max-w-[330px] text-[15px] leading-[22px] text-muted">{t("intro")}</p>
@@ -112,7 +112,7 @@ export function CapacityStep({
             >
               {t("capacityQuestion")}
             </h2>
-            <span className="font-display text-[40px] leading-10 font-bold tracking-[-0.02em] tabular-nums">
+            <span className="font-display text-[40px] leading-10 font-semibold tracking-[-0.01em] tabular-nums">
               {t("hours", { n: hours })}
             </span>
           </div>

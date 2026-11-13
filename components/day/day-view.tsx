@@ -300,7 +300,7 @@ export function DayView({ date }: { date: string }) {
             {labels.weekdayName(date)}
           </span>
           <div className="flex items-center gap-1.5">
-            <h1 className="truncate font-display text-[32px] leading-10 font-bold tracking-[-0.02em]">
+            <h1 className="truncate font-display text-[32px] leading-10 font-semibold tracking-[-0.01em]">
               {labels.dayMonthLabel(date)}
             </h1>
             <button

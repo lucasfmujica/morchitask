@@ -23,7 +23,7 @@ export const generateMetadata: () => Promise<Metadata> = homeMetadata;
 
 /** Section frame: the canvas's 1280 column with a 32px gutter (16 on phones). */
 const section = "mx-auto w-full max-w-[1280px] px-4 min-[900px]:px-8";
-const h2 = "font-display-heavy tracking-[-0.035em]";
+const h2 = "font-display font-semibold tracking-[-0.015em]";
 
 /** The one primary action, ink, breathing once the hero has settled. */
 function TrialCta({
@@ -93,7 +93,7 @@ export default async function LandingPage() {
               <span className="self-start rounded-pill bg-mint-soft px-3 py-1.5 font-mono text-[13px] font-medium tracking-[0.04em] text-primary uppercase">
                 {t("hero.eyebrow")}
               </span>
-              <span className="font-display-heavy text-[56px] leading-[56px] tracking-[-0.045em] min-[900px]:text-[92px] min-[900px]:leading-[88px]">
+              <span className="font-display text-[56px] leading-[56px] font-semibold tracking-[-0.015em] min-[900px]:text-[92px] min-[900px]:leading-[88px]">
                 {t.rich("hero.title", {
                   mark: (chunks) => (
                     // On a phone the sentence wraps, and an absolute swipe would
@@ -134,7 +134,7 @@ export default async function LandingPage() {
       <section aria-label={t("capacity.label")} className={cn(section, "pb-24")}>
         <div className="rounded-[28px] bg-surface-2 p-2">
           <div className="flex flex-wrap items-center gap-6 rounded-[22px] bg-surface px-6 py-5 shadow-tile">
-            <span className="font-display text-[30px] font-bold tracking-[-0.02em]">
+            <span className="font-display text-[30px] font-semibold tracking-[-0.01em]">
               {t.rich("capacity.planned", {
                 planned: formatMinutes(DEMO_DAY.plannedStripMin),
                 capacity: formatMinutes(DEMO_DAY.capacityMin),
@@ -235,7 +235,7 @@ export default async function LandingPage() {
             </div>
           </div>
           <div className="flex flex-col gap-3.5 rounded-[28px] bg-[linear-gradient(180deg,var(--wash-mint),var(--wash-mint-2)_50%,var(--bg))] p-6 min-[900px]:col-span-5 min-[900px]:p-9">
-            <span className="font-display-heavy text-[72px] leading-[68px] tracking-[-0.05em] min-[900px]:text-[88px] min-[900px]:leading-[80px]">
+            <span className="font-display text-[72px] leading-[68px] font-semibold tracking-[-0.02em] min-[900px]:text-[88px] min-[900px]:leading-[80px]">
               {t("price.amount", { price })}
             </span>
             <span className="text-base font-semibold text-on-wash">
@@ -298,7 +298,7 @@ export default async function LandingPage() {
             id="fin-h"
             className={cn(
               h2,
-              "max-w-[820px] text-[40px] leading-[42px] tracking-[-0.045em] min-[900px]:text-[72px] min-[900px]:leading-[70px]",
+              "max-w-[820px] text-[40px] leading-[42px] tracking-[-0.015em] min-[900px]:text-[72px] min-[900px]:leading-[70px]",
             )}
           >
             {t("final.title")}

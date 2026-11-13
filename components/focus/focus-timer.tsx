@@ -267,7 +267,7 @@ export function FocusTimer() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-            <span className="font-display text-[56px] leading-none font-bold tracking-[-0.02em] tabular-nums sm:text-[68px]">
+            <span className="font-display text-[56px] leading-none font-semibold tracking-[-0.01em] tabular-nums sm:text-[68px]">
               {/* Digits stay tabular so the clock doesn't wobble each second,
                   but the display face's tabular colon is figure-wide ("25 : 00"),
                   so the colon alone goes back to proportional. */}

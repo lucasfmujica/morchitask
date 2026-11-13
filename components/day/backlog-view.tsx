@@ -77,7 +77,7 @@ export function BacklogView() {
   }
 
   const big = (chunks: ReactNode) => (
-    <span className="font-display text-[28px] leading-8 font-bold tabular-nums text-fg">
+    <span className="font-display text-[28px] leading-8 font-semibold tabular-nums text-fg">
       {chunks}
     </span>
   );
@@ -85,7 +85,7 @@ export function BacklogView() {
   return (
     <div className="flex max-w-[1000px] flex-col gap-4">
       <header className="flex animate-up flex-col gap-0.5 px-2 pt-3">
-        <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em]">
+        <h1 className="font-display text-[32px] leading-9 font-semibold tracking-[-0.01em]">
           {t("title")}
         </h1>
         <p className="text-sm text-muted">{t("subtitle")}</p>
@@ -179,7 +179,7 @@ export function BacklogView() {
                   className={cn("h-2 w-2 rounded-full", GROUP_DOT[priority ?? "none"])}
                   aria-hidden
                 />
-                <h2 className="font-display text-sm font-semibold text-fg">{label}</h2>
+                <h2 className="font-sans text-sm font-semibold text-fg">{label}</h2>
                 <span className="font-mono text-[11px] text-muted tabular-nums">
                   {inGroup.length}
                 </span>

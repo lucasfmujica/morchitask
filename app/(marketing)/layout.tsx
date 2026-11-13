@@ -1,20 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Schibsted_Grotesk } from "next/font/google";
 import { getLocale, getTranslations } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { PUBLIC_NAMESPACES, pickMessages } from "@/lib/i18n-messages";
 import { LogoMark } from "@/components/marketing/icons";
 import { localizedPath } from "@/lib/seo";
-
-// The landing's headlines are 800; the app only loads 600/700. Loading the
-// heavy weight here keeps it off every logged-in page.
-const schibstedHeavy = Schibsted_Grotesk({
-  subsets: ["latin"],
-  weight: ["800"],
-  variable: "--font-schibsted-heavy",
-  display: "swap",
-});
 
 /**
  * Chrome for the pages a stranger reads.
@@ -49,15 +39,12 @@ export default async function MarketingLayout({ children }: { children: ReactNod
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <div
-        data-marketing
-        className={`${schibstedHeavy.variable} flex min-h-dvh flex-col bg-bg text-fg`}
-      >
+      <div data-marketing className="flex min-h-dvh flex-col bg-bg text-fg">
         <header className="mx-auto flex w-full max-w-[1280px] items-center gap-4 px-4 py-5 min-[900px]:px-8">
           <Link
             href={home}
             aria-label={t("nav.home")}
-            className="font-display-heavy flex items-center gap-2.5 text-xl tracking-[-0.02em] text-fg"
+            className="flex items-center gap-2.5 font-display text-xl font-semibold tracking-[-0.01em] text-fg"
           >
             <LogoMark />
             Morchitask
@@ -94,7 +81,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
 
         <footer className="mx-auto flex w-full max-w-[1280px] flex-wrap items-start gap-x-12 gap-y-6 px-4 pt-6 pb-12 text-sm text-muted min-[900px]:px-8">
           <div className="flex flex-[1_1_260px] flex-col gap-2">
-            <span className="font-display-heavy text-lg text-fg">Morchitask</span>
+            <span className="font-display text-lg font-semibold text-fg">Morchitask</span>
             <span>{t("footer.tagline")}</span>
           </div>
           <nav

@@ -550,6 +550,10 @@
   },
   "settings": {
     "title": "Ajustes",
+    "sectionAccount": "Cuenta",
+    "sectionSpace": "Espacio",
+    "sectionPreferences": "Preferencias",
+    "sectionPlan": "Plan",
     "profile": "Tu perfil",
     "changePhoto": "Cambiar tu foto",
     "yourName": "Tu nombre",

@@ -31,7 +31,10 @@ export function ChannelsManager() {
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    // Two across once the page is wide: with ten categories a single list was
+    // the tallest thing in Ajustes. items-start, so opening one row's palette
+    // does not stretch the row beside it.
+    <div className="grid grid-cols-1 items-start gap-1.5 @2xl:grid-cols-2">
       {channels.map((c) => (
         <div key={c.id} className="rounded-2xl bg-surface py-2.5 pr-2.5 pl-3.5">
           <div className="flex items-center gap-2.5">
@@ -84,7 +87,7 @@ export function ChannelsManager() {
         </div>
       ))}
 
-      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-4">
+      <div className="flex items-center gap-2 rounded-pill bg-surface p-1.5 pl-4 @2xl:col-span-2">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}

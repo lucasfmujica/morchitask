@@ -41,7 +41,7 @@ export function CalendarEventsSection({ date, tasks }: { date: string; tasks: Ta
 
   return (
     <section className="flex flex-col gap-1.5">
-      <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-subtle">
+      <h2 className="flex items-center gap-1.5 px-1 font-sans text-xs font-semibold uppercase tracking-wide text-subtle">
         <CalendarClock className="h-3.5 w-3.5" aria-hidden />
         {t("fromCalendar")}
       </h2>

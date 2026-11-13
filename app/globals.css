@@ -274,7 +274,7 @@
   --color-on-scrim: var(--on-scrim);
 
   --font-sans: var(--font-figtree);
-  --font-display: var(--font-schibsted);
+  --font-display: var(--font-fraunces);
   --font-mono: var(--font-plex-mono);
 
   /* Radius ramp, retuned one step softer than Tailwind's defaults (6/8/12) so
@@ -379,11 +379,11 @@ body {
   h1,
   h2,
   h3 {
-    font-family: var(--font-schibsted), var(--font-figtree), ui-sans-serif, sans-serif;
-    letter-spacing: -0.01em;
-    /* Schibsted's tabular set also makes "," and "." figure-wide, which opened a
-       visible gap before punctuation in headings ("calma ,"). Headings are prose,
-       not clocks. */
+    font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+    letter-spacing: -0.005em;
+    /* Tabular figures make "," and "." figure-wide, which opened a visible gap
+       before punctuation in headings ("calma ,"). Headings are prose, not
+       clocks. */
     font-variant-numeric: normal;
   }
 }
@@ -1021,15 +1021,6 @@ body {
    laid along the bar instead of across a tile. */
 @utility bg-fit-bar {
   background-image: linear-gradient(90deg, var(--fit-from), var(--primary));
-}
-
-/* Marketing headlines are set a weight heavier (800) than the app's headings.
-   The weight is loaded only by the marketing layout (--font-schibsted-heavy),
-   so the app never downloads it. */
-@utility font-display-heavy {
-  font-family: var(--font-schibsted-heavy), var(--font-schibsted), ui-sans-serif, sans-serif;
-  font-weight: 800;
-  font-variant-numeric: normal;
 }
 
 /* Reduced motion shortens animations but keeps their delays, so a staggered

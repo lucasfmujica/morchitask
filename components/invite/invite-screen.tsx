@@ -88,7 +88,9 @@ function Frame({
         )}
       >
         <div className="flex h-8 items-center justify-between">
-          <span className="font-display text-[17px] font-bold tracking-[-0.02em]">Morchitask</span>
+          <span className="font-display text-[17px] font-semibold tracking-[-0.01em]">
+            Morchitask
+          </span>
           {expires && (
             <span className="font-mono text-[11px] text-on-wash">
               {t("expires", {
@@ -141,7 +143,7 @@ function Frame({
 function Head({ title, lead }: { title: string; lead: ReactNode }) {
   return (
     <div className="mt-[18px] flex animate-up flex-col gap-2 [animation-delay:120ms]">
-      <h1 className="font-display text-[31px] leading-[35px] font-bold tracking-[-0.02em]">
+      <h1 className="font-display text-[31px] leading-[35px] font-semibold tracking-[-0.01em]">
         {title}
       </h1>
       <p className="text-[15px] leading-[22px] text-muted">{lead}</p>
@@ -275,7 +277,7 @@ function InviteAcceptBody({ view, me }: { view: InviteView; me: HouseholdMember 
             >
               <Glyph d="M2 4h12v8.5H2zM2 7h12M4.5 10h2" size={15} width={1.6} />
             </span>
-            <span className="font-display text-[19px] font-bold">{t("conflictTitle")}</span>
+            <span className="font-display text-[19px] font-semibold">{t("conflictTitle")}</span>
           </div>
           <p className="text-xs leading-[19px] text-muted">
             {t.rich("conflictBody", {
@@ -416,7 +418,7 @@ function InviteAcceptBody({ view, me }: { view: InviteView; me: HouseholdMember 
         aria-labelledby="moves-h"
         className="mt-[18px] animate-up rounded-[28px] bg-surface-2 p-2 [animation-delay:220ms]"
       >
-        <h2 id="moves-h" className="px-2.5 py-2 text-xs font-semibold text-muted">
+        <h2 id="moves-h" className="px-2.5 py-2 font-sans text-xs font-semibold text-muted">
           {t("movesTitle")}
         </h2>
         <div className="rounded-[22px] bg-surface px-3.5 py-1">
@@ -545,7 +547,9 @@ export function InviteInvalid() {
   return (
     <main className="flex min-h-dvh justify-center bg-linear-to-b from-wash-peach via-surface via-50% to-surface pt-safe pb-safe text-fg">
       <div className="flex min-h-dvh w-full max-w-[430px] flex-col px-5 pt-[26px] pb-7">
-        <span className="font-display text-[17px] font-bold tracking-[-0.02em]">Morchitask</span>
+        <span className="font-display text-[17px] font-semibold tracking-[-0.01em]">
+          Morchitask
+        </span>
         <Head title={t("invalidTitle")} lead={t("invalidLead")} />
         <Bottom>
           <Link href="/today" className={cta}>

@@ -63,7 +63,7 @@ export function DangerZone() {
       id="danger"
       className="flex scroll-mt-4 flex-col gap-2.5 rounded-[28px] p-[18px] shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--color-accent)_28%,var(--color-bg))]"
     >
-      <h2 className="font-display text-sm font-semibold text-accent">{t("dangerTitle")}</h2>
+      <h2 className="font-sans text-sm font-semibold text-accent">{t("dangerTitle")}</h2>
       <p className="text-2xs leading-[17px] text-muted">{t("dangerDesc")}</p>
       <div className="flex flex-wrap gap-2">
         <button

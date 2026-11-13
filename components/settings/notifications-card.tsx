@@ -15,22 +15,26 @@ export function NotificationsCard() {
     // the two switches are one surface, not two cards.
     <div className="flex flex-col gap-4 rounded-[22px] bg-surface p-[18px]">
       <h2 className="font-display text-base font-semibold text-fg">{t("notifications")}</h2>
-      <Row
-        title={t("dailyReminder")}
-        desc={supported ? t("dailyReminderDesc") : t("dailyReminderUnsupported")}
-        on={enabled && prefs.dailyPlan !== false}
-        disabled={!supported || busy}
-        onToggle={() => (enabled && prefs.dailyPlan !== false ? disable() : enable())}
-        label={t("dailyReminderLabel")}
-      />
-      <Row
-        title={t("taskReminders")}
-        desc={t("taskRemindersDesc")}
-        on={!!prefs.taskReminders}
-        disabled={!supported || busy}
-        onToggle={() => setTaskReminders(!prefs.taskReminders)}
-        label={t("taskRemindersLabel")}
-      />
+      {/* Side by side when the card runs the page's full width, so each
+          switch stays close to the words it answers to. */}
+      <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @2xl:gap-x-10">
+        <Row
+          title={t("dailyReminder")}
+          desc={supported ? t("dailyReminderDesc") : t("dailyReminderUnsupported")}
+          on={enabled && prefs.dailyPlan !== false}
+          disabled={!supported || busy}
+          onToggle={() => (enabled && prefs.dailyPlan !== false ? disable() : enable())}
+          label={t("dailyReminderLabel")}
+        />
+        <Row
+          title={t("taskReminders")}
+          desc={t("taskRemindersDesc")}
+          on={!!prefs.taskReminders}
+          disabled={!supported || busy}
+          onToggle={() => setTaskReminders(!prefs.taskReminders)}
+          label={t("taskRemindersLabel")}
+        />
+      </div>
     </div>
   );
 }

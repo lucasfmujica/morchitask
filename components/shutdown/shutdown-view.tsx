@@ -188,7 +188,7 @@ function ShutdownRitual({
 
       <header className="flex flex-col gap-3.5">
         <div className="flex items-center gap-3">
-          <h1 className="mr-auto font-display text-[28px] leading-9 font-bold tracking-tight text-fg md:text-[32px]">
+          <h1 className="mr-auto font-display text-[28px] leading-9 font-semibold tracking-tight text-fg md:text-[32px]">
             {ts("title")}
           </h1>
           <span className="font-mono text-2xs text-muted uppercase">
@@ -356,7 +356,7 @@ function StepCelebrate({
             it would be congratulating you for nothing. */}
         {done.length > 0 && <CelebrationCheck />}
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="font-display text-[30px] leading-[34px] font-bold tracking-[-0.02em] text-fg sm:text-[34px] sm:leading-[41px]">
+          <h2 className="font-display text-[30px] leading-[34px] font-semibold tracking-[-0.01em] text-fg sm:text-[34px] sm:leading-[41px]">
             {done.length === 0 ? ts("nothingDone") : ts("didCount", { n: done.length })}
           </h2>
           <p className="text-[15px] leading-[21px] text-muted sm:text-sm">
@@ -654,7 +654,7 @@ function StreakTile({ streak }: { streak: number }) {
       className="flex animate-up flex-col gap-3 rounded-2xl bg-fg p-[18px] text-bg"
       style={{ animationDelay: "240ms" }}
     >
-      <span className="font-display text-[34px] leading-[41px] font-bold tabular-nums">
+      <span className="font-display text-[34px] leading-[41px] font-semibold tabular-nums">
         {streak}
       </span>
       <span className="text-[13px] text-bg/80">
@@ -696,7 +696,7 @@ function StepReflect({
     <Well className="animate-up rounded-[28px]">
       <div className="flex flex-col gap-[18px] rounded-[22px] bg-surface p-5 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)] sm:p-7">
         <div className="flex flex-col gap-1">
-          <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
+          <h2 className="font-display text-[28px] leading-[34px] font-semibold tracking-[-0.01em] text-fg">
             {ts("moodQuestion")}
           </h2>
           <p className="text-sm text-muted">{ts("moodHint")}</p>
@@ -806,7 +806,7 @@ function StepTomorrow({
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex animate-up flex-col gap-1">
-        <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
+        <h2 className="font-display text-[28px] leading-[34px] font-semibold tracking-[-0.01em] text-fg">
           {toToday ? ts("todayHeading") : ts("tomorrowHeading")}
         </h2>
         <p className="text-sm text-muted">

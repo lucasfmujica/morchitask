@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Figtree, IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
+import { Figtree, Fraunces, IBM_Plex_Mono } from "next/font/google";
 import { getLocale, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AgentationProvider } from "@/components/AgentationProvider";
@@ -8,13 +8,18 @@ import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { SITE_URL } from "@/lib/seo";
 
-// Figtree for the interface, Schibsted Grotesk for headings, Plex Mono for the
-// few places that show raw times. DM Sans was retired with the bento redesign.
+// Figtree for the interface, Fraunces for titles and big numbers, Plex Mono
+// for the few places that show raw times. Fraunces replaced Schibsted Grotesk
+// (November 2026); DM Sans was retired with the bento redesign.
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree", display: "swap" });
-const schibsted = Schibsted_Grotesk({
+// Variable, with the optical-size axis: one file covers a 17px wordmark and a
+// 104px price, and the browser picks the cut per size (font-optical-sizing
+// defaults to auto). Without `axes` the opsz axis is stripped and every size
+// gets the same mid cut, which looks clumsy at both ends.
+const fraunces = Fraunces({
   subsets: ["latin"],
-  weight: ["600", "700"],
-  variable: "--font-schibsted",
+  axes: ["opsz"],
+  variable: "--font-fraunces",
   display: "swap",
 });
 const plexMono = IBM_Plex_Mono({
@@ -74,10 +79,7 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html
-      lang={locale}
-      className={`${figtree.variable} ${schibsted.variable} ${plexMono.variable}`}
-    >
+    <html lang={locale} className={`${figtree.variable} ${fraunces.variable} ${plexMono.variable}`}>
       <body className="bg-bg text-fg antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         {/* No message provider here on purpose. Mounted this high it has no

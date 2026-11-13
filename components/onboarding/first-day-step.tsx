@@ -91,7 +91,7 @@ export function FirstDayStep({
       }
     >
       <div className="mt-[26px] flex animate-up flex-col gap-1.5" style={delay(80)}>
-        <h1 className="font-display text-[30px] leading-[34px] font-bold tracking-[-0.02em]">
+        <h1 className="font-display text-[30px] leading-[34px] font-semibold tracking-[-0.01em]">
           {t("firstDayTitle")}
         </h1>
         <p className="text-[15px] leading-[21px] text-muted">{t("firstDayBody")}</p>
@@ -109,7 +109,7 @@ export function FirstDayStep({
                 planned: formatMinutes(planned),
                 capacity: formatMinutes(capacityMin),
                 big: (chunks) => (
-                  <span className="font-display text-[26px] font-bold tracking-[-0.02em] tabular-nums">
+                  <span className="font-display text-[26px] font-semibold tracking-[-0.01em] tabular-nums">
                     {chunks}
                   </span>
                 ),

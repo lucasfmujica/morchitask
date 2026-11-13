@@ -348,7 +348,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
             // A textarea, not an input: a long title wraps like the heading it
             // is instead of scrolling sideways out of sight.
             className={cn(
-              "field-sizing-content min-w-0 flex-1 resize-none bg-transparent font-display text-[26px] leading-[31px] font-bold tracking-[-0.015em] outline-none transition-colors",
+              "field-sizing-content min-w-0 flex-1 resize-none bg-transparent font-display text-[26px] leading-[31px] font-semibold tracking-[-0.01em] outline-none transition-colors",
               done ? "text-subtle line-through" : "text-fg",
             )}
           />
@@ -670,7 +670,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                 {task.shared ? tt("yourRealTime") : tt("realTime")}
               </span>
               {timer.running ? (
-                <span className="flex items-center gap-2 font-display text-[28px] leading-8 font-bold tabular-nums">
+                <span className="flex items-center gap-2 font-display text-[28px] leading-8 font-semibold tabular-nums">
                   <span
                     className="h-2 w-2 animate-pulse rounded-full bg-accent [animation-duration:1.2s]"
                     aria-hidden
@@ -689,7 +689,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                   }}
                   placeholder={tt("timePlaceholder")}
                   aria-label={tt("realTime")}
-                  className="h-8 w-28 border-b border-surface/50 bg-transparent font-display text-[28px] font-bold tabular-nums text-surface outline-none placeholder:text-base placeholder:font-normal placeholder:text-surface/50"
+                  className="h-8 w-28 border-b border-surface/50 bg-transparent font-display text-[28px] font-semibold tabular-nums text-surface outline-none placeholder:text-base placeholder:font-normal placeholder:text-surface/50"
                 />
               ) : realByDayOnly ? (
                 // Someone else's shared task: there is nowhere to keep an
@@ -697,7 +697,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                 // day, in the breakdown below.
                 <span
                   title={tt("realTimeByDayOnly")}
-                  className="font-display text-[28px] leading-8 font-bold tabular-nums text-surface"
+                  className="font-display text-[28px] leading-8 font-semibold tabular-nums text-surface"
                 >
                   {formatMinutes(task.actual_time_min ?? 0)}
                 </span>
@@ -705,7 +705,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                 <button
                   onClick={startEditReal}
                   title={tt("logTimeManually")}
-                  className="cursor-pointer text-left font-display text-[28px] leading-8 font-bold tabular-nums text-surface underline decoration-surface/30 decoration-dotted decoration-from-font underline-offset-4 transition-opacity hover:opacity-80"
+                  className="cursor-pointer text-left font-display text-[28px] leading-8 font-semibold tabular-nums text-surface underline decoration-surface/30 decoration-dotted decoration-from-font underline-offset-4 transition-opacity hover:opacity-80"
                 >
                   {formatMinutes(task.actual_time_min ?? 0)}
                 </button>
@@ -776,7 +776,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
 
         {/* Description */}
         <Card>
-          <label htmlFor={`notes-${task.id}`} className="font-display text-sm font-semibold">
+          <label htmlFor={`notes-${task.id}`} className="font-sans text-sm font-semibold">
             {tt("description")}
           </label>
           <textarea
@@ -793,7 +793,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         {/* Checklist */}
         <Card gap="gap-2">
           <div className="flex items-center gap-2.5">
-            <h2 className="mr-auto font-display text-sm font-semibold">{tt("checklist")}</h2>
+            <h2 className="mr-auto font-sans text-sm font-semibold">{tt("checklist")}</h2>
             {subtasks.length > 0 && (
               <span className="font-mono text-2xs text-muted">
                 {tt("checklistProgress", { done: doneSubs, total: subtasks.length })}
@@ -850,7 +850,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         {/* Files: photos, PDFs and documents that belong with the task */}
         <Card>
           <div className="flex items-center gap-2.5">
-            <h2 className="mr-auto font-display text-sm font-semibold">{tt("files")}</h2>
+            <h2 className="mr-auto font-sans text-sm font-semibold">{tt("files")}</h2>
             {attachmentCount > 0 && (
               <span className="font-mono text-2xs text-muted">{attachmentCount}</span>
             )}
@@ -861,7 +861,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         {/* Kudos: celebrate a finished shared task */}
         {partner && task.shared && task.status === "done" && (
           <Card>
-            <h2 className="font-display text-sm font-semibold">{tt("reactions")}</h2>
+            <h2 className="font-sans text-sm font-semibold">{tt("reactions")}</h2>
             <TaskReactions taskId={task.id} />
           </Card>
         )}
@@ -869,7 +869,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         {/* Comments: discussion on a shared task */}
         {partner && task.shared && (
           <Card gap="gap-3">
-            <h2 className="font-display text-sm font-semibold">{tt("comments")}</h2>
+            <h2 className="font-sans text-sm font-semibold">{tt("comments")}</h2>
             <TaskComments taskId={task.id} />
           </Card>
         )}

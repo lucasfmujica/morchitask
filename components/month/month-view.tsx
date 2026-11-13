@@ -89,7 +89,7 @@ export function MonthView({ date }: { date: string }) {
           </span>
           {/* `!` because the global h1 rule (unlayered) otherwise beats the
               utility and halves the canvas's -0.02em to -0.01em. */}
-          <h1 className="m-0 truncate font-display text-[32px] leading-[normal] font-bold tracking-[-0.02em]!">
+          <h1 className="m-0 truncate font-display text-[32px] leading-[normal] font-semibold tracking-[-0.01em]!">
             {labels.monthLabel(date)}
           </h1>
         </div>
@@ -261,7 +261,7 @@ function DayCell({
     >
       <span
         className={cn(
-          "flex h-6 w-6 shrink-0 items-center justify-center rounded-pill font-display text-sm font-bold tabular-nums sm:h-7 sm:w-7",
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-pill font-sans text-sm font-semibold tabular-nums sm:h-7 sm:w-7",
           // White on the mint gradient: the canvas draws it so and the user
           // asked for it as drawn, even though the light end of the ramp
           // gives small text less contrast than solid primary did.

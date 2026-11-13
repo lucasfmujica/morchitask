@@ -58,7 +58,7 @@ export function ObjectivesView() {
     // capped column left a third of a desktop screen empty.
     <div className="flex flex-col gap-4">
       <header className="flex animate-up flex-col gap-0.5 px-2 pt-3">
-        <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em]">
+        <h1 className="font-display text-[32px] leading-9 font-semibold tracking-[-0.01em]">
           {t("title")}
         </h1>
         <p className="text-sm text-muted">{t("subtitle")}</p>

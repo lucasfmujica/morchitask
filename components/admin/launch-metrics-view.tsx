@@ -31,7 +31,7 @@ const PERIOD_KEYS = {
 const well = "rounded-[28px] bg-surface-2 p-2";
 const tile = "rounded-[22px] bg-surface p-[18px] shadow-tile";
 const h2 = "font-display text-lg font-semibold text-fg";
-const big = "font-display text-[36px] leading-[44px] font-bold tracking-[-0.02em] tabular-nums";
+const big = "font-display text-[36px] leading-[44px] font-semibold tracking-[-0.01em] tabular-nums";
 
 /** A calendar day as a Date that formats as that same day anywhere. */
 const noon = (day: string) => new Date(`${day}T12:00:00Z`);
@@ -70,7 +70,7 @@ export function LaunchMetricsView({ metrics }: { metrics: LaunchMetrics }) {
           <span className="text-[11px] font-semibold tracking-[0.06em] text-muted uppercase">
             {t("eyebrow")}
           </span>
-          <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em] text-fg">
+          <h1 className="font-display text-[32px] leading-9 font-semibold tracking-[-0.01em] text-fg">
             {t("title")}
           </h1>
         </div>
