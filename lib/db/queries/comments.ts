@@ -1,14 +1,21 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, getTableColumns } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { taskComments } from "@/lib/db/schema";
+import { profiles, taskComments } from "@/lib/db/schema";
 import { assertVisibleTask, onVisibleTask } from "./visibility";
 
 /** Comments are as private as their task (see visibility.ts). */
 
 export async function listComments(householdId: string, userId: string, taskId: string) {
   return db
-    .select()
+    .select({
+      ...getTableColumns(taskComments),
+      // The author's name travels with the comment: someone who left the
+      // space is no longer among its members, and their comments on what
+      // stayed are promised to keep their name (see membership.ts).
+      author_name: profiles.display_name,
+    })
     .from(taskComments)
+    .leftJoin(profiles, eq(profiles.id, taskComments.author_id))
     .where(
       and(
         eq(taskComments.household_id, householdId),

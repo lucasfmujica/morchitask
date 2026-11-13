@@ -926,4 +926,37 @@ describe("two people in one household", () => {
       expect(await n(`channels where id = '${s2Channel.id}' and name = 's2 chan'`)).toBe(1);
     });
   });
+
+  describe("membership reads", () => {
+    it("count and list only the asking household's people and tasks", async () => {
+      const membership = await import("./membership");
+      // B's user asked about in A's household: nothing of B's is counted.
+      expect(await membership.moveCounts(A.household, B.user)).toEqual({
+        privateTasks: 0,
+        sharedTasks: 0,
+        sharedDated: 0,
+        comments: 0,
+      });
+      expect(await membership.ownTaskCount(A.household, B.user)).toBe(0);
+      const space = await membership.spaceMembers(A.household);
+      const ids = space.members.map((m) => m.id);
+      expect(ids).toContain(A.user);
+      expect(ids).not.toContain(B.user);
+    });
+
+    it("never names another household's payer as this one's", async () => {
+      // B pays for B, and a stale marker on B naming A must not make B A's payer.
+      await subscriptionQueries.recordBillingManager(B.household, B.user);
+      await client.exec(
+        `update profiles set notification_prefs = notification_prefs || '{"billing_manager_for": "${A.household}"}' where id = '${B.user}'`,
+      );
+      expect(await subscriptionQueries.billingManager(A.household)).toBeNull();
+      // And a webhook naming A's user as B's payer does nothing: A is not in B.
+      await subscriptionQueries.recordBillingManager(B.household, A.user);
+      const marked = await client.query<{ n: number }>(
+        `select count(*)::int as n from profiles where id = '${A.user}' and notification_prefs ? 'billing_manager_for'`,
+      );
+      expect(marked.rows[0].n).toBe(0);
+    });
+  });
 });

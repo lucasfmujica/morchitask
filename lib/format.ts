@@ -85,3 +85,16 @@ export function formatClock(totalSeconds: number): string {
   const sec = s % 60;
   return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
+
+/**
+ * "03/03" / "03/03/2027" in Spanish, month first in English: the canvas's
+ * mono dates. Built by hand because ICU's Spanish pattern for two-digit day
+ * and month is still "3/3", and these sit in a monospace column where the
+ * width is the point.
+ */
+export function paddedDate(date: Date, locale: string, withYear = false): string {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dm = locale.startsWith("en") ? `${mm}/${dd}` : `${dd}/${mm}`;
+  return withYear ? `${dm}/${date.getFullYear()}` : dm;
+}

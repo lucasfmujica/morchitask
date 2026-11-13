@@ -30,7 +30,10 @@ export type RecurringTemplate = typeof recurringTemplates.$inferSelect;
 export type DailyNote = typeof dailyNotes.$inferSelect;
 export type WeeklyNote = typeof weeklyNotes.$inferSelect;
 export type Objective = typeof objectives.$inferSelect;
-export type TaskComment = typeof taskComments.$inferSelect;
+export type TaskComment = typeof taskComments.$inferSelect & {
+  /** Present on listed comments; a just-added one has only the id. */
+  author_name?: string | null;
+};
 export type TaskReaction = typeof taskReactions.$inferSelect;
 export type TaskBlock = typeof taskBlocks.$inferSelect;
 export type TaskAttachment = typeof taskAttachments.$inferSelect;

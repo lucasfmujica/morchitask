@@ -155,3 +155,52 @@ export async function recordCheckoutStarted(householdId: string, userId: string)
       ),
     );
 }
+
+/**
+ * The key in `profiles.notification_prefs` that says this person pays for a
+ * space: its value is the household id. Same borrowed column as
+ * `checkout_started_at`, for the same reason (no migration for one fact).
+ * Keyed by household so a marker carried out of a space by someone who left
+ * it means nothing in the space they land in.
+ */
+export const BILLING_MANAGER_MARKER = "billing_manager_for";
+
+/**
+ * Records who pays for this space, from the checkout's `user_id`.
+ *
+ * One statement, so it cannot race a prefs save or a second webhook: it marks
+ * the payer and unmarks anyone else in the same space, and does nothing at
+ * all when the payer is no longer a member (they left, or the id is stale), so
+ * a late webhook cannot hand the plan to someone outside it.
+ */
+export async function recordBillingManager(householdId: string, userId: string) {
+  await db
+    .update(profiles)
+    .set({
+      notification_prefs: sql`case when ${profiles.id} = ${userId}
+        then ${profiles.notification_prefs} || jsonb_build_object(${BILLING_MANAGER_MARKER}::text, ${householdId}::text)
+        else ${profiles.notification_prefs} - ${BILLING_MANAGER_MARKER}::text end`,
+    })
+    .where(
+      and(
+        eq(profiles.household_id, householdId),
+        sql`(${profiles.id} = ${userId} or ${profiles.notification_prefs} ->> ${BILLING_MANAGER_MARKER}::text = ${householdId}::text)`,
+        sql`exists (select 1 from "profiles" p where p.id = ${userId} and p.household_id = ${householdId})`,
+      ),
+    );
+}
+
+/** The member who pays for this space, when the webhook has said so. */
+export async function billingManager(householdId: string) {
+  const [row] = await db
+    .select({ id: profiles.id, display_name: profiles.display_name })
+    .from(profiles)
+    .where(
+      and(
+        eq(profiles.household_id, householdId),
+        sql`${profiles.notification_prefs} ->> ${BILLING_MANAGER_MARKER}::text = ${householdId}::text`,
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}

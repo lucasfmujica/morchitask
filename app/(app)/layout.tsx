@@ -4,6 +4,9 @@ import { AppChrome } from "@/components/layout/app-chrome";
 import { TrialBanner } from "@/components/billing/trial-banner";
 import { TrialBannerSlot } from "@/components/billing/trial-banner-slot";
 import { TrialChip } from "@/components/billing/trial-chip";
+import { auth } from "@/lib/auth";
+import { hasWriteAccess } from "@/lib/billing";
+import { isBillingEnabled } from "@/lib/billing-config";
 
 /**
  * The authenticated app, which gets the whole catalog.
@@ -14,9 +17,13 @@ import { TrialChip } from "@/components/billing/trial-chip";
  * exists for the pages a stranger reads before deciding, not for this one.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  // Locked is the same rule the proxy redirects on, said once more for the
+  // sidebar, so it can show which places are closed instead of linking to them.
+  const session = await auth();
+  const locked = !!session?.access && !hasWriteAccess(session.access, isBillingEnabled());
   return (
     <NextIntlClientProvider>
-      <AppChrome trialChip={<TrialChip />}>
+      <AppChrome trialChip={<TrialChip />} locked={locked}>
         <div className="flex flex-col gap-4">
           {/* Auth gating happens in the proxy; the one thing that has to be
               visible from every screen is a trial about to run out. The

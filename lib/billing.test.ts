@@ -5,12 +5,14 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  billingScreen,
   DUNNING_GRACE_DAYS,
   resolveAccess,
   shouldWarnAboutTrial,
   trialChip,
   trialEndFrom,
   WEBHOOK_GRACE_DAYS,
+  type Access,
   type BillingFacts,
 } from "./billing";
 import { TRIAL_DAYS } from "./pricing";
@@ -253,5 +255,75 @@ describe("trialChip", () => {
         paymentFailing: false,
       }),
     ).toBeNull();
+  });
+});
+
+describe("billingScreen", () => {
+  const now = new Date("2026-11-20T12:00:00.000Z");
+  const access = (over: Partial<Access>): Access => ({
+    allowed: true,
+    source: "trial",
+    until: null,
+    trialDaysLeft: 3,
+    paymentFailing: false,
+    ...over,
+  });
+
+  it("never offers anything to a comped space", () => {
+    expect(billingScreen(access({ source: "comp" }), null, { managedByOther: true })).toEqual({
+      kind: "comp",
+    });
+  });
+
+  it("measures the dunning grace from the failed renewal", () => {
+    const s = billingScreen(
+      access({ source: "subscription", paymentFailing: true, until: "2026-11-27T12:00:00.000Z" }),
+      { status: "past_due", current_period_end: "2026-11-13T12:00:00.000Z" },
+      { managedByOther: false, now },
+    );
+    expect(s).toEqual({
+      kind: "pastDue",
+      cutoff: "2026-11-27T12:00:00.000Z",
+      spentPct: 50,
+      failedOn: "2026-11-13T12:00:00.000Z",
+    });
+  });
+
+  it("tells a cancelled subscription apart from a trial that ran out", () => {
+    const locked = access({ allowed: false, source: "subscription", trialDaysLeft: 0 });
+    expect(
+      billingScreen(
+        locked,
+        { status: "canceled", current_period_end: "2026-11-02T00:00:00.000Z" },
+        { managedByOther: false, now },
+      ),
+    ).toEqual({ kind: "ended", endedOn: "2026-11-02T00:00:00.000Z" });
+    expect(
+      billingScreen(access({ allowed: false, source: "trial" }), null, { managedByOther: false }),
+    ).toEqual({
+      kind: "trialEnded",
+    });
+  });
+
+  // Regression: the member who never paid was offered a checkout for a plan
+  // whose card and invoices are the other member's.
+  it("sends a locked member whose partner pays to the partner, not to a checkout", () => {
+    expect(
+      billingScreen(
+        access({ allowed: false, source: "subscription" }),
+        { status: "canceled", current_period_end: "2026-11-02T00:00:00.000Z" },
+        { managedByOther: true },
+      ),
+    ).toEqual({ kind: "managedElsewhere" });
+  });
+
+  it("gives an exhausted dunning the plain lock, not 'your trial ended'", () => {
+    expect(
+      billingScreen(
+        access({ allowed: false, source: "trial" }),
+        { status: "unpaid", current_period_end: "2026-10-01T00:00:00.000Z" },
+        { managedByOther: false },
+      ),
+    ).toEqual({ kind: "locked" });
   });
 });

@@ -257,3 +257,59 @@ export function trialChip(access: Access, trialDays: number = TRIAL_DAYS): Trial
     endsAt: access.until,
   };
 }
+
+export type BillingScreen =
+  | { kind: "comp" }
+  | { kind: "trial" }
+  | { kind: "active" }
+  /** Paying, card failing, still inside the dunning grace. `cutoff` is when
+   *  access stops if no retry passes; `spentPct` how much of the grace is gone. */
+  | { kind: "pastDue"; cutoff: string | null; spentPct: number; failedOn: string | null }
+  /** Locked: the trial ran out and nothing was ever paid. */
+  | { kind: "trialEnded" }
+  /** Locked: they cancelled and the period they paid for is over. */
+  | { kind: "ended"; endedOn: string | null }
+  /** Locked, and the plan is the other member's to renew. */
+  | { kind: "managedElsewhere" }
+  /** Locked for any other reason (Polar gave up retrying, a paused plan). */
+  | { kind: "locked" };
+
+/**
+ * Which of the billing screen's states applies.
+ *
+ * Its own function because the order matters and each state promises
+ * something different: "renew it" to someone whose partner holds the card
+ * would send them to a checkout the server refuses, and "your trial ended" to
+ * someone who cancelled a plan would be untrue.
+ */
+export function billingScreen(
+  access: Access,
+  subscription: { status: string; current_period_end: string | null } | null,
+  opts: { managedByOther: boolean; now?: Date },
+): BillingScreen {
+  if (access.source === "comp") return { kind: "comp" };
+  if (access.paymentFailing && access.allowed) {
+    const now = (opts.now ?? new Date()).getTime();
+    const failedOn = subscription?.current_period_end ?? null;
+    const start = failedOn ? new Date(failedOn).getTime() : NaN;
+    const spent = Number.isNaN(start) ? 0 : (now - start) / (DUNNING_GRACE_DAYS * DAY_MS);
+    return {
+      kind: "pastDue",
+      cutoff: access.until,
+      spentPct: Math.round(Math.min(1, Math.max(0, spent)) * 100),
+      failedOn,
+    };
+  }
+  if (access.allowed && access.source === "subscription") return { kind: "active" };
+  if (access.allowed) return { kind: "trial" };
+  if (opts.managedByOther) return { kind: "managedElsewhere" };
+  if (subscription?.status === "canceled") {
+    return { kind: "ended", endedOn: subscription.current_period_end };
+  }
+  if (!subscription || !isLiveSubscription(subscription.status)) {
+    // `unpaid` is the end of dunning, not a choice: it gets the plain lock.
+    if (subscription?.status === "unpaid") return { kind: "locked" };
+    return { kind: "trialEnded" };
+  }
+  return { kind: "locked" };
+}

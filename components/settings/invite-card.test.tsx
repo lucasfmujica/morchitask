@@ -104,4 +104,30 @@ describe("InviteCard", () => {
     await user.click(await screen.findByLabelText(/cancelar la invitación/i));
     await waitFor(() => expect(revokeInvite).toHaveBeenCalledWith("i1"));
   });
+
+  // Regression: the copied link was /login?invite=…, which nothing read, so an
+  // existing account that opened it never saw the invite.
+  it("copies a link to the accept page", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    listInvites.mockResolvedValue({
+      invites: [
+        {
+          id: "i1",
+          email: "sofi@example.com",
+          token: "tok_0123456789abcdef",
+          expires_at: IN_A_WEEK,
+        },
+      ],
+      members: 1,
+      max: 2,
+    });
+    renderCard();
+
+    await user.click(await screen.findByLabelText(/copiar el link/i));
+    expect(writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/invite/tok_0123456789abcdef?invite=tok_0123456789abcdef`,
+    );
+  });
 });

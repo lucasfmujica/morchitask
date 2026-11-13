@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatMinutes, formatClock, formatDuration, parseDuration } from "./format";
+import { formatMinutes, formatClock, formatDuration, paddedDate, parseDuration } from "./format";
 
 describe("parseDuration", () => {
   it("reads a plain number as minutes", () => {
@@ -83,5 +83,15 @@ describe("formatClock", () => {
   });
   it("guards negatives", () => {
     expect(formatClock(-5)).toBe("0:00:00");
+  });
+});
+
+describe("paddedDate", () => {
+  const d = new Date(2027, 2, 3);
+  it("pads day and month, day first in Spanish", () => {
+    expect(paddedDate(d, "es")).toBe("03/03");
+    expect(paddedDate(new Date(2026, 10, 27), "es")).toBe("27/11");
+    expect(paddedDate(new Date(2026, 10, 27), "en")).toBe("11/27");
+    expect(paddedDate(d, "es", true)).toBe("03/03/2027");
   });
 });
