@@ -976,7 +976,9 @@
     "tS7Title": "Cambios y cierre",
     "tS7Body": "Podés irte cuando quieras borrando la cuenta. Si tuviéramos que cerrar el servicio, avisamos con al menos 30 días y podés exportar todo.",
     "tS8Title": "Ley aplicable",
-    "tS8Body": "Se rige por las leyes de la República Argentina."
+    "tS8Body": "Se rige por las leyes de la República Argentina.",
+    "pAnalyticsTitle": "Cómo contamos visitas",
+    "pAnalyticsBody": "En las páginas públicas usamos Vercel Web Analytics para saber cuántas personas las visitan y desde dónde llegan. No usa cookies ni guarda nada en tu navegador: identifica una visita con un código que se arma a partir de la conexión y se descarta a las 24 horas, así que no se puede seguir a nadie de un día a otro ni entre sitios. Antes de mandar cada visita le sacamos a la dirección todo lo que va después de «?» o «#». No lo usamos para publicidad ni lo cruzamos con tu cuenta."
   },
   "billing": {
     "title": "Plan y pago",

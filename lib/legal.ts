@@ -7,7 +7,7 @@
  */
 
 /** Bump when the wording actually changes, not on every deploy. */
-export const LEGAL_UPDATED = "2026-08-26";
+export const LEGAL_UPDATED = "2026-11-13";
 
 /**
  * TODO before launch: this needs to be an address on the real domain. Google's
