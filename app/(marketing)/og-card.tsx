@@ -23,15 +23,15 @@ import { PRICE_MONTHLY_USD, TRIAL_DAYS, formatUsd } from "@/lib/pricing";
  * the CSS variables. They are the light theme's values from `app/globals.css`
  * (--bg, --surface-2, --fg, --muted, --fit-from, --primary, --marker).
  *
- * Fonts: the wordmark and the headline in Fraunces, the small lines in
+ * Fonts: the wordmark and the headline in Bricolage Grotesque, the small lines in
  * Figtree, as on the page. Both are checked in next to this file rather than
  * fetched from Google at build time, because a fetch turns a network hiccup
  * into a failed deploy for a social card. They are static cuts (satori cannot
- * read variable axes: Fraunces 600 at optical size 72, Figtree 500) subset to
- * ASCII plus Spanish accents, 27 KB and 18 KB. Both are OFL. Passing `fonts`
+ * read variable axes: Bricolage 600 at optical size 96, Figtree 500) subset to
+ * ASCII plus Spanish accents, 33 KB and 18 KB. Both are OFL. Passing `fonts`
  * drops next/og's bundled Noto, so a character outside the subset renders as
  * nothing: if the catalog strings gain one, re-download the subset from
- * fonts.googleapis.com/css2?family=Fraunces:opsz,wght@72,600&text=... (and the
+ * fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@96,600&text=... (and the
  * same for Figtree:wght@500), with a non-browser User-Agent to get TTF.
  */
 const t = createTranslator({ locale: "es", messages: es, namespace: "seo" });
@@ -49,8 +49,8 @@ const MARKER = "#F2D24B";
 
 export async function renderOgCard() {
   const dir = join(process.cwd(), "app/(marketing)");
-  const [fraunces, figtree] = await Promise.all([
-    readFile(join(dir, "fraunces-og-600.ttf")),
+  const [bricolage, figtree] = await Promise.all([
+    readFile(join(dir, "bricolage-og-600.ttf")),
     readFile(join(dir, "figtree-og-500.ttf")),
   ]);
   const price = formatUsd(PRICE_MONTHLY_USD, "es");
@@ -94,13 +94,13 @@ export async function renderOgCard() {
             />
           </svg>
         </div>
-        <div style={{ fontFamily: "Fraunces", fontSize: 40 }}>{"Morchitask"}</div>
+        <div style={{ fontFamily: "Bricolage", fontSize: 40 }}>{"Morchitask"}</div>
       </div>
 
       <div
         style={{
           display: "flex",
-          fontFamily: "Fraunces",
+          fontFamily: "Bricolage",
           fontSize: 84,
           lineHeight: 1.05,
           letterSpacing: -1,
@@ -155,7 +155,7 @@ export async function renderOgCard() {
     {
       ...ogSize,
       fonts: [
-        { name: "Fraunces", data: fraunces, weight: 600, style: "normal" },
+        { name: "Bricolage", data: bricolage, weight: 600, style: "normal" },
         { name: "Figtree", data: figtree, weight: 500, style: "normal" },
       ],
     },
