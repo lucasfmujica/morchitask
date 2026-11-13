@@ -976,7 +976,9 @@
     "tS7Title": "Changes and shutdown",
     "tS7Body": "You can leave any time by deleting your account. If we ever had to shut the service down, we'd give at least 30 days' notice and you could export everything.",
     "tS8Title": "Governing law",
-    "tS8Body": "Governed by the laws of the Argentine Republic."
+    "tS8Body": "Governed by the laws of the Argentine Republic.",
+    "pAnalyticsTitle": "How we count visits",
+    "pAnalyticsBody": "On the public pages we use Vercel Web Analytics to know how many people visit and where they come from. It sets no cookies and stores nothing in your browser: a visit is identified by a code built from the connection and discarded after 24 hours, so nobody can be followed from one day to the next or across sites. Before each visit is sent we strip everything after «?» or «#» from the address. We don't use it for advertising or link it to your account."
   },
   "billing": {
     "title": "Plan and billing",

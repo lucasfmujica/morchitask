@@ -19,6 +19,7 @@ export default async function PrivacyPage() {
         { heading: t("pS1Title"), body: t("pS1Body") },
         { heading: t("pS2Title"), body: t("pS2Body") },
         { heading: t("pS3Title"), body: t("pS3Body") },
+        { heading: t("pAnalyticsTitle"), body: t("pAnalyticsBody") },
         { heading: t("pS4Title"), body: t("pS4Body") },
         { heading: t("pS5Title"), body: t("pS5Body") },
         { heading: t("pS6Title"), body: t("pS6Body") },
