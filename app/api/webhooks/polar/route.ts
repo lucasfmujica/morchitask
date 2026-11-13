@@ -1,4 +1,5 @@
-import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks";
+import { WebhookVerificationError } from "@polar-sh/sdk/webhooks";
+import { verifyPolarEvent } from "@/lib/polar-webhook";
 import { householdExists, upsertSubscription } from "@/lib/db/queries/subscriptions";
 import { isHandledEvent, parseSubscriptionEvent } from "@/lib/webhook-events";
 
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
 
   let event;
   try {
-    event = validateEvent(body, headers, secret);
+    event = verifyPolarEvent(body, headers, secret);
   } catch (err) {
     if (err instanceof WebhookVerificationError) {
       return new Response("invalid signature", { status: 403 });
