@@ -93,7 +93,7 @@ export function CapacityBar({
               worked: formatMinutes(worked),
               goal: formatMinutes(goalMin),
               big: (chunks) => (
-                <span className="font-display text-[30px] leading-9 font-bold tracking-[-0.02em]">
+                <span className="font-display text-[30px] leading-9 font-semibold tracking-[-0.01em]">
                   {chunks}
                 </span>
               ),

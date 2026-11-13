@@ -159,7 +159,7 @@ export function WeekView({ date }: { date: string }) {
           <p className="text-[11px] font-semibold tracking-[0.06em] text-muted uppercase">
             {t("weekOf", { date: labels.dayMonthLabel(week[0]) })}
           </p>
-          <h1 className="m-0 font-display text-[32px] font-bold tracking-[-0.02em] text-fg">
+          <h1 className="m-0 font-display text-[32px] font-semibold tracking-[-0.01em] text-fg">
             {t("title")}
           </h1>
         </div>
@@ -378,7 +378,7 @@ function DayColumn({
           </span>
           <span
             className={cn(
-              "flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-pill font-display text-[17px] font-bold tabular-nums transition-colors",
+              "flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-pill font-display text-[17px] font-semibold tabular-nums transition-colors",
               isToday
                 ? // White on the mint gradient, exactly as the canvas draws it.
                   "bg-fit text-on-primary shadow-[0_4px_12px_color-mix(in_srgb,var(--color-primary)_35%,transparent)]"
@@ -495,7 +495,7 @@ function EmptyDay({
   const t = useTranslations("week");
   return (
     <div className="flex flex-col gap-2.5 rounded-[14px] bg-surface/40 px-3 py-3.5 shadow-[inset_0_0_0_1.5px_var(--color-border-strong)]">
-      <p className="font-display text-sm font-semibold text-fg">{t("freeDay")}</p>
+      <p className="font-sans text-sm font-semibold text-fg">{t("freeDay")}</p>
       <p className="text-2xs leading-[17px] text-muted">
         {t("freeDayHint", {
           day: labels.compactDayLabel(date, today),

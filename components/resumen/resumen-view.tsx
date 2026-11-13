@@ -148,7 +148,7 @@ export function ResumenView() {
     <div className="flex flex-col gap-4">
       <header className="flex animate-up flex-wrap items-center gap-2.5 px-2 pt-3">
         <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-          <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em] text-fg">
+          <h1 className="font-display text-[32px] leading-9 font-semibold tracking-[-0.01em] text-fg">
             {t("title")}
           </h1>
           {/* Not on the canvas, whose toggle names the period. "Últimas 4"
@@ -193,7 +193,7 @@ export function ResumenView() {
                 worked: formatMinutes(worked.workedMin),
                 goal: formatMinutes(worked.goalMin),
                 big: (chunks) => (
-                  <span className="font-display text-[30px] leading-none font-bold tracking-[-0.02em] whitespace-nowrap text-bg tabular-nums sm:text-[36px]">
+                  <span className="font-display text-[30px] leading-none font-semibold tracking-[-0.01em] whitespace-nowrap text-bg tabular-nums sm:text-[36px]">
                     {chunks}
                   </span>
                 ),
@@ -213,7 +213,7 @@ export function ResumenView() {
           style={{ animationDelay: "120ms" }}
         >
           <p className="text-2xs text-muted">{t("statDone")}</p>
-          <p className="font-display text-[40px] leading-none font-bold tracking-[-0.02em] text-fg tabular-nums">
+          <p className="font-display text-[40px] leading-none font-semibold tracking-[-0.01em] text-fg tabular-nums">
             {overall.done}
           </p>
           <p className="text-2xs text-muted">
@@ -518,7 +518,7 @@ function Ring({ pct }: { pct: number }) {
           transition={{ duration: 1.3, delay: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
         />
       </svg>
-      <span className="absolute inset-0 grid place-items-center font-display text-[22px] font-bold">
+      <span className="absolute inset-0 grid place-items-center font-display text-[22px] font-semibold">
         {pct}%
       </span>
     </div>

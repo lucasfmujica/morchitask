@@ -53,7 +53,9 @@ function StepBar({ step }: { step: OnboardingStep }) {
   return (
     <div className="flex h-10 items-center gap-3.5">
       {step === 1 ? (
-        <span className="font-display text-[17px] font-bold tracking-[-0.02em]">Morchitask</span>
+        <span className="font-display text-[17px] font-semibold tracking-[-0.01em]">
+          Morchitask
+        </span>
       ) : (
         <Link
           href={onboardingStepPath((step - 1) as OnboardingStep)}

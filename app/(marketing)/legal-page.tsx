@@ -22,7 +22,9 @@ export async function LegalPage({
 
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:py-20">
-      <h1 className="text-3xl font-extrabold tracking-tight text-fg sm:text-4xl">{title}</h1>
+      <h1 className="font-display text-3xl font-semibold tracking-[-0.01em] text-fg sm:text-4xl">
+        {title}
+      </h1>
       <p className="mt-2 text-sm text-subtle">{t("updated", { date: LEGAL_UPDATED })}</p>
       <p className="mt-5 text-balance text-lg text-muted">{intro}</p>
 
@@ -37,7 +39,7 @@ export async function LegalPage({
       <div className="mt-10 flex flex-col gap-8">
         {sections.map(({ heading, body }) => (
           <section key={heading}>
-            <h2 className="text-lg font-bold tracking-tight text-fg">{heading}</h2>
+            <h2 className="font-display text-lg font-semibold text-fg">{heading}</h2>
             <p className="mt-2 text-balance leading-relaxed text-muted">{body}</p>
           </section>
         ))}

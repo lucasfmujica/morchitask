@@ -93,7 +93,7 @@ export function PaymentConfirming({
 function Title() {
   const t = useTranslations("billing");
   return (
-    <h1 className="animate-up font-display text-[32px] leading-9 font-bold tracking-[-0.02em] text-fg [animation-duration:600ms]">
+    <h1 className="animate-up font-display text-[32px] leading-9 font-semibold tracking-[-0.01em] text-fg [animation-duration:600ms]">
       {t("title")}
     </h1>
   );
@@ -158,7 +158,7 @@ function Waiting({
           >
             <span className="absolute inset-0 animate-spin rounded-full border-[2.5px] border-transparent border-t-ink-fit-from [animation-duration:1.1s]" />
           </span>
-          <span className="font-display text-[28px] leading-8 font-bold tracking-[-0.01em]">
+          <span className="font-display text-[28px] leading-8 font-semibold tracking-[-0.01em]">
             {t("confirmTitle")}
           </span>
           <span className="ml-auto font-mono text-2xs text-on-ink-muted tabular-nums">
@@ -243,7 +243,7 @@ function Slow({ elapsed, onRefresh }: { elapsed: number; onRefresh: () => void }
           >
             <Clock className="h-[18px] w-[18px]" strokeWidth={1.6} />
           </span>
-          <span className="font-display text-[26px] leading-[30px] font-bold tracking-[-0.01em] text-fg">
+          <span className="font-display text-[26px] leading-[30px] font-semibold tracking-[-0.01em] text-fg">
             {t("slowTitle")}
           </span>
           <span className="ml-auto font-mono text-2xs text-accent tabular-nums">
@@ -321,7 +321,7 @@ function Done({ state }: { state: BillingState }) {
               <path d="m3.5 8.5 3 3 6-7" />
             </svg>
           </span>
-          <span className="font-display text-[28px] leading-8 font-bold tracking-[-0.01em]">
+          <span className="font-display text-[28px] leading-8 font-semibold tracking-[-0.01em]">
             {t("doneTitle")}
           </span>
         </div>
@@ -366,7 +366,7 @@ function Done({ state }: { state: BillingState }) {
                 </span>
               ))}
             </span>
-            <span className="font-display text-xl font-bold text-fg">
+            <span className="font-display text-xl font-semibold text-fg">
               {t("doneCoversWho", { partner: partner?.display_name ?? "none" })}
             </span>
           </span>
@@ -416,7 +416,7 @@ function DoneTile({
     <div className="flex flex-col gap-1.5 rounded-[22px] bg-surface p-[18px]">
       <span className="text-2xs text-muted">{label}</span>
       {display ? (
-        <span className="font-display text-2xl leading-7 font-bold tracking-[-0.02em] text-fg">
+        <span className="font-display text-2xl leading-7 font-semibold tracking-[-0.01em] text-fg">
           {children}
         </span>
       ) : (

@@ -38,7 +38,7 @@ export function DateNavigator({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="truncate text-2xl font-extrabold tracking-tight text-fg">
+        <h1 className="truncate font-display text-2xl font-semibold tracking-[-0.01em] text-fg">
           {labels.relativeLabel(date, today)}
         </h1>
         <p className="truncate text-sm text-muted">

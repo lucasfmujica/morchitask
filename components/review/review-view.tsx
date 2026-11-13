@@ -188,7 +188,7 @@ function WeeklyReview({
           <span className="text-[11px] leading-4 font-semibold tracking-[0.06em] text-muted uppercase">
             {t("weekOf", { range: weekRangeLabel(days) })}
           </span>
-          <h1 className="font-display text-[28px] leading-9 font-bold tracking-[-0.02em] text-fg md:text-[32px]">
+          <h1 className="font-display text-[28px] leading-9 font-semibold tracking-[-0.01em] text-fg md:text-[32px]">
             {t("title")}
           </h1>
         </div>
@@ -338,7 +338,7 @@ function StepLookBack({
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex animate-up flex-col gap-1">
-        <h2 className="font-display text-[28px] leading-9 font-bold tracking-[-0.02em] text-fg sm:text-[34px] sm:leading-[41px]">
+        <h2 className="font-display text-[28px] leading-9 font-semibold tracking-[-0.01em] text-fg sm:text-[34px] sm:leading-[41px]">
           {done === 0 ? t("quietWeek") : t("doneCount", { n: done })}
         </h2>
         <p className="text-sm text-muted">
@@ -361,7 +361,7 @@ function StepLookBack({
           style={{ animationDelay: "160ms" }}
         >
           <span className="text-2xs text-muted">{t("closedDays")}</span>
-          <span className="font-display text-[30px] leading-9 font-bold text-fg">
+          <span className="font-display text-[30px] leading-9 font-semibold text-fg">
             {t("closedDaysValue", { n: closedCount })}
           </span>
           <div className="flex gap-1.5" aria-hidden>
@@ -390,7 +390,7 @@ function StepLookBack({
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <Well className="animate-up rounded-2xl" style={{ animationDelay: "220ms" }}>
           <label className="flex h-full flex-col gap-2 rounded-[18px] bg-surface p-4">
-            <span className="font-display text-sm font-semibold text-fg">{t("winsQuestion")}</span>
+            <span className="font-sans text-sm font-semibold text-fg">{t("winsQuestion")}</span>
             <textarea
               value={wins}
               onChange={(e) => onWins(e.target.value)}
@@ -402,9 +402,7 @@ function StepLookBack({
         </Well>
         <Well className="animate-up rounded-2xl" style={{ animationDelay: "260ms" }}>
           <label className="flex h-full flex-col gap-2 rounded-[18px] bg-surface p-4">
-            <span className="font-display text-sm font-semibold text-fg">
-              {t("lessonsQuestion")}
-            </span>
+            <span className="font-sans text-sm font-semibold text-fg">{t("lessonsQuestion")}</span>
             <textarea
               value={lessons}
               onChange={(e) => onLessons(e.target.value)}
@@ -523,9 +521,7 @@ function WeekGoals({ week }: { week: string[] }) {
       className="flex animate-up flex-col gap-1.5 rounded-2xl"
       style={{ animationDelay: "340ms" }}
     >
-      <p className="px-2.5 pt-2.5 pb-1 font-display text-sm font-semibold text-fg">
-        {t("yourGoals")}
-      </p>
+      <p className="px-2.5 pt-2.5 pb-1 font-sans text-sm font-semibold text-fg">{t("yourGoals")}</p>
       <ul className="flex flex-col gap-1.5">
         {goals.map((o) => {
           const p = progress?.get(o.id);
@@ -575,7 +571,7 @@ function StepLeftovers({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex animate-up flex-col gap-1">
-        <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
+        <h2 className="font-display text-[28px] leading-[34px] font-semibold tracking-[-0.01em] text-fg">
           {t("leftoversTitle")}
         </h2>
         <p className="text-sm text-muted">
@@ -627,7 +623,7 @@ function StepNextWeek({
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex animate-up flex-col gap-2.5">
-        <h2 className="font-display text-[28px] leading-[34px] font-bold tracking-[-0.02em] text-fg">
+        <h2 className="font-display text-[28px] leading-[34px] font-semibold tracking-[-0.01em] text-fg">
           {t("nextTitle")}
         </h2>
         <label className="flex flex-col gap-2.5">
@@ -648,7 +644,7 @@ function StepNextWeek({
           className="flex animate-up flex-col gap-1.5 rounded-2xl"
           style={{ animationDelay: "160ms" }}
         >
-          <p className="px-2.5 pt-2.5 pb-1 font-display text-sm font-semibold text-fg">
+          <p className="px-2.5 pt-2.5 pb-1 font-sans text-sm font-semibold text-fg">
             {t("fromBacklog", { n: backlog.length })}
           </p>
           {backlog.length === 0 ? (
@@ -699,9 +695,7 @@ function NextWeekGoals({ nextDays }: { nextDays: string[] }) {
       className="flex animate-up flex-col gap-1.5 rounded-2xl"
       style={{ animationDelay: "100ms" }}
     >
-      <p className="px-2.5 pt-2.5 pb-1 font-display text-sm font-semibold text-fg">
-        {t("weekGoals")}
-      </p>
+      <p className="px-2.5 pt-2.5 pb-1 font-sans text-sm font-semibold text-fg">{t("weekGoals")}</p>
       {goals.map((o) => (
         <div
           key={o.id}

@@ -279,7 +279,7 @@ export function ReplanPanel({
             </span>
             <h2
               id={titleId}
-              className="m-0 font-display text-[26px] leading-8 font-bold tracking-[-0.02em] md:text-[32px] md:leading-9"
+              className="m-0 font-display text-[26px] leading-8 font-semibold tracking-[-0.01em] md:text-[32px] md:leading-9"
             >
               {td("replanTitle")}
             </h2>
@@ -403,7 +403,7 @@ export function ReplanPanel({
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-0.5 rounded-[24px] bg-surface-2 p-4">
                 <span className="text-2xs text-muted">{td("replanFree")}</span>
-                <span className="font-display text-[26px] leading-8 font-bold tabular-nums">
+                <span className="font-display text-[26px] leading-8 font-semibold tabular-nums">
                   {formatMinutes(plan.freeMin)}
                 </span>
                 <span className="text-[11px] text-muted">
@@ -417,7 +417,7 @@ export function ReplanPanel({
                 )}
               >
                 <span className="text-2xs text-muted">{td("replanNeeded")}</span>
-                <span className="font-display text-[26px] leading-8 font-bold tabular-nums">
+                <span className="font-display text-[26px] leading-8 font-semibold tabular-nums">
                   {formatMinutes(shownNeed)}
                 </span>
                 <span
@@ -435,7 +435,7 @@ export function ReplanPanel({
 
             {view === "before" ? (
               <div className="flex flex-col gap-2.5 rounded-[24px] bg-surface p-[18px] shadow-tile">
-                <h3 className="m-0 font-display text-sm font-semibold">{td("replanHowTitle")}</h3>
+                <h3 className="m-0 font-sans text-sm font-semibold">{td("replanHowTitle")}</h3>
                 <p className="m-0 text-xs leading-[19px] text-muted">{td("replanHowBody")}</p>
               </div>
             ) : (

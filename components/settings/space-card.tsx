@@ -298,7 +298,7 @@ function SeparationSheet({
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <h2
               id="separation-h"
-              className="font-display text-[26px] leading-[30px] font-bold tracking-[-0.02em] text-fg"
+              className="font-display text-[26px] leading-[30px] font-semibold tracking-[-0.01em] text-fg"
             >
               {leaving
                 ? t("leaveTitle", { space: spaceName })
@@ -319,14 +319,14 @@ function SeparationSheet({
         </div>
 
         <section className="flex flex-col gap-1.5 rounded-[24px] bg-surface-2 p-2">
-          <h3 className="px-2.5 pt-1.5 pb-0.5 text-xs font-semibold text-muted">
+          <h3 className="px-2.5 font-sans pt-1.5 pb-0.5 text-xs font-semibold text-muted">
             {t("tasksTitle")}
           </h3>
           {taskRows.map((r) => (
             <div key={r.title} className="flex gap-3 rounded-[18px] bg-surface px-3.5 py-3">
               <span
                 className={cn(
-                  "min-w-[30px] font-display text-[22px] leading-6 font-bold tabular-nums",
+                  "min-w-[30px] font-display text-[22px] leading-6 font-semibold tabular-nums",
                   r.tone,
                 )}
               >
@@ -342,7 +342,7 @@ function SeparationSheet({
 
         {planRows.length > 0 && (
           <section className="flex flex-col gap-2 px-1.5">
-            <h3 className="text-xs font-semibold text-muted">{t("planTitle")}</h3>
+            <h3 className="font-sans text-xs font-semibold text-muted">{t("planTitle")}</h3>
             {planRows.map((p) => (
               <span key={p} className="flex gap-2.5 text-xs leading-[19px] text-fg">
                 <span

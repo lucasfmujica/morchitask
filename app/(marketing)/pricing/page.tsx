@@ -104,7 +104,7 @@ export default async function PricingPage() {
       <section aria-labelledby="pricing-h1" className={`${pad} flex flex-col gap-4 pt-10 pb-8`}>
         <h1
           id="pricing-h1"
-          className="m-0 animate-up font-display text-[56px] leading-[56px] font-extrabold tracking-[-0.045em] min-[901px]:text-[88px] min-[901px]:leading-[84px]"
+          className="m-0 animate-up font-display text-[56px] leading-[56px] font-semibold tracking-[-0.015em] min-[901px]:text-[88px] min-[901px]:leading-[84px]"
         >
           {t("title")}
         </h1>
@@ -145,7 +145,7 @@ export default async function PricingPage() {
 
           <div className="rounded-[32px] bg-surface-2 p-2 min-[901px]:col-span-7">
             <div className="flex h-full flex-col gap-[18px] rounded-[26px] bg-surface p-7">
-              <h2 className="m-0 font-display text-2xl font-bold tracking-[-0.02em]">
+              <h2 className="m-0 font-display text-2xl font-semibold tracking-[-0.01em]">
                 {t("includesTitle")}
               </h2>
               {/* Two columns from `sm` up. The canvas keeps two even at phone
@@ -167,7 +167,7 @@ export default async function PricingPage() {
 
           <div className="rounded-[32px] bg-surface-2 p-2 min-[901px]:col-span-8">
             <div className="flex flex-col gap-4 rounded-[26px] bg-surface p-7">
-              <h2 className="m-0 font-display text-2xl font-bold tracking-[-0.02em]">
+              <h2 className="m-0 font-display text-2xl font-semibold tracking-[-0.01em]">
                 {t("compareTitle")}
               </h2>
               {bars.map((bar) => (
@@ -190,7 +190,7 @@ export default async function PricingPage() {
           {/* Dark in both themes: --ink sinks below --bg in dark mode rather
               than inverting into a light slab. */}
           <div className="flex flex-col gap-3 rounded-[32px] bg-ink p-7 text-on-ink min-[901px]:col-span-4">
-            <h2 className="m-0 font-display text-2xl font-bold tracking-[-0.02em]">
+            <h2 className="m-0 font-display text-2xl font-semibold tracking-[-0.01em]">
               {t("whyTitle")}
             </h2>
             <p className="m-0 text-[15px] leading-[23px] text-on-ink/75">
@@ -203,7 +203,7 @@ export default async function PricingPage() {
       <section aria-labelledby="pricing-faq" className={`${pad} flex flex-wrap gap-16 pb-24`}>
         <h2
           id="pricing-faq"
-          className="m-0 flex-[1_1_300px] font-display text-5xl leading-[50px] font-extrabold tracking-[-0.035em]"
+          className="m-0 flex-[1_1_300px] font-display text-5xl leading-[50px] font-semibold tracking-[-0.02em]"
         >
           {t("faqTitle")}
         </h2>
@@ -242,7 +242,7 @@ export default async function PricingPage() {
         <div className="flex flex-col items-center gap-5 rounded-[40px] bg-linear-160 from-wash-mint via-wash-mint-2 via-40% to-wash-peach px-8 py-[88px] text-center">
           <h2
             id="pricing-final"
-            className="m-0 max-w-[820px] font-display text-[56px] leading-[56px] font-extrabold tracking-[-0.045em] min-[901px]:text-[72px] min-[901px]:leading-[70px]"
+            className="m-0 max-w-[820px] font-display text-[56px] leading-[56px] font-semibold tracking-[-0.015em] min-[901px]:text-[72px] min-[901px]:leading-[70px]"
           >
             {t("finalTitle", { days: TRIAL_DAYS })}
           </h2>

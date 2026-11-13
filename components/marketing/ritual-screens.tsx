@@ -158,7 +158,7 @@ export function RitualMorning() {
         className="animate-up mt-auto flex flex-col items-center gap-2 text-center"
         style={delay(600)}
       >
-        <p className="font-display text-[30px] leading-[34px] font-bold tracking-[-0.02em]">
+        <p className="font-display text-[30px] leading-[34px] font-semibold tracking-[-0.01em]">
           {t("ritual1.title")}
         </p>
         <p className="max-w-[290px] text-[15px] leading-[21px] text-muted">{t("ritual1.body")}</p>
@@ -222,7 +222,7 @@ export function RitualMidday() {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-          <span className="font-display text-[40px] leading-tight font-bold tracking-[-0.02em] tabular-nums">
+          <span className="font-display text-[40px] leading-tight font-semibold tracking-[-0.01em] tabular-nums">
             {formatMinutes(DEMO_DAY.plannedRitualMin)}
           </span>
           <span className="text-xs font-semibold text-primary">
@@ -252,7 +252,7 @@ export function RitualMidday() {
         className="animate-up mt-auto flex flex-col items-center gap-2 text-center"
         style={delay(600)}
       >
-        <p className="font-display text-[30px] leading-[34px] font-bold tracking-[-0.02em]">
+        <p className="font-display text-[30px] leading-[34px] font-semibold tracking-[-0.01em]">
           {t("ritual2.title")}
         </p>
         <p className="max-w-[300px] text-[15px] leading-[21px] text-muted">{t("ritual2.body")}</p>
@@ -337,7 +337,7 @@ export function RitualNight() {
         className="animate-up mt-3.5 flex flex-col items-center gap-1.5 text-center"
         style={delay(500)}
       >
-        <p className="font-display text-[30px] leading-[34px] font-bold tracking-[-0.02em]">
+        <p className="font-display text-[30px] leading-[34px] font-semibold tracking-[-0.01em]">
           {t("ritual3.title")}
         </p>
         <p className="text-[15px] leading-[21px] text-muted">

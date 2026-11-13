@@ -63,7 +63,7 @@ export function PlanPrice({
       {/* aria-live so switching the period is announced: the price is the
           thing the button changed, and it is not where focus is. */}
       <div aria-live="polite" className="flex flex-wrap items-end gap-2.5">
-        <span className="font-display text-[80px] leading-[72px] font-extrabold tracking-[-0.05em] tabular-nums sm:text-[104px] sm:leading-[92px]">
+        <span className="font-display text-[80px] leading-[72px] font-semibold tracking-[-0.02em] tabular-nums sm:text-[104px] sm:leading-[92px]">
           {shown.price}
         </span>
         <span className="pb-2 text-base font-semibold text-on-wash">{shown.per}</span>

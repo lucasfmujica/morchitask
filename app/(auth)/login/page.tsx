@@ -75,7 +75,7 @@ export default async function LoginPage({
     <main className="min-h-dvh bg-linear-to-b from-fit-from/45 via-primary-soft via-34% to-bg to-70% px-safe pt-safe pb-safe text-fg">
       <style>{MOTION}</style>
       <div className="flex flex-col items-center px-5 py-12">
-        <span className="login-up font-display text-xl font-bold tracking-[-0.02em]">
+        <span className="login-up font-display text-xl font-semibold tracking-[-0.01em]">
           Morchitask
         </span>
 
@@ -114,7 +114,7 @@ export default async function LoginPage({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-            <span className="font-display text-[38px] leading-none font-bold tracking-[-0.02em] tabular-nums">
+            <span className="font-display text-[38px] leading-none font-semibold tracking-[-0.01em] tabular-nums">
               {t("ringTime")}
             </span>
             <span className="text-xs leading-normal font-semibold text-primary">
@@ -123,7 +123,7 @@ export default async function LoginPage({
           </div>
         </div>
 
-        <h1 className="login-up mt-10 max-w-[520px] text-center font-display text-[32px] leading-9 font-bold tracking-[-0.02em] [animation-delay:200ms] sm:text-[40px] sm:leading-[44px]">
+        <h1 className="login-up mt-10 max-w-[520px] text-center font-display text-[32px] leading-9 font-semibold tracking-[-0.01em] [animation-delay:200ms] sm:text-[40px] sm:leading-[44px]">
           {t("tagline")}
         </h1>
 

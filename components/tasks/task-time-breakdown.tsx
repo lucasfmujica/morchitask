@@ -123,7 +123,7 @@ export function TimeBreakdownList({
   return (
     <div className="rounded-[22px] bg-surface p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <span className="font-display text-sm font-semibold text-fg">{t("yourTimePerDay")}</span>
+        <span className="font-sans text-sm font-semibold text-fg">{t("yourTimePerDay")}</span>
         <span className="font-mono text-2xs text-muted">{t("dayCount", { n: days.length })}</span>
       </div>
 

@@ -44,12 +44,14 @@ Sunsama aparece recién en "Por qué cuesta menos de la mitad" y en `/pricing`. 
 - Un CTA primario por superficie. El secundario es texto, no botón ghost con borde.
 - Screenshots: crop de UI real. Si el usuario adjuntó capturas de la app, esas son la referencia. Ignorá capturas de la landing anterior.
 - Reusá `Button` y tokens semánticos (`bg-surface`, `text-muted`, `border-border`). Nada de `bg-blue-500`.
+- Tipografía: titulares, números de precio y wordmark en Fraunces (`font-display font-semibold`, tracking `-0.015em` en titulares, `-0.02em` en números gigantes). Todo lo demás en Figtree. No uses `font-bold` ni `font-extrabold` con `font-display`. Ver `DESIGN.md`.
 - La barra de capacidad puede aparecer in-page como elemento real, no solo en una foto.
 
 ## Prohibido
 
 - Recrear el diseño anterior (hero centrado + devices flotando + 4 cards + banda negra).
 - Inter, purple, glassmorphism, gradient mesh, 01/02/03 decorativo.
+- Volver a Schibsted Grotesk u otra grotesca para titulares: la voz de display es Fraunces.
 - Cards 2×2 para "lo que no hace".
 - Device mockup de notebook y teléfono juntos.
 - Emoji como icono de sección. Lucide solo si ya está en el archivo; preferí números o nada.

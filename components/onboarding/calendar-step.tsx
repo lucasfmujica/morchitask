@@ -107,7 +107,7 @@ export function CalendarStep({ connected }: { connected: boolean }) {
         <span className="self-start rounded-pill bg-surface/75 px-2.5 py-1 text-2xs font-semibold text-on-wash">
           {t("optional")}
         </span>
-        <h1 className="font-display text-[30px] leading-[34px] font-bold tracking-[-0.02em]">
+        <h1 className="font-display text-[30px] leading-[34px] font-semibold tracking-[-0.01em]">
           {t("calendarTitle")}
         </h1>
         <p className="max-w-[330px] text-[15px] leading-[21px] text-muted">{t("calendarBody")}</p>

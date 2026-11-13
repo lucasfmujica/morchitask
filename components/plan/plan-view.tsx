@@ -184,7 +184,7 @@ function PlanForm({
           <span className="truncate text-[11px] leading-4 font-semibold tracking-[0.06em] text-muted uppercase">
             {labels.fullDayLabel(date)}
           </span>
-          <h1 className="font-display text-[32px] leading-9 font-bold tracking-[-0.02em]">
+          <h1 className="font-display text-[32px] leading-9 font-semibold tracking-[-0.01em]">
             {t("title")}
           </h1>
         </div>
@@ -469,7 +469,7 @@ function CapacityDial({
           />
         </svg>
         {/* Over budget the number itself says so (">100%"), not only the colour. */}
-        <span className="absolute inset-0 flex items-center justify-center font-display text-xl font-bold tabular-nums">
+        <span className="absolute inset-0 flex items-center justify-center font-display text-xl font-semibold tabular-nums">
           {shown}%
         </span>
       </div>
@@ -521,7 +521,7 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
       <span className="truncate text-2xs text-muted">{label}</span>
       <span
         className={cn(
-          "font-display text-2xl leading-7 font-bold tracking-[-0.01em] tabular-nums",
+          "font-display text-2xl leading-7 font-semibold tracking-[-0.01em] tabular-nums",
           warn ? "text-accent" : "text-fg",
         )}
       >

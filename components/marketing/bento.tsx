@@ -21,7 +21,7 @@ const SPAN = {
   12: "min-[900px]:col-span-12",
 } as const;
 
-export const tileTitle = "font-display text-[22px] leading-tight font-bold tracking-[-0.02em]";
+export const tileTitle = "font-display text-[22px] leading-tight font-semibold tracking-[-0.01em]";
 
 /** The app's well: a grey tray with a heading, holding a white card. */
 function WellTile({
@@ -161,7 +161,7 @@ function RingTile() {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-display text-[36px] leading-tight font-bold tracking-[-0.02em] tabular-nums">
+          <span className="font-display text-[36px] leading-tight font-semibold tracking-[-0.01em] tabular-nums">
             {formatMinutes(planned)}
           </span>
           <span className="text-xs font-semibold text-primary">
@@ -393,7 +393,7 @@ function WeekTile() {
               </span>
               <span
                 className={cn(
-                  "flex h-7 w-7 flex-none items-center justify-center rounded-pill font-display text-sm font-bold",
+                  "flex h-7 w-7 flex-none items-center justify-center rounded-pill font-sans text-sm font-semibold",
                   d.numCls,
                 )}
               >
@@ -444,7 +444,7 @@ function FocusTile() {
             style={{ stroke: "var(--fit-from)" }}
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center font-display text-[30px] font-bold">
+        <span className="absolute inset-0 flex items-center justify-center font-display text-[30px] font-semibold">
           {"18:24"}
         </span>
       </div>

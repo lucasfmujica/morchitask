@@ -24,7 +24,7 @@ const VISIBLE_ATTRS = ["placeholder", "aria-label", "title", "alt", "kbdHint", "
 
 /** Text that is not language: symbols, brand, key caps, bare numbers. */
 const ALLOWED =
-  /^(?:[\s\d.,:;+\-–—/%·×()[\]{}]*|Morchitask|Google|Spotify|esc|[A-Z]|⌘K|↑|↓|⏎|Enter|Escape|Tab|Backspace|Delete|Home|End|Arrow(?:Up|Down|Left|Right)|Premium|Promise|Google Calendar|\d+(?:[.,]\d+)? ?[KMG]?B)$/;
+  /^(?:[\s\d.,:;+\-–—/%·×()[\]{}]*|Morchitask|Google|Spotify|esc|[A-Z]|⌘K|↑|↓|⏎|Enter|Escape|Tab|Backspace|Delete|Home|End|Arrow(?:Up|Down|Left|Right)|Premium|Promise|Fraunces|Figtree|Google Calendar|\d+(?:[.,]\d+)? ?[KMG]?B)$/;
 
 /** Tailwind classes, CSS values and framework literals — most of the noise. */
 const CSSISH =

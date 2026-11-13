@@ -411,7 +411,7 @@ function SidebarBody({
   return (
     <>
       <div className="flex shrink-0 items-center gap-2 px-3 pb-3.5">
-        <span className="font-display text-xl leading-6 font-bold tracking-[-0.02em] text-fg">
+        <span className="font-display text-xl leading-6 font-semibold tracking-[-0.01em] text-fg">
           Morchitask
         </span>
         <div className="ml-auto flex">

@@ -91,7 +91,7 @@ function BillingScreenView({ state }: { state: BillingState }) {
 
   return (
     <div className="mx-auto flex w-full max-w-[820px] flex-col gap-[18px] pt-3 pb-6">
-      <h1 className="animate-up font-display text-[32px] leading-9 font-bold tracking-[-0.02em] text-fg [animation-duration:600ms]">
+      <h1 className="animate-up font-display text-[32px] leading-9 font-semibold tracking-[-0.01em] text-fg [animation-duration:600ms]">
         {t("title")}
       </h1>
 
@@ -226,7 +226,9 @@ function ManagedCard({ name }: { name: string }) {
           {initial}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-          <span className="font-display text-lg font-bold text-fg">{t("managedBy", { name })}</span>
+          <span className="font-display text-lg font-semibold text-fg">
+            {t("managedBy", { name })}
+          </span>
           <span className="text-2xs leading-[17px] text-muted">{t("managedByBody", { name })}</span>
         </div>
       </div>
@@ -544,7 +546,7 @@ function WarmCard({
         {icon}
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <p className="font-display text-2xl leading-7 font-bold tracking-[-0.01em] text-fg">
+        <p className="font-display text-2xl leading-7 font-semibold tracking-[-0.01em] text-fg">
           {title}
         </p>
         <div className="flex max-w-[620px] flex-col text-sm leading-[21px] text-muted">
@@ -572,7 +574,7 @@ function TrialCard({
       className="flex animate-up flex-col gap-3.5 rounded-[28px] bg-fg p-6 text-surface [animation-duration:600ms]"
       style={{ animationDelay: "60ms" }}
     >
-      <p className="font-display text-[28px] leading-8 font-bold">{title}</p>
+      <p className="font-display text-[28px] leading-8 font-semibold">{title}</p>
       <div className="h-2.5 overflow-hidden rounded-pill bg-surface/8" aria-hidden>
         {/* Lighter than the app's fit gradient and run sideways: on ink, the
             canvas brightens both ends so the bar still glows. It grows in from
@@ -653,7 +655,7 @@ function PlanCard({
           </span>
         )}
       </span>
-      <span className="font-display text-[40px] leading-[44px] font-bold tracking-[-0.02em] tabular-nums">
+      <span className="font-display text-[40px] leading-[44px] font-semibold tracking-[-0.01em] tabular-nums">
         {price}
       </span>
       <span className="text-xs text-muted">{per}</span>
