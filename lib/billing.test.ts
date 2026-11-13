@@ -8,6 +8,7 @@ import {
   DUNNING_GRACE_DAYS,
   resolveAccess,
   shouldWarnAboutTrial,
+  trialChip,
   trialEndFrom,
   WEBHOOK_GRACE_DAYS,
   type BillingFacts,
@@ -210,5 +211,47 @@ describe("shouldWarnAboutTrial", () => {
 
   it("does not warn someone already locked out — that is a different screen", () => {
     expect(shouldWarnAboutTrial(resolveAccess(facts({ trialEndsAt: at(-1) }), NOW))).toBe(false);
+  });
+});
+
+describe("trialChip", () => {
+  it("shows the calm chip for the whole trial, filling as days go", () => {
+    const chip = trialChip(resolveAccess(facts({ trialEndsAt: at(9) }), NOW));
+    expect(chip).toEqual({ variant: "normal", daysLeft: 9, usedPct: 36, endsAt: at(9) });
+    expect(trialChip(resolveAccess(facts({ trialEndsAt: at(TRIAL_DAYS) }), NOW))?.usedPct).toBe(0);
+  });
+
+  it("warms up exactly when the banner's warning would", () => {
+    const access = resolveAccess(facts({ trialEndsAt: at(2) }), NOW);
+    expect(trialChip(access)?.variant).toBe("late");
+    expect(shouldWarnAboutTrial(access)).toBe(true);
+    expect(trialChip(resolveAccess(facts({ trialEndsAt: at(4) }), NOW))?.variant).toBe("normal");
+  });
+
+  it("is never shown to a comped household, even one with an old trial date", () => {
+    const access = resolveAccess(facts({ planOverride: "comp", trialEndsAt: at(5) }), NOW);
+    expect(trialChip(access)).toBeNull();
+  });
+
+  it("is never shown to a subscriber, even mid-trial", () => {
+    const access = resolveAccess(
+      facts({ trialEndsAt: at(5), subscription: { status: "active", currentPeriodEnd: at(30) } }),
+      NOW,
+    );
+    expect(trialChip(access)).toBeNull();
+  });
+
+  it("is not shown once the trial is over, or with billing off", () => {
+    expect(trialChip(resolveAccess(facts({ trialEndsAt: at(-1) }), NOW))).toBeNull();
+    // What the session callback hands out when billing is switched off.
+    expect(
+      trialChip({
+        allowed: true,
+        source: "none",
+        until: null,
+        trialDaysLeft: null,
+        paymentFailing: false,
+      }),
+    ).toBeNull();
   });
 });

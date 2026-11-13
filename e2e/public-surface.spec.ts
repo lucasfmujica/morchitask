@@ -26,6 +26,12 @@ const PRIVATE_ROUTES = [
   // Admin-only, and still an app route first: logged out is a login redirect,
   // and only after sign-in does the allowlist get to answer 404.
   "/admin/metrics",
+  // Onboarding lives in a route group of its own, outside the app shell, so it
+  // is the one private page whose protection doesn't come along with (app).
+  // Step 3 is also where Google returns to after connecting the calendar.
+  "/onboarding",
+  "/onboarding/1",
+  "/onboarding/3",
 ];
 
 test.describe("route protection", () => {

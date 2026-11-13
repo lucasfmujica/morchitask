@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { AppChrome } from "@/components/layout/app-chrome";
 import { TrialBanner } from "@/components/billing/trial-banner";
+import { TrialBannerSlot } from "@/components/billing/trial-banner-slot";
+import { TrialChip } from "@/components/billing/trial-chip";
 
 /**
  * The authenticated app, which gets the whole catalog.
@@ -14,11 +16,15 @@ import { TrialBanner } from "@/components/billing/trial-banner";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <NextIntlClientProvider>
-      <AppChrome>
+      <AppChrome trialChip={<TrialChip />}>
         <div className="flex flex-col gap-4">
           {/* Auth gating happens in the proxy; the one thing that has to be
-              visible from every screen is a trial about to run out. */}
-          <TrialBanner />
+              visible from every screen is a trial about to run out. The
+              sidebar's chip says it where the sidebar is open; the banner
+              covers everywhere else. */}
+          <TrialBannerSlot>
+            <TrialBanner />
+          </TrialBannerSlot>
           {children}
         </div>
       </AppChrome>

@@ -195,3 +195,33 @@ export function shouldWarnAboutTrial(access: Access): boolean {
     access.trialDaysLeft <= TRIAL_WARNING_DAYS
   );
 }
+
+export type TrialChip = {
+  /** "late" is the last stretch `shouldWarnAboutTrial` already defines. */
+  variant: "normal" | "late";
+  daysLeft: number;
+  /** How much of the trial is spent, 0–100: the bar fills as days go. */
+  usedPct: number;
+  /** ISO instant the trial ends. */
+  endsAt: string;
+};
+
+/**
+ * What the sidebar's trial chip says, or null when it says nothing.
+ *
+ * Only a live trial gets one. A comped household and a paying one never see
+ * it — the people who already use this every day are comped, and a chip asking
+ * them to pick a plan would be a nag about something that does not apply to
+ * them. A trial that ran out has the whole /billing screen instead.
+ */
+export function trialChip(access: Access, trialDays: number = TRIAL_DAYS): TrialChip | null {
+  if (!access.allowed || access.source !== "trial" || !access.until) return null;
+  const daysLeft = Math.max(0, access.trialDaysLeft ?? 0);
+  const used = Math.min(trialDays, Math.max(0, trialDays - daysLeft));
+  return {
+    variant: shouldWarnAboutTrial(access) ? "late" : "normal",
+    daysLeft,
+    usedPct: Math.round((used / trialDays) * 100),
+    endsAt: access.until,
+  };
+}
