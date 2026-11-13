@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
+import { firstName } from "@/lib/first-name";
 import { getSeparationPreview, getSpace, leaveSpace, removeMember } from "@/lib/actions/households";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { cn } from "@/lib/utils";
@@ -58,7 +59,9 @@ export function SpaceCard() {
         const mine = m.id === space?.meId;
         const action =
           !mine && space?.canRemove
-            ? t("remove", { name: m.display_name })
+            ? // First name only: the full name pushed the row into a
+              // three-line squeeze in the narrow settings column.
+              t("remove", { name: firstName(m.display_name) })
             : mine && space?.canLeave
               ? t("leave")
               : null;
@@ -72,7 +75,7 @@ export function SpaceCard() {
             <OwnerAvatar profile={m} size={44} />
             <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-[15px] font-semibold text-fg">
+                <span className="min-w-0 truncate text-[15px] font-semibold text-fg">
                   {mine ? t("you", { name: m.display_name }) : m.display_name}
                 </span>
                 {m.managesPlan && (
@@ -81,13 +84,16 @@ export function SpaceCard() {
                   </span>
                 )}
               </span>
-              {sub && <span className="text-2xs text-muted">{sub}</span>}
+              {sub && <span className="truncate text-2xs text-muted">{sub}</span>}
             </span>
             {action && (
               <button
                 type="button"
                 onClick={() => setSheetFor(m)}
-                className="h-9 shrink-0 cursor-pointer rounded-pill bg-accent-soft px-3.5 text-2xs font-semibold text-accent transition-colors hover:bg-accent/20"
+                aria-label={
+                  !mine && space?.canRemove ? t("remove", { name: m.display_name }) : undefined
+                }
+                className="h-9 shrink-0 whitespace-nowrap cursor-pointer rounded-pill bg-accent-soft px-3.5 text-2xs font-semibold text-accent transition-colors hover:bg-accent/20"
               >
                 {action}
               </button>
