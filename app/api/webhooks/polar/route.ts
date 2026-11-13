@@ -1,6 +1,10 @@
 import { WebhookVerificationError } from "@polar-sh/sdk/webhooks";
 import { verifyPolarEvent } from "@/lib/polar-webhook";
-import { householdExists, upsertSubscription } from "@/lib/db/queries/subscriptions";
+import {
+  householdExists,
+  recordBillingManager,
+  upsertSubscription,
+} from "@/lib/db/queries/subscriptions";
 import { isHandledEvent, parseSubscriptionEvent } from "@/lib/webhook-events";
 
 /**
@@ -52,6 +56,11 @@ export async function POST(req: Request) {
   }
 
   await upsertSubscription(parsed);
+
+  // Who pays decides who manages the plan (and who may change it). Checkouts
+  // carry the user id in their metadata; one that does not leaves whatever
+  // was recorded before.
+  if (parsed.payerUserId) await recordBillingManager(parsed.householdId, parsed.payerUserId);
 
   return Response.json({ ok: true, status: parsed.status });
 }

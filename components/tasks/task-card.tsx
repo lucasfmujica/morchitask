@@ -6,7 +6,7 @@ import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import { taskMetaVisibility, type Density } from "@/lib/task-meta";
-import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
+import type { Channel, HouseholdMember, Subtask, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
 import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { TaskCheckbox } from "./task-checkbox";
@@ -44,7 +44,7 @@ export function TaskCard({
 }: {
   task: Task;
   channel?: Channel;
-  owner?: Profile;
+  owner?: HouseholdMember;
   subtasks?: Subtask[];
   density?: Density;
 }) {

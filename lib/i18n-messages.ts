@@ -24,5 +24,6 @@ export async function pickMessages(namespaces: readonly string[]) {
 /** What the pages a logged-out visitor can reach are built from. */
 export const PUBLIC_NAMESPACES = ["marketing", "pricing", "legal"] as const;
 
-/** The sign-in screen, which is its own small world. */
-export const AUTH_NAMESPACES = ["auth"] as const;
+/** The sign-in screen, which is its own small world, and the invite it can
+ *  show when it was reached from an invite link. */
+export const AUTH_NAMESPACES = ["auth", "invite"] as const;

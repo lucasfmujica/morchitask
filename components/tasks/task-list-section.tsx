@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { ListChecks, type LucideIcon } from "lucide-react";
 import type { PriorityKey } from "@/lib/priority";
-import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
+import type { Channel, HouseholdMember, Subtask, Task } from "@/lib/queries/types";
 import { SortableTaskList } from "@/components/dnd/sortable-task-list";
 import { EmptyState, SkeletonList, Well } from "@/components/ui";
 import { useTranslations } from "next-intl";
@@ -28,7 +28,7 @@ export function TaskListSection({
   tasks: Task[];
   isLoading: boolean;
   channelsById: Map<string, Channel>;
-  profilesById: Map<string, Profile>;
+  profilesById: Map<string, HouseholdMember>;
   subtasksByTaskId?: Map<string, Subtask[]>;
   onReorder: (task: Task, sortOrder: number, priority?: PriorityKey) => void;
   emptyTitle: string;

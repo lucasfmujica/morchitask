@@ -30,7 +30,7 @@ import {
 import { EASE_OUT, FADE_IN } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useToggleTask } from "@/lib/queries/tasks";
-import type { Channel, Profile, Subtask, Task } from "@/lib/queries/types";
+import type { Channel, HouseholdMember, Subtask, Task } from "@/lib/queries/types";
 import { useTaskTimer } from "@/components/tasks/use-task-timer";
 import { PriorityGroupHeader } from "@/components/tasks/priority-group-header";
 import { TaskCard } from "@/components/tasks/task-card";
@@ -62,7 +62,7 @@ export function SortableTaskList({
 }: {
   tasks: Task[];
   channelsById: Map<string, Channel>;
-  profilesById: Map<string, Profile>;
+  profilesById: Map<string, HouseholdMember>;
   subtasksByTaskId?: Map<string, Subtask[]>;
   onReorder: (task: Task, sortOrder: number, priority?: PriorityKey) => void;
   /** When true, a parent owns the DndContext (the day view shares one context
@@ -208,7 +208,7 @@ function SortableRow({
   index: number;
   task: Task;
   channel?: Channel;
-  owner?: Profile;
+  owner?: HouseholdMember;
   subtasks?: Subtask[];
 }) {
   const t = useTranslations("tasks");

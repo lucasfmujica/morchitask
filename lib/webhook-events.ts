@@ -18,6 +18,9 @@ export type SubscriptionEvent = {
   recurringInterval: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  /** Who opened the checkout, from its metadata. Null on subscriptions that
+   *  predate it, or when Polar's payload does not carry it. */
+  payerUserId: string | null;
 };
 
 /** The subset of Polar's payload this reads. Declared structurally so a version
@@ -101,6 +104,7 @@ export function parseSubscriptionEvent(
     recurringInterval: str(sub.recurringInterval),
     currentPeriodEnd,
     cancelAtPeriodEnd: sub.cancelAtPeriodEnd === true,
+    payerUserId: str(sub.metadata?.user_id),
   };
 }
 

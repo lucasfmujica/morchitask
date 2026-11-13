@@ -224,23 +224,72 @@ function VoiceTile() {
   );
 }
 
-function MailTile() {
+/** Google Calendar both ways: a meeting read from the calendar, and a block
+ *  written back to it. Took the mail tile's slot, which promised forwarding to
+ *  an address most people never get (it only exists where the inbound domain
+ *  is configured). */
+function CalendarTile() {
   const t = useTranslations("marketing");
   return (
-    <WellTile span={4} title={t("bento.mailTitle")} body={t("bento.mailBody")}>
+    <WellTile span={4} title={t("bento.calendarTitle")} body={t("bento.calendarBody")}>
       <div
         aria-hidden
-        className="flex flex-1 flex-col gap-2.5 overflow-hidden rounded-[22px] bg-surface p-[18px]"
+        className="flex flex-1 flex-col gap-2.5 rounded-[22px] bg-surface px-[18px] py-4"
       >
-        <span className="max-w-full self-start truncate rounded-pill bg-surface-2 px-2.5 py-1.5 font-mono text-2xs">
-          {t("bento.mailAddress")}
-        </span>
-        <div className="animate-mail flex flex-col gap-0.5 rounded-[14px] px-3 py-2.5 shadow-[inset_0_0_0_1.5px_var(--fit-from)]">
-          <span className="text-sm font-semibold">{t("bento.mailItem")}</span>
-          <span className="text-2xs text-muted">{t("bento.mailMeta")}</span>
+        <div className="flex items-center gap-2.5 rounded-[14px] bg-bg px-3 py-2.5">
+          <span
+            className="w-[3px] self-stretch rounded-pill"
+            style={{ background: DEMO_CATEGORY_COLORS.work }}
+          />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-sm font-semibold">{t("bento.calendarMeeting")}</span>
+            <span className={cn(mono, "text-muted")}>
+              {t("bento.range", { from: "11:00", to: "12:00" })}
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-[5px] text-[11px] font-semibold text-muted">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 3h12v11H2zM2 6.5h12M5.5 1.5v3M10.5 1.5v3" />
+            </svg>
+            {t("bento.calendarFrom")}
+          </span>
         </div>
-        <div className="rounded-[14px] bg-bg px-3 py-2.5 text-sm text-muted">
-          {t("bento.mailOld")}
+        <div className="animate-slot flex items-center gap-2.5 rounded-[14px] bg-mint-soft px-3 py-2.5">
+          <span className="w-[3px] self-stretch rounded-pill bg-primary" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-sm font-semibold">{t("demo.homepage")}</span>
+            <span className={cn(mono, "text-on-wash")}>
+              {t("bento.range", { from: "09:00", to: "10:30" })}
+            </span>
+          </span>
+          <span
+            className="animate-chip flex shrink-0 items-center gap-[5px] text-[11px] font-semibold text-on-wash"
+            style={delay(0.2)}
+          >
+            <svg
+              className="animate-sync"
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13.5 8a5.5 5.5 0 0 1-9.6 3.7M2.5 8a5.5 5.5 0 0 1 9.6-3.7M12.5 1.8v2.8H9.7M3.5 14.2v-2.8h2.8" />
+            </svg>
+            {t("bento.calendarSynced")}
+          </span>
         </div>
       </div>
     </WellTile>
@@ -468,7 +517,7 @@ export function Bento() {
       <AgendaTile />
       <RingTile />
       <VoiceTile />
-      <MailTile />
+      <CalendarTile />
       <ReplanTile />
       <WeekTile />
       <FocusTile />

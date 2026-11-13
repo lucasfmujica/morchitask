@@ -2,7 +2,7 @@
 
 import { Clock, Pause, Play, StickyNote, Trash2, Users } from "lucide-react";
 import type { MetaVisibility } from "@/lib/task-meta";
-import type { Channel, Profile, Task } from "@/lib/queries/types";
+import type { Channel, HouseholdMember, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
 import { formatClock, formatDuration } from "@/lib/format";
 import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
@@ -45,8 +45,8 @@ export function TaskMetaRow({
 }: {
   task: Task;
   channel?: Channel;
-  owner?: Profile;
-  assignedBy?: Profile;
+  owner?: HouseholdMember;
+  assignedBy?: HouseholdMember;
   doneSubtasks: number;
   totalSubtasks: number;
   visibility: MetaVisibility;

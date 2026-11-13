@@ -133,7 +133,7 @@ describe("household isolation", () => {
 
     // A knows B's task id — an id is not a secret — and asks to complete it.
     // Scoping turns that into zero matched rows, which surfaces as a throw.
-    await expect(tasksQueries.toggleTaskDone(A.household, victim.id, true)).rejects.toThrow(
+    await expect(tasksQueries.toggleTaskDone(A.household, A.user, victim.id, true)).rejects.toThrow(
       "task not found",
     );
 
@@ -195,7 +195,7 @@ describe("household isolation", () => {
 
   it("a cross-household delete leaves the row alone", async () => {
     const before = await tasksQueries.tasksForDate(B.household, B.user, TODAY);
-    await tasksQueries.deleteTask(A.household, before[0].id);
+    await tasksQueries.deleteTask(A.household, A.user, before[0].id);
     const after = await tasksQueries.tasksForDate(B.household, B.user, TODAY);
     expect(after).toHaveLength(before.length);
   });
@@ -431,18 +431,19 @@ describe("block delete", () => {
     const [theirTask] = await tasksQueries.tasksForDate(B.household, B.user, TODAY);
     const theirs = await blocks.createBlock(
       B.household,
+      B.user,
       theirTask.id,
       `${TODAY}T10:00:00.000Z`,
       `${TODAY}T11:00:00.000Z`,
     );
-    await blocks.setBlockCalendarEvent(B.household, theirs.id, "evt_b");
+    await blocks.setBlockCalendarEvent(B.household, B.user, theirs.id, "evt_b");
 
     // Asked as A: nothing deleted, no event id that would then be deleted
     // from somebody's Google Calendar.
-    expect(await blocks.deleteBlock(A.household, theirs.id)).toBeNull();
-    expect(await blocks.blockForCalendarSync(B.household, theirs.id)).not.toBeNull();
+    expect(await blocks.deleteBlock(A.household, A.user, theirs.id)).toBeNull();
+    expect(await blocks.blockForCalendarSync(B.household, B.user, theirs.id)).not.toBeNull();
 
-    expect(await blocks.deleteBlock(B.household, theirs.id)).toBe("evt_b");
+    expect(await blocks.deleteBlock(B.household, B.user, theirs.id)).toBe("evt_b");
   });
 });
 
@@ -479,5 +480,483 @@ describe("notification prefs merge", () => {
       `select notification_prefs as prefs from profiles where id = '${B.user}'`,
     );
     expect(theirs.rows[0].prefs ?? {}).not.toHaveProperty("dailyPlan", false);
+  });
+});
+
+/**
+ * Two people in the SAME household.
+ *
+ * Everything above keeps households apart; this keeps the two people inside
+ * one apart. Within a household a task is visible to its owner, and to the
+ * other person only when it is shared — and tracked time is personal even on
+ * a shared task. For a long time only the household was checked on the reads
+ * by date and the writes by task id, so a partner's private task leaked
+ * through its time blocks and checklist, and with that id it could be renamed,
+ * completed or deleted. The household filter cannot catch any of that: both
+ * people are in it.
+ *
+ * Fixture: S1 and S2 share household S. S1 has a private task, S2 has a
+ * private task, and S2 owns a task shared with S1. S1 tracked 30 min on the
+ * shared task, S2 tracked 45 there plus 20 undated, and 60 on their private.
+ */
+describe("two people in one household", () => {
+  const S = "eeeeeeee-0000-4000-8000-000000000001";
+  const S1 = "eeeeeeee-0000-4000-8000-0000000000a1";
+  const S2 = "eeeeeeee-0000-4000-8000-0000000000b2";
+  const DAY = "2026-09-10";
+  const ids = { s1Private: "", s2Private: "", shared: "" };
+  const child = { block: "", subtask: "", comment: "", reaction: "", attachment: "" };
+
+  const taskRow = async (id: string) =>
+    (
+      await client.query<{
+        title: string;
+        status: string;
+        household_id: string;
+        owner_id: string;
+        planned_date: string | null;
+        actual_time_min: string | null;
+      }>(
+        `select title, status, household_id, owner_id, planned_date::text as planned_date,
+           actual_time_min from tasks where id = '${id}'`,
+      )
+    ).rows[0];
+  const n = async (sql: string) =>
+    Number((await client.query<{ n: number }>(`select count(*)::int as n from ${sql}`)).rows[0].n);
+
+  beforeAll(async () => {
+    // pglite has no batch(); run the statements in order, which is all the
+    // Neon batch promises beyond atomicity.
+    (testDb as unknown as { batch: (qs: unknown[]) => Promise<unknown[]> }).batch = async (qs) => {
+      const out: unknown[] = [];
+      for (const q of qs) out.push(await q);
+      return out;
+    };
+
+    await client.exec(`
+      insert into households (id) values ('${S}');
+      insert into "user" (id, email) values ('${S1}', 's1@example.com'), ('${S2}', 's2@example.com');
+      insert into profiles (id, household_id, display_name, notification_prefs) values
+        ('${S1}', '${S}', 'user-s1', '{}'),
+        ('${S2}', '${S}', 'user-s2', '{"ai_usage":{"count":3},"taskReminders":true}');
+    `);
+    const mk = async (owner: string, title: string) =>
+      (await tasksQueries.insertTask(S, owner, { title, plannedDate: DAY, sortOrder: 1 })).id;
+    ids.s1Private = await mk(S1, "s1-private");
+    ids.s2Private = await mk(S2, "s2-private-secret");
+    ids.shared = await mk(S2, "s2-shared");
+    await client.exec(`
+      update tasks set shared = true where id = '${ids.shared}';
+      insert into task_time_entries (household_id, task_id, user_id, day, minutes) values
+        ('${S}', '${ids.shared}', '${S1}', '${DAY}', 30),
+        ('${S}', '${ids.shared}', '${S2}', '${DAY}', 45),
+        ('${S}', '${ids.s2Private}', '${S2}', '${DAY}', 60);
+      update tasks set actual_time_min = 95 where id = '${ids.shared}';
+      update tasks set actual_time_min = 60 where id = '${ids.s2Private}';
+    `);
+
+    const blocks = await import("./task-blocks");
+    const subs = await import("./subtasks");
+    const comments = await import("./comments");
+    const reactions = await import("./reactions");
+    const attachments = await import("./attachments");
+    child.block = (
+      await blocks.createBlock(S, S2, ids.s2Private, `${DAY}T14:00:00Z`, `${DAY}T15:00:00Z`)
+    ).id;
+    child.subtask = (
+      await subs.createSubtask(S, S2, ids.s2Private, { title: "s2-secret-item", sortOrder: 1 })
+    ).id;
+    child.comment = (await comments.addComment(S, ids.s2Private, S2, "s2-secret-comment")).id;
+    await reactions.addReaction(S, ids.s2Private, S2, "🔒");
+    child.reaction = (
+      await client.query<{ id: string }>(
+        `select id from task_reactions where task_id = '${ids.s2Private}'`,
+      )
+    ).rows[0].id;
+    child.attachment = (
+      await attachments.addAttachment(S, ids.s2Private, S2, {
+        url: "https://blob/s2",
+        pathname: "s2",
+        name: "s2-secret.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1,
+      })
+    ).id;
+  });
+
+  describe("reads", () => {
+    it("task lists show S1 their own and the shared task, never S2's private one", async () => {
+      const titles = (rows: { id: string }[]) => rows.map((r) => r.id).sort();
+      const expected = [ids.s1Private, ids.shared].sort();
+      expect(titles(await tasksQueries.tasksForDate(S, S1, DAY))).toEqual(expected);
+      expect(titles(await tasksQueries.tasksInRange(S, S1, DAY, DAY))).toEqual(expected);
+      expect(titles(await tasksQueries.searchTasks(S, S1, "s2-"))).toEqual([ids.shared]);
+      expect(await tasksQueries.monthCounts(S, S1, DAY, DAY)).toHaveLength(2);
+    });
+
+    it("blocks and checklists for a date never include S2's private task", async () => {
+      const blocks = await import("./task-blocks");
+      const subs = await import("./subtasks");
+      expect(await blocks.listForDate(S, S1, DAY)).toEqual([]);
+      expect(await subs.listForDate(S, S1, DAY)).toEqual([]);
+      // S2 still sees their own.
+      expect((await blocks.listForDate(S, S2, DAY)).map((b) => b.id)).toEqual([child.block]);
+      expect((await subs.listForDate(S, S2, DAY)).map((s) => s.title)).toEqual(["s2-secret-item"]);
+    });
+
+    it("nothing hanging off S2's private task is readable by id", async () => {
+      const subs = await import("./subtasks");
+      const comments = await import("./comments");
+      const reactions = await import("./reactions");
+      const attachments = await import("./attachments");
+      expect(await subs.listForTask(S, S1, ids.s2Private)).toEqual([]);
+      expect(await comments.listComments(S, S1, ids.s2Private)).toEqual([]);
+      expect(await reactions.listReactions(S, S1, ids.s2Private)).toEqual([]);
+      expect(await attachments.listAttachments(S, S1, ids.s2Private)).toEqual([]);
+      expect(await attachments.getAttachment(S, S1, child.attachment)).toBeNull();
+      expect(await attachments.taskVisibleTo(S, S1, ids.s2Private)).toBe(false);
+      expect(await tasksQueries.timeEntriesForTask(S, S1, ids.s2Private)).toEqual([]);
+      const blocks = await import("./task-blocks");
+      expect(await blocks.blockForCalendarSync(S, S1, child.block)).toBeNull();
+    });
+
+    it("S1 sees only their own minutes on the shared task, everywhere", async () => {
+      const shared = (await tasksQueries.tasksForDate(S, S1, DAY)).find((t) => t.id === ids.shared);
+      expect(shared?.actual_time_min).toBe(30);
+      expect(
+        (await tasksQueries.tasksInRange(S, S1, DAY, DAY)).find((t) => t.id === ids.shared)
+          ?.actual_time_min,
+      ).toBe(30);
+      expect(await tasksQueries.timeEntriesForTask(S, S1, ids.shared)).toEqual([
+        { day: DAY, minutes: 30, user_id: S1 },
+      ]);
+      // The owner sees their own 45 plus the 20 undated, not S1's 30.
+      const theirs = (await tasksQueries.tasksForDate(S, S2, DAY)).find((t) => t.id === ids.shared);
+      expect(theirs?.actual_time_min).toBe(65);
+      expect(
+        (await tasksQueries.timeEntriesForTask(S, S2, ids.shared)).map((e) => e.user_id),
+      ).toEqual([S2]);
+    });
+
+    it("presence shows S2's running shared task with S1's minutes, not S2's", async () => {
+      const presence = await import("./presence");
+      await client.exec(`update tasks set active_since = now() where id = '${ids.shared}'`);
+      const rows = await presence.partnerActiveTasks(S, S1);
+      expect(rows.map((r) => [r.id, r.actual_time_min])).toEqual([[ids.shared, 30]]);
+      await client.exec(`update tasks set active_since = null where id = '${ids.shared}'`);
+    });
+
+    it("a goal counts neither S2's private tasks nor S2's minutes", async () => {
+      const objectives = await import("./objectives");
+      const goal = await objectives.createObjective(S, S1, {
+        title: "s1 goal",
+        period: "week",
+        start_date: DAY,
+        end_date: DAY,
+      });
+      await client.exec(
+        `update tasks set objective_id = '${goal.id}' where id in ('${ids.shared}', '${ids.s2Private}')`,
+      );
+      expect(await objectives.objectiveTaskCounts(S, S1)).toEqual([
+        { objective_id: goal.id, status: "todo", actual_time_min: 30 },
+      ]);
+      // Goals are personal: S2 neither lists S1's goal nor counts toward it.
+      expect(await objectives.listObjectives(S, S2)).toEqual([]);
+      expect(await objectives.objectiveTaskCounts(S, S2)).toEqual([]);
+      await client.exec(`update tasks set objective_id = null`);
+    });
+
+    it("the partner's profile comes without their settings", async () => {
+      const profiles = await import("./profiles");
+      const rows = await profiles.getHouseholdProfiles(S);
+      expect(rows).toHaveLength(2);
+      for (const r of rows) {
+        expect(Object.keys(r).sort()).toEqual(
+          ["avatar_url", "color", "display_name", "household_id", "id"].sort(),
+        );
+      }
+      expect(JSON.stringify(rows)).not.toContain("ai_usage");
+    });
+  });
+
+  describe("writes by task id", () => {
+    it("cannot complete, edit, move, reorder or delete S2's private task", async () => {
+      await expect(tasksQueries.toggleTaskDone(S, S1, ids.s2Private, true)).rejects.toThrow(
+        "task not found",
+      );
+      await expect(
+        tasksQueries.updateTask(S, S1, ids.s2Private, { title: "renamed by s1" }),
+      ).rejects.toThrow("task not found");
+      await tasksQueries.moveTaskToDate(S, S1, ids.s2Private, null, 5);
+      await tasksQueries.reorderTask(S, S1, ids.s2Private, 5, "high");
+      await tasksQueries.setActiveSince(S, S1, ids.s2Private, true);
+      await tasksQueries.deleteTask(S, S1, ids.s2Private);
+      await tasksQueries.deleteTaskBlocks(S, S1, ids.s2Private);
+
+      const row = await taskRow(ids.s2Private);
+      expect(row).toMatchObject({ title: "s2-private-secret", status: "todo", planned_date: DAY });
+      expect(await n(`task_blocks where task_id = '${ids.s2Private}'`)).toBe(1);
+    });
+
+    it("cannot log or set time on S2's private task", async () => {
+      await expect(
+        tasksQueries.logTaskTime(S, S1, ids.s2Private, [{ day: DAY, minutes: 10 }]),
+      ).rejects.toThrow("task not found");
+      await expect(tasksQueries.setTaskDayTime(S, S1, ids.s2Private, DAY, 10)).rejects.toThrow(
+        "task not found",
+      );
+      await expect(tasksQueries.setActualTime(S, S1, ids.s2Private, 999)).rejects.toThrow(
+        "task not found",
+      );
+      expect(await n(`task_time_entries where task_id = '${ids.s2Private}'`)).toBe(1);
+      expect(Number((await taskRow(ids.s2Private)).actual_time_min)).toBe(60);
+    });
+
+    it("cannot add to, change or remove anything hanging off S2's private task", async () => {
+      const blocks = await import("./task-blocks");
+      const subs = await import("./subtasks");
+      const comments = await import("./comments");
+      const reactions = await import("./reactions");
+      const attachments = await import("./attachments");
+      const file = { url: "u", pathname: "p", name: "n", contentType: "x", sizeBytes: 1 };
+
+      for (const attempt of [
+        blocks.createBlock(S, S1, ids.s2Private, `${DAY}T09:00:00Z`, `${DAY}T10:00:00Z`),
+        blocks.updateBlock(S, S1, child.block, `${DAY}T01:00:00Z`, `${DAY}T02:00:00Z`),
+        subs.createSubtask(S, S1, ids.s2Private, { title: "x", sortOrder: 1 }),
+        comments.addComment(S, ids.s2Private, S1, "x"),
+        reactions.addReaction(S, ids.s2Private, S1, "x"),
+        attachments.addAttachment(S, ids.s2Private, S1, file),
+      ]) {
+        await expect(attempt).rejects.toThrow();
+      }
+      expect(await blocks.deleteBlock(S, S1, child.block)).toBeNull();
+      await blocks.setBlockCalendarEvent(S, S1, child.block, "evt_hijack");
+      await subs.updateSubtask(S, S1, child.subtask, { title: "hijacked" });
+      await subs.toggleSubtask(S, S1, child.subtask, true);
+      await subs.deleteSubtask(S, S1, child.subtask);
+      await comments.deleteComment(S, S1, child.comment);
+      await reactions.removeReaction(S, S1, child.reaction);
+      expect(await attachments.deleteAttachment(S, S1, child.attachment)).toBeNull();
+
+      const t = ids.s2Private;
+      expect(await n(`task_blocks where task_id = '${t}' and gcal_event_id is null`)).toBe(1);
+      expect(
+        await n(`subtasks where task_id = '${t}' and title = 's2-secret-item' and not done`),
+      ).toBe(1);
+      expect(await n(`task_comments where task_id = '${t}'`)).toBe(1);
+      expect(await n(`task_reactions where task_id = '${t}'`)).toBe(1);
+      expect(await n(`task_attachments where task_id = '${t}'`)).toBe(1);
+    });
+
+    it("can still work on the shared task, without touching S2's time on it", async () => {
+      const subs = await import("./subtasks");
+      await tasksQueries.updateTask(S, S1, ids.shared, { notes: "s1 was here" });
+      await subs.createSubtask(S, S1, ids.shared, { title: "s1 item", sortOrder: 1 });
+
+      // S1 adds 15 to their day: the total grows by 15 and S2's undated 20
+      // is not eaten (it is S2's, as owner).
+      await tasksQueries.setTaskDayTime(S, S1, ids.shared, DAY, 45);
+      expect(Number((await taskRow(ids.shared)).actual_time_min)).toBe(110);
+      const asS2 = (await tasksQueries.tasksForDate(S, S2, DAY)).find((t) => t.id === ids.shared);
+      expect(asS2?.actual_time_min).toBe(65);
+
+      // "Real" by hand is the owner's: S1 is refused, S2 sets only their own.
+      await expect(tasksQueries.setActualTime(S, S1, ids.shared, 5)).rejects.toThrow(
+        "not the owner",
+      );
+      await tasksQueries.setActualTime(S, S2, ids.shared, 50);
+      expect(Number((await taskRow(ids.shared)).actual_time_min)).toBe(95); // 50 + S1's 45
+      const asS1 = (await tasksQueries.tasksForDate(S, S1, DAY)).find((t) => t.id === ids.shared);
+      expect(asS1?.actual_time_min).toBe(45);
+    });
+  });
+
+  describe("mass assignment", () => {
+    it("updateTask ignores household, id, creator and timestamps, and refuses an outside owner", async () => {
+      const before = await taskRow(ids.s1Private);
+      await tasksQueries.updateTask(S, S1, ids.s1Private, {
+        household_id: B.household,
+        id: "eeeeeeee-0000-4000-8000-00000000dead",
+        created_by: S2,
+        created_at: "2000-01-01T00:00:00Z",
+        actual_time_min: 999,
+        gcal_event_id: "evt_x",
+        reminder_sent_at: "2000-01-01T00:00:00Z",
+        title: "renamed by s1",
+      } as never);
+      const after = await taskRow(ids.s1Private);
+      expect(after).toMatchObject({
+        household_id: S,
+        owner_id: S1,
+        title: "renamed by s1",
+        actual_time_min: before.actual_time_min,
+      });
+      expect(
+        await n(
+          `tasks where id = '${ids.s1Private}' and gcal_event_id is null and reminder_sent_at is null and created_by = '${S1}'`,
+        ),
+      ).toBe(1);
+      // A person from another household cannot be made the owner, nor can a
+      // category from another household be attached.
+      await expect(
+        tasksQueries.updateTask(S, S1, ids.s1Private, { owner_id: B.user }),
+      ).rejects.toThrow("task not found");
+      await expect(
+        tasksQueries.updateTask(S, S1, ids.s1Private, {
+          channel_id: "bbbbbbbb-0000-4000-8000-0000000000c1",
+        }),
+      ).rejects.toThrow("task not found");
+      // Handing a task to the partner still works: they are in the household.
+      const handed = await tasksQueries.updateTask(S, S1, ids.s1Private, { owner_id: S2 });
+      expect(handed.owner_id).toBe(S2);
+      await client.exec(`update tasks set owner_id = '${S1}' where id = '${ids.s1Private}'`);
+    });
+
+    it("updateProfile cannot move anyone into another household", async () => {
+      const profiles = await import("./profiles");
+      await profiles.updateProfile(S1, {
+        household_id: B.household,
+        notification_prefs: { ai_usage: { count: 0 } },
+        display_name: "s1 renamed",
+      } as never);
+      const row = (
+        await client.query<{ household_id: string; display_name: string; prefs: object }>(
+          `select household_id, display_name, notification_prefs as prefs from profiles where id = '${S1}'`,
+        )
+      ).rows[0];
+      expect(row).toMatchObject({ household_id: S, display_name: "s1 renamed", prefs: {} });
+    });
+
+    it("a note patch naming the partner as owner writes only the caller's note", async () => {
+      const daily = await import("./daily-notes");
+      const weekly = await import("./weekly-notes");
+      await daily.upsertDailyNote(S, S2, DAY, { reflection: "s2 private reflection" });
+      await daily.upsertDailyNote(S, S1, DAY, {
+        reflection: "written by s1",
+        owner_id: S2,
+        household_id: B.household,
+      } as never);
+      expect((await daily.getDailyNote(S2, DAY))?.reflection).toBe("s2 private reflection");
+      expect(await daily.getDailyNote(S1, DAY)).toMatchObject({
+        reflection: "written by s1",
+        household_id: S,
+      });
+      // Same again once S1's note exists, so the UPDATE side of the upsert
+      // gets the hostile patch too.
+      await daily.upsertDailyNote(S, S1, DAY, {
+        reflection: "edited by s1",
+        owner_id: S2,
+        note_date: "2026-01-01",
+      } as never);
+      expect((await daily.getDailyNote(S2, DAY))?.reflection).toBe("s2 private reflection");
+      expect((await daily.getDailyNote(S1, DAY))?.reflection).toBe("edited by s1");
+
+      await weekly.upsertWeeklyNote(S, S2, DAY, { wins: "s2 wins" });
+      await weekly.upsertWeeklyNote(S, S1, DAY, { wins: "s1", owner_id: S2 } as never);
+      expect((await weekly.getWeeklyNote(S2, DAY))?.wins).toBe("s2 wins");
+    });
+
+    it("routines, subtasks, goals and categories keep their owner, household and task", async () => {
+      const routines = await import("./routines");
+      const subs = await import("./subtasks");
+      const objectives = await import("./objectives");
+      const channels = await import("./channels");
+
+      const r = await routines.createRoutine(S, S1, {
+        title: "s1 routine",
+        owner_id: S2,
+        household_id: B.household,
+        id: "eeeeeeee-0000-4000-8000-00000000beef",
+      } as never);
+      expect(r).toMatchObject({ owner_id: S1, household_id: S });
+      expect(r.id).not.toBe("eeeeeeee-0000-4000-8000-00000000beef");
+      const s2Routine = await routines.createRoutine(S, S2, { title: "s2 routine" });
+      await routines.updateRoutine(S, S1, s2Routine.id, { title: "hijacked" });
+      await routines.updateRoutine(S, S1, r.id, { owner_id: S2 } as never);
+      await routines.deleteRoutine(S, S1, s2Routine.id);
+      expect(
+        await n(`recurring_templates where id = '${s2Routine.id}' and title = 's2 routine'`),
+      ).toBe(1);
+      expect(await n(`recurring_templates where id = '${r.id}' and owner_id = '${S1}'`)).toBe(1);
+
+      const mine = await subs.createSubtask(S, S1, ids.s1Private, {
+        title: "s1 item",
+        sortOrder: 1,
+      });
+      await subs.updateSubtask(S, S1, mine.id, {
+        task_id: ids.s2Private,
+        household_id: B.household,
+        title: "still mine",
+      } as never);
+      expect(
+        await n(
+          `subtasks where id = '${mine.id}' and task_id = '${ids.s1Private}' and household_id = '${S}' and title = 'still mine'`,
+        ),
+      ).toBe(1);
+      await expect(subs.updateSubtask(S, S1, mine.id, { assignee_id: B.user })).rejects.toThrow(
+        "not a member",
+      );
+
+      const goal = await objectives.createObjective(S, S2, {
+        title: "s2 goal",
+        period: "week",
+        start_date: DAY,
+        end_date: DAY,
+        owner_id: S1,
+      } as never);
+      expect(goal.owner_id).toBe(S2);
+      await objectives.updateObjective(S, S1, goal.id, { title: "hijacked" });
+      await objectives.deleteObjective(S, S1, goal.id);
+      await objectives.updateObjective(S, S2, goal.id, {
+        owner_id: S1,
+        title: "s2 goal!",
+      } as never);
+      expect(
+        await n(`objectives where id = '${goal.id}' and owner_id = '${S2}' and title = 's2 goal!'`),
+      ).toBe(1);
+
+      const s2Channel = await channels.createChannel(S, S2, {
+        name: "s2 chan",
+        color: "#000000",
+        sortOrder: 1,
+      });
+      await channels.updateChannel(S, S1, s2Channel.id, { name: "hijacked" });
+      await channels.deleteChannel(S, S1, s2Channel.id);
+      expect(await n(`channels where id = '${s2Channel.id}' and name = 's2 chan'`)).toBe(1);
+    });
+  });
+
+  describe("membership reads", () => {
+    it("count and list only the asking household's people and tasks", async () => {
+      const membership = await import("./membership");
+      // B's user asked about in A's household: nothing of B's is counted.
+      expect(await membership.moveCounts(A.household, B.user)).toEqual({
+        privateTasks: 0,
+        sharedTasks: 0,
+        sharedDated: 0,
+        comments: 0,
+      });
+      expect(await membership.ownTaskCount(A.household, B.user)).toBe(0);
+      const space = await membership.spaceMembers(A.household);
+      const ids = space.members.map((m) => m.id);
+      expect(ids).toContain(A.user);
+      expect(ids).not.toContain(B.user);
+    });
+
+    it("never names another household's payer as this one's", async () => {
+      // B pays for B, and a stale marker on B naming A must not make B A's payer.
+      await subscriptionQueries.recordBillingManager(B.household, B.user);
+      await client.exec(
+        `update profiles set notification_prefs = notification_prefs || '{"billing_manager_for": "${A.household}"}' where id = '${B.user}'`,
+      );
+      expect(await subscriptionQueries.billingManager(A.household)).toBeNull();
+      // And a webhook naming A's user as B's payer does nothing: A is not in B.
+      await subscriptionQueries.recordBillingManager(B.household, A.user);
+      const marked = await client.query<{ n: number }>(
+        `select count(*)::int as n from profiles where id = '${A.user}' and notification_prefs ? 'billing_manager_for'`,
+      );
+      expect(marked.rows[0].n).toBe(0);
+    });
   });
 });

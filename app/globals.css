@@ -468,6 +468,57 @@ body {
     box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 50%, transparent);
   }
 }
+/* Waiting on something outside the app (a payment's webhook): a light that
+   travels along an empty bar, and a dot that breathes on the step it is on.
+   Infinite, so reduced motion leaves them at rest. */
+@keyframes mt-drift {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+@keyframes mt-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+/* A side sheet sliding in over its scrim (leave/remove from a space). */
+@keyframes mt-sheet {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mt-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* The dotted line between two people on an invite, moving until they join. */
+@keyframes mt-dash {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+@utility animate-drift {
+  animation: mt-drift 2.2s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+@utility animate-breathe {
+  animation: mt-breathe 2s ease-in-out infinite;
+}
 @utility animate-up {
   animation: mt-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -820,19 +871,31 @@ body {
     opacity: 0;
   }
 }
-@keyframes mk-mail {
+/* The Google Calendar tile: the block slides into place, then the sync arrows
+   turn once as it lands in the calendar. */
+@keyframes mk-sync {
   0%,
-  10% {
-    transform: translateY(-36px);
-    opacity: 0;
+  40% {
+    transform: rotate(0);
   }
-  28%,
-  90% {
-    transform: none;
+  60%,
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes mk-slot {
+  0%,
+  30% {
+    opacity: 0.35;
+    transform: translateX(-8px);
+  }
+  45%,
+  92% {
     opacity: 1;
+    transform: none;
   }
   100% {
-    opacity: 0;
+    opacity: 0.35;
   }
 }
 @keyframes mk-strike {
@@ -927,8 +990,11 @@ body {
 @utility animate-chip {
   animation: mk-chip 7s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
-@utility animate-mail {
-  animation: mk-mail 6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+@utility animate-sync {
+  animation: mk-sync 7s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+@utility animate-slot {
+  animation: mk-slot 7s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 /* A strike drawn as a background so it can grow left to right. Its resting
    size is zero, so reduced motion sets the struck state explicitly. */

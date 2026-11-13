@@ -2,14 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
-import { useProfiles } from "@/lib/queries/profiles";
 import { useSetTaskDayTime, useTaskTimeEntries } from "@/lib/queries/tasks";
 import { addDays, todayISO } from "@/lib/date";
 import { formatDuration, parseDuration } from "@/lib/format";
 import { buildTimeBreakdown, type TimeBreakdown, type TimeSegment } from "@/lib/time-entries";
 import { cn } from "@/lib/utils";
-import type { Profile, Task } from "@/lib/queries/types";
-import { OwnerAvatar } from "./owner-avatar";
+import type { Task } from "@/lib/queries/types";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
 
@@ -24,32 +22,43 @@ import { useTranslations } from "next-intl";
  * Rows are editable because the stopwatch is not the only way time happens:
  * you forget to start it, or you work away from the app. Fixing "Real" alone
  * can only land in "Sin fecha" — the day has to be sayable too.
+ *
+ * Only ever YOUR time. Tracked time is personal, so on a shared task the
+ * server sends only your own entries, and `task.actual_time_min` is already
+ * your share (see `myActualMinutes`). This used to show both people per day,
+ * with the partner's avatar and minutes.
  */
 export function TaskTimeBreakdown({
   task,
   liveSegments,
   meId,
+  showEmpty = false,
 }: {
   task: Task;
   /** The run in progress, split by day — folded in so today ticks live. */
   liveSegments: TimeSegment[];
   meId?: string;
+  /** Render (with "Otro día") even when nothing is tracked yet: for a shared
+   *  task someone else owns, where days are the only way to log time. */
+  showEmpty?: boolean;
 }) {
   const entriesQ = useTaskTimeEntries(task.id);
-  const profiles = useProfiles().data ?? [];
   const setDay = useSetTaskDayTime(task.id, task.planned_date);
 
   const breakdown = useMemo(() => {
     // The run in progress belongs to whoever is signed in on this device — the
     // stopwatch is local, so it can only ever be "my" time.
     const live = meId ? liveSegments.map((s) => ({ ...s, userId: meId })) : [];
-    return buildTimeBreakdown(entriesQ.data ?? [], task.actual_time_min ?? 0, live);
+    // The server already sends only mine; filtering again costs nothing and
+    // keeps a stale cache from ever drawing someone else's minutes.
+    const mine = (entriesQ.data ?? []).filter((e) => !meId || e.user_id === meId);
+    return buildTimeBreakdown(mine, task.actual_time_min ?? 0, live);
   }, [entriesQ.data, task.actual_time_min, liveSegments, meId]);
 
   return (
     <TimeBreakdownList
       breakdown={breakdown}
-      profiles={profiles}
+      showEmpty={showEmpty}
       runningDays={liveSegments.map((s) => s.day)}
       meId={meId}
       onSetDay={meId ? (day, minutes) => setDay.mutate({ day, minutes, userId: meId }) : undefined}
@@ -66,14 +75,14 @@ export function TaskTimeBreakdown({
  */
 export function TimeBreakdownList({
   breakdown,
-  profiles,
+  showEmpty = false,
   runningDays = [],
   today = todayISO(),
   meId,
   onSetDay,
 }: {
   breakdown: TimeBreakdown;
-  profiles: Profile[];
+  showEmpty?: boolean;
   /** Days the stopwatch is currently accruing into — highlighted as live. */
   runningDays?: string[];
   today?: string;
@@ -86,7 +95,6 @@ export function TimeBreakdownList({
   const t = useTranslations("tasks");
   const { days, untrackedMin } = breakdown;
   const running = new Set(runningDays);
-  const multiPerson = profiles.length > 1;
   const editable = !!onSetDay && !!meId;
 
   const [editingDay, setEditingDay] = useState<string | null>(null);
@@ -97,12 +105,11 @@ export function TimeBreakdownList({
   const showUntracked = untrackedMin >= 1;
 
   // Nothing tracked and nothing to assign: the "Real" figure above says it all.
-  if (days.length === 0 && !(editable && showUntracked)) return null;
+  if (days.length === 0 && !(editable && (showUntracked || showEmpty))) return null;
 
   // Bars are relative to the biggest row so the heaviest day always fills it.
   const scale = Math.max(breakdown.maxDayMin, showUntracked ? untrackedMin : 0, 1);
   const width = (min: number) => `${Math.max(4, (min / scale) * 100)}%`;
-  const nameOf = (userId: string) => profiles.find((p) => p.id === userId)?.display_name ?? "?";
   const myMinutes = (day: string) =>
     days.find((d) => d.day === day)?.byUser.find((u) => u.userId === meId)?.minutes ?? 0;
 
@@ -116,14 +123,13 @@ export function TimeBreakdownList({
   return (
     <div className="rounded-[22px] bg-surface p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <span className="font-display text-sm font-semibold text-fg">{t("perDay")}</span>
+        <span className="font-display text-sm font-semibold text-fg">{t("yourTimePerDay")}</span>
         <span className="font-mono text-2xs text-muted">{t("dayCount", { n: days.length })}</span>
       </div>
 
       <ul className="flex flex-col gap-2">
         {days.map((d) => {
           const live = running.has(d.day);
-          const others = d.minutes - myMinutes(d.day);
 
           if (editingDay === d.day) {
             return (
@@ -136,16 +142,6 @@ export function TimeBreakdownList({
                   onCommit={(raw) => commit(d.day, raw)}
                   onCancel={() => setEditingDay(null)}
                 />
-                {others > 0 && (
-                  // Editing only ever touches my own share, so say out loud
-                  // what the row's number also contains.
-                  <span className="shrink-0 text-2xs text-subtle">
-                    {t("plusFrom", {
-                      time: formatDuration(others * 60),
-                      name: nameOf(d.byUser.find((u) => u.userId !== meId)?.userId ?? ""),
-                    })}
-                  </span>
-                )}
               </li>
             );
           }
@@ -170,24 +166,6 @@ export function TimeBreakdownList({
                   )}
                 />
               </span>
-
-              {multiPerson && (
-                // Fixed width so the bars line up whether a day has one
-                // contributor or two.
-                <span className="flex w-8 shrink-0 justify-end -space-x-1">
-                  {d.byUser.map((u) => (
-                    <OwnerAvatar
-                      key={u.userId}
-                      profile={profiles.find((p) => p.id === u.userId)}
-                      size={16}
-                      title={t("personTime", {
-                        name: nameOf(u.userId),
-                        time: formatDuration(u.minutes * 60),
-                      })}
-                    />
-                  ))}
-                </span>
-              )}
 
               {/* While the stopwatch is on this day the number is moving —
                   editing it would fight the live count, so it waits. */}
@@ -227,7 +205,6 @@ export function TimeBreakdownList({
                 className="block h-full rounded-pill bg-border"
               />
             </span>
-            {multiPerson && <span className="w-8 shrink-0" aria-hidden />}
             <span className="w-14 shrink-0 text-right text-xs font-semibold tabular-nums text-subtle sm:w-16">
               {formatDuration(untrackedMin * 60)}
             </span>

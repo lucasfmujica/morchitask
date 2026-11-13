@@ -30,8 +30,8 @@ export async function POST(req: Request) {
   if (!access.ok) return calendarAccessFailure(access.reason);
   const authHeader = { Authorization: `Bearer ${access.accessToken}` };
 
-  const blockId = body.blockId as string;
-  const block = await blockForCalendarSync(session.householdId, blockId);
+  const blockId = typeof body.blockId === "string" ? body.blockId : "";
+  const block = await blockForCalendarSync(session.householdId, session.user.id, blockId);
   if (!block) return NextResponse.json({ error: "block_not_found" }, { status: 404 });
 
   // Shared task → invite the other household member.
@@ -73,6 +73,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "gcal_write_failed", detail: evJson }, { status: 502 });
   }
 
-  await setBlockCalendarEvent(session.householdId, block.id, evJson.id);
+  await setBlockCalendarEvent(session.householdId, session.user.id, block.id, evJson.id);
   return NextResponse.json({ ok: true, eventId: evJson.id });
 }

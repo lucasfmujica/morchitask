@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { signOut } from "next-auth/react";
+import { clearActiveTimersForSignOut } from "@/lib/stores/active-timer";
 import { useTranslations } from "next-intl";
-import { deleteMyAccount, exportMyData } from "@/lib/actions/account";
+import { deleteMyAccount } from "@/lib/actions/account";
+import { useExportMyData } from "./use-export-data";
 
 /**
  * Taking your data out, and taking yourself out.
@@ -16,8 +18,7 @@ import { deleteMyAccount, exportMyData } from "@/lib/actions/account";
  */
 export function DangerZone() {
   const t = useTranslations("settings");
-  const [exporting, startExport] = useTransition();
-  const [exportError, setExportError] = useState(false);
+  const { exporting, failed: exportError, run: handleExport } = useExportMyData();
   const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -28,28 +29,6 @@ export function DangerZone() {
 
   const confirmWord = t("deleteWord");
   const canDelete = typed.trim().toUpperCase() === confirmWord.toUpperCase();
-
-  function handleExport() {
-    setExportError(false);
-    startExport(async () => {
-      try {
-        const payload = await exportMyData();
-        // Built in the browser rather than served from a route: the data is
-        // already here, and a download endpoint would be one more authenticated
-        // surface to get wrong.
-        const url = URL.createObjectURL(
-          new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
-        );
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `morchitask-${payload.exported_at.slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch {
-        setExportError(true);
-      }
-    });
-  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -68,6 +47,7 @@ export function DangerZone() {
     }
     // The session rows are already gone; this is what clears the cookie the
     // browser is still holding.
+    clearActiveTimersForSignOut();
     await signOut({ redirectTo: "/" });
   }
 
@@ -79,7 +59,10 @@ export function DangerZone() {
     // a border, so the outline alone marks it as different. Warm, in the
     // accent, rather than alarm red: it is a place to be careful, and the red
     // is kept for the one button that cannot be taken back.
-    <section className="flex flex-col gap-2.5 rounded-[28px] p-[18px] shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--color-accent)_28%,var(--color-bg))]">
+    <section
+      id="danger"
+      className="flex scroll-mt-4 flex-col gap-2.5 rounded-[28px] p-[18px] shadow-[inset_0_0_0_1.5px_color-mix(in_srgb,var(--color-accent)_28%,var(--color-bg))]"
+    >
       <h2 className="font-display text-sm font-semibold text-accent">{t("dangerTitle")}</h2>
       <p className="text-2xs leading-[17px] text-muted">{t("dangerDesc")}</p>
       <div className="flex flex-wrap gap-2">

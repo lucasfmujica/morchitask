@@ -24,7 +24,7 @@ describe("deleteBlock", () => {
   it("deletes the event the household's own block row pointed at", async () => {
     deleteBlockRow.mockResolvedValue("evt_from_our_row");
     await deleteBlock("b1");
-    expect(deleteBlockRow).toHaveBeenCalledWith("h1", "b1");
+    expect(deleteBlockRow).toHaveBeenCalledWith("h1", "u1", "b1");
     expect(deleteCalendarEvents).toHaveBeenCalledWith("u1", ["evt_from_our_row"]);
   });
 

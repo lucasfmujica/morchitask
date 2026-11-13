@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     plannedDate: null,
     sortOrder: orderForAppend(backlog.map((t) => t.sort_order)),
   });
-  if (notes) await updateTask(householdId, task.id, { notes });
+  if (notes) await updateTask(householdId, userId, task.id, { notes });
 
   // One file failing (Blob hiccup) shouldn't lose the task or the others.
   await Promise.all(

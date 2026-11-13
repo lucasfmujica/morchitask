@@ -4,8 +4,8 @@ import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/comments";
 
 export async function getComments(taskId: string) {
-  const { householdId } = await requireSession();
-  return data.listComments(householdId, taskId);
+  const { householdId, userId } = await requireSession();
+  return data.listComments(householdId, userId, taskId);
 }
 
 export async function addComment(taskId: string, body: string) {
@@ -14,6 +14,6 @@ export async function addComment(taskId: string, body: string) {
 }
 
 export async function deleteComment(id: string) {
-  const { householdId } = await requireWriteAccess();
-  await data.deleteComment(householdId, id);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.deleteComment(householdId, userId, id);
 }

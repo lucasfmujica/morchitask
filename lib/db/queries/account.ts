@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db, dbPool } from "@/lib/db/client";
 import {
   channels,
@@ -17,6 +17,7 @@ import {
   users,
   weeklyNotes,
 } from "@/lib/db/schema";
+import { taskColumnsFor } from "./visibility";
 
 /**
  * Getting your data out, and getting yourself out.
@@ -30,7 +31,9 @@ import {
  * The scope of both is "what this person owns", not "what this person can
  * see". A shared task belongs to whoever created it; the other member's tasks
  * are not this person's data to take away, and deleting them would be taking
- * something from someone who did not ask for anything.
+ * something from someone who did not ask for anything. For the same reason a
+ * shared task the leaver owned is handed to the person who stays rather than
+ * deleted (see `deleteAccount`).
  */
 
 /** Every row this person owns, ready to be written out as JSON. */
@@ -43,7 +46,9 @@ export async function exportAccount(householdId: string, userId: string) {
 
   const [myTasks, myChannels, myObjectives, myNotes, myRoutines, myWeeklyNotes] = await Promise.all(
     [
-      db.select().from(tasks).where(mine(tasks)),
+      // Your share of the time on each task, not the total: on a shared task
+      // the total includes the other person's minutes.
+      db.select(taskColumnsFor(userId)).from(tasks).where(mine(tasks)),
       db.select().from(channels).where(mine(channels)),
       db.select().from(objectives).where(mine(objectives)),
       db.select().from(dailyNotes).where(mine(dailyNotes)),
@@ -119,14 +124,25 @@ export type AccountExport = Awaited<ReturnType<typeof exportAccount>>;
  * ever point at them again.
  */
 export async function deleteAccount(householdId: string, userId: string) {
-  const [myAttachments, myTasks] = await Promise.all([
+  const [myAttachments, myTasks, [heir]] = await Promise.all([
     db
       .select({ url: taskAttachments.url })
       .from(taskAttachments)
       .where(eq(taskAttachments.uploader_id, userId)),
-    db.select({ id: tasks.id }).from(tasks).where(eq(tasks.owner_id, userId)),
+    db.select({ id: tasks.id, shared: tasks.shared }).from(tasks).where(eq(tasks.owner_id, userId)),
+    // Whoever stays behind. Two people per space at most, so at most one.
+    db
+      .select({ id: profiles.id })
+      .from(profiles)
+      .where(and(eq(profiles.household_id, householdId), ne(profiles.id, userId)))
+      .limit(1),
   ]);
-  const taskIds = myTasks.map((t) => t.id);
+  // A shared task is half the other person's: their time and their comments
+  // are on it. Deleting it with its owner took those from someone who asked
+  // for nothing, so a shared task passes to whoever stays. Private tasks were
+  // only ever the leaver's, so they go.
+  const handedOver = heir ? myTasks.filter((t) => t.shared).map((t) => t.id) : [];
+  const taskIds = myTasks.filter((t) => !handedOver.includes(t.id)).map((t) => t.id);
 
   await dbPool.transaction(async (tx) => {
     // 1. What this person left on *other people's* tasks. Their content, so it
@@ -141,7 +157,23 @@ export async function deleteAccount(householdId: string, userId: string) {
     await tx.update(subtasks).set({ assignee_id: null }).where(eq(subtasks.assignee_id, userId));
     await tx.update(tasks).set({ created_by: null }).where(eq(tasks.created_by, userId));
 
-    // 3. This person's tasks, which cascade to their blocks, subtasks,
+    // 3a. Shared tasks change hands. The total loses the leaver's minutes:
+    //     their entries went in step 1, and the undated remainder was theirs
+    //     as owner, so what is left is exactly the heir's (and anyone else's)
+    //     dated entries.
+    if (heir && handedOver.length) {
+      await tx
+        .update(tasks)
+        .set({
+          owner_id: heir.id,
+          actual_time_min: sql`(select nullif(coalesce(sum(e.minutes), 0), 0) from "task_time_entries" e where e.task_id = "tasks"."id")`,
+          active_since: null,
+          remind_at: null,
+        })
+        .where(inArray(tasks.id, handedOver));
+    }
+
+    // 3b. This person's other tasks, which cascade to their blocks, subtasks,
     //    comments, reactions, attachments and time entries — including the ones
     //    the *other* member left on a shared task. Nothing else can reference
     //    them, so this is safe to do before the tables they point at.

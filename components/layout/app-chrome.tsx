@@ -25,7 +25,9 @@ import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useHousehold } from "@/lib/queries/households";
 import { ChannelFilterProvider } from "@/lib/channel-filter";
 import { useSidebar } from "@/lib/stores/sidebar";
+import { bindActiveTimersToUser } from "@/lib/stores/active-timer";
 import { useCommandPalette } from "@/lib/stores/command-palette";
+import { MOD, shortcutKeys, useIsApple } from "@/lib/shortcuts";
 import { todayISO } from "@/lib/date";
 import { useDailyNote } from "@/lib/queries/daily-notes";
 import { DEFAULT_END_TARGET_MIN } from "@/lib/scheduling";
@@ -64,7 +66,11 @@ const GLYPH = {
   routines: "M2.5 8a5.5 5.5 0 1 0 1.8-4.1M2.5 2.5v3h3",
   summary: "M3 13V9M6.5 13V5M10 13V7.5M13.5 13V3",
   settings: "M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2",
+  help: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13M6.2 6.2a1.9 1.9 0 1 1 2.6 1.7c-.5.3-.8.7-.8 1.3v.3M8 11.5h.01",
 } as const;
+
+const LOCK_GLYPH = "M3.5 7.5h9v6.5h-9zM5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5";
+const SEARCH_GLYPH = "M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9M10.5 10.5l3 3";
 
 // Grouped like Sunsama: planning views, then tools.
 // Semana and Mes link to the dated route directly: the bare /week and /month
@@ -131,9 +137,25 @@ function sidebarNav(today: string): NavItem[] {
       href: "/settings",
       labelKey: "settings",
       icon: Settings,
-      match: (p) => p.startsWith("/settings"),
+      // Plan y pago is reached from Ajustes, so it lights Ajustes up.
+      match: (p) => p.startsWith("/settings") || p.startsWith("/billing"),
     },
   ];
+}
+
+/** Ayuda sits at the foot of the sidebar, apart from the list: reachable from
+ *  every screen, but not one more place to visit every day. */
+const HELP_NAV: NavItem = {
+  href: "/help",
+  labelKey: "help",
+  icon: Settings,
+  match: (p) => p.startsWith("/help"),
+};
+
+/** What stays open once the paywall closes, mirroring proxy.ts's list: the
+ *  rest of the sidebar is still drawn, locked, so nothing looks deleted. */
+function reachableWhenLocked(href: string) {
+  return href === "/settings" || href === "/billing";
 }
 
 /**
@@ -176,9 +198,13 @@ export function isRitualRoute(pathname: string) {
 export function AppChrome({
   children,
   trialChip = null,
+  locked = false,
 }: {
   children: ReactNode;
   trialChip?: ReactNode;
+  /** Trial over and nothing paid: the proxy only lets Plan y pago and Ajustes
+   *  through, and the sidebar says so instead of linking to redirects. */
+  locked?: boolean;
 }) {
   const tn = useTranslations("nav");
   const pathname = usePathname();
@@ -190,10 +216,22 @@ export function AppChrome({
     closeMobile();
   }, [pathname, closeMobile]);
 
+  // Running stopwatches are stored per person: load this person's, and only
+  // once we know who they are (see lib/stores/active-timer.ts).
+  const meId = useMe().data?.id;
+  useEffect(() => {
+    if (meId) bindActiveTimersToUser(meId);
+  }, [meId]);
+
   return (
     <ChannelFilterProvider>
       <div className="flex min-h-dvh">
-        <DesktopSidebar pathname={pathname} forceCollapsed={ritual} trialChip={trialChip} />
+        <DesktopSidebar
+          pathname={pathname}
+          forceCollapsed={ritual}
+          trialChip={trialChip}
+          locked={locked}
+        />
 
         {/* min-w-0 is load-bearing: a flex child defaults to `min-width: auto`,
             so this column refused to shrink below its content's intrinsic width
@@ -260,7 +298,7 @@ export function AppChrome({
           </nav>
         </div>
 
-        <MobileSidebarDrawer pathname={pathname} trialChip={trialChip} />
+        <MobileSidebarDrawer pathname={pathname} trialChip={trialChip} locked={locked} />
         <TaskDetailSheet />
         <TimerBar />
         <KeyboardShortcuts />
@@ -305,10 +343,12 @@ function DesktopSidebar({
   pathname,
   forceCollapsed = false,
   trialChip,
+  locked,
 }: {
   pathname: string;
   forceCollapsed?: boolean;
   trialChip: ReactNode;
+  locked: boolean;
 }) {
   const tc = useTranslations("chrome");
   const collapsed = useSidebar((s) => s.collapsed) || forceCollapsed;
@@ -332,7 +372,12 @@ function DesktopSidebar({
   return (
     // The canvas frame: 16px from the window, 220px wide, a 28px-radius well.
     <aside className="sticky top-4 my-4 ml-4 hidden h-[calc(100dvh-2rem)] w-[220px] shrink-0 animate-up flex-col overflow-hidden rounded-[28px] bg-surface-2 px-3 py-5 md:flex">
-      <SidebarBody pathname={pathname} onToggleCollapsed={toggleCollapsed} trialChip={trialChip} />
+      <SidebarBody
+        pathname={pathname}
+        onToggleCollapsed={toggleCollapsed}
+        trialChip={trialChip}
+        locked={locked}
+      />
     </aside>
   );
 }
@@ -345,13 +390,16 @@ function SidebarBody({
   onToggleCollapsed,
   onNavigate,
   trialChip,
+  locked,
 }: {
   pathname: string;
   onToggleCollapsed?: () => void;
   onNavigate?: () => void;
   trialChip: ReactNode;
+  locked: boolean;
 }) {
   const tc = useTranslations("chrome");
+  const tb = useTranslations("billing");
   const tn = useTranslations("nav");
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
@@ -362,7 +410,7 @@ function SidebarBody({
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2 px-3 pb-[18px]">
+      <div className="flex shrink-0 items-center gap-2 px-3 pb-3.5">
         <span className="font-display text-xl leading-6 font-bold tracking-[-0.02em] text-fg">
           Morchitask
         </span>
@@ -389,35 +437,56 @@ function SidebarBody({
         </div>
       </div>
 
+      {/* Looks like a search field and opens the palette: ⌘K was only ever
+          discoverable through the "?" overlay, which nobody opens. */}
+      {!locked && <SearchPill onOpen={onNavigate} />}
+
       {/* The canvas sidebar: one flat list of places, the capture verb, and the
-          two of you at the foot. Search lives on ⌘K and in the phone's top bar;
-          categories and sign-out live in Ajustes. */}
+          two of you at the foot. Categories and sign-out live in Ajustes. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <nav className="flex flex-col gap-0.5">
           {sidebarNav(todayISO()).map((item) => (
-            <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
+            <SidebarLink
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              onNavigate={onNavigate}
+              locked={locked && !reachableWhenLocked(item.href)}
+            />
           ))}
         </nav>
-        <Link
-          href="/today?capture=1"
-          onClick={onNavigate}
-          className="mt-3 flex h-10 shrink-0 items-center gap-2.5 rounded-pill bg-fg px-3.5 text-sm font-semibold text-surface transition-opacity hover:opacity-90"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            aria-hidden
+        {!locked && (
+          <Link
+            href="/today?capture=1"
+            onClick={onNavigate}
+            className="mt-3 flex h-10 shrink-0 items-center gap-2.5 rounded-pill bg-fg px-3.5 text-sm font-semibold text-surface transition-opacity hover:opacity-90"
           >
-            <rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5" />
-            <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" />
-          </svg>
-          {tn("capture")}
-        </Link>
+            <svg
+              viewBox="0 0 16 16"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5" />
+              <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" />
+            </svg>
+            {tn("capture")}
+          </Link>
+        )}
       </div>
+
+      {locked ? (
+        <p className="mt-3 shrink-0 rounded-[20px] bg-surface/60 px-3.5 py-3 text-2xs leading-[17px] text-muted shadow-[inset_0_0_0_1px_var(--color-border)]">
+          {tb.rich("lockedNav", { b: (c) => <b className="font-semibold text-fg">{c}</b> })}
+        </p>
+      ) : (
+        <div className="mt-3 shrink-0">
+          <SidebarLink item={HELP_NAV} pathname={pathname} onNavigate={onNavigate} locked={false} />
+        </div>
+      )}
 
       {/* Pinned above the footer like the footer itself, so a long nav list
           scrolls under it instead of pushing it out of sight. The chip carries
@@ -451,7 +520,15 @@ function SidebarBody({
 
 /** Slide-in sidebar for mobile — same contents as the desktop panel, opened via
  *  the hamburger in the top bar. */
-function MobileSidebarDrawer({ pathname, trialChip }: { pathname: string; trialChip: ReactNode }) {
+function MobileSidebarDrawer({
+  pathname,
+  trialChip,
+  locked,
+}: {
+  pathname: string;
+  trialChip: ReactNode;
+  locked: boolean;
+}) {
   const tc = useTranslations("chrome");
   const mobileOpen = useSidebar((s) => s.mobileOpen);
   const closeMobile = useSidebar((s) => s.closeMobile);
@@ -464,7 +541,12 @@ function MobileSidebarDrawer({ pathname, trialChip }: { pathname: string; trialC
         className="absolute inset-0 h-full w-full cursor-default bg-scrim backdrop-blur-sm"
       />
       <aside className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-surface-2 px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-5 shadow-card">
-        <SidebarBody pathname={pathname} onNavigate={closeMobile} trialChip={trialChip} />
+        <SidebarBody
+          pathname={pathname}
+          onNavigate={closeMobile}
+          trialChip={trialChip}
+          locked={locked}
+        />
       </aside>
     </div>
   );
@@ -474,24 +556,32 @@ function SidebarLink({
   item,
   pathname,
   onNavigate,
+  locked,
 }: {
   item: NavItem;
   pathname: string;
   onNavigate?: () => void;
+  /** Shown, dimmed and padlocked, but leading to Plan y pago: following it
+   *  would only bounce off the proxy's redirect. */
+  locked: boolean;
 }) {
   const tn = useTranslations("nav");
-  const active = item.match(pathname);
+  const tb = useTranslations("billing");
+  const active = !locked && item.match(pathname);
   const glyph = GLYPH[item.labelKey as keyof typeof GLYPH];
   return (
     <Link
-      href={item.href}
+      href={locked ? "/billing" : item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
+      aria-label={locked ? tb("lockedNavItem", { label: tn(item.labelKey) }) : undefined}
       className={cn(
         "flex h-10 shrink-0 items-center gap-2.5 rounded-pill px-3.5 text-sm transition-colors",
         active
           ? "bg-surface font-semibold text-fg shadow-nav"
-          : "font-medium text-muted hover:bg-surface/60 hover:text-fg",
+          : locked
+            ? "font-medium text-subtle opacity-55 hover:bg-surface/60"
+            : "font-medium text-muted hover:bg-surface/60 hover:text-fg",
       )}
     >
       <svg
@@ -506,7 +596,54 @@ function SidebarLink({
       >
         <path d={glyph} />
       </svg>
-      {tn(item.labelKey)}
+      <span className="flex-1">{tn(item.labelKey)}</span>
+      {locked && (
+        <svg
+          viewBox="0 0 16 16"
+          className="h-3 w-3 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d={LOCK_GLYPH} />
+        </svg>
+      )}
     </Link>
+  );
+}
+
+/** "Buscar o ir a…": a field that is really a button into the ⌘K palette. */
+function SearchPill({ onOpen }: { onOpen?: () => void }) {
+  const tc = useTranslations("chrome");
+  const open = useCommandPalette((s) => s.open);
+  const apple = useIsApple();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen?.();
+        open();
+      }}
+      className="mb-2.5 flex h-[38px] shrink-0 cursor-pointer items-center gap-2.5 rounded-pill bg-surface/55 pr-1.5 pl-3.5 text-left text-subtle shadow-[inset_0_0_0_1px_var(--color-border)] transition-[background-color,box-shadow] hover:bg-surface hover:shadow-soft"
+    >
+      <svg
+        viewBox="0 0 16 16"
+        className="h-[15px] w-[15px] shrink-0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        aria-hidden
+      >
+        <path d={SEARCH_GLYPH} />
+      </svg>
+      <span className="min-w-0 flex-1 truncate text-xs">{tc("searchOrGo")}</span>
+      <kbd className="rounded-[6px] bg-surface-2 px-[7px] py-[3px] font-mono text-[11px] text-subtle">
+        {shortcutKeys([MOD, "K"], apple).join(apple ? "" : " ")}
+      </kbd>
+    </button>
   );
 }

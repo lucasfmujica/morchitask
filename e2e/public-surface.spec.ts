@@ -23,6 +23,7 @@ const PRIVATE_ROUTES = [
   "/focus",
   "/routines",
   "/billing",
+  "/help",
   // Admin-only, and still an app route first: logged out is a login redirect,
   // and only after sign-in does the allowlist get to answer 404.
   "/admin/metrics",
@@ -42,6 +43,18 @@ test.describe("route protection", () => {
       await expect(page).toHaveURL(/\/login$/);
     });
   }
+
+  // An invite link opened signed out: the proxy keeps the query (not the
+  // path), so the token in it is what lets the sign-in screen come back here.
+  // The database is unreachable in this run, so the invite cannot be read and
+  // the plain sign-in screen must still render rather than an error.
+  test("an invite link sends a logged-out visitor to sign in, token kept", async ({ page }) => {
+    const token = "tok_e2e_0123456789abcdef";
+    const response = await page.goto(`/invite/${token}?invite=${token}`);
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveURL(new RegExp(`/login\\?invite=${token}$`));
+    await expect(page.getByRole("button", { name: /google/i })).toBeVisible();
+  });
 
   test("/login is reachable when logged out", async ({ page }) => {
     // The inverse of the rule above, and the one that actually breaks sign-up

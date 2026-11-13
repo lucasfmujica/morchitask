@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       priority: task.priority,
       sortOrder,
     });
-    await updateTask(householdId, row.id, { notes, due_date: task.plannedDate });
+    await updateTask(householdId, userId, row.id, { notes, due_date: task.plannedDate });
     created.push(row.id);
   }
 

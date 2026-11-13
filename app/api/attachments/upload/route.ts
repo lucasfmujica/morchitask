@@ -6,7 +6,7 @@ import {
   isValidAttachmentPath,
 } from "@/lib/attachments";
 import { auth } from "@/lib/auth";
-import { taskBelongsToHousehold } from "@/lib/db/queries/attachments";
+import { taskVisibleTo } from "@/lib/db/queries/attachments";
 
 /**
  * Issues a one-shot token so the browser can send a file straight to Vercel
@@ -34,10 +34,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (!session?.householdId) throw new Error("unauthorized");
 
         // The client names the task it is uploading to; the path it asked for
-        // has to be inside that task's folder, and that task has to be ours.
+        // has to be inside that task's folder, and that task has to be one we can see
+        // (ours, or shared with us).
         const taskId = typeof clientPayload === "string" ? clientPayload : "";
         if (!isValidAttachmentPath(pathname, taskId)) throw new Error("invalid path");
-        if (!(await taskBelongsToHousehold(session.householdId, taskId))) {
+        if (!(await taskVisibleTo(session.householdId, session.user.id, taskId))) {
           throw new Error("task not found");
         }
 

@@ -54,7 +54,17 @@ describe("reading the subscription", () => {
       recurringInterval: "month",
       currentPeriodEnd: "2026-10-01T00:00:00.000Z",
       cancelAtPeriodEnd: false,
+      payerUserId: null,
     });
+  });
+
+  // Who manages the plan is whoever paid; the checkout says so in metadata.
+  it("reads who opened the checkout, when the metadata carries it", () => {
+    expect(
+      parseSubscriptionEvent(payload({ metadata: { household_id: HOUSEHOLD, user_id: "u_1" } }))
+        ?.payerUserId,
+    ).toBe("u_1");
+    expect(parseSubscriptionEvent(payload({ metadata: { user_id: 42 } }))?.payerUserId).toBeNull();
   });
 
   it("takes the period end as a string too — the SDK hands back a Date, raw JSON does not", () => {

@@ -6,20 +6,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { addDays, addMonths, todayISO } from "@/lib/date";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 import { useCommandPalette } from "@/lib/stores/command-palette";
+import { SHORTCUTS, shortcutKeys, useIsApple } from "@/lib/shortcuts";
 import { Kbd } from "@/components/ui";
 import { useTranslations } from "next-intl";
 
 const DATE_RE = /(\d{4}-\d{2}-\d{2})/;
-
-/** `labelKey`, not a label: the words come from the catalog at render time.
- *  Named to avoid colliding with React's `key` prop on the list below. */
-const SHORTCUTS: { keys: string[]; labelKey: string }[] = [
-  { keys: ["⌘", "K"], labelKey: "palette" },
-  { keys: ["N"], labelKey: "newTask" },
-  { keys: ["←", "→"], labelKey: "navigate" },
-  { keys: ["T"], labelKey: "goToday" },
-  { keys: ["?"], labelKey: "toggleHelp" },
-];
 
 /** Global keyboard shortcuts (mounted once in the app shell). */
 export function KeyboardShortcuts() {
@@ -27,6 +18,7 @@ export function KeyboardShortcuts() {
   const pathname = usePathname();
   const router = useRouter();
   const [showHelp, setShowHelp] = useState(false);
+  const apple = useIsApple();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -116,7 +108,7 @@ export function KeyboardShortcuts() {
                 <li key={s.labelKey} className="flex items-center justify-between gap-3">
                   <span className="text-sm text-muted">{t(s.labelKey)}</span>
                   <span className="flex shrink-0 gap-1">
-                    {s.keys.map((k) => (
+                    {shortcutKeys(s.keys, apple).map((k) => (
                       <Kbd key={k} className="text-fg">
                         {k}
                       </Kbd>

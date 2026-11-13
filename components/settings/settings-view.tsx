@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, LogOut } from "lucide-react";
 import { signIn, signOut } from "next-auth/react";
+import { clearActiveTimersForSignOut } from "@/lib/stores/active-timer";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { disconnectCalendar as disconnectCalendarAction } from "@/lib/actions/google";
@@ -27,7 +28,7 @@ import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "./theme-selector";
 import { ChannelsManager } from "./channels-manager";
-import { InviteCard } from "./invite-card";
+import { OwnershipCard, SpaceCard } from "./space-card";
 import { NotificationsCard } from "./notifications-card";
 import { InboundEmailCard } from "./inbound-email-card";
 import { StintCard } from "./stint-card";
@@ -81,6 +82,7 @@ export function SettingsView() {
   }
 
   async function handleSignOut() {
+    clearActiveTimersForSignOut();
     await signOut({ redirectTo: "/login" });
   }
 
@@ -180,17 +182,26 @@ export function SettingsView() {
           </Card>
         </Well>
 
-        {/* Two short preferences stacked, then who else is in the space. */}
+        {/* Who else is in the space, how to invite them, and how to part. */}
+        <Well delay={80}>
+          <SpaceCard />
+        </Well>
+
+        {/* What leaving would take, said before anyone asks, then the two
+            short preferences stacked. */}
         <div className="flex flex-col gap-4">
-          <FlatWell title={t("appearance")} delay={80}>
+          <section
+            className="flex animate-up flex-col gap-3 rounded-[28px] bg-surface-2 p-[18px] [animation-duration:600ms]"
+            style={{ animationDelay: "100ms" }}
+          >
+            <OwnershipCard />
+          </section>
+          <FlatWell title={t("appearance")} delay={120}>
             <ThemeSelector />
           </FlatWell>
-          <FlatWell title={t("language")} hint={t("languageHint")} delay={120}>
+          <FlatWell title={t("language")} hint={t("languageHint")} delay={140}>
             <LanguageSelector />
           </FlatWell>
-          <Well delay={140}>
-            <InviteCard />
-          </Well>
         </div>
 
         <Well delay={160}>

@@ -36,13 +36,27 @@ export function TaskComments({ taskId }: { taskId: string }) {
             return (
               <li key={c.id} className="group flex items-start gap-2.5">
                 <span className="shrink-0">
-                  <OwnerAvatar profile={author} size={28} />
+                  <OwnerAvatar
+                    profile={
+                      author ??
+                      (c.author_name
+                        ? {
+                            id: c.author_id,
+                            household_id: c.household_id,
+                            display_name: c.author_name,
+                            color: "var(--color-subtle)",
+                            avatar_url: null,
+                          }
+                        : undefined)
+                    }
+                    size={28}
+                  />
                 </span>
                 {/* A chat bubble with its corner pointing at the avatar. */}
                 <div className="min-w-0 rounded-[4px_16px_16px_16px] bg-bg px-3 py-2.5">
                   {/* The avatar already says who; the name is for screen readers. */}
                   <p className="sr-only">
-                    {mine ? tcm("you") : (author?.display_name ?? t("someone"))}
+                    {mine ? tcm("you") : (author?.display_name ?? c.author_name ?? t("someone"))}
                   </p>
                   <p className="text-xs leading-[19px] break-words text-fg">{c.body}</p>
                 </div>

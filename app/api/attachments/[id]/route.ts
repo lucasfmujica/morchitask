@@ -9,8 +9,9 @@ import { getAttachment } from "@/lib/db/queries/attachments";
  *
  * The Blob store is private: its URLs answer 403 to anyone without the store's
  * credentials, so a file can't simply be linked to. This route is how the app
- * reads one — session first, then the row (scoped to the household, so an id
- * from someone else's data finds nothing), then the bytes.
+ * reads one — session first, then the row (scoped to the household and to the
+ * tasks this person can see, so an id from someone else's data — or from the
+ * partner's private task — finds nothing), then the bytes.
  *
  * The upshot for the household: an attachment is only reachable by someone
  * signed into this app. A link copied out of the browser is useless elsewhere.
@@ -21,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const session = await auth();
   if (!session?.householdId) return new NextResponse("unauthorized", { status: 401 });
 
-  const row = await getAttachment(session.householdId, id);
+  const row = await getAttachment(session.householdId, session.user.id, id);
   if (!row) return new NextResponse("not found", { status: 404 });
 
   const file = await get(row.pathname, { access: "private" });

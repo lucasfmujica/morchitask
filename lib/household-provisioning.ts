@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
-import { db } from "@/lib/db/client";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { dbPool } from "@/lib/db/client";
 import { channels, householdInvites, households, profiles } from "@/lib/db/schema";
+import { MAX_HOUSEHOLD_MEMBERS } from "@/lib/db/queries/invites";
 import { DEFAULT_LOCALE, localeFromAcceptLanguage, type Locale } from "@/lib/locale";
 import { trialEndFrom } from "@/lib/billing";
 
@@ -29,23 +30,72 @@ export function defaultChannels(locale: Locale) {
   ];
 }
 
-/**
- * Consumes a pending invite for `email` and returns the household it points at,
- * or null when there is none.
- *
- * Marking it accepted in the same statement that selects it is what stops one
- * invite from seeding two accounts: `accepted_at is null` is part of the
- * UPDATE, so a concurrent second call matches zero rows and gets null back.
- */
-async function claimInvite(email: string | null | undefined): Promise<string | null> {
-  if (!email) return null;
+/** What a brand-new space is called, in the sign-up language. A row, like the
+ *  categories above: renaming it later is the person's call (Settings). */
+const DEFAULT_HOUSEHOLD_NAME: Record<Locale, string> = {
+  es: "Mi espacio",
+  en: "My space",
+};
 
-  const [claimed] = await db
+export function defaultHouseholdName(locale: Locale) {
+  return DEFAULT_HOUSEHOLD_NAME[locale];
+}
+
+type Tx = Parameters<Parameters<typeof dbPool.transaction>[0]>[0];
+
+/**
+ * Consumes ONE pending invite for `email` and returns the household it points
+ * at, or null when there is none — or when that space is already full.
+ *
+ * Only the most recent live invite is claimed. Claiming every invite for the
+ * address marked invites to other spaces as used too, for a space this person
+ * never joined.
+ *
+ * The household row is locked first (the same lock `createInviteWithinCap`
+ * takes), and the member count is checked again here, inside the same
+ * transaction that will insert the profile: an invite sent while there was a
+ * seat must not seat a third person if the space filled up since.
+ *
+ * Marking it accepted in the same statement that selects it is still what
+ * stops one invite from seeding two accounts: `accepted_at is null` is part of
+ * the UPDATE, so a concurrent second call matches zero rows.
+ */
+async function claimInvite(tx: Tx, email: string | null | undefined): Promise<string | null> {
+  if (!email) return null;
+  const normalized = email.trim().toLowerCase();
+
+  const [candidate] = await tx
+    .select({ id: householdInvites.id, householdId: householdInvites.household_id })
+    .from(householdInvites)
+    .where(
+      and(
+        eq(householdInvites.email, normalized),
+        isNull(householdInvites.accepted_at),
+        gt(householdInvites.expires_at, sql`now()`),
+      ),
+    )
+    .orderBy(desc(householdInvites.created_at))
+    .limit(1);
+  if (!candidate) return null;
+
+  await tx
+    .select({ id: households.id })
+    .from(households)
+    .where(eq(households.id, candidate.householdId))
+    .for("update");
+
+  const [members] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(profiles)
+    .where(eq(profiles.household_id, candidate.householdId));
+  if ((members?.n ?? 0) >= MAX_HOUSEHOLD_MEMBERS) return null;
+
+  const [claimed] = await tx
     .update(householdInvites)
     .set({ accepted_at: sql`now()` })
     .where(
       and(
-        eq(householdInvites.email, email.toLowerCase()),
+        eq(householdInvites.id, candidate.id),
         isNull(householdInvites.accepted_at),
         gt(householdInvites.expires_at, sql`now()`),
       ),
@@ -86,42 +136,48 @@ export async function provisionNewUser(user: {
   name?: string | null;
   image?: string | null;
 }): Promise<string> {
-  const invited = await claimInvite(user.email);
-
-  // The trial belongs to the space, and only a new space gets one: joining
-  // someone else's on an invite means joining whatever they are already paying
-  // (or trialing), not starting a second fourteen days of your own.
-  const householdId =
-    invited ??
-    (
-      await db
-        .insert(households)
-        .values({ trial_ends_at: trialEndFrom() })
-        .returning({ id: households.id })
-    )[0].id;
-
   const locale = await initialLocale();
-  await db.insert(profiles).values({
-    id: user.id,
-    household_id: householdId,
-    display_name: user.name ?? user.email?.split("@")[0] ?? "",
-    avatar_url: user.image ?? null,
-    locale,
-  });
 
-  // Channels are per-person, not per-household, so someone joining an existing
-  // space needs their own set too — not just whoever created it. Must run after
-  // the profile insert: `owner_id` points at it.
-  await db.insert(channels).values(
-    defaultChannels(locale).map((c, i) => ({
+  // One transaction: the claim's member count and the profile insert that
+  // takes the seat must not be separable, or two sign-ups could both pass the
+  // count. Uses the pooled connection — the HTTP one has no transactions.
+  return dbPool.transaction(async (tx) => {
+    const invited = await claimInvite(tx, user.email);
+
+    // The trial belongs to the space, and only a new space gets one: joining
+    // someone else's on an invite means joining whatever they are already
+    // paying (or trialing), not starting a second fourteen days of your own.
+    const householdId =
+      invited ??
+      (
+        await tx
+          .insert(households)
+          .values({ name: defaultHouseholdName(locale), trial_ends_at: trialEndFrom() })
+          .returning({ id: households.id })
+      )[0].id;
+
+    await tx.insert(profiles).values({
+      id: user.id,
       household_id: householdId,
-      owner_id: user.id,
-      name: c.name,
-      color: c.color,
-      icon: c.icon,
-      sort_order: i,
-    })),
-  );
+      display_name: user.name ?? user.email?.split("@")[0] ?? "",
+      avatar_url: user.image ?? null,
+      locale,
+    });
 
-  return householdId;
+    // Channels are per-person, not per-household, so someone joining an
+    // existing space needs their own set too — not just whoever created it.
+    // Must run after the profile insert: `owner_id` points at it.
+    await tx.insert(channels).values(
+      defaultChannels(locale).map((c, i) => ({
+        household_id: householdId,
+        owner_id: user.id,
+        name: c.name,
+        color: c.color,
+        icon: c.icon,
+        sort_order: i,
+      })),
+    );
+
+    return householdId;
+  });
 }

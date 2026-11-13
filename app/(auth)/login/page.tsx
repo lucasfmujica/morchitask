@@ -1,5 +1,11 @@
 import { LoginForm } from "./login-form";
 import { getTranslations } from "next-intl/server";
+import { resolveAccess } from "@/lib/billing";
+import { isBillingEnabled } from "@/lib/billing-config";
+import { invitePreview } from "@/lib/db/queries/membership";
+import { billingFacts } from "@/lib/db/queries/subscriptions";
+import { parseInviteToken } from "@/lib/invite-link";
+import { InviteNew } from "@/components/invite/invite-screen";
 
 const FEATURES = ["featurePlan", "featureFocus", "featureShutdown"] as const;
 
@@ -20,7 +26,49 @@ const MOTION = `
 @media (prefers-reduced-motion:reduce){.login-halo,.login-ring,.login-up{animation:none}}
 `;
 
-export default async function LoginPage() {
+/**
+ * The invite a signed-out visitor arrived with, if it still works. Never worth
+ * failing the sign-in screen over: anything wrong here shows the plain one.
+ */
+async function inviteFor(raw: unknown) {
+  const token = parseInviteToken(raw);
+  if (!token) return null;
+  try {
+    const preview = await invitePreview(token);
+    if (!preview) return null;
+    const facts = isBillingEnabled() ? await billingFacts(preview.householdId) : null;
+    return { token, preview, covered: facts ? resolveAccess(facts).allowed : true };
+  } catch {
+    return null;
+  }
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const invite = await inviteFor((await searchParams).invite);
+  if (invite) {
+    const { token, preview, covered } = invite;
+    return (
+      <InviteNew
+        token={token}
+        email={preview.email}
+        expiresAt={preview.expiresAt}
+        space={preview.spaceName}
+        covered={covered}
+        inviter={{
+          id: preview.inviterId,
+          household_id: preview.householdId,
+          display_name: preview.inviterName,
+          color: preview.inviterColor,
+          avatar_url: preview.inviterAvatar,
+        }}
+      />
+    );
+  }
+
   // A Server Component, so the translator is awaited rather than hooked.
   const t = await getTranslations("auth");
   return (

@@ -10,6 +10,13 @@ import { persist } from "zustand/middleware";
  * Persisted to localStorage so running timers survive reloads / navigation on
  * the device. `baseActualMin` is the task's actual_time_min when the timer
  * started; the stop path adds the elapsed time on top of the live DB value.
+ *
+ * The storage key carries the signed-in user's id (`bindActiveTimersToUser`),
+ * and signing out wipes it (`clearActiveTimersForSignOut`). Under one shared
+ * key, a timer started by one account kept running after the other signed in
+ * on the same device — showing them a task that is not theirs, and logging
+ * its time under the wrong person when stopped. Until the user is known
+ * nothing is read from storage at all (`skipHydration`).
  */
 export type ActiveTimer = {
   taskId: string;
@@ -46,9 +53,55 @@ export const useActiveTimers = create<State>()(
         }),
       clearAll: () => set({ timers: {} }),
     }),
-    { name: "morchitask:active-timer", version: 1, migrate: migrateActiveTimers },
+    {
+      name: activeTimerStorageKey(null),
+      version: 1,
+      migrate: migrateActiveTimers,
+      skipHydration: true,
+      // Loading a person's key REPLACES the timers in memory, even with
+      // nothing stored: the default shallow merge kept the previous person's
+      // timers whenever the new key was empty.
+      merge: (persisted, current) => ({
+        ...current,
+        timers: (persisted as { timers?: Record<string, ActiveTimer> } | null)?.timers ?? {},
+      }),
+    },
   ),
 );
+
+/** The localStorage key for one person's timers. The bare key is the old,
+ *  shared one: never read again, only removed. */
+export function activeTimerStorageKey(userId: string | null) {
+  return userId ? `morchitask:active-timer:${userId}` : "morchitask:active-timer";
+}
+
+let boundUserId: string | null = null;
+
+/**
+ * Point the store at this person's timers and load them. Called once the
+ * session's user is known; calling it again for the same user is a no-op.
+ * Switching user drops whatever was in memory before loading the new key.
+ */
+export function bindActiveTimersToUser(userId: string) {
+  if (boundUserId === userId) return;
+  boundUserId = userId;
+  useActiveTimers.persist.setOptions({ name: activeTimerStorageKey(userId) });
+  try {
+    // Whoever it belonged to, the old shared key is the one that crossed
+    // accounts. Dropping it costs at most a timer running across the deploy.
+    localStorage.removeItem(activeTimerStorageKey(null));
+  } catch {
+    // Storage unavailable (private mode): nothing persisted, nothing to clear.
+  }
+  void useActiveTimers.persist.rehydrate();
+}
+
+/** On sign-out: no timer survives into whoever signs in next on this device. */
+export function clearActiveTimersForSignOut() {
+  useActiveTimers.getState().clearAll();
+  useActiveTimers.persist.clearStorage();
+  boundUserId = null;
+}
 
 function isTimer(value: unknown): value is ActiveTimer {
   const t = value as ActiveTimer | null;

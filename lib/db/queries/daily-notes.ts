@@ -1,6 +1,7 @@
 import { and, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { dailyNotes } from "@/lib/db/schema";
+import { pickDailyNotePatch } from "@/lib/patches";
 
 export type DailyNotePatch = Partial<
   Pick<
@@ -48,12 +49,18 @@ export async function upsertDailyNote(
   date: string,
   patch: DailyNotePatch,
 ) {
+  // Rebuilt from a whitelist, and spread BEFORE the owner: with the patch
+  // spread last, `owner_id` in it overwrote the partner's private note.
+  const clean = pickDailyNotePatch(patch);
   const [row] = await db
     .insert(dailyNotes)
-    .values({ household_id: householdId, owner_id: ownerId, note_date: date, ...patch })
+    .values({ ...clean, household_id: householdId, owner_id: ownerId, note_date: date })
     .onConflictDoUpdate({
       target: [dailyNotes.owner_id, dailyNotes.note_date],
-      set: patch,
+      // An empty SET is a syntax error; touching updated_at keeps the upsert
+      // returning the row either way.
+      set: Object.keys(clean).length > 0 ? clean : { updated_at: sql`now()` },
+      setWhere: eq(dailyNotes.household_id, householdId),
     })
     .returning();
   return row;
