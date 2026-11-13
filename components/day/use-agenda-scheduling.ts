@@ -69,14 +69,9 @@ export function useAgendaScheduling(date: string) {
     );
   }
 
-  /** Remove one block (and its calendar event). */
+  /** Remove one block. The server removes its calendar event. */
   function removeBlock(block: TaskBlock) {
-    const eventId = block.gcal_event_id;
-    remove.mutate(block, {
-      onSuccess: () => {
-        if (connected && eventId) syncBlockCalendar({ action: "delete", eventId }).catch(() => {});
-      },
-    });
+    remove.mutate(block);
   }
 
   return { scheduleNewBlock, moveBlock, resizeBlock, removeBlock, connected };

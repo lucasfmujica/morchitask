@@ -7,6 +7,7 @@ import * as attachments from "@/lib/db/queries/attachments";
 import * as data from "@/lib/db/queries/tasks";
 import { isTaskPriority, type PriorityKey } from "@/lib/priority";
 import type { NewTask, TaskPatch } from "@/lib/queries/types";
+import { deleteCalendarEvents } from "@/lib/google-calendar";
 import { pushToStint } from "@/lib/stint-sync";
 
 /** The patch reaches `db.update().set()` verbatim, so reject a bogus priority
@@ -80,11 +81,11 @@ export async function setTaskActiveSince(taskId: string, active: boolean) {
   if (active) after(() => pushToStint(householdId, userId, taskId, "timerStarted"));
 }
 
-/** Deletes the task and returns the Google Calendar event ids its blocks had,
- * so the client can clean them up — the calendar write goes out from the
- * browser through `/api/calendar/blocks`, not from here. */
+/** Deletes the task, and afterwards the Google Calendar events its blocks had.
+ * The event ids are read from this household's block rows before they go, so
+ * only events this app created can be deleted (see `deleteCalendarEvents`). */
 export async function deleteTask(taskId: string) {
-  const { householdId } = await requireWriteAccess();
+  const { householdId, userId } = await requireWriteAccess();
   const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
   // Attachment rows cascade with the task, but the stored files don't — read
   // their paths while the rows still exist, then delete the blobs afterwards.
@@ -99,7 +100,7 @@ export async function deleteTask(taskId: string) {
       // ignore
     }
   }
-  return { eventIds };
+  if (eventIds.length > 0) after(() => deleteCalendarEvents(userId, eventIds));
 }
 
 export async function moveTaskToDate(
@@ -108,12 +109,12 @@ export async function moveTaskToDate(
   sortOrder: number,
   priority?: PriorityKey,
 ) {
-  const { householdId } = await requireWriteAccess();
+  const { householdId, userId } = await requireWriteAccess();
   assertPriority(priority);
   const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
   await data.deleteTaskBlocks(householdId, taskId);
   await data.moveTaskToDate(householdId, taskId, toDate, sortOrder, priority);
-  return { eventIds };
+  if (eventIds.length > 0) after(() => deleteCalendarEvents(userId, eventIds));
 }
 
 export async function reorderTask(taskId: string, sortOrder: number, priority?: PriorityKey) {

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getGoogleRefreshToken } from "@/lib/db/queries/google";
 import { partnerEmail } from "@/lib/db/queries/profiles";
 import { blockForCalendarSync, setBlockCalendarEvent } from "@/lib/db/queries/task-blocks";
-import { refreshGoogleAccessToken } from "@/lib/google";
+import { calendarAccessFailure, calendarAccessToken } from "@/lib/google-calendar";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://productivity-app-three-pink.vercel.app";
@@ -12,36 +11,24 @@ const EVENTS = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
 const NOTIFY = "sendUpdates=all";
 
 /**
- * Writes a single time-block to the caller's PRIMARY Google Calendar (2-way sync).
- * upsert: create/update the event for a block and store its id back on the block.
- * delete: remove an event by id. Shared tasks invite the household partner.
+ * Writes a single time-block to the caller's PRIMARY Google Calendar (2-way sync):
+ * creates or updates the event for a block and stores its id back on the block.
+ * Shared tasks invite the household partner.
+ *
+ * There is no "delete" action any more. It took an event id from the browser
+ * and deleted it, whatever event it was. Deleting now happens on the server,
+ * from the ids on our own block rows (`deleteCalendarEvents`).
  */
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.householdId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const refreshToken = await getGoogleRefreshToken(session.user.id);
-  if (!refreshToken) return NextResponse.json({ error: "not_connected" }, { status: 400 });
-
-  const accessToken = await refreshGoogleAccessToken(refreshToken);
-  if (!accessToken) return NextResponse.json({ error: "token_refresh_failed" }, { status: 502 });
-  const authHeader = { Authorization: `Bearer ${accessToken}` };
-
   const body = await req.json().catch(() => ({}));
-  const action = body.action as "upsert" | "delete" | undefined;
+  if (body.action !== "upsert") return NextResponse.json({ error: "bad_action" }, { status: 400 });
 
-  if (action === "delete") {
-    const eventId = body.eventId as string | undefined;
-    if (eventId) {
-      await fetch(`${EVENTS}/${encodeURIComponent(eventId)}?${NOTIFY}`, {
-        method: "DELETE",
-        headers: authHeader,
-      });
-    }
-    return NextResponse.json({ ok: true });
-  }
-
-  if (action !== "upsert") return NextResponse.json({ error: "bad_action" }, { status: 400 });
+  const access = await calendarAccessToken(session.user.id);
+  if (!access.ok) return calendarAccessFailure(access.reason);
+  const authHeader = { Authorization: `Bearer ${access.accessToken}` };
 
   const blockId = body.blockId as string;
   const block = await blockForCalendarSync(session.householdId, blockId);

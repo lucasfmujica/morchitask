@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, CreditCard, Gift, TriangleAlert } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { openBillingPortal, startCheckout } from "@/lib/actions/billing";
 import type { getBillingState } from "@/lib/actions/billing";
 import {
@@ -11,6 +11,7 @@ import {
   PRICE_YEARLY_USD,
   TRIAL_DAYS,
   YEARLY_SAVING_PCT,
+  yearlyPerMonthUsd,
 } from "@/lib/pricing";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { Button } from "@/components/ui";
@@ -33,9 +34,12 @@ const INCLUDED = ["rituals", "calendar", "shared", "focus", "capture", "export"]
 
 export function BillingView({ state }: { state: State }) {
   const t = useTranslations("billing");
+  const locale = useLocale();
   const labels = useDateLabels();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState(false);
+  // "subscribed" is the server refusing a second checkout because this space
+  // already pays: worth its own sentence, since "try again" would be wrong.
+  const [error, setError] = useState<false | "failed" | "subscribed">(false);
   // One CTA for the plan picked above it. The cards only choose; the button
   // is what checks out, and it passes the chosen interval straight through,
   // so each plan still goes to its own product. Yearly starts selected
@@ -54,7 +58,23 @@ export function BillingView({ state }: { state: State }) {
         // and the checkout has to own the tab it collects a card in.
         window.location.href = await run();
       } catch {
-        setError(true);
+        setError("failed");
+      }
+    });
+  }
+
+  function checkout() {
+    setError(false);
+    startTransition(async () => {
+      try {
+        const res = await startCheckout(interval);
+        if (!res.ok) {
+          setError("subscribed");
+          return;
+        }
+        window.location.href = res.url;
+      } catch {
+        setError("failed");
       }
     });
   }
@@ -105,16 +125,16 @@ export function BillingView({ state }: { state: State }) {
           >
             <PlanCard
               name={t("monthly")}
-              price={formatUsd(PRICE_MONTHLY_USD)}
+              price={formatUsd(PRICE_MONTHLY_USD, locale)}
               per={t("perMonth")}
               selected={interval === "month"}
               onSelect={() => setPlanInterval("month")}
             />
             <PlanCard
               name={t("yearly")}
-              price={formatUsd(PRICE_YEARLY_USD)}
+              price={formatUsd(PRICE_YEARLY_USD, locale)}
               per={t("perYearAbout", {
-                monthly: formatUsd(Math.round(PRICE_YEARLY_USD / 12)),
+                monthly: formatUsd(yearlyPerMonthUsd(), locale),
               })}
               badge={t("yearlySaving", { pct: YEARLY_SAVING_PCT })}
               selected={interval === "year"}
@@ -159,14 +179,18 @@ export function BillingView({ state }: { state: State }) {
             <p className="mr-auto text-2xs text-muted">{t("coverNote")}</p>
             <Button
               size="lg"
-              onClick={() => go(() => startCheckout(interval))}
+              onClick={checkout}
               disabled={pending}
               className="h-[50px] animate-glow px-7 text-sm text-surface [animation-delay:1s]"
             >
               {interval === "year" ? t("subscribeYearly") : t("subscribeMonthly")}
             </Button>
           </div>
-          {error && <p className="text-sm text-danger">{t("checkoutFailed")}</p>}
+          {error && (
+            <p className="text-sm text-danger">
+              {error === "subscribed" ? t("alreadySubscribed") : t("checkoutFailed")}
+            </p>
+          )}
         </>
       )}
 

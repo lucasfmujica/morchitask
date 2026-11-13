@@ -17,6 +17,13 @@ const client = new PGlite();
 const testDb = drizzle(client, { schema });
 vi.mock("@/lib/db/client", () => ({ db: testDb, dbPool: testDb }));
 
+// The sign-up's browser language. Null by default, which is what the code
+// already sees outside a request: no header, so the default locale.
+let acceptLanguage: string | null = null;
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers(acceptLanguage ? { "accept-language": acceptLanguage } : {}),
+}));
+
 let provisionNewUser: typeof import("./household-provisioning").provisionNewUser;
 
 /** The Adapter inserts the user row before the createUser event fires. */
@@ -66,6 +73,26 @@ describe("provisionNewUser", () => {
 
     expect(await countIn(first.householdId, "channels")).toBe(3);
     expect(await countIn(second.householdId, "channels")).toBe(3);
+  });
+
+  it("names the default categories in the language the account signs up in", async () => {
+    const names = async (ownerId: string) =>
+      (
+        await client.query<{ name: string }>(
+          "select name from channels where owner_id = $1 order by sort_order",
+          [ownerId],
+        )
+      ).rows.map((r) => r.name);
+
+    acceptLanguage = "en-US,en;q=0.9";
+    const english = await signUp("cats-en@example.com");
+    acceptLanguage = "es-AR,es;q=0.9";
+    const spanish = await signUp("cats-es@example.com");
+    acceptLanguage = null;
+
+    // Every account used to get the Spanish names, whatever its language.
+    expect(await names(english.id)).toEqual(["Work", "Home", "Personal"]);
+    expect(await names(spanish.id)).toEqual(["Trabajo", "Hogar", "Personal"]);
   });
 
   it("puts an invited address into the inviting household", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { OWN_ERROR_UI } from "@/lib/mutation-errors";
 import { useRouter } from "next/navigation";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown } from "lucide-react";
@@ -93,7 +94,8 @@ function ShutdownRitual({
   const ts = useTranslations("shutdown");
   const router = useRouter();
   const qc = useQueryClient();
-  const upsert = useUpsertDailyNote(date);
+  // Closing the day shows its own error line, so no generic toast on top.
+  const upsert = useUpsertDailyNote(date, OWN_ERROR_UI);
   const streak = useShutdownStreak(todayISO());
   const channelsById = useChannelLookup().data ?? EMPTY_CHANNEL_MAP;
 
@@ -122,7 +124,7 @@ function ShutdownRitual({
   // never to another past day where they'd strand out of sight.
   const tomorrow = carryOverTarget(date);
   const alreadyClosed = !!note?.shutdown_completed_at;
-  const move = useMoveTaskToDate();
+  const move = useMoveTaskToDate(OWN_ERROR_UI);
   const tomorrowTasks = useTasksForDate(tomorrow).data ?? [];
   const tomorrowPlannedMin = tomorrowTasks
     .filter((t) => t.owner_id === meId && t.status !== "done")

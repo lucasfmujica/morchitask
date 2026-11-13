@@ -7,6 +7,7 @@
  * a signature check and a status code; the judgement is all here.
  */
 import { describe, expect, it } from "vitest";
+import { resolveAccess } from "./billing";
 import { householdIdFrom, isHandledEvent, parseSubscriptionEvent } from "./webhook-events";
 
 const HOUSEHOLD = "11111111-0000-4000-8000-000000000000";
@@ -109,5 +110,47 @@ describe("which events matter", () => {
     for (const type of ["order.created", "benefit.created", "product.updated", "", undefined]) {
       expect(isHandledEvent(type), String(type)).toBe(false);
     }
+  });
+});
+
+describe("a revoked subscription", () => {
+  const NOW = new Date("2026-09-10T12:00:00.000Z");
+  // What Polar sends on revoke: cancelled, ended now, and the period end left
+  // where it was, three weeks out.
+  const revoked = payload({
+    status: "canceled",
+    endedAt: NOW,
+    currentPeriodEnd: new Date("2026-10-01T00:00:00.000Z"),
+  });
+  const access = (sub: ReturnType<typeof parseSubscriptionEvent>) =>
+    resolveAccess(
+      {
+        planOverride: null,
+        trialEndsAt: null,
+        subscription: { status: sub!.status, currentPeriodEnd: sub!.currentPeriodEnd },
+      },
+      new Date(NOW.getTime() + 60_000),
+    );
+
+  it("ends access when it ended, not at the end of the period it had paid for", () => {
+    const sub = parseSubscriptionEvent(revoked, { revoked: true, now: NOW });
+    expect(sub?.currentPeriodEnd).toBe(NOW.toISOString());
+    expect(access(sub).allowed).toBe(false);
+  });
+
+  it("ends access even when the payload does not say when it ended", () => {
+    const sub = parseSubscriptionEvent(payload({ status: "active", endedAt: null }), {
+      revoked: true,
+      now: NOW,
+    });
+    expect(sub?.status).toBe("canceled");
+    expect(access(sub).allowed).toBe(false);
+  });
+
+  it("still honours a plain cancel until the end of the paid period", () => {
+    // Cancelling is not revoking: they paid for the rest of the month.
+    const sub = parseSubscriptionEvent(payload({ status: "canceled", endedAt: null }));
+    expect(sub?.currentPeriodEnd).toBe("2026-10-01T00:00:00.000Z");
+    expect(access(sub).allowed).toBe(true);
   });
 });

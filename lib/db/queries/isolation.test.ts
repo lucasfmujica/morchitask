@@ -409,3 +409,75 @@ describe("onboarding", () => {
     expect(prefs.rows[0].prefs).toMatchObject({ taskReminders: true, onboarded_at: first });
   });
 });
+
+describe("account delete preflight", () => {
+  it("counts only the asking household's members", async () => {
+    const { householdMemberCount } = await import("./account");
+    // A has two members after the worked-time setup above; B has its one.
+    const a = await householdMemberCount(A.household);
+    const b = await householdMemberCount(B.household);
+    const rows = await client.query<{ h: string; n: number }>(
+      "select household_id as h, count(*)::int as n from profiles group by household_id",
+    );
+    const real = new Map(rows.rows.map((r) => [r.h, r.n]));
+    expect(a).toBe(real.get(A.household));
+    expect(b).toBe(real.get(B.household));
+  });
+});
+
+describe("block delete", () => {
+  it("cannot delete another household's block, or hand back its calendar event", async () => {
+    const blocks = await import("./task-blocks");
+    const [theirTask] = await tasksQueries.tasksForDate(B.household, B.user, TODAY);
+    const theirs = await blocks.createBlock(
+      B.household,
+      theirTask.id,
+      `${TODAY}T10:00:00.000Z`,
+      `${TODAY}T11:00:00.000Z`,
+    );
+    await blocks.setBlockCalendarEvent(B.household, theirs.id, "evt_b");
+
+    // Asked as A: nothing deleted, no event id that would then be deleted
+    // from somebody's Google Calendar.
+    expect(await blocks.deleteBlock(A.household, theirs.id)).toBeNull();
+    expect(await blocks.blockForCalendarSync(B.household, theirs.id)).not.toBeNull();
+
+    expect(await blocks.deleteBlock(B.household, theirs.id)).toBe("evt_b");
+  });
+});
+
+describe("AI usage", () => {
+  it("cannot count a use against a person in another household", async () => {
+    const { consumeAiQuota } = await import("./ai-usage");
+    // B's user through A's household: refused, and nothing written to B.
+    expect(await consumeAiQuota(A.household, B.user, "plan", TODAY, 5)).toBe(false);
+    const theirs = await client.query<{ prefs: Record<string, unknown> }>(
+      `select notification_prefs as prefs from profiles where id = '${B.user}'`,
+    );
+    expect(theirs.rows[0].prefs).not.toHaveProperty("ai_usage");
+
+    expect(await consumeAiQuota(A.household, A.user, "plan", TODAY, 5)).toBe(true);
+  });
+});
+
+describe("notification prefs merge", () => {
+  it("keeps server-owned markers and only touches the given person", async () => {
+    const profileQueries = await import("./profiles");
+    await client.exec(
+      `update profiles set notification_prefs = '{"ai_usage":{"count":7},"onboarded_at":"x"}'::jsonb where id = '${A.user}'`,
+    );
+    await profileQueries.mergeNotificationPrefs(A.user, { dailyPlan: false });
+    const mine = await client.query<{ prefs: Record<string, unknown> }>(
+      `select notification_prefs as prefs from profiles where id = '${A.user}'`,
+    );
+    expect(mine.rows[0].prefs).toMatchObject({
+      ai_usage: { count: 7 },
+      onboarded_at: "x",
+      dailyPlan: false,
+    });
+    const theirs = await client.query<{ prefs: Record<string, unknown> | null }>(
+      `select notification_prefs as prefs from profiles where id = '${B.user}'`,
+    );
+    expect(theirs.rows[0].prefs ?? {}).not.toHaveProperty("dailyPlan", false);
+  });
+});

@@ -2,14 +2,32 @@ import { headers } from "next/headers";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { channels, householdInvites, households, profiles } from "@/lib/db/schema";
-import { DEFAULT_LOCALE, localeFromAcceptLanguage } from "@/lib/locale";
+import { DEFAULT_LOCALE, localeFromAcceptLanguage, type Locale } from "@/lib/locale";
 import { trialEndFrom } from "@/lib/billing";
 
-const DEFAULT_CHANNELS = [
-  { name: "Trabajo", color: "#0d9488", icon: "briefcase" },
-  { name: "Hogar", color: "#ea580c", icon: "home" },
-  { name: "Personal", color: "#7c3aed", icon: "sparkles" },
-];
+/**
+ * The starting categories, in the language the account signs up in.
+ *
+ * Rows, not interface text: once seeded they are the person's own data, which
+ * is why they are never renamed when the language changes later (that would be
+ * editing someone's categories behind their back). It also means the sign-up
+ * language is the only chance to get them right — they were seeded in Spanish
+ * for everyone, so an English sign-up started with "Trabajo", "Hogar" and
+ * "Personal" and no way to know those were ours rather than theirs.
+ */
+const DEFAULT_CHANNEL_NAMES: Record<Locale, [string, string, string]> = {
+  es: ["Trabajo", "Hogar", "Personal"],
+  en: ["Work", "Home", "Personal"],
+};
+
+export function defaultChannels(locale: Locale) {
+  const [work, home, personal] = DEFAULT_CHANNEL_NAMES[locale];
+  return [
+    { name: work, color: "#0d9488", icon: "briefcase" },
+    { name: home, color: "#ea580c", icon: "home" },
+    { name: personal, color: "#7c3aed", icon: "sparkles" },
+  ];
+}
 
 /**
  * Consumes a pending invite for `email` and returns the household it points at,
@@ -82,19 +100,20 @@ export async function provisionNewUser(user: {
         .returning({ id: households.id })
     )[0].id;
 
+  const locale = await initialLocale();
   await db.insert(profiles).values({
     id: user.id,
     household_id: householdId,
     display_name: user.name ?? user.email?.split("@")[0] ?? "",
     avatar_url: user.image ?? null,
-    locale: await initialLocale(),
+    locale,
   });
 
   // Channels are per-person, not per-household, so someone joining an existing
   // space needs their own set too — not just whoever created it. Must run after
   // the profile insert: `owner_id` points at it.
   await db.insert(channels).values(
-    DEFAULT_CHANNELS.map((c, i) => ({
+    defaultChannels(locale).map((c, i) => ({
       household_id: householdId,
       owner_id: user.id,
       name: c.name,

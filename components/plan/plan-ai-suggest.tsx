@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { OWN_ERROR_UI } from "@/lib/mutation-errors";
 import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { suggestDayPlan } from "@/lib/actions/ai";
@@ -49,7 +50,8 @@ export function PlanAiSuggest({
   const me = useMe().data;
   const connected = !!me?.google_calendar_connected;
   const calendarQ = useCalendarEvents(date, connected);
-  const create = useCreateBlock(date);
+  // Applying a plan says how much of it landed; no generic toast on top.
+  const create = useCreateBlock(date, OWN_ERROR_UI);
   const { removeBlock } = useAgendaScheduling(date);
   const toast = useToast();
 

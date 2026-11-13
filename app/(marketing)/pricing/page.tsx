@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { JsonLd } from "@/components/seo/json-ld";
 import {
   PRICE_MONTHLY_USD,
@@ -8,6 +8,7 @@ import {
   SUNSAMA_MONTHLY_USD,
   TRIAL_DAYS,
   YEARLY_SAVING_PCT,
+  yearlyPerMonthUsd,
 } from "@/lib/pricing";
 import { faqJsonLd } from "@/lib/seo";
 import { getUrlLocale, getUsd, pricingMetadata } from "@/lib/seo-server";
@@ -52,15 +53,7 @@ function FitCheck() {
  */
 export default async function PricingPage() {
   const t = await getTranslations("pricing");
-  const locale = await getLocale();
   const usd = await getUsd();
-
-  // "about US$6.70 a month": rounded to ten cents because the copy says
-  // "about", and an exact 6.67 next to "about" reads like a calculator.
-  const perMonthOfYear = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Math.round((PRICE_YEARLY_USD / 12) * 10) / 10);
 
   const includes = [
     t("incRitual"),
@@ -140,7 +133,7 @@ export default async function PricingPage() {
               yearly={{
                 label: t("yearly"),
                 price: usd(PRICE_YEARLY_USD),
-                per: t("perYearApprox", { monthly: usd(perMonthOfYear) }),
+                per: t("perYearApprox", { monthly: usd(yearlyPerMonthUsd()) }),
               }}
               savingTag={t("savingTag", { pct: YEARLY_SAVING_PCT })}
             />

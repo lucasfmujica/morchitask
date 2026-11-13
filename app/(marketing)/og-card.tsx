@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { createTranslator } from "next-intl";
 import es from "@/messages/es.json";
-import { PRICE_MONTHLY_USD, TRIAL_DAYS } from "@/lib/pricing";
+import { PRICE_MONTHLY_USD, TRIAL_DAYS, formatUsd } from "@/lib/pricing";
 
 /**
  * The card a shared link unfurls into, for every marketing page.
@@ -26,7 +26,6 @@ import { PRICE_MONTHLY_USD, TRIAL_DAYS } from "@/lib/pricing";
  * network hiccup into a failed deploy for a social card.
  */
 const t = createTranslator({ locale: "es", messages: es, namespace: "seo" });
-const tp = createTranslator({ locale: "es", messages: es, namespace: "pricing" });
 
 export const ogAlt = t("ogAlt");
 export const ogSize = { width: 1200, height: 630 };
@@ -40,7 +39,7 @@ const PRIMARY = "#2C7A4B";
 const MARKER = "#F2D24B";
 
 export function renderOgCard() {
-  const price = tp("usd", { amount: String(PRICE_MONTHLY_USD) });
+  const price = formatUsd(PRICE_MONTHLY_USD, "es");
 
   return new ImageResponse(
     <div

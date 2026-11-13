@@ -1,6 +1,7 @@
-import { and, eq, inArray, isNull, lte } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { profiles, pushSubscriptions, tasks } from "@/lib/db/schema";
+import { households, profiles, pushSubscriptions, subscriptions, tasks } from "@/lib/db/schema";
+import { isSubscriptionStatus, type BillingFacts } from "@/lib/billing";
 import type { NotificationPrefs } from "@/lib/queries/types";
 import { toLocale } from "@/lib/locale";
 
@@ -61,4 +62,69 @@ export async function dueTaskReminders(nowISO: string) {
 export async function markRemindersSent(taskIds: string[], nowISO: string) {
   if (taskIds.length === 0) return;
   await db.update(tasks).set({ reminder_sent_at: nowISO }).where(inArray(tasks.id, taskIds));
+}
+
+function toISO(v: string | null): string | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/**
+ * Every profile's billing facts, for deciding who a cron may still notify.
+ *
+ * Unscoped like the rest of this file: the crons sweep every household. One
+ * query for all of them, the same join `billingFacts` does for one household
+ * on the way into a request, so the crons and the app agree on who is in.
+ */
+export async function profileBillingFacts(): Promise<Map<string, BillingFacts>> {
+  const rows = await db
+    .select({
+      id: profiles.id,
+      trialEndsAt: households.trial_ends_at,
+      planOverride: households.plan_override,
+      status: subscriptions.status,
+      currentPeriodEnd: subscriptions.current_period_end,
+    })
+    .from(profiles)
+    .innerJoin(households, eq(households.id, profiles.household_id))
+    .leftJoin(subscriptions, eq(subscriptions.household_id, profiles.household_id));
+
+  return new Map(
+    rows.map((r) => [
+      r.id,
+      {
+        planOverride: r.planOverride,
+        trialEndsAt: toISO(r.trialEndsAt),
+        subscription: isSubscriptionStatus(r.status)
+          ? { status: r.status, currentPeriodEnd: toISO(r.currentPeriodEnd) }
+          : null,
+      },
+    ]),
+  );
+}
+
+/**
+ * Claims the "your trial is about to end" push for these people, once each.
+ *
+ * The marker goes in `notification_prefs` like `checkout_started_at`, because
+ * a column would need a migration. Set in the same statement that checks it
+ * is absent, so a cron that runs twice (a retry, a manual run) claims nobody
+ * the second time; only the ids it returns get the push.
+ */
+export async function claimTrialReminders(profileIds: string[]): Promise<string[]> {
+  if (profileIds.length === 0) return [];
+  const rows = await db
+    .update(profiles)
+    .set({
+      notification_prefs: sql`${profiles.notification_prefs} || jsonb_build_object('trial_reminder_sent_at', now())`,
+    })
+    .where(
+      and(
+        inArray(profiles.id, profileIds),
+        sql`${profiles.notification_prefs} ->> 'trial_reminder_sent_at' is null`,
+      ),
+    )
+    .returning({ id: profiles.id });
+  return rows.map((r) => r.id);
 }

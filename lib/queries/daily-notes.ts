@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { MutationErrorMeta } from "@/lib/mutation-errors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getDailyNote as getDailyNoteAction,
@@ -20,9 +21,10 @@ export function useDailyNote(date: string) {
   });
 }
 
-export function useUpsertDailyNote(date: string) {
+export function useUpsertDailyNote(date: string, opts: { meta?: MutationErrorMeta } = {}) {
   const qc = useQueryClient();
   return useMutation({
+    meta: opts.meta,
     mutationFn: (patch: NotePatch): Promise<DailyNote> => upsertDailyNoteAction(date, patch),
     onSuccess: (data) => qc.setQueryData(noteKey(date), data),
   });

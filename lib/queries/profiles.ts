@@ -1,4 +1,5 @@
 import { upload } from "@vercel/blob/client";
+import { OWN_ERROR_UI } from "@/lib/mutation-errors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getHouseholdProfiles,
@@ -51,6 +52,8 @@ export function useUpdateMyProfile() {
 export function useUploadMyAvatar() {
   const qc = useQueryClient();
   return useMutation({
+    // Settings shows its own line under the photo; no generic toast too.
+    ...OWN_ERROR_UI,
     mutationFn: async ({ file, userId }: { file: File; userId: string }): Promise<string> => {
       const blob = await upload(avatarPath(userId, file.name, crypto.randomUUID()), file, {
         // Read back through /api/avatars/[userId]; the store's URLs answer 403.

@@ -15,6 +15,7 @@ import {
   taskTimeEntries,
   tasks,
   users,
+  weeklyNotes,
 } from "@/lib/db/schema";
 
 /**
@@ -40,13 +41,18 @@ export async function exportAccount(householdId: string, userId: string) {
   const [profile] = await db.select().from(profiles).where(eq(profiles.id, userId));
   const [household] = await db.select().from(households).where(eq(households.id, householdId));
 
-  const [myTasks, myChannels, myObjectives, myNotes, myRoutines] = await Promise.all([
-    db.select().from(tasks).where(mine(tasks)),
-    db.select().from(channels).where(mine(channels)),
-    db.select().from(objectives).where(mine(objectives)),
-    db.select().from(dailyNotes).where(mine(dailyNotes)),
-    db.select().from(recurringTemplates).where(mine(recurringTemplates)),
-  ]);
+  const [myTasks, myChannels, myObjectives, myNotes, myRoutines, myWeeklyNotes] = await Promise.all(
+    [
+      db.select().from(tasks).where(mine(tasks)),
+      db.select().from(channels).where(mine(channels)),
+      db.select().from(objectives).where(mine(objectives)),
+      db.select().from(dailyNotes).where(mine(dailyNotes)),
+      db.select().from(recurringTemplates).where(mine(recurringTemplates)),
+      // Weekly review reflections are the person's own writing: leaving them
+      // out made the export incomplete.
+      db.select().from(weeklyNotes).where(eq(weeklyNotes.owner_id, userId)),
+    ],
+  );
 
   const taskIds = myTasks.map((t) => t.id);
 
@@ -79,6 +85,7 @@ export async function exportAccount(householdId: string, userId: string) {
     objectives: myObjectives,
     routines: myRoutines,
     daily_notes: myNotes,
+    weekly_notes: myWeeklyNotes,
     tasks: myTasks,
     task_blocks: blocks,
     subtasks: mySubtasks,
@@ -175,6 +182,9 @@ export async function deleteAccount(householdId: string, userId: string) {
 
     await tx.delete(recurringTemplates).where(eq(recurringTemplates.owner_id, userId));
     await tx.delete(dailyNotes).where(eq(dailyNotes.owner_id, userId));
+    // weekly_notes.owner_id references profiles without a cascade: anyone who
+    // ever did a weekly review could not delete their account until this.
+    await tx.delete(weeklyNotes).where(eq(weeklyNotes.owner_id, userId));
     await tx.delete(objectives).where(eq(objectives.owner_id, userId));
     await tx.delete(channels).where(eq(channels.owner_id, userId));
 
@@ -196,4 +206,19 @@ export async function deleteAccount(householdId: string, userId: string) {
   });
 
   return { blobUrls: myAttachments.map((a) => a.url) };
+}
+
+/**
+ * How many people are in this space, the person asking included.
+ *
+ * Asked before a delete: only the last one out takes the subscription with
+ * them. Cancelling it when someone else is still inside would take away the
+ * plan from a person who did not ask for anything.
+ */
+export async function householdMemberCount(householdId: string) {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(profiles)
+    .where(eq(profiles.household_id, householdId));
+  return row?.n ?? 0;
 }
