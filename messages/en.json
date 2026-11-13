@@ -23,7 +23,8 @@
     "brand": "Morchitask",
     "you": "You",
     "time": "Time",
-    "loading": "Loading"
+    "loading": "Loading",
+    "saveFailed": "That didn't save. Try again."
   },
   "nav": {
     "today": "Today",
@@ -607,7 +608,7 @@
     "exporting": "Preparing…",
     "exportFailed": "Couldn't build the file. Try again.",
     "deleteTitle": "Delete my account",
-    "deleteDesc": "Everything of yours goes, and there's no undo. If you share the space, the other person's work is untouched.",
+    "deleteDesc": "Everything of yours goes, and there's no undo. If you're the last person in the space and there's a paid plan, it's cancelled and you won't be charged again. If you share the space, the other person's work is untouched and the plan carries on.",
     "deleteAction": "Delete account",
     "deleteWord": "DELETE",
     "deleteConfirmHint": "To confirm, type {word}.",
@@ -638,7 +639,8 @@
     "stintSynced": "Connected. Last synced {when}.",
     "stintErrorToken": "That token doesn't work. Generate a new one in Stint, under Settings.",
     "stintErrorNetwork": "Couldn't reach Stint. Try again in a bit.",
-    "calendarDeclined": "Your calendar isn't connected: Google didn't give us permission to see and edit it. Tap Connect again and leave both calendar boxes ticked."
+    "calendarDeclined": "Your calendar isn't connected: Google didn't give us permission to see and edit it. Tap Connect again and leave both calendar boxes ticked.",
+    "deleteBillingFailed": "We couldn't cancel your plan, so nothing was deleted. Try again in a bit."
   },
   "goals": {
     "title": "Goals",
@@ -750,7 +752,9 @@
   "push": {
     "planTitle": "Plan your day ☀️",
     "planBody": "Pick your tasks and give them an intention.",
-    "reminderBody": "Time for your task ⏰"
+    "reminderBody": "Time for your task ⏰",
+    "trialTitle": "Your trial is almost over",
+    "trialBody": "{days, plural, one {# day left} other {# days left}}. Pick a plan to keep your access."
   },
   "marketing": {
     "meta": {
@@ -886,7 +890,7 @@
       "teams": "It's not for teams. You share with one person, with no projects or permissions.",
       "ai": "No AI decides your day. It suggests times and splits what you dictate; you're the one who accepts.",
       "offline": "It doesn't work offline. It installs on your phone, but it needs the internet.",
-      "integrations": "It connects to Google Calendar, Spotify and your email. Nothing else, for now."
+      "integrations": "It connects to Google Calendar and Spotify. Nothing else, for now."
     },
     "final": {
       "title": "Two weeks. Then it stops.",
@@ -928,15 +932,14 @@
     "faqTeamQ": "Is it good for my team?",
     "faqTeamA": "No. You can share with one person, but there are no projects or assignments. If you need that, this isn't the tool.",
     "faqTrialQ": "What happens when the {days} days are up?",
-    "faqTrialA": "Access stops, and we tell you before it does. Nothing is charged automatically, because we never asked for a card.",
-    "incCapture": "Capture by voice and by email",
+    "faqTrialA": "Access stops. In the last few days the app shows it coming, and if you turned on notifications you get a heads-up. Nothing is charged automatically, because we never asked for a card.",
+    "incCapture": "Capture by voice",
     "compareBody": "Morchitask does the ritual and the time-blocking. Sunsama does far more than most people use, for more than twice the price.",
     "periodLabel": "Billing period",
     "monthly": "Monthly",
     "yearly": "Yearly",
     "perYearApprox": "per year, about {monthly} a month",
     "savingTag": "You save {pct}%",
-    "usd": "US${amount}",
     "planRegion": "Plan",
     "finalTitle": "{days, select, 14 {Two weeks} other {{days} days}}. Then it stops.",
     "finalBody": "No card. No free plan once the trial ends. If you aren't using it every day after {days} days, it wasn't for you.",
@@ -1018,7 +1021,7 @@
       "calendar": "Two-way Google Calendar",
       "shared": "A space shared with one other person",
       "focus": "Focus with sounds and Spotify",
-      "capture": "Capture by email and by voice",
+      "capture": "Capture by voice",
       "export": "Export your data whenever you want"
     },
     "coverNote": "One plan covers your space: you and the person you invite.",
@@ -1028,7 +1031,8 @@
     "chipEnds": "Ends {weekday} <t>{date}</t>",
     "chipLateCta": "Choose your plan",
     "chipAria": "{n, plural, =1 {Free trial, 1 day left of {total}. See plans} other {Free trial, # days left of {total}. See plans}}",
-    "chipLateAria": "{n, plural, =0 {Your trial ends today, {weekday} {date}. Choose your plan} =1 {1 day of trial left, ends {weekday} {date}. Choose your plan} other {# days of trial left, ends {weekday} {date}. Choose your plan}}"
+    "chipLateAria": "{n, plural, =0 {Your trial ends today, {weekday} {date}. Choose your plan} =1 {1 day of trial left, ends {weekday} {date}. Choose your plan} other {# days of trial left, ends {weekday} {date}. Choose your plan}}",
+    "alreadySubscribed": "This space already has an active subscription, so there's no need to pay again. Reload the page to see it."
   },
   "review": {
     "title": "Weekly review",
@@ -1078,7 +1082,8 @@
       "api": "We couldn't reach Claude right now. Try again in a bit.",
       "limit": "You've hit today's AI limit. It resets tomorrow.",
       "invalid": "Some details are missing to ask Claude for this.",
-      "unknown": "Something went wrong with the AI. Try again."
+      "unknown": "Something went wrong with the AI. Try again.",
+      "locked": "Your access has ended. Pick a plan in Plan and billing to keep using AI."
     },
     "proposal": "Claude's proposal",
     "dismiss": "Dismiss proposal",
@@ -1152,7 +1157,6 @@
     "convNone": "No data in the previous step",
     "revenueTitle": "Revenue",
     "mrr": "MRR",
-    "usd": "US{amount}",
     "mrrSplit": "{monthly} monthly · {yearly} yearly",
     "churned": "Cancellations",
     "expiredUnpaid": "{count, plural, one {# trial ended without paying} other {# trials ended without paying}}",

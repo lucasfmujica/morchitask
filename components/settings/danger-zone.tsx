@@ -21,7 +21,10 @@ export function DangerZone() {
   const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState(false);
+  // "billing" is its own message: the plan could not be cancelled, so the
+  // delete never started, which is a different thing to tell someone than
+  // "something failed".
+  const [deleteError, setDeleteError] = useState<false | "failed" | "billing">(false);
 
   const confirmWord = t("deleteWord");
   const canDelete = typed.trim().toUpperCase() === confirmWord.toUpperCase();
@@ -52,9 +55,14 @@ export function DangerZone() {
     setDeleting(true);
     setDeleteError(false);
     try {
-      await deleteMyAccount();
+      const res = await deleteMyAccount();
+      if (!res.ok) {
+        setDeleteError(res.error);
+        setDeleting(false);
+        return;
+      }
     } catch {
-      setDeleteError(true);
+      setDeleteError("failed");
       setDeleting(false);
       return;
     }
@@ -128,7 +136,11 @@ export function DangerZone() {
               {t("deleteCancel")}
             </button>
           </div>
-          {deleteError && <p className="text-xs text-danger">{t("deleteFailed")}</p>}
+          {deleteError && (
+            <p className="text-xs text-danger">
+              {deleteError === "billing" ? t("deleteBillingFailed") : t("deleteFailed")}
+            </p>
+          )}
         </div>
       )}
     </section>

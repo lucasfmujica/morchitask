@@ -28,7 +28,7 @@ const renderZone = () => render(withIntl(<DangerZone />));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  deleteMyAccount.mockResolvedValue(undefined);
+  deleteMyAccount.mockResolvedValue({ ok: true });
   exportMyData.mockResolvedValue({ exported_at: "2026-08-26T10:00:00.000Z", tasks: [] });
 });
 
@@ -99,6 +99,16 @@ describe("delete", () => {
     await userEvent.click(screen.getByRole("button", { name: /para siempre/i }));
 
     expect(await screen.findByText(/no se pudo borrar/i)).toBeInTheDocument();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("says the plan could not be cancelled, and keeps the session", async () => {
+    deleteMyAccount.mockResolvedValue({ ok: false, error: "billing" });
+    const input = await openConfirm();
+    await userEvent.type(input, "BORRAR");
+    await userEvent.click(screen.getByRole("button", { name: /para siempre/i }));
+
+    expect(await screen.findByText(/no pudimos cancelar tu plan/i)).toBeInTheDocument();
     expect(signOut).not.toHaveBeenCalled();
   });
 

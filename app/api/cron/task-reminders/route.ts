@@ -5,12 +5,15 @@ import {
   deleteSubscriptions,
   dueTaskReminders,
   markRemindersSent,
+  profileBillingFacts,
   profileLocales,
   profileNotificationPrefs,
   subscriptionsForProfiles,
 } from "@/lib/db/queries/cron";
+import { isBillingEnabled } from "@/lib/billing-config";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/locale";
+import { mayNotify } from "@/lib/push-audience";
 
 /**
  * Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
@@ -37,9 +40,14 @@ export async function GET(req: Request) {
   const dueTasks = await dueTaskReminders(nowISO);
   if (dueTasks.length === 0) return NextResponse.json({ sent: 0 });
 
-  const prefs = await profileNotificationPrefs();
+  const [prefs, facts] = await Promise.all([profileNotificationPrefs(), profileBillingFacts()]);
+  const billingEnabled = isBillingEnabled();
+  // A locked-out household gets no reminders, the same as one that opted out:
+  // still marked sent below, so they do not all fire at once on the day it pays.
   const wantsReminders = new Set(
-    [...prefs.entries()].filter(([, p]) => p?.taskReminders === true).map(([id]) => id),
+    [...prefs.entries()]
+      .filter(([id, p]) => p?.taskReminders === true && mayNotify(facts.get(id), billingEnabled))
+      .map(([id]) => id),
   );
 
   const owners = [...new Set(dueTasks.map((t) => t.owner_id))];

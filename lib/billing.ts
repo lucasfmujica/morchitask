@@ -36,6 +36,19 @@ export function isSubscriptionStatus(v: unknown): v is SubscriptionStatus {
 }
 
 /**
+ * Whether Polar will still charge for a subscription in this state.
+ *
+ * Not the same question as "does it grant access": a `canceled` one can still
+ * be inside its paid period (access, no more charges), and a `past_due` one
+ * keeps retrying the card. This is the one that matters before a second
+ * checkout (two live subscriptions would both charge) and before deleting an
+ * account (Polar would keep charging a space that no longer exists).
+ */
+export function isLiveSubscription(status: string | null | undefined): boolean {
+  return status === "active" || status === "trialing" || status === "past_due";
+}
+
+/**
  * How long access outlives the end of a paid period.
  *
  * A renewal is a webhook, and a webhook can be late, retried, or lost. Without
@@ -172,6 +185,25 @@ export function resolveAccess(facts: BillingFacts, now: Date = new Date()): Acce
     trialDaysLeft,
     paymentFailing,
   };
+}
+
+/**
+ * Whether this session may change things (and spend money on its behalf: AI
+ * calls, push notifications).
+ *
+ * With billing off nothing is gated, because there is nowhere to pay. With it
+ * on, the resolved access decides, and a comped household always resolves to
+ * allowed, so the two people who use this every day can never land here. A
+ * session with no access resolved at all is treated as locked: the session
+ * callback always sets it, so a missing one means something upstream broke,
+ * and failing open on that would ungate everything at once.
+ */
+export function hasWriteAccess(
+  access: Access | null | undefined,
+  billingEnabled: boolean,
+): boolean {
+  if (!billingEnabled) return true;
+  return access?.allowed === true;
 }
 
 /** When a trial started now would end. Used at sign-up and nowhere else. */

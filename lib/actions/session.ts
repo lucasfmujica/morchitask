@@ -1,5 +1,6 @@
 import "server-only";
 import { auth } from "@/lib/auth";
+import { hasWriteAccess } from "@/lib/billing";
 import { isBillingEnabled } from "@/lib/billing-config";
 
 /**
@@ -31,7 +32,7 @@ export async function requireWriteAccess() {
   if (!session?.householdId) throw new Error("unauthorized");
   // Nothing is gated until there is somewhere to pay — same rule as the session
   // callback, repeated here so this is safe to call from anywhere.
-  if (isBillingEnabled() && !session.access?.allowed) {
+  if (!hasWriteAccess(session.access, isBillingEnabled())) {
     throw new Error("subscription required");
   }
   return { householdId: session.householdId, userId: session.user.id };

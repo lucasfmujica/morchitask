@@ -1,3 +1,4 @@
+import type { MutationErrorMeta } from "@/lib/mutation-errors";
 import {
   keepPreviousData,
   useMutation,
@@ -20,7 +21,6 @@ import {
   updateTask as updateTaskAction,
 } from "@/lib/actions/tasks";
 import { profileKeys } from "./profiles";
-import { syncBlockCalendar } from "./calendar";
 import { useActiveTimers } from "@/lib/stores/active-timer";
 import { applyDayEdit, totalMinutes, type TimeSegment } from "@/lib/time-entries";
 import { workedByDay } from "@/lib/worked";
@@ -500,10 +500,8 @@ export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (task: Task): Promise<void> => {
-      const { eventIds } = await deleteTaskAction(task.id);
-      for (const eventId of eventIds) {
-        syncBlockCalendar({ action: "delete", eventId }).catch(() => {});
-      }
+      // The server removes the blocks' calendar events itself.
+      await deleteTaskAction(task.id);
     },
     onMutate: async (task) => {
       // A deleted task must not leave an orphan pill in the floating timer bar
@@ -531,9 +529,10 @@ export function useDeleteTask() {
 /** Move a task to a different day — or to the backlog with `toDate: null`.
  *  Drops its time-blocks (they belonged to the old day); the DB trigger clears
  *  block_start/end. */
-export function useMoveTaskToDate() {
+export function useMoveTaskToDate(opts: { meta?: MutationErrorMeta } = {}) {
   const qc = useQueryClient();
   return useMutation({
+    meta: opts.meta,
     mutationFn: async ({
       task,
       toDate,
@@ -547,10 +546,8 @@ export function useMoveTaskToDate() {
       sortOrder: number;
       priority?: PriorityKey;
     }): Promise<void> => {
-      const { eventIds } = await moveTaskToDateAction(task.id, toDate, sortOrder, priority);
-      for (const eventId of eventIds) {
-        syncBlockCalendar({ action: "delete", eventId }).catch(() => {});
-      }
+      // The server removes the dropped blocks' calendar events itself.
+      await moveTaskToDateAction(task.id, toDate, sortOrder, priority);
     },
     onMutate: async ({ task, toDate, sortOrder, priority }) => {
       const fromKey = listKey(task.planned_date);

@@ -44,8 +44,15 @@ export async function updateBlock(
   return row;
 }
 
+/** Returns the Google Calendar event id the deleted block had, if any, so the
+ *  caller can remove the event: read off the row being deleted, in the same
+ *  statement, so it can only be an event this household's block pointed at. */
 export async function deleteBlock(householdId: string, id: string) {
-  await db.delete(taskBlocks).where(scoped(householdId, id));
+  const [row] = await db
+    .delete(taskBlocks)
+    .where(scoped(householdId, id))
+    .returning({ gcal_event_id: taskBlocks.gcal_event_id });
+  return row?.gcal_event_id ?? null;
 }
 
 /** A block plus its parent task's title/sharing info, for Google Calendar sync. */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { OWN_ERROR_UI } from "@/lib/mutation-errors";
 import { useRouter } from "next/navigation";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Check, Target } from "lucide-react";
@@ -103,8 +104,9 @@ function WeeklyReview({
   const t = useTranslations("review");
   const ts = useTranslations("shutdown");
   const { weekRangeLabel } = useDateLabels();
-  const upsert = useUpsertWeeklyNote(week);
-  const move = useMoveTaskToDate();
+  // Closing the week shows its own error line, so no generic toast on top.
+  const upsert = useUpsertWeeklyNote(week, OWN_ERROR_UI);
+  const move = useMoveTaskToDate(OWN_ERROR_UI);
   const closedDays = useShutdownDays(days[0], days[6]);
 
   const [step, setStep] = useState(0);

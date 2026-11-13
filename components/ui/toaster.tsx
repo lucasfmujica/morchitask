@@ -18,6 +18,14 @@ export function Toaster() {
   const t = useTranslations("common");
   const toast = useToastStore((s) => s.toast);
   const dismiss = useToastStore((s) => s.dismiss);
+  const saveFailed = t("saveFailed");
+
+  // Hands the translated "didn't save" to the store for the query client's
+  // global error handler (see `app/providers.tsx`), which has no messages.
+  useEffect(() => {
+    useToastStore.setState({ saveFailedMessage: saveFailed });
+    return () => useToastStore.setState({ saveFailedMessage: null });
+  }, [saveFailed]);
 
   useEffect(() => {
     if (!toast) return;

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getGoogleRefreshToken } from "@/lib/db/queries/google";
-import { refreshGoogleAccessToken } from "@/lib/google";
+import { calendarAccessFailure, calendarAccessToken } from "@/lib/google-calendar";
 
 type GoogleCalendarListEntry = {
   id: string;
@@ -23,13 +22,13 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const refreshToken = await getGoogleRefreshToken(session.user.id);
-  if (!refreshToken) return NextResponse.json({ events: [], connected: false });
-
-  const accessToken = await refreshGoogleAccessToken(refreshToken);
-  if (!accessToken) {
-    return NextResponse.json({ error: "token_refresh_failed" }, { status: 502 });
+  const access = await calendarAccessToken(session.user.id);
+  if (!access.ok) {
+    if (access.reason === "not_connected")
+      return NextResponse.json({ events: [], connected: false });
+    return calendarAccessFailure(access.reason);
   }
+  const { accessToken } = access;
 
   const { timeMin, timeMax } = await req.json().catch(() => ({}));
   const min = timeMin ?? new Date().toISOString();

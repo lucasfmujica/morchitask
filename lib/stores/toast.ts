@@ -21,12 +21,18 @@ type ToastState = {
   toast: Toast | null;
   show: (message: string, action?: Toast["action"]) => void;
   dismiss: (id?: number) => void;
+  /** "Didn't save", in the current language. Set by the mounted `Toaster`,
+   *  which has the translations; the query client that reports failed
+   *  mutations sits above every message provider and has none. Null while no
+   *  toaster is mounted, and then there is nowhere to show it anyway. */
+  saveFailedMessage: string | null;
 };
 
 let nextId = 1;
 
 export const useToastStore = create<ToastState>((set, get) => ({
   toast: null,
+  saveFailedMessage: null,
   show: (message, action) => set({ toast: { id: nextId++, message, action } }),
   // An id makes the auto-dismiss timer safe: a stale timeout can't close the
   // toast that replaced the one it was scheduled for.
@@ -41,4 +47,10 @@ export const useToastStore = create<ToastState>((set, get) => ({
 /** `const toast = useToast(); toast("Listo", { label: "Deshacer", run })` */
 export function useToast() {
   return useToastStore((s) => s.show);
+}
+
+/** Shows "didn't save", for the query client's global mutation error handler. */
+export function showSaveFailed() {
+  const { saveFailedMessage, show } = useToastStore.getState();
+  if (saveFailedMessage) show(saveFailedMessage);
 }

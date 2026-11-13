@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import {
   formatUsd,
   PRICE_MONTHLY_USD,
@@ -61,7 +61,9 @@ function TrialCta({
  */
 export default async function LandingPage() {
   const t = await getTranslations("marketing");
-  const price = formatUsd(PRICE_MONTHLY_USD);
+  const locale = await getLocale();
+  const usd = (amount: number) => formatUsd(amount, locale);
+  const price = usd(PRICE_MONTHLY_USD);
   const cta = t("hero.cta", { days: TRIAL_DAYS });
   const left = DEMO_DAY.capacityMin - DEMO_DAY.plannedStripMin;
 
@@ -203,7 +205,7 @@ export default async function LandingPage() {
               </h2>
               <p className="max-w-[560px] text-[17px] leading-[26px] text-muted">
                 {t("price.body", {
-                  sunsama: formatUsd(SUNSAMA_MONTHLY_USD),
+                  sunsama: usd(SUNSAMA_MONTHLY_USD),
                   price,
                 })}
               </p>
@@ -224,7 +226,7 @@ export default async function LandingPage() {
                           animationDelay: `${0.4 + i * 0.2}s`,
                         }}
                       >
-                        {t("price.amount", { price: formatUsd(b.amount) })}
+                        {t("price.amount", { price: usd(b.amount) })}
                       </div>
                     </div>
                   </div>
@@ -237,7 +239,7 @@ export default async function LandingPage() {
               {t("price.amount", { price })}
             </span>
             <span className="text-base font-semibold text-on-wash">
-              {t("price.per", { yearly: formatUsd(PRICE_YEARLY_USD) })}
+              {t("price.per", { yearly: usd(PRICE_YEARLY_USD) })}
             </span>
             <ul
               aria-label={t("price.includesLabel")}

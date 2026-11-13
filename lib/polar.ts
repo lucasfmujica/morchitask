@@ -1,5 +1,6 @@
 import "server-only";
 import { Polar } from "@polar-sh/sdk";
+import { AlreadyCanceledSubscription } from "@polar-sh/sdk/models/errors/alreadycanceledsubscription.js";
 import { isBillingEnabled } from "@/lib/billing-config";
 
 /**
@@ -50,6 +51,8 @@ function productFor(interval: BillingInterval): string {
  */
 export async function createCheckoutUrl(opts: {
   householdId: string;
+  /** Who opened the checkout. */
+  userId: string;
   interval: BillingInterval;
   email?: string | null;
   successUrl: string;
@@ -62,7 +65,12 @@ export async function createCheckoutUrl(opts: {
     // Repeated in metadata because `externalCustomerId` lives on the customer
     // and metadata lives on the checkout: if a webhook ever arrives with only
     // one of them, either is enough to place the payment.
-    metadata: { household_id: opts.householdId },
+    //
+    // The user id rides along for a question the database cannot answer yet:
+    // which member of a shared space pays, and so manages the plan. Nothing
+    // reads it today; it is here so subscriptions started from now on carry
+    // the answer when something does.
+    metadata: { household_id: opts.householdId, user_id: opts.userId },
   });
   return checkout.url;
 }
@@ -74,6 +82,26 @@ export async function createCheckoutUrl(opts: {
  * Not rebuilt in-app on purpose: card details and invoice history are exactly
  * the things a merchant of record exists to keep out of this codebase.
  */
+/**
+ * Ends a subscription now, for an account that is being deleted.
+ *
+ * Revoke (cancel immediately) rather than cancel-at-period-end: the data the
+ * remaining days would pay for is gone by the time this returns, so there is
+ * nothing left to keep access to. Polar does not refund the unused part on a
+ * revoke; that is a support conversation if anyone asks.
+ *
+ * A subscription Polar already considers cancelled counts as done: the point is
+ * that it stops charging, and it already has.
+ */
+export async function revokeSubscription(subscriptionId: string): Promise<void> {
+  try {
+    await client().subscriptions.revoke({ id: subscriptionId });
+  } catch (err) {
+    if (err instanceof AlreadyCanceledSubscription) return;
+    throw err;
+  }
+}
+
 export async function createPortalUrl(householdId: string): Promise<string> {
   const session = await client().customerSessions.create({
     externalCustomerId: householdId,

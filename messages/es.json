@@ -23,7 +23,8 @@
     "brand": "Morchitask",
     "you": "Vos",
     "time": "Hora",
-    "loading": "Cargando"
+    "loading": "Cargando",
+    "saveFailed": "No se guardó. Probá de nuevo."
   },
   "nav": {
     "today": "Hoy",
@@ -607,7 +608,7 @@
     "exporting": "Preparando…",
     "exportFailed": "No se pudo generar el archivo. Probá de nuevo.",
     "deleteTitle": "Borrar mi cuenta",
-    "deleteDesc": "Se borra todo lo tuyo y no hay vuelta atrás. Si compartís el espacio, lo de la otra persona queda intacto.",
+    "deleteDesc": "Se borra todo lo tuyo y no hay vuelta atrás. Si sos la última persona del espacio y hay un plan pago, se cancela y no se te vuelve a cobrar. Si compartís el espacio, lo de la otra persona queda intacto y el plan sigue.",
     "deleteAction": "Borrar cuenta",
     "deleteWord": "BORRAR",
     "deleteConfirmHint": "Para confirmar, escribí {word}.",
@@ -638,7 +639,8 @@
     "stintSynced": "Conectado. Última sincronización: {when}.",
     "stintErrorToken": "Ese token no sirve. Generá uno nuevo en Stint, en Ajustes.",
     "stintErrorNetwork": "No se pudo hablar con Stint. Probá de nuevo en un rato.",
-    "calendarDeclined": "El calendario no se conectó: Google no nos dio permiso para verlo y editarlo. Tocá Conectar de nuevo y dejá tildadas las dos casillas del calendario."
+    "calendarDeclined": "El calendario no se conectó: Google no nos dio permiso para verlo y editarlo. Tocá Conectar de nuevo y dejá tildadas las dos casillas del calendario.",
+    "deleteBillingFailed": "No pudimos cancelar tu plan, así que no borramos nada. Probá de nuevo en un rato."
   },
   "goals": {
     "title": "Metas",
@@ -750,7 +752,9 @@
   "push": {
     "planTitle": "Planificá tu día ☀️",
     "planBody": "Elegí tus tareas y ponéles una intención.",
-    "reminderBody": "Es hora de tu tarea ⏰"
+    "reminderBody": "Es hora de tu tarea ⏰",
+    "trialTitle": "Tu prueba está por terminar",
+    "trialBody": "{days, plural, one {Te queda # día} other {Te quedan # días}}. Elegí un plan para no perder el acceso."
   },
   "marketing": {
     "meta": {
@@ -771,7 +775,7 @@
       "title": "Planificá la mañana. <mark>Cerrá la noche.</mark>",
       "subtitle": "Elegís unas pocas cosas, las ponés en el calendario y apagás. Morchitask es ese ritual. Nada más.",
       "cta": "Probalo {days} días gratis",
-      "note": "Sin tarjeta.<br></br>Después US{price} por mes."
+      "note": "Sin tarjeta.<br></br>Después {price} por mes."
     },
     "player": {
       "tablist": "Momento del día",
@@ -869,10 +873,10 @@
     },
     "price": {
       "title": "Por qué cuesta menos de la mitad",
-      "body": "Sunsama sale US{sunsama} al mes y hace mucho más de lo que la mayoría usa. Morchitask hace la parte que sí usás, el ritual y el time-blocking, y cobra US{price}. Es todo lo que hay, y todo lo que va a haber.",
+      "body": "Sunsama sale {sunsama} al mes y hace mucho más de lo que la mayoría usa. Morchitask hace la parte que sí usás, el ritual y el time-blocking, y cobra {price}. Es todo lo que hay, y todo lo que va a haber.",
       "sunsama": "Sunsama",
-      "amount": "US{price}",
-      "per": "por mes, o US{yearly} por año",
+      "amount": "{price}",
+      "per": "por mes, o {yearly} por año",
       "includesLabel": "Qué incluye",
       "includeRitual": "El ritual completo, todos los días",
       "includeCalendar": "Google Calendar en dos vías",
@@ -886,7 +890,7 @@
       "teams": "No es para equipos. Compartís con una persona, sin proyectos ni permisos.",
       "ai": "No tiene IA que decida tu día. Propone horarios y separa lo que dictás; aceptás vos.",
       "offline": "No funciona sin conexión. Se instala en el teléfono, pero necesita internet.",
-      "integrations": "Se conecta con Google Calendar, Spotify y tu mail. Nada más, por ahora."
+      "integrations": "Se conecta con Google Calendar y Spotify. Nada más, por ahora."
     },
     "final": {
       "title": "Dos semanas. Después se corta.",
@@ -928,15 +932,14 @@
     "faqTeamQ": "¿Sirve para mi equipo?",
     "faqTeamA": "No. Se puede compartir con una persona, pero no hay proyectos ni asignaciones. Si necesitás eso, esta no es la herramienta.",
     "faqTrialQ": "¿Qué pasa cuando terminan los {days} días?",
-    "faqTrialA": "Se corta el acceso y te avisamos antes. No hay cobro automático porque nunca pediste la tarjeta.",
-    "incCapture": "Captura por voz y por mail",
+    "faqTrialA": "Se corta el acceso. En los últimos días lo ves venir en la app, y si activaste las notificaciones te llega un aviso. No hay cobro automático porque nunca pediste la tarjeta.",
+    "incCapture": "Captura por voz",
     "compareBody": "Morchitask hace el ritual y el time-blocking. Sunsama hace mucho más de lo que la mayoría usa, por más del doble.",
     "periodLabel": "Período",
     "monthly": "Mensual",
     "yearly": "Anual",
     "perYearApprox": "por año, unos {monthly} por mes",
     "savingTag": "Ahorrás {pct}%",
-    "usd": "US${amount}",
     "planRegion": "Plan",
     "finalTitle": "{days, select, 14 {Dos semanas} other {{days} días}}. Después se corta.",
     "finalBody": "Sin tarjeta. Sin plan gratis cuando termina la prueba. Si a los {days} días no lo estás usando todos los días, no era para vos.",
@@ -1018,7 +1021,7 @@
       "calendar": "Google Calendar en las dos vías",
       "shared": "Espacio compartido con otra persona",
       "focus": "Foco con sonidos y Spotify",
-      "capture": "Captura por mail y por voz",
+      "capture": "Captura por voz",
       "export": "Exportás tus datos cuando quieras"
     },
     "coverNote": "Un plan cubre tu espacio: vos y la persona que invites.",
@@ -1028,7 +1031,8 @@
     "chipEnds": "Termina el {weekday} <t>{date}</t>",
     "chipLateCta": "Elegí tu plan",
     "chipAria": "{n, plural, =1 {Prueba gratis, queda 1 día de {total}. Ver planes} other {Prueba gratis, quedan # días de {total}. Ver planes}}",
-    "chipLateAria": "{n, plural, =0 {Tu prueba termina hoy, {weekday} {date}. Elegí tu plan} =1 {Te queda 1 día de prueba, termina el {weekday} {date}. Elegí tu plan} other {Te quedan # días de prueba, termina el {weekday} {date}. Elegí tu plan}}"
+    "chipLateAria": "{n, plural, =0 {Tu prueba termina hoy, {weekday} {date}. Elegí tu plan} =1 {Te queda 1 día de prueba, termina el {weekday} {date}. Elegí tu plan} other {Te quedan # días de prueba, termina el {weekday} {date}. Elegí tu plan}}",
+    "alreadySubscribed": "Este espacio ya tiene una suscripción activa, así que no hace falta pagar de nuevo. Recargá la página para verla."
   },
   "review": {
     "title": "Revisión semanal",
@@ -1078,7 +1082,8 @@
       "api": "No pudimos hablar con Claude ahora. Probá de nuevo en un rato.",
       "limit": "Llegaste al límite de usos de IA por hoy. Mañana se renueva.",
       "invalid": "Faltan datos para pedirle esto a Claude.",
-      "unknown": "Algo salió mal con la IA. Probá de nuevo."
+      "unknown": "Algo salió mal con la IA. Probá de nuevo.",
+      "locked": "Tu acceso terminó. Elegí un plan en Plan y pago para seguir usando la IA."
     },
     "proposal": "Propuesta de Claude",
     "dismiss": "Descartar propuesta",
@@ -1152,7 +1157,6 @@
     "convNone": "Sin datos del paso anterior",
     "revenueTitle": "Ingresos",
     "mrr": "MRR",
-    "usd": "US{amount}",
     "mrrSplit": "{monthly, plural, one {# mensual} other {# mensuales}} · {yearly, plural, one {# anual} other {# anuales}}",
     "churned": "Bajas",
     "expiredUnpaid": "{count, plural, one {# prueba vencida sin pago} other {# pruebas vencidas sin pago}}",

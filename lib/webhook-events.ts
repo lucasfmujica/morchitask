@@ -27,6 +27,7 @@ type PolarSubscriptionLike = {
   status?: unknown;
   customerId?: unknown;
   currentPeriodEnd?: unknown;
+  endedAt?: unknown;
   cancelAtPeriodEnd?: unknown;
   recurringInterval?: unknown;
   metadata?: Record<string, unknown> | null;
@@ -64,7 +65,10 @@ export function householdIdFrom(sub: PolarSubscriptionLike): string | null {
  * 200 and dropped, because the provider's retry would deliver the same
  * unplaceable payload forever and bury the events that do matter.
  */
-export function parseSubscriptionEvent(sub: PolarSubscriptionLike): SubscriptionEvent | null {
+export function parseSubscriptionEvent(
+  sub: PolarSubscriptionLike,
+  opts: { revoked?: boolean; now?: Date } = {},
+): SubscriptionEvent | null {
   const householdId = householdIdFrom(sub);
   const providerSubscriptionId = str(sub.id);
   const providerCustomerId = str(sub.customerId);
@@ -75,13 +79,27 @@ export function parseSubscriptionEvent(sub: PolarSubscriptionLike): Subscription
   // paywall someone who is paying.
   if (!isSubscriptionStatus(sub.status)) return null;
 
+  // Access runs to the end of the paid period, and a revoke ends it *now*.
+  // Polar revokes by marking the subscription `canceled` with `endedAt` set,
+  // but leaves `currentPeriodEnd` where it was, weeks ahead; stored as-is,
+  // that read as "cancelled, still inside the period it paid for" and kept the
+  // app open until then. So the period is cut at the moment it actually ended
+  // (or at the moment the revoke arrived, if the payload does not say), and
+  // the status is pinned to `canceled`, which gets no grace.
+  let currentPeriodEnd = iso(sub.currentPeriodEnd);
+  const endedAt =
+    iso(sub.endedAt) ?? (opts.revoked ? (opts.now ?? new Date()).toISOString() : null);
+  if (endedAt && (!currentPeriodEnd || Date.parse(endedAt) < Date.parse(currentPeriodEnd))) {
+    currentPeriodEnd = endedAt;
+  }
+
   return {
     householdId,
     providerSubscriptionId,
     providerCustomerId,
-    status: sub.status,
+    status: opts.revoked ? "canceled" : sub.status,
     recurringInterval: str(sub.recurringInterval),
-    currentPeriodEnd: iso(sub.currentPeriodEnd),
+    currentPeriodEnd,
     cancelAtPeriodEnd: sub.cancelAtPeriodEnd === true,
   };
 }

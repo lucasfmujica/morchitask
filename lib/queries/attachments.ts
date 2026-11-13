@@ -1,4 +1,5 @@
 import { upload } from "@vercel/blob/client";
+import { OWN_ERROR_UI } from "@/lib/mutation-errors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { attachmentPath } from "@/lib/attachments";
 import {
@@ -31,6 +32,8 @@ export function useAttachments(taskId: string) {
 export function useUploadAttachment(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
+    // The attachments panel names the file that failed; no generic toast too.
+    ...OWN_ERROR_UI,
     mutationFn: async (file: File): Promise<TaskAttachment> => {
       const blob = await upload(attachmentPath(taskId, file.name, crypto.randomUUID()), file, {
         // The store is private: the file is unreachable without this app's

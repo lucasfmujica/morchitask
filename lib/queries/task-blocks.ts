@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { MutationErrorMeta } from "@/lib/mutation-errors";
 import {
   createBlock as createBlockAction,
   deleteBlock as deleteBlockAction,
@@ -62,9 +63,10 @@ function settleKeys(qc: ReturnType<typeof useQueryClient>, date: string) {
 }
 
 /** Create a new block for a task at a given instant range. Returns the row. */
-export function useCreateBlock(date: string) {
+export function useCreateBlock(date: string, opts: { meta?: MutationErrorMeta } = {}) {
   const qc = useQueryClient();
   return useMutation({
+    meta: opts.meta,
     mutationFn: (input: { taskId: string; startISO: string; endISO: string }): Promise<TaskBlock> =>
       createBlockAction(input.taskId, input.startISO, input.endISO),
     onMutate: async (input) => {

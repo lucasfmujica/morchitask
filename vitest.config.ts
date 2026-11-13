@@ -21,6 +21,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "."),
+      // Next resolves `server-only` from its own compiled copy; there is no
+      // package of that name to find outside Next. Without this, any test that
+      // imports a server module for real fails to resolve it.
+      "server-only": resolve(__dirname, "node_modules/next/dist/compiled/server-only/empty.js"),
     },
   },
 });

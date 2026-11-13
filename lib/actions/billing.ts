@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { isLiveSubscription } from "@/lib/billing";
 import { isBillingEnabled } from "@/lib/billing-config";
 import { createCheckoutUrl, createPortalUrl, type BillingInterval } from "@/lib/polar";
 import { getSubscription, recordCheckoutStarted } from "@/lib/db/queries/subscriptions";
@@ -10,24 +11,6 @@ async function requireSession() {
   const session = await auth();
   if (!session?.householdId) throw new Error("unauthorized");
   return { session, householdId: session.householdId };
-}
-
-/**
- * The gate every mutation should sit behind once the trial is over.
- *
- * Separate from `requireSession()` rather than folded into it, because the two
- * answer different questions and have different failure modes: no session is a
- * redirect to sign in, no subscription is a redirect to pay. Reading the access
- * off the session means this costs nothing — it was resolved once, on the way in.
- */
-export async function requireActiveSubscription() {
-  const session = await auth();
-  if (!session?.householdId) throw new Error("unauthorized");
-  // With billing switched off nothing is gated — same rule as the session
-  // callback, stated again here so this is safe to call from anywhere.
-  if (!isBillingEnabled()) return { householdId: session.householdId, userId: session.user.id };
-  if (!session.access?.allowed) throw new Error("subscription required");
-  return { householdId: session.householdId, userId: session.user.id };
 }
 
 /** What the billing screen shows: the resolved access, plus the subscription
@@ -53,13 +36,28 @@ async function origin() {
   return host ? `${proto}://${host}` : "";
 }
 
-export async function startCheckout(interval: BillingInterval) {
+/** Returned rather than thrown, for the same reason as the AI actions: Next
+ *  hides a thrown message in production, and "this space already pays" is
+ *  something the screen has to be able to say. */
+export type CheckoutResult = { ok: true; url: string } | { ok: false; error: "already_subscribed" };
+
+export async function startCheckout(interval: BillingInterval): Promise<CheckoutResult> {
   const { session, householdId } = await requireSession();
   if (!isBillingEnabled()) throw new Error("billing is not configured");
+
+  // A space that is already being charged gets no second checkout. The billing
+  // screen hides the plans once access comes from a subscription, but that is
+  // the client's idea of the state: a second tab left open, the other member
+  // on their own phone, or a webhook that has not landed yet all show the
+  // plans to someone who already pays, and Polar would happily take a second
+  // subscription for the same household.
+  const existing = await getSubscription(householdId);
+  if (isLiveSubscription(existing?.status)) return { ok: false, error: "already_subscribed" };
 
   const url = await createCheckoutUrl({
     householdId,
     interval,
+    userId: session.user.id,
     email: session.user.email,
     successUrl: `${await origin()}/billing?checkout=done`,
   });
@@ -73,7 +71,7 @@ export async function startCheckout(interval: BillingInterval) {
     console.error("could not record checkout start", err);
   }
 
-  return url;
+  return { ok: true, url };
 }
 
 /**

@@ -44,13 +44,33 @@ export const SUNSAMA_MONTHLY_USD = 22;
 export const SUNSAMA_YEARLY_PER_MONTH_USD = 17;
 
 /**
- * The price as it is written.
+ * The yearly plan, per month, as the copy quotes it ("about US$6.70 a month").
  *
- * Currency formatting is locale-dependent — "$10" in the US, "10 €" in much of
- * Europe — so it belongs in one function rather than as a bare `$` typed next
- * to a number in JSX. Today there is one currency and this is trivial; the
- * point is that when there are two, there is one place to change.
+ * Rounded to ten cents because every place that shows it says "about", and an
+ * exact 6.67 next to "about" reads like a calculator. One function because the
+ * billing screen used to round it on its own, to whole dollars, and said "about
+ * $7" while /pricing said "about US$6.70" for the same plan.
  */
-export function formatUsd(amount: number): string {
-  return `$${amount}`;
+export function yearlyPerMonthUsd(): number {
+  return Math.round((PRICE_YEARLY_USD / 12) * 10) / 10;
+}
+
+/**
+ * The price as it is written: "US$10", "US$6,70" in Spanish, "US$6.70" in
+ * English.
+ *
+ * "US$" and never a bare "$": the people using this are in Argentina, where
+ * "$10" reads as ten pesos. It used to return "$10", and the app's billing
+ * screen showed exactly that while /pricing said "US$10". The prefix is the
+ * same in both languages because the currency is; only the decimal separator
+ * follows the locale. Whole amounts get no decimals ("US$10", not "US$10,00"),
+ * a fractional one always gets two, because "US$6,7" looks like a typo.
+ */
+export function formatUsd(amount: number, locale: string): string {
+  const whole = Number.isInteger(amount);
+  const number = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  }).format(amount);
+  return `US$${number}`;
 }

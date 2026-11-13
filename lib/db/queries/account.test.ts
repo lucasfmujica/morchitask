@@ -67,6 +67,10 @@ beforeEach(async () => {
       ('${HOUSEHOLD}', '${A}', '2026-08-25', 'A intention');
     insert into recurring_templates (id, household_id, owner_id, title) values
       ('${A}', '${HOUSEHOLD}', '${A}', 'A routine');
+    -- weekly_notes.owner_id has no cascade: without its own delete this row
+    -- made the whole account deletion fail.
+    insert into weekly_notes (household_id, owner_id, week_start, wins) values
+      ('${HOUSEHOLD}', '${A}', '2026-08-24', 'A wins');
 
     insert into tasks (id, household_id, owner_id, created_by, channel_id, objective_id, title)
       values ('${A}', '${HOUSEHOLD}', '${A}', '${A}', '${A}', '${A}', 'A task');
@@ -101,6 +105,7 @@ describe("exportAccount", () => {
     expect(out.objectives).toHaveLength(1);
     expect(out.routines).toHaveLength(1);
     expect(out.daily_notes).toHaveLength(1);
+    expect(out.weekly_notes.map((n) => n.wins)).toEqual(["A wins"]);
     // Tracked on someone else's task, but tracked by this person.
     expect(out.task_time_entries).toHaveLength(1);
   });

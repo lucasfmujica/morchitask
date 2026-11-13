@@ -1,9 +1,9 @@
 import "server-only";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/lib/locale";
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, TRIAL_DAYS } from "@/lib/pricing";
+import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, TRIAL_DAYS, formatUsd } from "@/lib/pricing";
 import {
   marketingMetadata,
   organizationJsonLd,
@@ -21,14 +21,13 @@ export async function getUrlLocale(): Promise<Locale> {
   return (await headers()).get(URL_LOCALE_HEADER) === "en" ? "en" : "es";
 }
 
-/**
- * Prices in marketing copy are written "US$10", not `formatUsd`'s "$10": the
- * readers are in Argentina, where a bare "$" means pesos. That spelling is a
- * translation concern, so it lives in the catalog (`pricing.usd`).
- */
+/** `formatUsd` bound to the rendered language, for the server pages that
+ *  format several prices. Once its own spelling in the catalog
+ *  (`pricing.usd`), which is how /pricing said "US$10" while the billing
+ *  screen, on `formatUsd`, said "$10". */
 export async function getUsd() {
-  const tp = await getTranslations("pricing");
-  return (amount: number | string) => tp("usd", { amount: String(amount) });
+  const locale = await getLocale();
+  return (amount: number) => formatUsd(amount, locale);
 }
 
 async function homeDescription() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { ArrowUpRight } from "lucide-react";
 import type { LaunchMetrics } from "@/lib/db/queries/admin-metrics";
 import {
@@ -44,6 +44,7 @@ const noon = (day: string) => new Date(`${day}T12:00:00Z`);
 export function LaunchMetricsView({ metrics }: { metrics: LaunchMetrics }) {
   const t = useTranslations("adminMetrics");
   const format = useFormatter();
+  const locale = useLocale();
   const [period, setPeriod] = useState<Period>("launch");
   const f = metrics.funnel[period];
   const n = (v: number) => format.number(v);
@@ -169,7 +170,7 @@ export function LaunchMetricsView({ metrics }: { metrics: LaunchMetrics }) {
           <div className="grid grid-cols-2 gap-2">
             <div className="flex min-w-0 flex-col gap-1 rounded-[22px] bg-ink p-[18px] text-on-ink">
               <span className="text-2xs text-on-ink/70">{t("mrr")}</span>
-              <span className={big}>{t("usd", { amount: formatUsd(revenue.mrrUsd) })}</span>
+              <span className={big}>{formatUsd(revenue.mrrUsd, locale)}</span>
               <span className="text-2xs text-on-ink/70">
                 {t("mrrSplit", { monthly: revenue.payingMonthly, yearly: revenue.payingYearly })}
               </span>

@@ -37,7 +37,10 @@ export async function POST(req: Request) {
 
   if (!isHandledEvent(event.type)) return Response.json({ ignored: event.type });
 
-  const parsed = parseSubscriptionEvent(event.data as Parameters<typeof parseSubscriptionEvent>[0]);
+  const parsed = parseSubscriptionEvent(
+    event.data as Parameters<typeof parseSubscriptionEvent>[0],
+    { revoked: event.type === "subscription.revoked" },
+  );
   if (!parsed) return Response.json({ ignored: "unplaceable subscription payload" });
 
   // The household id arrives from outside, so it is checked rather than
