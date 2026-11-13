@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, LogOut } from "lucide-react";
 import { signIn, signOut } from "next-auth/react";
+import { clearActiveTimersForSignOut } from "@/lib/stores/active-timer";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { disconnectCalendar as disconnectCalendarAction } from "@/lib/actions/google";
@@ -81,6 +82,7 @@ export function SettingsView() {
   }
 
   async function handleSignOut() {
+    clearActiveTimersForSignOut();
     await signOut({ redirectTo: "/login" });
   }
 

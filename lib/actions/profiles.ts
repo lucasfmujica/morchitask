@@ -18,6 +18,7 @@ export async function getHouseholdProfiles() {
   return data.getHouseholdProfiles(householdId);
 }
 
+/** `patch` is untyped JSON: the data layer keeps only the editable fields. */
 export async function updateMyProfile(patch: ProfilePatch) {
   const { userId } = await requireSession();
   return data.updateProfile(userId, patch);
@@ -37,6 +38,6 @@ export async function saveMyAvatar(file: { url: string; pathname: string }) {
   if (!isBlobUrlFor(file.url, file.pathname)) throw new Error("invalid url");
 
   const src = avatarSrc(userId, file.pathname);
-  await data.updateProfile(userId, { avatar_url: src });
+  await data.setAvatarUrl(userId, src);
   return src;
 }

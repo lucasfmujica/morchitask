@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, isNotNull, sql } from "drizzle-orm";
-import { db } from "@/lib/db/client";
+import { db, dbPool } from "@/lib/db/client";
 import { recurringTemplates, tasks } from "@/lib/db/schema";
+import { pickRoutineInput } from "@/lib/patches";
 
 export type RoutineInput = Partial<
   Pick<
@@ -32,30 +33,77 @@ export async function listMyRoutines(householdId: string, ownerId: string) {
     .orderBy(asc(recurringTemplates.created_at));
 }
 
+/** `input` comes from the browser: rebuilt from a whitelist, so it cannot
+ *  name the household, the owner, the id or the timestamps. */
 export async function createRoutine(householdId: string, ownerId: string, input: RoutineInput) {
+  const clean = pickRoutineInput(input);
+  if (typeof clean.title !== "string" || !clean.title.trim()) throw new Error("title required");
   const [row] = await db
     .insert(recurringTemplates)
     .values({
-      household_id: householdId,
-      owner_id: ownerId,
       freq: "weekly",
       active_from: new Date().toISOString().slice(0, 10),
-      ...input,
+      ...clean,
+      title: clean.title,
+      household_id: householdId,
+      owner_id: ownerId,
     })
     .returning();
   return row;
 }
 
-function scoped(householdId: string, id: string) {
-  return and(eq(recurringTemplates.id, id), eq(recurringTemplates.household_id, householdId));
+/** Routines are personal (`listMyRoutines`), so only their owner changes them. */
+function scoped(householdId: string, ownerId: string, id: string) {
+  return and(
+    eq(recurringTemplates.id, id),
+    eq(recurringTemplates.household_id, householdId),
+    eq(recurringTemplates.owner_id, ownerId),
+  );
 }
 
-export async function updateRoutine(householdId: string, id: string, patch: Partial<RoutineInput>) {
-  await db.update(recurringTemplates).set(patch).where(scoped(householdId, id));
+export async function updateRoutine(
+  householdId: string,
+  ownerId: string,
+  id: string,
+  patch: Partial<RoutineInput>,
+) {
+  const clean = pickRoutineInput(patch);
+  if (Object.keys(clean).length === 0) return;
+  await db
+    .update(recurringTemplates)
+    .set(clean)
+    .where(scoped(householdId, ownerId, id));
 }
 
-export async function deleteRoutine(householdId: string, id: string) {
-  await db.delete(recurringTemplates).where(scoped(householdId, id));
+/**
+ * `tasks.template_id` references the routine without a cascade, so a routine
+ * with any generated instance could not be deleted at all (the foreign key
+ * refused it). Instances already made stay as ordinary tasks — they may hold
+ * tracked time or be done — and the skipped placeholders (see `deleteTask`)
+ * go, since they only existed to hold the routine's slots.
+ */
+export async function deleteRoutine(householdId: string, ownerId: string, id: string) {
+  await dbPool.transaction(async (tx) => {
+    const [owned] = await tx
+      .select({ id: recurringTemplates.id })
+      .from(recurringTemplates)
+      .where(scoped(householdId, ownerId, id));
+    if (!owned) return;
+    await tx
+      .delete(tasks)
+      .where(
+        and(
+          eq(tasks.household_id, householdId),
+          eq(tasks.template_id, id),
+          eq(tasks.status, "cancelled"),
+        ),
+      );
+    await tx
+      .update(tasks)
+      .set({ template_id: null, template_date: null })
+      .where(and(eq(tasks.household_id, householdId), eq(tasks.template_id, id)));
+    await tx.delete(recurringTemplates).where(scoped(householdId, ownerId, id));
+  });
 }
 
 /** Completed routine-instance dates over the last ~90 days, for streaks. */

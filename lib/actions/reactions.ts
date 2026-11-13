@@ -4,8 +4,8 @@ import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/reactions";
 
 export async function getReactions(taskId: string) {
-  const { householdId } = await requireSession();
-  return data.listReactions(householdId, taskId);
+  const { householdId, userId } = await requireSession();
+  return data.listReactions(householdId, userId, taskId);
 }
 
 export async function addReaction(taskId: string, emoji: string) {
@@ -14,6 +14,6 @@ export async function addReaction(taskId: string, emoji: string) {
 }
 
 export async function removeReaction(id: string) {
-  const { householdId } = await requireWriteAccess();
-  await data.removeReaction(householdId, id);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.removeReaction(householdId, userId, id);
 }

@@ -173,16 +173,13 @@
     "stopAll": "Stop all ({n})",
     "stopTimerFor": "Stop the timer on {title}",
     "andMore": "+{n} more",
-    "perDay": "By day",
     "dayCount": "{n, plural, =1 {# day} other {# days}}",
-    "plusFrom": "+ {time} from {name}",
     "fixMyTime": "Correct your time for this day",
     "untrackedEditable": "Time with no day: put it on one with “Another day” and it moves out of here",
     "untrackedReadOnly": "Logged by hand, or tracked before per-day detail was kept",
     "timeThisDay": "Time on this day",
     "dayField": "Day",
     "howLong": "How long",
-    "personTime": "{name}: {time}",
     "reorderOrDrag": "Reorder, or drag onto the calendar",
     "noteBadge": "· note",
     "dropHereFor": "Drop here for {label}",
@@ -215,7 +212,10 @@
     "reminderAtTime": "At {time}",
     "changeField": "Change {field}",
     "sendComment": "Send comment",
-    "assignedByTitle": "Assigned to you by {name}"
+    "assignedByTitle": "Assigned to you by {name}",
+    "yourTimePerDay": "Your time, by day",
+    "yourRealTime": "Your actual time",
+    "realTimeByDayOnly": "On this shared task your time is logged by day, below."
   },
   "day": {
     "adjustCapacity": "Adjust today's capacity",
@@ -747,7 +747,9 @@
   },
   "errors": {
     "invalidEmail": "That email address doesn't look right.",
-    "spaceFull": "Your space is full. Cancel an invite to send another."
+    "spaceFull": "Your space is full. Cancel an invite to send another.",
+    "inviteSelf": "That's your own email. Invite the other person with theirs.",
+    "alreadyMember": "That person is already in your space."
   },
   "push": {
     "planTitle": "Plan your day ☀️",

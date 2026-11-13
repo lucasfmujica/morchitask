@@ -136,3 +136,64 @@ describe("memberCount", () => {
     expect(await invites.memberCount(OTHER_HOUSEHOLD)).toBe(1);
   });
 });
+
+describe("createInviteWithinCap", () => {
+  const SPACE = "eeeeeeee-0000-4000-8000-0000000000e1";
+  const OWNER = "eeeeeeee-0000-4000-8000-0000000000e2";
+
+  beforeAll(async () => {
+    await client.exec(`
+      insert into households (id) values ('${SPACE}');
+      insert into "user" (id, email) values ('${OWNER}', 'Owner@Example.com');
+      insert into profiles (id, household_id, display_name) values ('${OWNER}', '${SPACE}', 'owner');
+    `);
+  });
+
+  it("refuses your own address, in any case", async () => {
+    expect(
+      await invites.createInviteWithinCap(SPACE, OWNER, "  OWNER@example.COM ", nextToken()),
+    ).toEqual({ ok: false, reason: "self" });
+  });
+
+  it("refuses someone already in the space", async () => {
+    await client.exec(`
+      insert into "user" (id, email) values ('eeeeeeee-0000-4000-8000-0000000000e3', 'member@example.com');
+      insert into profiles (id, household_id, display_name)
+        values ('eeeeeeee-0000-4000-8000-0000000000e3', '${SPACE}', 'member');
+    `);
+    expect(
+      await invites.createInviteWithinCap(SPACE, OWNER, "member@example.com", nextToken()),
+    ).toEqual({ ok: false, reason: "member" });
+    await client.exec(`
+      delete from profiles where id = 'eeeeeeee-0000-4000-8000-0000000000e3';
+      delete from "user" where id = 'eeeeeeee-0000-4000-8000-0000000000e3';
+    `);
+  });
+
+  it("lets two invites sent at once take one seat between them, not two", async () => {
+    const results = await Promise.all([
+      invites.createInviteWithinCap(SPACE, OWNER, "one@example.com", nextToken()),
+      invites.createInviteWithinCap(SPACE, OWNER, "two@example.com", nextToken()),
+    ]);
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, reason: "full" }]);
+    expect(await invites.pendingInvites(SPACE)).toHaveLength(1);
+  });
+
+  it("re-inviting the same address replaces it rather than counting it twice", async () => {
+    const [live] = await invites.pendingInvites(SPACE);
+    const again = await invites.createInviteWithinCap(SPACE, OWNER, live.email, nextToken());
+    expect(again.ok).toBe(true);
+    expect(await invites.pendingInvites(SPACE)).toHaveLength(1);
+  });
+
+  it("a refused invite leaves the live one in place", async () => {
+    const [live] = await invites.pendingInvites(SPACE);
+    const other = live.email === "one@example.com" ? "two@example.com" : "one@example.com";
+    expect(await invites.createInviteWithinCap(SPACE, OWNER, other, nextToken())).toEqual({
+      ok: false,
+      reason: "full",
+    });
+    expect((await invites.pendingInvites(SPACE)).map((i) => i.email)).toEqual([live.email]);
+  });
+});

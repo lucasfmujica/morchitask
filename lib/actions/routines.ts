@@ -15,13 +15,13 @@ export async function createRoutine(input: RoutineInput) {
 }
 
 export async function updateRoutine(id: string, patch: Partial<RoutineInput>) {
-  const { householdId } = await requireWriteAccess();
-  await data.updateRoutine(householdId, id, patch);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.updateRoutine(householdId, userId, id, patch);
 }
 
 export async function deleteRoutine(id: string) {
-  const { householdId } = await requireWriteAccess();
-  await data.deleteRoutine(householdId, id);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.deleteRoutine(householdId, userId, id);
 }
 
 export async function getRoutineStreaks(since: string) {

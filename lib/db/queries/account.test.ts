@@ -170,6 +170,56 @@ describe("deleteAccount", () => {
     expect(sub.assignee_id).toBeNull();
   });
 
+  it("hands A's shared task to B, keeping B's time and comments on it", async () => {
+    const SHARED = "aaaaaaaa-0000-4000-8000-0000000000f1";
+    await client.exec(`
+      insert into tasks (id, household_id, owner_id, created_by, channel_id, title, shared, actual_time_min)
+        values ('${SHARED}', '${HOUSEHOLD}', '${A}', '${A}', '${A}', 'A shared', true, 100);
+      insert into task_time_entries (household_id, task_id, user_id, day, minutes) values
+        ('${HOUSEHOLD}', '${SHARED}', '${A}', '2026-08-25', 40),
+        ('${HOUSEHOLD}', '${SHARED}', '${B}', '2026-08-25', 25);
+      insert into task_comments (household_id, task_id, author_id, body) values
+        ('${HOUSEHOLD}', '${SHARED}', '${B}', 'B on A''s shared task'),
+        ('${HOUSEHOLD}', '${SHARED}', '${A}', 'A on own shared task');
+      insert into subtasks (household_id, task_id, title) values
+        ('${HOUSEHOLD}', '${SHARED}', 'item on the shared task');
+    `);
+
+    await account.deleteAccount(HOUSEHOLD, A);
+
+    const [row] = (
+      await client.query<{
+        owner_id: string;
+        created_by: string | null;
+        channel_id: string | null;
+        actual: number | null;
+      }>(
+        `select owner_id, created_by, channel_id, actual_time_min::float8 as actual from tasks where id = '${SHARED}'`,
+      )
+    ).rows;
+    // B owns it now, with only B's minutes left on it (A's 40 and A's
+    // undated 35 left with A), and nothing pointing at A any more.
+    expect(row).toEqual({ owner_id: B, created_by: null, channel_id: null, actual: 25 });
+    expect(await count(`task_time_entries where task_id = '${SHARED}' and user_id = '${B}'`)).toBe(
+      1,
+    );
+    expect(await count(`task_comments where task_id = '${SHARED}'`)).toBe(1);
+    expect(await count(`task_comments where task_id = '${SHARED}' and author_id = '${B}'`)).toBe(1);
+    expect(await count(`subtasks where task_id = '${SHARED}'`)).toBe(1);
+    // A's private task still goes.
+    expect(await count(`tasks where id = '${A}'`)).toBe(0);
+  });
+
+  it("deletes a shared task with its owner when nobody else is left", async () => {
+    await client.exec(`
+      insert into tasks (id, household_id, owner_id, title, shared)
+        values ('cccccccc-0000-4000-8000-0000000000f1', '${SOLO_HOUSEHOLD}', '${SOLO}', 'solo shared', true);
+    `);
+    await account.deleteAccount(SOLO_HOUSEHOLD, SOLO);
+    expect(await count(`tasks where owner_id = '${SOLO}'`)).toBe(0);
+    expect(await count(`tasks where household_id = '${SOLO_HOUSEHOLD}'`)).toBe(0);
+  });
+
   it("keeps the space alive while someone is still in it", async () => {
     await account.deleteAccount(HOUSEHOLD, A);
     expect(await count(`households where id = '${HOUSEHOLD}'`)).toBe(1);

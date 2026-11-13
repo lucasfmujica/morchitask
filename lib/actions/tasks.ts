@@ -26,7 +26,7 @@ export async function createTask(input: NewTask) {
 
 export async function toggleTask(taskId: string, done: boolean) {
   const { householdId, userId } = await requireWriteAccess();
-  const row = await data.toggleTaskDone(householdId, taskId, done);
+  const row = await data.toggleTaskDone(householdId, userId, taskId, done);
   // A task mirrored from Stint gets finished (or reopened) there too, after
   // the response: Stint being slow must not slow down the checkbox.
   if (row.stint_task_id)
@@ -34,15 +34,28 @@ export async function toggleTask(taskId: string, done: boolean) {
   return row;
 }
 
+/**
+ * `patch` is untyped JSON from the browser: the data layer rebuilds it from a
+ * whitelist. "Real" rides along in the same patch from the detail sheet, but
+ * it is personal time, so it takes its own path (`setActualTime`).
+ */
 export async function updateTask(taskId: string, patch: TaskPatch) {
-  const { householdId } = await requireWriteAccess();
-  assertPriority(patch.priority);
-  return data.updateTask(householdId, taskId, patch);
+  const { householdId, userId } = await requireWriteAccess();
+  assertPriority(patch?.priority);
+  if (patch && "actual_time_min" in patch) {
+    const actual = patch.actual_time_min;
+    if (actual !== null && !(typeof actual === "number" && Number.isFinite(actual))) {
+      throw new Error("invalid time");
+    }
+    await data.setActualTime(householdId, userId, taskId, actual);
+  }
+  return data.updateTask(householdId, userId, taskId, patch);
 }
 
 export async function setActualTime(taskId: string, actualMin: number) {
-  const { householdId } = await requireWriteAccess();
-  await data.setActualTime(householdId, taskId, actualMin);
+  const { householdId, userId } = await requireWriteAccess();
+  if (!Number.isFinite(actualMin)) throw new Error("invalid time");
+  await data.setActualTime(householdId, userId, taskId, actualMin);
 }
 
 /**
@@ -70,13 +83,13 @@ export async function setTaskDayTime(taskId: string, day: string, minutes: numbe
 
 /** The day-by-day breakdown behind a task's total tracked time. */
 export async function getTaskTimeEntries(taskId: string) {
-  const { householdId } = await requireSession();
-  return data.timeEntriesForTask(householdId, taskId);
+  const { householdId, userId } = await requireSession();
+  return data.timeEntriesForTask(householdId, userId, taskId);
 }
 
 export async function setTaskActiveSince(taskId: string, active: boolean) {
   const { householdId, userId } = await requireWriteAccess();
-  await data.setActiveSince(householdId, taskId, active);
+  await data.setActiveSince(householdId, userId, taskId, active);
   // Starting the stopwatch on a Stint task moves it to "doing" there.
   if (active) after(() => pushToStint(householdId, userId, taskId, "timerStarted"));
 }
@@ -86,11 +99,11 @@ export async function setTaskActiveSince(taskId: string, active: boolean) {
  * only events this app created can be deleted (see `deleteCalendarEvents`). */
 export async function deleteTask(taskId: string) {
   const { householdId, userId } = await requireWriteAccess();
-  const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
+  const eventIds = await data.taskBlockCalendarEventIds(householdId, userId, taskId);
   // Attachment rows cascade with the task, but the stored files don't — read
   // their paths while the rows still exist, then delete the blobs afterwards.
-  const attachmentPaths = await attachments.taskAttachmentPaths(householdId, taskId);
-  await data.deleteTask(householdId, taskId);
+  const attachmentPaths = await attachments.taskAttachmentPaths(householdId, userId, taskId);
+  await data.deleteTask(householdId, userId, taskId);
   if (attachmentPaths.length > 0) {
     // Best effort, like every other blob delete: the task is already gone, and
     // a leftover file costs storage but is unreachable from the app.
@@ -111,14 +124,14 @@ export async function moveTaskToDate(
 ) {
   const { householdId, userId } = await requireWriteAccess();
   assertPriority(priority);
-  const eventIds = await data.taskBlockCalendarEventIds(householdId, taskId);
-  await data.deleteTaskBlocks(householdId, taskId);
-  await data.moveTaskToDate(householdId, taskId, toDate, sortOrder, priority);
+  const eventIds = await data.taskBlockCalendarEventIds(householdId, userId, taskId);
+  await data.deleteTaskBlocks(householdId, userId, taskId);
+  await data.moveTaskToDate(householdId, userId, taskId, toDate, sortOrder, priority);
   if (eventIds.length > 0) after(() => deleteCalendarEvents(userId, eventIds));
 }
 
 export async function reorderTask(taskId: string, sortOrder: number, priority?: PriorityKey) {
-  const { householdId } = await requireWriteAccess();
+  const { householdId, userId } = await requireWriteAccess();
   assertPriority(priority);
-  await data.reorderTask(householdId, taskId, sortOrder, priority);
+  await data.reorderTask(householdId, userId, taskId, sortOrder, priority);
 }

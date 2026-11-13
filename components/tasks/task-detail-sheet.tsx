@@ -48,7 +48,7 @@ import {
   TIME_ESTIMATES,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Profile, Subtask, Task } from "@/lib/queries/types";
+import type { HouseholdMember, Subtask, Task } from "@/lib/queries/types";
 import { ChecklistAiSuggest } from "./checklist-ai-suggest";
 import { DueDateBadge } from "./due-date-badge";
 import { TaskAttachments } from "./task-attachments";
@@ -236,6 +236,11 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
     const cur = task.actual_time_min ?? null;
     if (next !== cur) update.mutate({ task, patch: { actual_time_min: next } });
   }
+
+  // "Real" is your own time. On a shared task someone else owns, a hand edit
+  // has no undated bucket of yours to land in (the server refuses it), so it
+  // is read-only there and days are how you log time.
+  const realByDayOnly = task.shared && !!me && task.owner_id !== me.id;
 
   // How far into the estimate the real time is. Clamped: past the estimate the
   // bar is simply full, the numbers beside it say by how much.
@@ -661,7 +666,9 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         <section className="flex flex-col gap-3 rounded-[22px] bg-fg p-4 text-surface">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
             <div className="mr-auto flex flex-col gap-0.5">
-              <span className="text-2xs text-surface/65">{tt("realTime")}</span>
+              <span className="text-2xs text-surface/65">
+                {task.shared ? tt("yourRealTime") : tt("realTime")}
+              </span>
               {timer.running ? (
                 <span className="flex items-center gap-2 font-display text-[28px] leading-8 font-bold tabular-nums">
                   <span
@@ -684,6 +691,16 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
                   aria-label={tt("realTime")}
                   className="h-8 w-28 border-b border-surface/50 bg-transparent font-display text-[28px] font-bold tabular-nums text-surface outline-none placeholder:text-base placeholder:font-normal placeholder:text-surface/50"
                 />
+              ) : realByDayOnly ? (
+                // Someone else's shared task: there is nowhere to keep an
+                // undated hand edit that is yours alone, so time goes in by
+                // day, in the breakdown below.
+                <span
+                  title={tt("realTimeByDayOnly")}
+                  className="font-display text-[28px] leading-8 font-bold tabular-nums text-surface"
+                >
+                  {formatMinutes(task.actual_time_min ?? 0)}
+                </span>
               ) : (
                 <button
                   onClick={startEditReal}
@@ -750,7 +767,12 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
         </section>
 
         {/* Day by day: not in the canvas, kept right under the total it splits. */}
-        <TaskTimeBreakdown task={task} liveSegments={timer.liveSegments} meId={me?.id} />
+        <TaskTimeBreakdown
+          task={task}
+          liveSegments={timer.liveSegments}
+          meId={me?.id}
+          showEmpty={realByDayOnly}
+        />
 
         {/* Description */}
         <Card>
@@ -997,7 +1019,7 @@ function ChecklistItemRow({
   onDelete,
 }: {
   sub: Subtask;
-  profiles: Profile[];
+  profiles: HouseholdMember[];
   meId?: string;
   onToggle: () => void;
   onRename: (title: string) => void;

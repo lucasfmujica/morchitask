@@ -167,4 +167,84 @@ describe("provisionNewUser", () => {
     const bystander = await signUp("bystander@example.com");
     expect(bystander.householdId).not.toBe(host.householdId);
   });
+
+  it("names a new space in the sign-up language", async () => {
+    const nameOf = async (householdId: string) =>
+      (
+        await client.query<{ name: string }>("select name from households where id = $1", [
+          householdId,
+        ])
+      ).rows[0].name;
+    acceptLanguage = "en-US,en;q=0.9";
+    const english = await signUp("space-en@example.com");
+    acceptLanguage = null;
+    const spanish = await signUp("space-es@example.com");
+    expect(await nameOf(english.householdId)).toBe("My space");
+    expect(await nameOf(spanish.householdId)).toBe("Mi espacio");
+  });
+
+  it("does not rename the space someone joins", async () => {
+    const host = await signUp("host-name@example.com");
+    await client.exec(`update households set name = 'Casa' where id = '${host.householdId}'`);
+    await client.exec(`
+      insert into household_invites (household_id, invited_by, email, token, expires_at)
+      values ('${host.householdId}', '${host.id}', 'joiner-name@example.com', 'tok-name', now() + interval '7 days')
+    `);
+    acceptLanguage = "en-US";
+    const guest = await signUp("joiner-name@example.com");
+    acceptLanguage = null;
+    expect(guest.householdId).toBe(host.householdId);
+    const res = await client.query<{ name: string }>("select name from households where id = $1", [
+      host.householdId,
+    ]);
+    expect(res.rows[0].name).toBe("Casa");
+  });
+
+  it("claims only the newest invite, leaving invites to other spaces untouched", async () => {
+    const older = await signUp("host-older@example.com");
+    const newer = await signUp("host-newer@example.com");
+    await client.exec(`
+      insert into household_invites (household_id, invited_by, email, token, expires_at, created_at) values
+        ('${older.householdId}', '${older.id}', 'wanted@example.com', 'tok-older', now() + interval '7 days', now() - interval '1 day'),
+        ('${newer.householdId}', '${newer.id}', 'wanted@example.com', 'tok-newer', now() + interval '7 days', now())
+    `);
+
+    const guest = await signUp("wanted@example.com");
+    expect(guest.householdId).toBe(newer.householdId);
+    const rows = await client.query<{ token: string; used: boolean }>(
+      `select token, accepted_at is not null as used from household_invites
+        where email = 'wanted@example.com' order by token`,
+    );
+    // Claiming every invite for the address used to mark the other space's as
+    // used too, for a space this person never joined.
+    expect(rows.rows).toEqual([
+      { token: "tok-newer", used: true },
+      { token: "tok-older", used: false },
+    ]);
+  });
+
+  it("re-checks the member cap at claim time and never seats a third person", async () => {
+    const host = await signUp("host-full@example.com");
+    // Sent while there was room…
+    await client.exec(`
+      insert into household_invites (household_id, invited_by, email, token, expires_at) values
+        ('${host.householdId}', '${host.id}', 'second-in@example.com', 'tok-full-1', now() + interval '7 days'),
+        ('${host.householdId}', '${host.id}', 'third-in@example.com', 'tok-full-2', now() + interval '7 days')
+    `);
+    const second = await signUp("second-in@example.com");
+    expect(second.householdId).toBe(host.householdId);
+
+    // …claimed once the space is full: a space of its own instead.
+    const third = await signUp("third-in@example.com");
+    expect(third.householdId).not.toBe(host.householdId);
+    const members = await client.query<{ n: number }>(
+      "select count(*)::int as n from profiles where household_id = $1",
+      [host.householdId],
+    );
+    expect(members.rows[0].n).toBe(2);
+    const spent = await client.query<{ used: boolean }>(
+      `select accepted_at is not null as used from household_invites where token = 'tok-full-2'`,
+    );
+    expect(spent.rows[0].used).toBe(false);
+  });
 });

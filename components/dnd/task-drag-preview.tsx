@@ -1,6 +1,6 @@
 "use client";
 
-import type { Channel, Profile, Task } from "@/lib/queries/types";
+import type { Channel, HouseholdMember, Task } from "@/lib/queries/types";
 import type { Density } from "@/lib/task-meta";
 import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/format";
@@ -32,7 +32,7 @@ export function TaskDragPreview({
 }: {
   task: Task;
   channel?: Channel;
-  owner?: Profile;
+  owner?: HouseholdMember;
   density?: Density;
   variant?: "card" | "pill";
 }) {

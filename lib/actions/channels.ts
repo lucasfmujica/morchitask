@@ -18,20 +18,25 @@ export async function createChannel(input: { name: string; color: string; icon?:
   const { householdId, userId } = await requireWriteAccess();
   const existing = await data.myChannels(householdId, userId);
   const sortOrder = orderForAppend(existing.map((c) => c.sort_order));
-  return data.createChannel(householdId, userId, { ...input, sortOrder });
+  return data.createChannel(householdId, userId, {
+    name: String(input?.name ?? ""),
+    color: String(input?.color ?? ""),
+    icon: typeof input?.icon === "string" ? input.icon : undefined,
+    sortOrder,
+  });
 }
 
 export async function updateChannel(id: string, patch: { name?: string; color?: string }) {
-  const { householdId } = await requireWriteAccess();
-  await data.updateChannel(householdId, id, patch);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.updateChannel(householdId, userId, id, patch);
 }
 
 export async function reorderChannels(orderedIds: string[]) {
-  const { householdId } = await requireWriteAccess();
-  await data.reorderChannels(householdId, orderedIds);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.reorderChannels(householdId, userId, orderedIds);
 }
 
 export async function deleteChannel(id: string) {
-  const { householdId } = await requireWriteAccess();
-  await data.deleteChannel(householdId, id);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.deleteChannel(householdId, userId, id);
 }

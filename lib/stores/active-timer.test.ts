@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
+  activeTimerStorageKey,
+  bindActiveTimersToUser,
+  clearActiveTimersForSignOut,
   elapsedSeconds,
   migrateActiveTimers,
   useActiveTimers,
@@ -87,5 +90,57 @@ describe("useActiveTimers", () => {
     start(timer("b"));
     clearAll();
     expect(useActiveTimers.getState().timers).toEqual({});
+  });
+});
+
+describe("timers per account on one device", () => {
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  beforeEach(() => {
+    clearActiveTimersForSignOut();
+    localStorage.clear();
+  });
+
+  it("stores timers under the signed-in user's own key", async () => {
+    bindActiveTimersToUser("user-a");
+    await flush();
+    useActiveTimers.getState().start(timer("a-task"));
+    expect(localStorage.getItem(activeTimerStorageKey("user-a"))).toContain("a-task");
+    expect(localStorage.getItem(activeTimerStorageKey(null))).toBeNull();
+  });
+
+  it("never shows one account's running timer to the next one", async () => {
+    bindActiveTimersToUser("user-a");
+    await flush();
+    useActiveTimers.getState().start(timer("a-task"));
+
+    bindActiveTimersToUser("user-b");
+    await flush();
+    expect(useActiveTimers.getState().timers).toEqual({});
+
+    // And A gets theirs back when they return.
+    bindActiveTimersToUser("user-a");
+    await flush();
+    expect(Object.keys(useActiveTimers.getState().timers)).toEqual(["a-task"]);
+  });
+
+  it("signing out clears the timers and what was stored for them", async () => {
+    bindActiveTimersToUser("user-a");
+    await flush();
+    useActiveTimers.getState().start(timer("a-task"));
+
+    clearActiveTimersForSignOut();
+    expect(useActiveTimers.getState().timers).toEqual({});
+    expect(localStorage.getItem(activeTimerStorageKey("user-a"))).toBeNull();
+  });
+
+  it("drops the old shared key instead of handing it to whoever signs in", async () => {
+    localStorage.setItem(
+      activeTimerStorageKey(null),
+      JSON.stringify({ state: { timers: { old: timer("old") } }, version: 1 }),
+    );
+    bindActiveTimersToUser("user-b");
+    await flush();
+    expect(useActiveTimers.getState().timers).toEqual({});
+    expect(localStorage.getItem(activeTimerStorageKey(null))).toBeNull();
   });
 });

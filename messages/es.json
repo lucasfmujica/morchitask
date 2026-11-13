@@ -173,16 +173,13 @@
     "stopAll": "Detener todo ({n})",
     "stopTimerFor": "Detener cronómetro de {title}",
     "andMore": "+{n} más",
-    "perDay": "Por día",
     "dayCount": "{n, plural, =1 {# día} other {# días}}",
-    "plusFrom": "+ {time} de {name}",
     "fixMyTime": "Corregir tu tiempo de este día",
     "untrackedEditable": "Tiempo sin día: cargalo en un día con «Otro día» y sale de acá",
     "untrackedReadOnly": "Tiempo cargado a mano, o registrado antes de que se guardara el detalle por día",
     "timeThisDay": "Tiempo de este día",
     "dayField": "Día",
     "howLong": "Cuánto tiempo",
-    "personTime": "{name}: {time}",
     "reorderOrDrag": "Reordenar o arrastrar al calendario",
     "noteBadge": "· nota",
     "dropHereFor": "Soltá acá para {label}",
@@ -215,7 +212,10 @@
     "reminderAtTime": "A las {time}",
     "changeField": "Cambiar {field}",
     "sendComment": "Enviar comentario",
-    "assignedByTitle": "Te la asignó {name}"
+    "assignedByTitle": "Te la asignó {name}",
+    "yourTimePerDay": "Tu tiempo, por día",
+    "yourRealTime": "Tu tiempo real",
+    "realTimeByDayOnly": "Tu tiempo en esta tarea compartida se carga por día, abajo."
   },
   "day": {
     "adjustCapacity": "Ajustar la capacidad de hoy",
@@ -747,7 +747,9 @@
   },
   "errors": {
     "invalidEmail": "Esa dirección de mail no parece válida.",
-    "spaceFull": "Tu espacio ya está completo. Cancelá una invitación para enviar otra."
+    "spaceFull": "Tu espacio ya está completo. Cancelá una invitación para enviar otra.",
+    "inviteSelf": "Ese es tu propio mail. Invitá a la otra persona con el suyo.",
+    "alreadyMember": "Esa persona ya está en tu espacio."
   },
   "push": {
     "planTitle": "Planificá tu día ☀️",

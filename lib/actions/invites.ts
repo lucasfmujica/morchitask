@@ -25,26 +25,36 @@ export async function listInvites() {
  */
 export async function inviteToHousehold(email: string) {
   const { householdId, userId } = await requireSession();
-  // The card renders `error.message` straight onto the screen, so these two
+  // The card renders `error.message` straight onto the screen, so these
   // are copy, not diagnostics — a server action can't use `useTranslations`,
   // but `getTranslations` reads the same cookie the page was rendered with.
   const t = await getTranslations("errors");
 
-  const normalized = email.trim().toLowerCase();
+  const normalized = String(email ?? "")
+    .trim()
+    .toLowerCase();
   if (!isValidEmail(normalized)) throw new Error(t("invalidEmail"));
 
-  // Counting live invites as if they were already members: otherwise sending
-  // two invites and having both accepted would quietly overshoot the cap.
-  const [members, pending] = await Promise.all([
-    data.memberCount(householdId),
-    data.pendingInvites(householdId),
-  ]);
-  const alreadyInvited = pending.some((i) => i.email === normalized);
-  if (!alreadyInvited && members + pending.length >= data.MAX_HOUSEHOLD_MEMBERS) {
-    throw new Error(t("spaceFull"));
+  // Count and insert happen in one transaction that locks the household, so
+  // two invites sent at once cannot both take the last seat.
+  const result = await data.createInviteWithinCap(
+    householdId,
+    userId,
+    normalized,
+    randomBytes(32).toString("base64url"),
+  );
+  if (!result.ok) {
+    throw new Error(
+      t(
+        result.reason === "self"
+          ? "inviteSelf"
+          : result.reason === "member"
+            ? "alreadyMember"
+            : "spaceFull",
+      ),
+    );
   }
-
-  return data.createInvite(householdId, userId, normalized, randomBytes(32).toString("base64url"));
+  return result.invite;
 }
 
 export async function revokeInvite(inviteId: string) {

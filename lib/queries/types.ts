@@ -18,6 +18,12 @@ import type { PriorityKey } from "@/lib/priority";
 export type Task = typeof tasks.$inferSelect;
 export type Channel = typeof channels.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
+/** Another person in the household, as you may see them: who they are, not
+ *  their settings (see `getHouseholdProfiles`). Your own full row is `Profile`. */
+export type HouseholdMember = Pick<
+  Profile,
+  "id" | "household_id" | "display_name" | "color" | "avatar_url"
+>;
 export type Household = typeof households.$inferSelect;
 export type Subtask = typeof subtasks.$inferSelect;
 export type RecurringTemplate = typeof recurringTemplates.$inferSelect;

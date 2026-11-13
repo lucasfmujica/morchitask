@@ -25,6 +25,7 @@ import { useMe, useProfiles } from "@/lib/queries/profiles";
 import { useHousehold } from "@/lib/queries/households";
 import { ChannelFilterProvider } from "@/lib/channel-filter";
 import { useSidebar } from "@/lib/stores/sidebar";
+import { bindActiveTimersToUser } from "@/lib/stores/active-timer";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { todayISO } from "@/lib/date";
 import { useDailyNote } from "@/lib/queries/daily-notes";
@@ -189,6 +190,13 @@ export function AppChrome({
   useEffect(() => {
     closeMobile();
   }, [pathname, closeMobile]);
+
+  // Running stopwatches are stored per person: load this person's, and only
+  // once we know who they are (see lib/stores/active-timer.ts).
+  const meId = useMe().data?.id;
+  useEffect(() => {
+    if (meId) bindActiveTimersToUser(meId);
+  }, [meId]);
 
   return (
     <ChannelFilterProvider>

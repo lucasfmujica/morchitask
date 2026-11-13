@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { signOut } from "next-auth/react";
+import { clearActiveTimersForSignOut } from "@/lib/stores/active-timer";
 import { useTranslations } from "next-intl";
 import { deleteMyAccount, exportMyData } from "@/lib/actions/account";
 
@@ -68,6 +69,7 @@ export function DangerZone() {
     }
     // The session rows are already gone; this is what clears the cookie the
     // browser is still holding.
+    clearActiveTimersForSignOut();
     await signOut({ redirectTo: "/" });
   }
 

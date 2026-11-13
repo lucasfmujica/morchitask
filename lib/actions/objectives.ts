@@ -4,13 +4,13 @@ import { requireSession, requireWriteAccess } from "@/lib/actions/session";
 import * as data from "@/lib/db/queries/objectives";
 
 export async function getObjectives() {
-  const { householdId } = await requireSession();
-  return data.listObjectives(householdId);
+  const { householdId, userId } = await requireSession();
+  return data.listObjectives(householdId, userId);
 }
 
 export async function getObjectiveTaskCounts() {
-  const { householdId } = await requireSession();
-  return data.objectiveTaskCounts(householdId);
+  const { householdId, userId } = await requireSession();
+  return data.objectiveTaskCounts(householdId, userId);
 }
 
 export async function createObjective(input: {
@@ -23,15 +23,16 @@ export async function createObjective(input: {
   return data.createObjective(householdId, userId, input);
 }
 
+/** `patch` is untyped JSON: the data layer keeps only title, status and order. */
 export async function updateObjective(
   id: string,
   patch: { title?: string; status?: string; sort_order?: number },
 ) {
-  const { householdId } = await requireWriteAccess();
-  await data.updateObjective(householdId, id, patch);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.updateObjective(householdId, userId, id, patch);
 }
 
 export async function deleteObjective(id: string) {
-  const { householdId } = await requireWriteAccess();
-  await data.deleteObjective(householdId, id);
+  const { householdId, userId } = await requireWriteAccess();
+  await data.deleteObjective(householdId, userId, id);
 }

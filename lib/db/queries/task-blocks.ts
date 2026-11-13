@@ -1,12 +1,28 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { taskBlocks, tasks } from "@/lib/db/schema";
+import { assertVisibleTask, onVisibleTask, visibleTo } from "./visibility";
 
-export async function listForDate(householdId: string, date: string) {
+/**
+ * Time blocks hang off a task and are exactly as private as it is: every read
+ * and write below also requires the parent task to be visible to the caller.
+ * `listForDate` used to check only the household, which handed a partner the
+ * ids — and the times — of the other person's private tasks.
+ */
+
+export async function listForDate(householdId: string, userId: string, date: string) {
   const rows = await db
     .select({ block: taskBlocks })
     .from(taskBlocks)
-    .innerJoin(tasks, eq(taskBlocks.task_id, tasks.id))
+    .innerJoin(
+      tasks,
+      and(
+        eq(taskBlocks.task_id, tasks.id),
+        eq(tasks.household_id, householdId),
+        visibleTo(userId),
+        ne(tasks.status, "cancelled"),
+      ),
+    )
     .where(and(eq(taskBlocks.household_id, householdId), eq(tasks.planned_date, date)))
     .orderBy(asc(taskBlocks.start_at));
   return rows.map((r) => r.block);
@@ -14,10 +30,12 @@ export async function listForDate(householdId: string, date: string) {
 
 export async function createBlock(
   householdId: string,
+  userId: string,
   taskId: string,
   startISO: string,
   endISO: string,
 ) {
+  await assertVisibleTask(householdId, userId, taskId);
   const [row] = await db
     .insert(taskBlocks)
     .values({ household_id: householdId, task_id: taskId, start_at: startISO, end_at: endISO })
@@ -25,12 +43,17 @@ export async function createBlock(
   return row;
 }
 
-function scoped(householdId: string, id: string) {
-  return and(eq(taskBlocks.id, id), eq(taskBlocks.household_id, householdId));
+function scoped(householdId: string, userId: string, id: string) {
+  return and(
+    eq(taskBlocks.id, id),
+    eq(taskBlocks.household_id, householdId),
+    onVisibleTask(householdId, userId, taskBlocks.task_id),
+  );
 }
 
 export async function updateBlock(
   householdId: string,
+  userId: string,
   id: string,
   startISO: string,
   endISO: string,
@@ -38,7 +61,7 @@ export async function updateBlock(
   const [row] = await db
     .update(taskBlocks)
     .set({ start_at: startISO, end_at: endISO })
-    .where(scoped(householdId, id))
+    .where(scoped(householdId, userId, id))
     .returning();
   if (!row) throw new Error("block not found");
   return row;
@@ -47,16 +70,16 @@ export async function updateBlock(
 /** Returns the Google Calendar event id the deleted block had, if any, so the
  *  caller can remove the event: read off the row being deleted, in the same
  *  statement, so it can only be an event this household's block pointed at. */
-export async function deleteBlock(householdId: string, id: string) {
+export async function deleteBlock(householdId: string, userId: string, id: string) {
   const [row] = await db
     .delete(taskBlocks)
-    .where(scoped(householdId, id))
+    .where(scoped(householdId, userId, id))
     .returning({ gcal_event_id: taskBlocks.gcal_event_id });
   return row?.gcal_event_id ?? null;
 }
 
 /** A block plus its parent task's title/sharing info, for Google Calendar sync. */
-export async function blockForCalendarSync(householdId: string, blockId: string) {
+export async function blockForCalendarSync(householdId: string, userId: string, blockId: string) {
   const [row] = await db
     .select({
       id: taskBlocks.id,
@@ -67,14 +90,19 @@ export async function blockForCalendarSync(householdId: string, blockId: string)
       shared: tasks.shared,
     })
     .from(taskBlocks)
-    .innerJoin(tasks, eq(taskBlocks.task_id, tasks.id))
-    .where(scoped(householdId, blockId));
+    .innerJoin(tasks, and(eq(taskBlocks.task_id, tasks.id), eq(tasks.household_id, householdId)))
+    .where(and(scoped(householdId, userId, blockId), visibleTo(userId)));
   return row ?? null;
 }
 
-export async function setBlockCalendarEvent(householdId: string, id: string, eventId: string) {
+export async function setBlockCalendarEvent(
+  householdId: string,
+  userId: string,
+  id: string,
+  eventId: string,
+) {
   await db
     .update(taskBlocks)
     .set({ gcal_event_id: eventId, gcal_synced_at: new Date().toISOString() })
-    .where(scoped(householdId, id));
+    .where(scoped(householdId, userId, id));
 }

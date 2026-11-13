@@ -2,7 +2,7 @@
 
 import { useToggleTask } from "@/lib/queries/tasks";
 import { useTaskDetail } from "@/lib/stores/task-detail";
-import type { Channel, Profile, Task } from "@/lib/queries/types";
+import type { Channel, HouseholdMember, Task } from "@/lib/queries/types";
 import { priorityLabelKey } from "@/lib/priority";
 import { cn } from "@/lib/utils";
 import { PRIORITY_RAIL } from "./priority-badge";
@@ -18,7 +18,7 @@ export function CompactTaskRow({
 }: {
   task: Task;
   channel?: Channel;
-  owner?: Profile;
+  owner?: HouseholdMember;
 }) {
   const t = useTranslations("tasks");
   const toggle = useToggleTask();

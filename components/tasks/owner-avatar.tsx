@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Profile } from "@/lib/queries/types";
+import type { HouseholdMember } from "@/lib/queries/types";
 import { useTranslations } from "next-intl";
 
 /**
@@ -19,7 +19,7 @@ export function OwnerAvatar({
   size = 24,
   title,
 }: {
-  profile?: Profile;
+  profile?: HouseholdMember;
   size?: number;
   title?: string;
 }) {
