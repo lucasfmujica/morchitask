@@ -134,6 +134,11 @@ describe("monthLabel, dueLabel and ageLabel", () => {
     expect(en.dueTagLabel(LATER, MON)).toBe("Mon 7/27");
   });
 
+  it("writes a bare numeric date with the day and month in each language's order", () => {
+    expect(es.numericDate(LATER)).toBe("27/7");
+    expect(en.numericDate(LATER)).toBe("7/27");
+  });
+
   /** A timestamp exactly `n` days before MON, so ages are deterministic. */
   const daysBefore = (n: number) => `${addDays(MON, -n)}T12:00:00.000Z`;
 

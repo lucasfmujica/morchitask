@@ -2,11 +2,18 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, LogOut } from "lucide-react";
 import { signIn, signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { disconnectCalendar as disconnectCalendarAction } from "@/lib/actions/google";
+import {
+  CALENDAR_AUTHORIZATION_PARAMS,
+  CALENDAR_CONNECT_RETURN_PARAM,
+  calendarConnectOutcome,
+  calendarConnectReturnTo,
+} from "@/lib/google-grant";
 import { profileKeys, useMe, useUpdateMyProfile, useUploadMyAvatar } from "@/lib/queries/profiles";
 import {
   clearSpotifyTokenCache,
@@ -39,6 +46,15 @@ export function SettingsView() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const connected = me?.google_calendar_connected ?? false;
+  // Back from Google: a connect that returned without Calendar access looks
+  // like a plain login to the server, which rightly changes nothing. The return
+  // URL is the one place that knows they meant to connect, so the message comes
+  // from here. Gated on the profile being loaded, or "still loading" would read
+  // as "not connected". The marker stays in the URL; it only ever shows while
+  // the calendar is still not connected, which is exactly when it is true.
+  const connectReturn = useSearchParams().get(CALENDAR_CONNECT_RETURN_PARAM);
+  const calendarDeclined =
+    !!me && calendarConnectOutcome(connectReturn, me.google_calendar_connected) === "declined";
   const spotifyConnected = useSpotifyConnected();
   const disconnectSpotify = useDisconnectSpotify();
 
@@ -68,10 +84,15 @@ export function SettingsView() {
     await signOut({ redirectTo: "/login" });
   }
 
-  /** Re-consent to Google — the provider already requests Calendar scopes on
-   * every sign-in (see lib/auth.ts), so this just re-runs that same flow. */
+  /** Calendar is its own grant, asked for only here: sign-in requests identity
+   * scopes alone (see lib/google-grant.ts). The third argument overrides the
+   * provider's default params for this one trip to Google. */
   async function connectCalendar() {
-    await signIn("google", { redirectTo: "/settings" });
+    await signIn(
+      "google",
+      { redirectTo: calendarConnectReturnTo(window.location.pathname) },
+      CALENDAR_AUTHORIZATION_PARAMS,
+    );
   }
 
   async function disconnectCalendar() {
@@ -188,6 +209,7 @@ export function SettingsView() {
             onConnect={connectCalendar}
             onDisconnect={disconnectCalendar}
             onReconnect={connectCalendar}
+            notice={calendarDeclined ? t("calendarDeclined") : null}
           />
           <Integration
             name="Spotify"
@@ -253,6 +275,7 @@ function Integration({
   onConnect,
   onDisconnect,
   onReconnect,
+  notice,
 }: {
   name: string;
   pitch: string;
@@ -260,6 +283,8 @@ function Integration({
   onConnect: () => void;
   onDisconnect: () => void;
   onReconnect?: () => void;
+  /** Why the last attempt to connect did not take, when it did not. */
+  notice?: string | null;
 }) {
   const t = useTranslations("settings");
   const pill =
@@ -313,6 +338,11 @@ function Integration({
           </>
         )}
       </p>
+      {notice && (
+        <p role="status" className="text-2xs leading-[17px] text-danger">
+          {notice}
+        </p>
+      )}
     </Card>
   );
 }

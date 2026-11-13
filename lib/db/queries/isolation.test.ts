@@ -352,3 +352,60 @@ describe("admin launch metrics", () => {
     expect(json).not.toContain("cus_a");
   });
 });
+
+/**
+ * Onboarding reads a marker, an override and "does this household have any
+ * task" — the last one is an `exists` over the whole tasks table, which is
+ * exactly the kind of subquery that forgets its household. A third household
+ * with no tasks is the case that tells: A and B both have tasks, so a leaking
+ * check would call C "already using the app" and skip its onboarding, and a
+ * leaking marker write would onboard someone else.
+ */
+describe("onboarding", () => {
+  const C = {
+    household: "cccccccc-0000-4000-8000-000000000001",
+    user: "cccccccc-0000-4000-8000-000000000002",
+  };
+
+  it("reads only the asking household's tasks, override and marker", async () => {
+    const q = await import("./onboarding");
+    await client.exec(`
+      insert into households (id) values ('${C.household}');
+      insert into "user" (id, email) values ('${C.user}', 'c@example.com');
+      insert into profiles (id, household_id, display_name) values ('${C.user}', '${C.household}', 'user-cccc');
+      update households set plan_override = 'comp' where id = '${B.household}';
+    `);
+
+    expect(await q.onboardingFacts(C.household, C.user)).toEqual({
+      onboardedAt: null,
+      planOverride: null,
+      householdHasTasks: false,
+    });
+    expect(await q.onboardingFacts(A.household, A.user)).toMatchObject({
+      planOverride: null,
+      householdHasTasks: true,
+    });
+    // A user id paired with someone else's household: nothing at all.
+    expect(await q.onboardingFacts(C.household, B.user)).toBeNull();
+  });
+
+  it("cannot mark a person in another household as onboarded", async () => {
+    const q = await import("./onboarding");
+    await q.markOnboarded(A.household, C.user);
+    expect((await q.onboardingFacts(C.household, C.user))?.onboardedAt).toBeNull();
+
+    await q.markOnboarded(C.household, C.user);
+    const first = (await q.onboardingFacts(C.household, C.user))?.onboardedAt;
+    expect(first).toBeTruthy();
+
+    // Set once: a second call keeps the first date, and other prefs survive.
+    await client.exec(
+      `update profiles set notification_prefs = notification_prefs || '{"taskReminders": true}' where id = '${C.user}'`,
+    );
+    await q.markOnboarded(C.household, C.user);
+    const prefs = await client.query<{ prefs: Record<string, unknown> }>(
+      `select notification_prefs as prefs from profiles where id = '${C.user}'`,
+    );
+    expect(prefs.rows[0].prefs).toMatchObject({ taskReminders: true, onboarded_at: first });
+  });
+});

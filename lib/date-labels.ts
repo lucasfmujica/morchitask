@@ -28,6 +28,8 @@ type Patterns = {
   weekday: string;
   /** Weekday + numeric day/month for the deadline tag: "vie 13/11" / "Fri 11/13". */
   dueTag: string;
+  /** Just the numbers, day and month in the reader's order: "13/11" / "11/13". */
+  numeric: string;
   /** date-fns locale, for the names those patterns expand to. */
   fns: typeof es;
   /** Spanish writes days and months lowercase; English already capitalizes. */
@@ -41,6 +43,7 @@ const PATTERNS: Record<Locale, Patterns> = {
     short: "d MMM",
     weekday: "EEE d",
     dueTag: "EEE d/M",
+    numeric: "d/M",
     fns: es,
     capitalize: true,
   },
@@ -50,6 +53,7 @@ const PATTERNS: Record<Locale, Patterns> = {
     short: "MMM d",
     weekday: "EEE d",
     dueTag: "EEE M/d",
+    numeric: "M/d",
     fns: enUS,
     capitalize: false,
   },
@@ -181,6 +185,11 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
     return write(due, p.dueTag).replace(".", "");
   }
 
+  /** "13/11" / "11/13": a date next to a weekday that already says which one. */
+  function numericDate(day: DayISO): string {
+    return write(day, p.numeric);
+  }
+
   /**
    * How long something has been waiting: "hoy", "ayer", "hace 12 días",
    * "hace 3 meses".
@@ -211,6 +220,7 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
     monthLabel,
     dueLabel,
     dueTagLabel,
+    numericDate,
     ageLabel,
   };
 }

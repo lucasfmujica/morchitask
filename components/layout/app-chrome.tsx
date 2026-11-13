@@ -164,11 +164,22 @@ function bottomNav(today: string): NavItem[] {
  *  the three steps have the screen. Cheaper and more reversible than moving the
  *  route into its own group, which would mean re-mounting every singleton this
  *  shell owns (detail sheet, timer bar, shortcuts, palette, presence). */
-function isRitualRoute(pathname: string) {
+export function isRitualRoute(pathname: string) {
   return pathname.startsWith("/shutdown") || pathname.startsWith("/review");
 }
 
-export function AppChrome({ children }: { children: ReactNode }) {
+/**
+ * `trialChip` is rendered by the server (it reads the session) and handed in
+ * here, since this shell is a client component. It is null for everyone not on
+ * a live trial.
+ */
+export function AppChrome({
+  children,
+  trialChip = null,
+}: {
+  children: ReactNode;
+  trialChip?: ReactNode;
+}) {
   const tn = useTranslations("nav");
   const pathname = usePathname();
   const ritual = isRitualRoute(pathname);
@@ -182,7 +193,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   return (
     <ChannelFilterProvider>
       <div className="flex min-h-dvh">
-        <DesktopSidebar pathname={pathname} forceCollapsed={ritual} />
+        <DesktopSidebar pathname={pathname} forceCollapsed={ritual} trialChip={trialChip} />
 
         {/* min-w-0 is load-bearing: a flex child defaults to `min-width: auto`,
             so this column refused to shrink below its content's intrinsic width
@@ -249,7 +260,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
           </nav>
         </div>
 
-        <MobileSidebarDrawer pathname={pathname} />
+        <MobileSidebarDrawer pathname={pathname} trialChip={trialChip} />
         <TaskDetailSheet />
         <TimerBar />
         <KeyboardShortcuts />
@@ -293,9 +304,11 @@ function SearchButton() {
 function DesktopSidebar({
   pathname,
   forceCollapsed = false,
+  trialChip,
 }: {
   pathname: string;
   forceCollapsed?: boolean;
+  trialChip: ReactNode;
 }) {
   const tc = useTranslations("chrome");
   const collapsed = useSidebar((s) => s.collapsed) || forceCollapsed;
@@ -319,7 +332,7 @@ function DesktopSidebar({
   return (
     // The canvas frame: 16px from the window, 220px wide, a 28px-radius well.
     <aside className="sticky top-4 my-4 ml-4 hidden h-[calc(100dvh-2rem)] w-[220px] shrink-0 animate-up flex-col overflow-hidden rounded-[28px] bg-surface-2 px-3 py-5 md:flex">
-      <SidebarBody pathname={pathname} onToggleCollapsed={toggleCollapsed} />
+      <SidebarBody pathname={pathname} onToggleCollapsed={toggleCollapsed} trialChip={trialChip} />
     </aside>
   );
 }
@@ -331,10 +344,12 @@ function SidebarBody({
   pathname,
   onToggleCollapsed,
   onNavigate,
+  trialChip,
 }: {
   pathname: string;
   onToggleCollapsed?: () => void;
   onNavigate?: () => void;
+  trialChip: ReactNode;
 }) {
   const tc = useTranslations("chrome");
   const tn = useTranslations("nav");
@@ -404,6 +419,12 @@ function SidebarBody({
         </Link>
       </div>
 
+      {/* Pinned above the footer like the footer itself, so a long nav list
+          scrolls under it instead of pushing it out of sight. The chip carries
+          its own spacing: it renders nothing off-trial, and the footer must
+          then sit exactly where it always has. */}
+      {trialChip}
+
       <Link
         href="/settings"
         onClick={onNavigate}
@@ -430,7 +451,7 @@ function SidebarBody({
 
 /** Slide-in sidebar for mobile — same contents as the desktop panel, opened via
  *  the hamburger in the top bar. */
-function MobileSidebarDrawer({ pathname }: { pathname: string }) {
+function MobileSidebarDrawer({ pathname, trialChip }: { pathname: string; trialChip: ReactNode }) {
   const tc = useTranslations("chrome");
   const mobileOpen = useSidebar((s) => s.mobileOpen);
   const closeMobile = useSidebar((s) => s.closeMobile);
@@ -443,7 +464,7 @@ function MobileSidebarDrawer({ pathname }: { pathname: string }) {
         className="absolute inset-0 h-full w-full cursor-default bg-scrim backdrop-blur-sm"
       />
       <aside className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-surface-2 px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-5 shadow-card">
-        <SidebarBody pathname={pathname} onNavigate={closeMobile} />
+        <SidebarBody pathname={pathname} onNavigate={closeMobile} trialChip={trialChip} />
       </aside>
     </div>
   );
