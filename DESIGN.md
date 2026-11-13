@@ -22,10 +22,10 @@ Rediseño bento (noviembre 2026). Fuente de verdad: `app/globals.css`.
 - Verde `#2c7a4b` (`--primary`): lo que entra. Check hecho, capacidad OK, selección. El degradé `bg-fit` es el único de la app y siempre significa eso.
 - Alerta / overflow / Alta: `#b3400f` (`--accent`), siempre con texto, nunca solo color.
 - Bloques de agenda: pasteles suaves, nunca saturados.
-- Tipografía: Figtree para la interfaz, Fraunces (variable, eje `opsz` en automático) para títulos y números grandes, IBM Plex Mono para horas sueltas. Números tabulares en todo el body. Nunca Inter, Arial ni system-ui como voz de marca.
-  - Fraunces (`font-display`) va en h1 a h3, en números de display ("1h 25m", "US$10") y en el wordmark. Peso 600 siempre (`font-semibold`), nunca 700/800: la serif ya tiene contraste y en bold se empasta.
-  - Tracking: `-0.01em` de 17 a 40px, `-0.015em` en titulares de marketing (36 a 92px), `-0.02em` en los titulares y números gigantes que no son el hero (72 a 104px). El corte de óptica grande de Fraunces ya viene apretado: con el `-0.045em` que usaba Schibsted las letras se tocan.
-  - De 14px para abajo es Figtree semibold, aunque sea un `<h2>`: labels, rótulos de sección chicos, números dentro de un chip. Una serif a ese tamaño al lado de la UI se ve sucia. Card titles de 15 y 16px quedan en Fraunces.
+- Tipografía: Figtree para la interfaz, Bricolage Grotesque (variable, eje `opsz` en automático) para títulos y números grandes, IBM Plex Mono para horas sueltas. Números tabulares en todo el body. Nunca Inter, Arial ni system-ui como voz de marca.
+  - Bricolage (`font-display`) va en h1 a h3, en números de display ("1h 25m", "US$10") y en el wordmark. Peso 600 siempre (`font-semibold`), nunca 700/800: en los cortes grandes de óptica el 800 se pone gritón.
+  - Tracking: `-0.01em` de 17 a 40px, `-0.015em` en titulares de marketing (36 a 92px), `-0.02em` en los titulares y números gigantes que no son el hero (72 a 104px). El corte de óptica grande de Bricolage ya viene apretado: con el `-0.045em` que usaba Schibsted las letras se tocan.
+  - De 14px para abajo es Figtree semibold, aunque sea un `<h2>`: labels, rótulos de sección chicos, números dentro de un chip. Dos grotescas distintas a ese tamaño se ven como un error. Card titles de 15 y 16px quedan en Bricolage.
   - Botones, labels, nav, chips: Figtree. La serif no entra en la UI de acción.
 - Radio: 20px las cards (`rounded-xl`, `rounded-card`), 24px pozos y paneles (`rounded-2xl`), pastilla para botones y navegación.
 - Sombra: la mínima (`shadow-soft`) para la card dentro del pozo. Nada de mockup flotando.
