@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { DEFAULT_TIMEZONE, addDays, blockInstant } from "@/lib/date";
+import { addDays, blockInstant } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { profileKeys } from "./profiles";
 
 export type CalendarEvent = {
@@ -12,8 +13,6 @@ export type CalendarEvent = {
   calendar?: string | null;
   color?: string | null;
 };
-
-const TZ = DEFAULT_TIMEZONE;
 
 /** The calendar routes answer 409 when Google no longer accepts the stored
  *  grant: "connect again", which the client treats as not connected. */
@@ -43,8 +42,11 @@ export async function syncBlockCalendar(payload: {
 /** Google Calendar events for `date` (read-only). */
 export function useCalendarEvents(date: string, enabled: boolean) {
   const qc = useQueryClient();
+  const tz = useTz();
   return useQuery({
-    queryKey: ["calendar", date],
+    // The zone decides where the day's window starts and ends, so a change of
+    // zone must not be answered from the old zone's cache.
+    queryKey: ["calendar", date, tz],
     enabled,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<CalendarEvent[]> => {
@@ -52,8 +54,8 @@ export function useCalendarEvents(date: string, enabled: boolean) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          timeMin: blockInstant(date, "00:00", TZ),
-          timeMax: blockInstant(addDays(date, 1), "00:00", TZ),
+          timeMin: blockInstant(date, "00:00", tz),
+          timeMax: blockInstant(addDays(date, 1), "00:00", tz),
         }),
       });
       if (calendarNeedsReconnect(res.status)) {

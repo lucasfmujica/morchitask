@@ -73,7 +73,14 @@ export type SubscriptionUpsert = {
   recurringInterval: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  /** The provider's `modified_at` for this state. Absent on callers that have
+   *  no such clock; an event without one is always applied. */
+  providerModifiedAt?: string | null;
+  /** Who opened the checkout. Absent or null keeps whoever was recorded. */
+  payerUserId?: string | null;
 };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Writes what the provider just told us.
@@ -82,8 +89,17 @@ export type SubscriptionUpsert = {
  * household that cancels and later resubscribes gets a *new* subscription id
  * from Polar, and a plain insert would collide on the primary key while an
  * update keyed on the old id would silently write nothing.
+ *
+ * Webhooks arrive out of order and get retried, so an event older than the
+ * state already stored is dropped (returns undefined): a late "active" must
+ * not reopen a subscription that was cancelled after it.
+ *
+ * The payer is only recorded when they are a member of this household right
+ * now. The id arrives from outside, and a late webhook must not hand the plan
+ * to someone who left or was never in.
  */
 export async function upsertSubscription(input: SubscriptionUpsert) {
+  const payer = input.payerUserId && UUID.test(input.payerUserId) ? input.payerUserId : null;
   const values = {
     household_id: input.householdId,
     provider_subscription_id: input.providerSubscriptionId,
@@ -92,12 +108,29 @@ export async function upsertSubscription(input: SubscriptionUpsert) {
     recurring_interval: input.recurringInterval,
     current_period_end: input.currentPeriodEnd,
     cancel_at_period_end: input.cancelAtPeriodEnd,
+    provider_modified_at: input.providerModifiedAt ?? null,
+    payer_id: payer
+      ? sql<
+          string | null
+        >`(select p.id from "profiles" p where p.id = ${payer}::uuid and p.household_id = ${input.householdId}::uuid)`
+      : null,
   };
 
   const [row] = await db
     .insert(subscriptions)
     .values(values)
-    .onConflictDoUpdate({ target: subscriptions.household_id, set: values })
+    .onConflictDoUpdate({
+      target: subscriptions.household_id,
+      set: {
+        ...values,
+        // Not downgraded by an event that carries no clock.
+        provider_modified_at: sql`coalesce(excluded.provider_modified_at, ${subscriptions.provider_modified_at})`,
+        payer_id: sql`coalesce(excluded.payer_id, ${subscriptions.payer_id})`,
+      },
+      setWhere: sql`excluded.provider_modified_at is null
+        or ${subscriptions.provider_modified_at} is null
+        or excluded.provider_modified_at >= ${subscriptions.provider_modified_at}`,
+    })
     .returning();
 
   return row;
@@ -131,11 +164,9 @@ export async function householdExists(householdId: string) {
  * load would put a third-party API on the metrics' critical path.
  *
  * Stored as a key in `profiles.notification_prefs` because that is the one
- * jsonb column on a row we already write, and a dedicated column would have
- * needed a migration for a single timestamp. It is not a preference, and
+ * jsonb column on a row we already write. It is not a preference, and
  * nothing in the notification code reads it; the prefs writers merge rather
  * than replace (`saveMyNotificationPrefs`), so it survives a settings change.
- * If billing ever gets its own migration, move it to a real column then.
  *
  * Merged in SQL, not read-modify-written, so it cannot race a prefs save, and
  * only set when absent, so the first attempt is the one that counts. Scoped by
@@ -157,50 +188,20 @@ export async function recordCheckoutStarted(householdId: string, userId: string)
 }
 
 /**
- * The key in `profiles.notification_prefs` that says this person pays for a
- * space: its value is the household id. Same borrowed column as
- * `checkout_started_at`, for the same reason (no migration for one fact).
- * Keyed by household so a marker carried out of a space by someone who left
- * it means nothing in the space they land in.
- */
-export const BILLING_MANAGER_MARKER = "billing_manager_for";
-
-/**
- * Records who pays for this space, from the checkout's `user_id`.
+ * The member who pays for this space, when the webhook has said so.
  *
- * One statement, so it cannot race a prefs save or a second webhook: it marks
- * the payer and unmarks anyone else in the same space, and does nothing at
- * all when the payer is no longer a member (they left, or the id is stale), so
- * a late webhook cannot hand the plan to someone outside it.
+ * Joined on membership: `payer_id` keeps pointing at someone who has since
+ * left the space, and they no longer manage anything here.
  */
-export async function recordBillingManager(householdId: string, userId: string) {
-  await db
-    .update(profiles)
-    .set({
-      notification_prefs: sql`case when ${profiles.id} = ${userId}
-        then ${profiles.notification_prefs} || jsonb_build_object(${BILLING_MANAGER_MARKER}::text, ${householdId}::text)
-        else ${profiles.notification_prefs} - ${BILLING_MANAGER_MARKER}::text end`,
-    })
-    .where(
-      and(
-        eq(profiles.household_id, householdId),
-        sql`(${profiles.id} = ${userId} or ${profiles.notification_prefs} ->> ${BILLING_MANAGER_MARKER}::text = ${householdId}::text)`,
-        sql`exists (select 1 from "profiles" p where p.id = ${userId} and p.household_id = ${householdId})`,
-      ),
-    );
-}
-
-/** The member who pays for this space, when the webhook has said so. */
 export async function billingManager(householdId: string) {
   const [row] = await db
     .select({ id: profiles.id, display_name: profiles.display_name })
-    .from(profiles)
-    .where(
-      and(
-        eq(profiles.household_id, householdId),
-        sql`${profiles.notification_prefs} ->> ${BILLING_MANAGER_MARKER}::text = ${householdId}::text`,
-      ),
+    .from(subscriptions)
+    .innerJoin(
+      profiles,
+      and(eq(profiles.id, subscriptions.payer_id), eq(profiles.household_id, householdId)),
     )
+    .where(eq(subscriptions.household_id, householdId))
     .limit(1);
   return row ?? null;
 }

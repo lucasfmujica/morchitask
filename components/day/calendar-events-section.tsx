@@ -4,11 +4,10 @@ import { useMemo } from "react";
 import { CalendarClock } from "lucide-react";
 import { useMe } from "@/lib/queries/profiles";
 import { useCalendarEvents } from "@/lib/queries/calendar";
-import { DEFAULT_TIMEZONE, minutesFromMidnight, timeInTimeZone } from "@/lib/date";
+import { minutesFromMidnight, timeInTimeZone } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import type { Task } from "@/lib/queries/types";
 import { useTranslations } from "next-intl";
-
-const TZ = DEFAULT_TIMEZONE;
 
 /**
  * Read-only list of the day's Google Calendar events, shown inside the day so
@@ -18,6 +17,7 @@ const TZ = DEFAULT_TIMEZONE;
  */
 export function CalendarEventsSection({ date, tasks }: { date: string; tasks: Task[] }) {
   const t = useTranslations("day");
+  const tz = useTz();
   const connected = !!useMe().data?.google_calendar_connected;
   const calendarQ = useCalendarEvents(date, connected);
 
@@ -31,11 +31,11 @@ export function CalendarEventsSection({ date, tasks }: { date: string; tasks: Ta
       .filter((e) => !ownEventIds.has(e.id))
       .sort((a, b) => {
         if (a.allDay !== b.allDay) return a.allDay ? -1 : 1; // all-day first
-        const am = a.start ? minutesFromMidnight(a.start, TZ) : 0;
-        const bm = b.start ? minutesFromMidnight(b.start, TZ) : 0;
+        const am = a.start ? minutesFromMidnight(a.start, tz) : 0;
+        const bm = b.start ? minutesFromMidnight(b.start, tz) : 0;
         return am - bm;
       });
-  }, [calendarQ.data, ownEventIds]);
+  }, [calendarQ.data, ownEventIds, tz]);
 
   if (!connected || events.length === 0) return null;
 
@@ -64,7 +64,7 @@ export function CalendarEventsSection({ date, tasks }: { date: string; tasks: Ta
                 {e.allDay
                   ? t("allDayEvent")
                   : e.start
-                    ? `${timeInTimeZone(e.start, TZ)}${e.end ? `–${timeInTimeZone(e.end, TZ)}` : ""}`
+                    ? `${timeInTimeZone(e.start, tz)}${e.end ? `–${timeInTimeZone(e.end, tz)}` : ""}`
                     : ""}
               </span>
             </li>

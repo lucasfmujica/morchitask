@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock } from "lucide-react";
 import { todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
 
@@ -23,7 +24,8 @@ export function PastDayNotice({ date, children }: { date: string; children?: Rea
   const labels = useDateLabels();
   const t = useTranslations("day");
   const router = useRouter();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   if (date >= today) return null;
 
   return (

@@ -22,7 +22,6 @@ import {
 } from "@/lib/db/schema";
 import { isLiveSubscription } from "@/lib/billing";
 import { MAX_HOUSEHOLD_MEMBERS } from "@/lib/db/queries/invites";
-import { BILLING_MANAGER_MARKER } from "@/lib/db/queries/subscriptions";
 import { defaultHouseholdName } from "@/lib/household-provisioning";
 import { toLocale } from "@/lib/locale";
 import { spaceRoles, type SpaceMemberFacts } from "@/lib/space-roles";
@@ -63,7 +62,7 @@ async function membersOf(tx: Tx, householdId: string): Promise<SpaceMemberFacts[
       joinedAt: sql<
         string | null
       >`(select max(i.accepted_at)::text from "household_invites" i where i.household_id = ${householdId} and i.accepted_at is not null and i.email = lower(${users.email}))`,
-      managesPlan: sql<boolean>`coalesce(${profiles.notification_prefs} ->> ${BILLING_MANAGER_MARKER}::text = ${householdId}::text, false)`,
+      managesPlan: sql<boolean>`exists (select 1 from "subscriptions" s where s.household_id = ${householdId} and s.payer_id = "profiles"."id")`,
     })
     .from(profiles)
     .innerJoin(users, eq(users.id, profiles.id))
@@ -301,14 +300,11 @@ async function moveMember(
       ),
     );
 
-  // Last, the person. Their "manages this plan" marker names the old space and
-  // means nothing anywhere else.
+  // Last, the person. If they paid for the old space, its subscription keeps
+  // their id as payer; `billingManager` ignores a payer who is not a member.
   await tx
     .update(profiles)
-    .set({
-      household_id: to,
-      notification_prefs: sql`${profiles.notification_prefs} - ${BILLING_MANAGER_MARKER}::text`,
-    })
+    .set({ household_id: to })
     .where(and(eq(profiles.id, userId), eq(profiles.household_id, from)));
 }
 

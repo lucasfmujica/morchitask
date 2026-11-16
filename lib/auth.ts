@@ -9,6 +9,7 @@ import { SIGN_IN_AUTHORIZATION_PARAMS } from "@/lib/google-grant";
 import { provisionNewUser } from "@/lib/household-provisioning";
 import { setLocaleCookie } from "@/lib/actions/locale";
 import { toLocale } from "@/lib/locale";
+import { toTimeZone } from "@/lib/date";
 import { resolveAccess } from "@/lib/billing";
 import { billingFacts } from "@/lib/db/queries/subscriptions";
 import { isBillingEnabled } from "@/lib/billing-config";
@@ -35,13 +36,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ session, user }) {
       const [profile] = await db
-        .select({ householdId: profiles.household_id, locale: profiles.locale })
+        .select({
+          householdId: profiles.household_id,
+          locale: profiles.locale,
+          timezone: profiles.timezone,
+        })
         .from(profiles)
         .where(eq(profiles.id, user.id));
 
       session.user.id = user.id;
       session.householdId = profile?.householdId ?? null;
       session.locale = toLocale(profile?.locale);
+      session.timezone = toTimeZone(profile?.timezone);
 
       // Resolved here so the proxy can gate on it without a database round trip
       // of its own — it runs on every request, including every asset that slips

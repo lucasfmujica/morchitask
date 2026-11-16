@@ -34,10 +34,10 @@ export async function skipOnboarding() {
  * nobody gets sent through it twice either way.
  */
 export async function finishOnboarding(input: unknown) {
-  const { householdId, userId } = await requireWriteAccess();
+  const { householdId, userId, timezone } = await requireWriteAccess();
   const kept = sanitizeOnboardingTasks(input);
   const channels = await myChannels(householdId, userId);
-  const date = todayISO();
+  const date = todayISO(timezone);
 
   const orders: number[] = [];
   for (const task of kept) {

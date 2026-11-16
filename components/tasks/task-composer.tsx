@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Mic, SlidersHorizontal, X } from "lucide-react";
 import type { Channel } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { formatMinutes } from "@/lib/format";
 import { parseQuickAdd, type QuickAddKind, type QuickAddMatch } from "@/lib/quick-add";
@@ -56,7 +57,8 @@ export function TaskComposer({
   const [showChips, setShowChips] = useState(false);
   const chipsOpen = showChips || channelId !== null || priority !== null;
 
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const parsed = useMemo(
     () => parseQuickAdd(title, { today, channels, ignore: ignored }),
     [title, today, channels, ignored],

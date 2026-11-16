@@ -14,6 +14,7 @@ import { isNoop, replanFromNow, roundUpTo, type ReplanItem } from "@/lib/replan"
 import { cn } from "@/lib/utils";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 import { blockEndMin, blockStartMin, minutesToHHMM } from "./use-agenda-scheduling";
+import { useTz } from "@/lib/use-tz";
 
 type Destination = "tomorrow" | "backlog" | "keep";
 /** A calendar event as the replan sees it: a wall with a name. */
@@ -61,6 +62,7 @@ export function ReplanPanel({
   onClose: () => void;
 }) {
   const td = useTranslations("day");
+  const tz = useTz();
   const move = useMoveTaskToDate();
   const toast = useToast();
   const titleId = useId();
@@ -87,9 +89,9 @@ export function ReplanPanel({
       const blocks = blocksByTask.get(task.id) ?? [];
       const movable = task.owner_id === meId && task.status === "todo";
       for (const block of blocks) {
-        const startMin = blockStartMin(block);
+        const startMin = blockStartMin(block, tz);
         if (!movable) {
-          fixed.push({ startMin, endMin: blockEndMin(block) });
+          fixed.push({ startMin, endMin: blockEndMin(block, tz) });
           continue;
         }
         blocksById.set(block.id, block);
@@ -97,7 +99,7 @@ export function ReplanPanel({
         items.push({
           taskId: task.id,
           blockId: block.id,
-          durMin: blockEndMin(block) - startMin,
+          durMin: blockEndMin(block, tz) - startMin,
           fromStartMin: startMin,
           priority: task.priority,
           sortOrder: task.sort_order,
@@ -118,7 +120,7 @@ export function ReplanPanel({
       }
     }
     return { items, fixed, blocksById, lateCount };
-  }, [tasks, blocksByTask, calendarEvents, meId, nowMin]);
+  }, [tasks, blocksByTask, calendarEvents, meId, nowMin, tz]);
 
   const plan = useMemo(
     () => replanFromNow({ items, fixed, fromMin: roundUpTo(nowMin), toMin: endMin }),
@@ -187,8 +189,8 @@ export function ReplanPanel({
   const bars: Bar[] = [];
   for (const task of tasks) {
     for (const block of blocksByTask.get(task.id) ?? []) {
-      const from = blockStartMin(block);
-      const dur = blockEndMin(block) - from;
+      const from = blockStartMin(block, tz);
+      const dur = blockEndMin(block, tz) - from;
       if (!blocksById.has(block.id)) {
         // A wall: finished work, or someone else's.
         const done = task.status === "done";

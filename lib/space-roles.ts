@@ -1,11 +1,11 @@
 /**
  * Who runs a shared space, decided from data the app already has.
  *
- * There is no "owner" column and no migration to add one, so the answer is
+ * There is no "owner" column, so the answer is
  * read off two facts:
  *
  * - who pays: the webhook marks the member whose checkout started the
- *   subscription (`billing_manager_for` in their prefs). That person
+ *   subscription (`subscriptions.payer_id`). That person
  *   manages the plan, and because the plan is the space's, they run it.
  * - who made it: the member nobody invited. Someone who joined has an
  *   accepted invite addressed to their email; the other one created the

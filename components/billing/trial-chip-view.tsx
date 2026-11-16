@@ -2,7 +2,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type { TrialChip as TrialChipState } from "@/lib/billing";
 import { createDateLabels } from "@/lib/date-labels";
-import { DEFAULT_TIMEZONE, dayISOInTimeZone } from "@/lib/date";
+import { dayISOInTimeZone } from "@/lib/date";
 import { toLocale } from "@/lib/locale";
 import { TRIAL_DAYS } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * Two lines rather than one: the sidebar is about 170px of text, and "Prueba
  * gratis · quedan 9 días" wraps badly there.
  */
-export function TrialChipView({ chip }: { chip: TrialChipState }) {
+export function TrialChipView({ chip, timezone }: { chip: TrialChipState; timezone: string }) {
   const t = useTranslations("billing");
   const tcm = useTranslations("common");
   const locale = toLocale(useLocale());
@@ -29,8 +29,9 @@ export function TrialChipView({ chip }: { chip: TrialChipState }) {
     daysAgo: (n) => tcm("daysAgo", { n }),
     monthsAgo: (n) => tcm("monthsAgo", { n }),
   });
-  // The day it ends where the people using it live, the same zone "today" is.
-  const endDay = dayISOInTimeZone(new Date(chip.endsAt), DEFAULT_TIMEZONE);
+  // The day it ends where the person reading it lives, the same zone "today" is.
+  // A prop, not `useTz()`: this renders on the server, where that hook can't run.
+  const endDay = dayISOInTimeZone(new Date(chip.endsAt), timezone);
   const weekday = labels.weekdayName(endDay);
   const date = labels.numericDate(endDay);
   const n = chip.daysLeft;

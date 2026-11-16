@@ -19,6 +19,7 @@ import { rolloverIncomplete, useDailyNote, useUpsertDailyNote } from "@/lib/quer
 import { ensureDayMaterialized } from "@/lib/queries/routines";
 import type { Channel, DailyNote, Task, TaskBlock } from "@/lib/queries/types";
 import { addDays, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,7 @@ function PlanForm({
   const tcm = useTranslations("common");
   const tnav = useTranslations("nav");
   const tt = useTranslations("tasks");
+  const tz = useTz();
   const router = useRouter();
   const qc = useQueryClient();
   const upsert = useUpsertDailyNote(date);
@@ -140,8 +142,8 @@ function PlanForm({
   );
   const looseMin = Math.max(0, plannedMin - bookedMin);
   const finishMin = useMemo(
-    () => projectedFinishMin(mine, blocksByTask, looseMin),
-    [mine, blocksByTask, looseMin],
+    () => projectedFinishMin(mine, blocksByTask, looseMin, tz),
+    [mine, blocksByTask, looseMin, tz],
   );
   const noCategory = tt("noCategory");
   const byCategory = useMemo(
@@ -153,7 +155,7 @@ function PlanForm({
   const alreadyPlanned = !!note?.plan_completed_at;
   // Pulling work *into* a day that's already past just re-strands it somewhere
   // Hoy never looks. Reviewing an old plan is fine; feeding it isn't.
-  const isPast = date < todayISO();
+  const isPast = date < todayISO(tz);
   const pullable = source === "yesterday" ? yesterdayPending : backlog;
 
   function pullToToday(task: Task) {
@@ -334,7 +336,7 @@ function PlanForm({
                     index={i}
                     task={t}
                     channel={t.channel_id ? channelsById.get(t.channel_id) : undefined}
-                    startMin={firstStartMin(blocksByTask.get(t.id))}
+                    startMin={firstStartMin(blocksByTask.get(t.id), tz)}
                   />
                 ))}
               </ul>
@@ -678,9 +680,9 @@ function PlanTaskRow({
 }
 
 /** Where a task's first block starts, in minutes from midnight; null if unplaced. */
-function firstStartMin(blocks: readonly TaskBlock[] | undefined): number | null {
+function firstStartMin(blocks: readonly TaskBlock[] | undefined, tz: string): number | null {
   if (!blocks || blocks.length === 0) return null;
-  return Math.min(...blocks.map(blockStartMin));
+  return Math.min(...blocks.map((b) => blockStartMin(b, tz)));
 }
 
 /**
@@ -694,11 +696,12 @@ function projectedFinishMin(
   tasks: readonly Task[],
   blocksByTask: Map<string, TaskBlock[]>,
   looseMin: number,
+  tz: string,
 ): number | null {
   let lastEnd: number | null = null;
   for (const t of tasks) {
     for (const b of blocksByTask.get(t.id) ?? []) {
-      const end = blockEndMin(b);
+      const end = blockEndMin(b, tz);
       if (lastEnd == null || end > lastEnd) lastEnd = end;
     }
   }

@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, ChevronDown, RotateCcw } from "lucide-react";
 import { useLogTaskTime, useTasksForDate, useToggleTask } from "@/lib/queries/tasks";
 import { splitRunByDay } from "@/lib/time-entries";
+import { useTz } from "@/lib/use-tz";
 import { useChannels } from "@/lib/queries/channels";
 import { useToast } from "@/lib/stores/toast";
 import { useAudio } from "@/lib/stores/audio";
@@ -74,7 +75,8 @@ export function FocusTimer() {
   const tnav = useTranslations("nav");
   // `mutate` is stable, so the completion effect below does not re-run per render.
   const logTime = useLogTaskTime().mutate;
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const tasksQ = useTasksForDate(today);
   const tasks = (tasksQ.data ?? []).filter((t) => t.status === "todo");
   const channels = useChannels().data ?? [];
@@ -124,7 +126,7 @@ export function FocusTimer() {
         logTime({
           taskId: task.id,
           plannedDate: task.planned_date,
-          segments: splitRunByDay(end - DURATION.focus * 1000, end),
+          segments: splitRunByDay(end - DURATION.focus * 1000, end, tz),
         });
       }
     }
@@ -136,6 +138,7 @@ export function FocusTimer() {
     taskId,
     tasks,
     logTime,
+    tz,
     audioAutoStart,
     audioSource,
     setAudioPlaying,

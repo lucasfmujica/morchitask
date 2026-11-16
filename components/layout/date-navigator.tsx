@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
 
@@ -31,7 +32,8 @@ export function DateNavigator({
   const labels = useDateLabels();
   const t = useTranslations("day");
   const router = useRouter();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const isToday = date === today;
   const go = (d: string) => router.push(d === today ? "/today" : `/day/${d}`);
 

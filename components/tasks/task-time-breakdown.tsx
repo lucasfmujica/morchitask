@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
 import { useSetTaskDayTime, useTaskTimeEntries } from "@/lib/queries/tasks";
 import { addDays, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatDuration, parseDuration } from "@/lib/format";
 import { buildTimeBreakdown, type TimeBreakdown, type TimeSegment } from "@/lib/time-entries";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,7 @@ export function TimeBreakdownList({
   breakdown,
   showEmpty = false,
   runningDays = [],
-  today = todayISO(),
+  today: todayProp,
   meId,
   onSetDay,
 }: {
@@ -93,6 +94,8 @@ export function TimeBreakdownList({
 }) {
   const labels = useDateLabels();
   const t = useTranslations("tasks");
+  const tz = useTz();
+  const today = todayProp ?? todayISO(tz);
   const { days, untrackedMin } = breakdown;
   const running = new Set(runningDays);
   const editable = !!onSetDay && !!meId;

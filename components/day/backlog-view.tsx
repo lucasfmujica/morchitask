@@ -11,6 +11,7 @@ import { useChannelFilter } from "@/lib/channel-filter";
 import { filterTasksByChannels } from "@/lib/week-filter";
 import type { Channel, Task } from "@/lib/queries/types";
 import { addDays, ageInDays, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes, TIME_ESTIMATES } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,8 @@ export function BacklogView() {
   const channelLookupQ = useChannelLookup();
   const addFromComposer = useComposerCreate(null);
   const { selected } = useChannelFilter();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
 
   const tasks = useMemo(() => tasksQ.data ?? [], [tasksQ.data]);
   const filtering = selected.size > 0;
@@ -67,7 +69,7 @@ export function BacklogView() {
 
   const estimatedMin = tasks.reduce((s, t) => s + (t.time_estimate_min ?? 0), 0);
   const unestimated = tasks.filter((t) => t.time_estimate_min == null);
-  const stale = tasks.filter((t) => ageInDays(t.created_at, today) > STALE_DAYS);
+  const stale = tasks.filter((t) => ageInDays(t.created_at, today, tz) > STALE_DAYS);
   const [estimating, setEstimating] = useState(false);
 
   useOpenSharedTask();
@@ -307,6 +309,7 @@ function BacklogRow({
   const tcm = useTranslations("common");
   const td = useTranslations("day");
   const labels = useDateLabels();
+  const tz = useTz();
   const move = useMoveTaskToDate();
   const update = useUpdateTask();
   const openDetail = useTaskDetail((s) => s.open);
@@ -382,9 +385,9 @@ function BacklogRow({
             {channel
               ? t("rowMeta", {
                   category: channel.name,
-                  age: labels.ageLabel(task.created_at, today),
+                  age: labels.ageLabel(task.created_at, today, tz),
                 })
-              : labels.ageLabel(task.created_at, today)}
+              : labels.ageLabel(task.created_at, today, tz)}
           </span>
           {/* On the phone the pill moves down here: beside the buttons it
               squeezed titles to a word or two. */}

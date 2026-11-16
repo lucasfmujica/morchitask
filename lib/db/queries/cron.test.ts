@@ -65,3 +65,71 @@ describe("claimTrialReminders", () => {
     expect(rows[0].p).toHaveProperty("trial_reminder_sent_at");
   });
 });
+
+describe("claimDailyPlan", () => {
+  const at = (iso: string) => new Date(iso);
+
+  it("claims someone only once their own morning has started", async () => {
+    await client.exec(
+      `update profiles set timezone = 'Europe/Madrid', notification_prefs = '{"dailyPlan": true}' where id = '${COMP.u}';
+       update profiles set timezone = 'America/Argentina/Buenos_Aires' where id = '${TRIAL.u}';`,
+    );
+    // 07:30 UTC on 16 Nov: 08:30 in Madrid, 04:30 in Buenos Aires.
+    expect(await cron.claimDailyPlan([COMP.u, TRIAL.u], at("2026-11-16T07:30:00Z"))).toEqual([
+      { id: COMP.u, day: "2026-11-16" },
+    ]);
+    // 11:00 UTC: 08:00 in Buenos Aires. Madrid (12:00) already had it and is past the window.
+    expect(await cron.claimDailyPlan([COMP.u, TRIAL.u], at("2026-11-16T11:00:00Z"))).toEqual([
+      { id: TRIAL.u, day: "2026-11-16" },
+    ]);
+  });
+
+  it("claims nobody twice for the same local day, and again the next day", async () => {
+    expect(await cron.claimDailyPlan([TRIAL.u], at("2026-11-16T12:30:00Z"))).toEqual([]);
+    expect(await cron.claimDailyPlan([TRIAL.u], at("2026-11-17T11:05:00Z"))).toEqual([
+      { id: TRIAL.u, day: "2026-11-17" },
+    ]);
+  });
+
+  it("keeps the person's own prefs when it marks them", async () => {
+    const rows = await client.query<{ p: Record<string, unknown> }>(
+      `select notification_prefs as p from profiles where id = '${TRIAL.u}'`,
+    );
+    expect(rows.rows[0].p).toMatchObject({ dailyPlan: true, daily_plan_sent_for: "2026-11-17" });
+  });
+
+  it("uses the local day, not the UTC one", async () => {
+    await client.exec(`update profiles set timezone = 'Pacific/Auckland' where id = '${COMP.u}'`);
+    // 20:30 UTC on the 17th is 09:30 on the 18th in Auckland.
+    expect(await cron.claimDailyPlan([COMP.u], at("2026-11-17T20:30:00Z"))).toEqual([
+      { id: COMP.u, day: "2026-11-18" },
+    ]);
+  });
+});
+
+describe("dueTaskReminders", () => {
+  const OTHER = "d0000000-0000-4000-8000-000000000003";
+  const task = (id: string, extra: string) =>
+    client.exec(
+      `insert into tasks (id, household_id, owner_id, title, remind_at, shared, remind_by)
+       values ('${id}', '${TRIAL.h}', '${TRIAL.u}', '${id}', now() - interval '1 minute', ${extra})`,
+    );
+
+  it("goes to whoever set it on a shared task, and to the owner otherwise", async () => {
+    await client.exec(`
+      insert into "user" (id, email) values ('${OTHER}', 'o@example.com');
+      insert into profiles (id, household_id, display_name) values ('${OTHER}', '${TRIAL.h}', 'o');
+    `);
+    await task("e0000000-0000-4000-8000-000000000001", `true, '${OTHER}'`);
+    // Private task: the other member cannot see it, so it cannot be theirs.
+    await task("e0000000-0000-4000-8000-000000000002", `false, '${OTHER}'`);
+    // Set before the column existed.
+    await task("e0000000-0000-4000-8000-000000000003", `true, null`);
+    // Set by someone from another household (they left).
+    await task("e0000000-0000-4000-8000-000000000004", `true, '${COMP.u}'`);
+
+    const due = await cron.dueTaskReminders(new Date().toISOString());
+    const to = Object.fromEntries(due.map((d) => [d.id.slice(-1), d.recipient_id]));
+    expect(to).toEqual({ "1": OTHER, "2": TRIAL.u, "3": TRIAL.u, "4": TRIAL.u });
+  });
+});

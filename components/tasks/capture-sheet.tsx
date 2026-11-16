@@ -6,7 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Mic, X } from "lucide-react";
 import { parseDictation } from "@/lib/actions/ai";
 import { splitDictation, type CapturedTask } from "@/lib/capture";
-import { DEFAULT_TIMEZONE, blockInstant, todayISO } from "@/lib/date";
+import { blockInstant, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes } from "@/lib/format";
 import { orderForAppend } from "@/lib/ordering";
 import { useMe } from "@/lib/queries/profiles";
@@ -95,6 +96,7 @@ export function CaptureSheet({
   const tai = useTranslations("ai");
   const locale = useLocale();
   const labels = useDateLabels();
+  const tz = useTz();
   const qc = useQueryClient();
   const create = useCreateTask();
   const createBlock = useCreateBlockOnDay();
@@ -171,7 +173,7 @@ export function CaptureSheet({
     if (!body) return;
     setLoading(true);
     setNote(null);
-    const today = todayISO();
+    const today = todayISO(tz);
     // The action itself can throw (offline phone, a server error page): that
     // used to leave the sheet stuck on "Leyendo…". Treat it like any other
     // AI failure and fall back to the phrase splitter.
@@ -198,7 +200,7 @@ export function CaptureSheet({
     const chosen = items
       .filter((i) => i.on && i.title.trim())
       .map((i) => ({ ...i, title: i.title.trim() }));
-    const today = todayISO();
+    const today = todayISO(tz);
     const orders = new Map<string | null, number[]>();
     const ordersFor = (day: string | null) => {
       if (!orders.has(day)) {
@@ -239,11 +241,11 @@ export function CaptureSheet({
               {
                 date: target,
                 taskId: task.id,
-                startISO: blockInstant(target, item.time, DEFAULT_TIMEZONE),
+                startISO: blockInstant(target, item.time, tz),
                 endISO: blockInstant(
                   target,
                   minutesToHHMM(h * 60 + m + (item.estimateMin ?? 30)),
-                  DEFAULT_TIMEZONE,
+                  tz,
                 ),
               },
               {

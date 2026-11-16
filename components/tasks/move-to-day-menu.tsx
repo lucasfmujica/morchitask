@@ -7,6 +7,7 @@ import { CalendarArrowUp, Check } from "lucide-react";
 import { taskKeys, useMoveTaskToDate } from "@/lib/queries/tasks";
 import { orderForAppend } from "@/lib/ordering";
 import { addDays, todayISO, type DayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/queries/types";
 import { useDateLabels } from "@/lib/use-date-labels";
@@ -44,7 +45,8 @@ export function MoveToDayMenu({ task, align = "right" }: { task: Task; align?: "
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const tomorrow = addDays(today, 1);
   // Monday of next week (or 7 days out if today is already Monday).
   const nextMonday = addDays(today, (1 - new Date(`${today}T00:00:00`).getDay() + 7) % 7 || 7);

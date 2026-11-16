@@ -4,15 +4,39 @@ import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 /** A calendar day as "YYYY-MM-DD" (matches Postgres `date`). */
 export type DayISO = string;
 
+/**
+ * The zone a profile starts in, and the fallback when a stored one is not
+ * usable. Not "the app's timezone": each person has their own
+ * (`profiles.timezone`), read from the session on the server and from
+ * `useTz()` on the client. Reaching for this constant anywhere else is how a
+ * person outside Argentina gets the wrong day.
+ */
 export const DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires";
+
+/** True for a zone this runtime can compute with. */
+export function isTimeZone(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A usable zone, whatever was stored or sent. */
+export function toTimeZone(value: unknown): string {
+  return isTimeZone(value) ? value : DEFAULT_TIMEZONE;
+}
 
 /** The calendar day of `instant` within a given IANA timezone. */
 export function dayISOInTimeZone(instant: Date, timezone: string): DayISO {
   return formatInTimeZone(instant, timezone, "yyyy-MM-dd");
 }
 
-/** Today's calendar day in the household timezone. */
-export function todayISO(timezone: string = DEFAULT_TIMEZONE): DayISO {
+/** Today's calendar day in a person's timezone. Required on purpose: a default
+ *  here is how every screen ended up on Buenos Aires time. */
+export function todayISO(timezone: string): DayISO {
   return dayISOInTimeZone(new Date(), timezone);
 }
 
@@ -30,7 +54,7 @@ export function addDays(day: DayISO, n: number): DayISO {
  * backwards: the floor is today.
  * Safe to compare lexicographically since both are "YYYY-MM-DD".
  */
-export function carryOverTarget(day: DayISO, today: DayISO = todayISO()): DayISO {
+export function carryOverTarget(day: DayISO, today: DayISO): DayISO {
   const next = addDays(day, 1);
   return next < today ? today : next;
 }
@@ -90,8 +114,8 @@ export function dueTone(due: DayISO, today: DayISO): DueTone {
  * let it go). Months are approximated at 30 days on purpose: past a few weeks
  * the exact figure stops mattering and "hace 3 meses" is the useful sentence.
  */
-export function ageInDays(createdAt: string, today: DayISO = todayISO()): number {
-  const created = dayISOInTimeZone(parseISO(createdAt), DEFAULT_TIMEZONE);
+export function ageInDays(createdAt: string, today: DayISO, timezone: string): number {
+  const created = dayISOInTimeZone(parseISO(createdAt), timezone);
   return Math.max(
     0,
     Math.round((parseISO(today).getTime() - parseISO(created).getTime()) / 86_400_000),
@@ -100,17 +124,17 @@ export function ageInDays(createdAt: string, today: DayISO = todayISO()): number
 
 // ------------------------------------------------------------ time-blocking
 
-/** UTC instant (ISO) for a local "HH:mm" on `day` in the household timezone. */
+/** UTC instant (ISO) for a local "HH:mm" on `day` in the person's timezone. */
 export function blockInstant(day: DayISO, time: string, timezone: string): string {
   return fromZonedTime(`${day}T${time}:00`, timezone).toISOString();
 }
 
-/** Local "HH:mm" of an instant within the household timezone. */
+/** Local "HH:mm" of an instant within the person's timezone. */
 export function timeInTimeZone(instant: string, timezone: string): string {
   return formatInTimeZone(parseISO(instant), timezone, "HH:mm");
 }
 
-/** Minutes since local midnight of an instant within the household timezone. */
+/** Minutes since local midnight of an instant within the person's timezone. */
 export function minutesFromMidnight(instant: string, timezone: string): number {
   const [h, m] = formatInTimeZone(parseISO(instant), timezone, "HH:mm").split(":").map(Number);
   return h * 60 + m;

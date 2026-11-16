@@ -33,6 +33,7 @@ import { canHaveWorked, resolveWorkGoal } from "@/lib/worked";
 import { useTaskDetail } from "@/lib/stores/task-detail";
 import type { Channel, Task } from "@/lib/queries/types";
 import { addDays, todayISO, weekRange } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { orderForAppend } from "@/lib/ordering";
 import {
   parsePriorityDropId,
@@ -67,7 +68,8 @@ export function WeekView({ date }: { date: string }) {
   const t = useTranslations("week");
   const tnav = useTranslations("nav");
   const router = useRouter();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const week = weekRange(date, 1);
   const thisWeek = week.includes(today);
 
@@ -287,6 +289,7 @@ export function WeekView({ date }: { date: string }) {
                 }
                 owner={profilesById.get(activeTask.owner_id)}
                 density="compact"
+                tz={tz}
               />
             )}
           </DragOverlay>

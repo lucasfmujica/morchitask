@@ -199,8 +199,8 @@ export function createDateLabels(locale: Locale, words: RelativeWords) {
    * are approximated at 30 days on purpose: past a few weeks the exact figure
    * stops mattering.
    */
-  function ageLabel(createdAt: string, today?: DayISO): string {
-    const days = ageInDays(createdAt, today);
+  function ageLabel(createdAt: string, today: DayISO, timezone: string): string {
+    const days = ageInDays(createdAt, today, timezone);
     if (days === 0) return words.todayLower;
     if (days === 1) return words.yesterdayLower;
     if (days < 30) return words.daysAgo(days);

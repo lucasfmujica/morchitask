@@ -1,5 +1,5 @@
 import { fromZonedTime } from "date-fns-tz";
-import { DEFAULT_TIMEZONE, addDays, dayISOInTimeZone, type DayISO } from "@/lib/date";
+import { addDays, dayISOInTimeZone, type DayISO } from "@/lib/date";
 
 /** Minutes of tracked time attributed to one calendar day. */
 export type TimeSegment = { day: DayISO; minutes: number };
@@ -22,7 +22,7 @@ function startOfDayMs(day: DayISO, timezone: string): number {
 export function splitRunByDay(
   startedAtMs: number,
   endedAtMs: number,
-  timezone: string = DEFAULT_TIMEZONE,
+  timezone: string,
 ): TimeSegment[] {
   if (!(endedAtMs > startedAtMs)) return [];
 

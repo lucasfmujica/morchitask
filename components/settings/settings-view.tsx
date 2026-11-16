@@ -33,6 +33,7 @@ import { NotificationsCard } from "./notifications-card";
 import { InboundEmailCard } from "./inbound-email-card";
 import { StintCard } from "./stint-card";
 import { LanguageSelector } from "./language-selector";
+import { TimezoneCard } from "./timezone-card";
 import { DangerZone } from "./danger-zone";
 
 export function SettingsView() {
@@ -212,7 +213,12 @@ export function SettingsView() {
             <LanguageSelector />
           </FlatWell>
         </div>
-        <Well delay={200}>
+        <Well title={t("tzTitle")} delay={200}>
+          <Card>
+            <TimezoneCard />
+          </Card>
+        </Well>
+        <Well delay={220}>
           <NotificationsCard />
         </Well>
       </Topic>

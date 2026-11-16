@@ -23,8 +23,20 @@ vi.mock("next-intl/server", () => ({
 }));
 vi.mock("@/lib/db/queries/cron", () => ({
   dueTaskReminders: async () => [
-    { id: "t1", owner_id: "comped", title: "Comprar pan", planned_date: null },
-    { id: "t2", owner_id: "locked", title: "Pagar luz", planned_date: null },
+    {
+      id: "t1",
+      owner_id: "comped",
+      recipient_id: "comped",
+      title: "Comprar pan",
+      planned_date: null,
+    },
+    {
+      id: "t2",
+      owner_id: "locked",
+      recipient_id: "locked",
+      title: "Pagar luz",
+      planned_date: null,
+    },
   ],
   profileNotificationPrefs: async () =>
     new Map([
@@ -39,6 +51,7 @@ vi.mock("@/lib/db/queries/cron", () => ({
   profileLocales: async () => new Map(),
   subscriptionsForProfiles: async () => [sub("comped"), sub("locked")],
   markRemindersSent,
+  claimDailyPlan: async () => [],
   deleteSubscriptions: vi.fn(),
 }));
 

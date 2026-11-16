@@ -10,12 +10,20 @@ function at(day: string, time: string) {
 
 describe("splitRunByDay", () => {
   it("keeps a same-day run in one segment", () => {
-    const segments = splitRunByDay(at("2026-07-29", "09:00"), at("2026-07-29", "11:30"));
+    const segments = splitRunByDay(
+      at("2026-07-29", "09:00"),
+      at("2026-07-29", "11:30"),
+      DEFAULT_TIMEZONE,
+    );
     expect(segments).toEqual([{ day: "2026-07-29", minutes: 150 }]);
   });
 
   it("cuts a run at local midnight, charging each day what it earned", () => {
-    const segments = splitRunByDay(at("2026-07-29", "23:00"), at("2026-07-30", "01:30"));
+    const segments = splitRunByDay(
+      at("2026-07-29", "23:00"),
+      at("2026-07-30", "01:30"),
+      DEFAULT_TIMEZONE,
+    );
     expect(segments).toEqual([
       { day: "2026-07-29", minutes: 60 },
       { day: "2026-07-30", minutes: 90 },
@@ -23,15 +31,19 @@ describe("splitRunByDay", () => {
   });
 
   it("emits one segment per day for a run spanning a full day", () => {
-    const segments = splitRunByDay(at("2026-07-28", "22:00"), at("2026-07-30", "02:00"));
+    const segments = splitRunByDay(
+      at("2026-07-28", "22:00"),
+      at("2026-07-30", "02:00"),
+      DEFAULT_TIMEZONE,
+    );
     expect(segments.map((s) => s.day)).toEqual(["2026-07-28", "2026-07-29", "2026-07-30"]);
     expect(totalMinutes(segments)).toBe(28 * 60);
   });
 
   it("logs nothing for a zero-length or backwards run", () => {
     const t = at("2026-07-29", "09:00");
-    expect(splitRunByDay(t, t)).toEqual([]);
-    expect(splitRunByDay(t, t - 1000)).toEqual([]);
+    expect(splitRunByDay(t, t, DEFAULT_TIMEZONE)).toEqual([]);
+    expect(splitRunByDay(t, t - 1000, DEFAULT_TIMEZONE)).toEqual([]);
   });
 
   it("respects a non-default timezone", () => {

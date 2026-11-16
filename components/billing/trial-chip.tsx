@@ -11,6 +11,7 @@ import { TrialChipView } from "./trial-chip-view";
  */
 export async function TrialChip() {
   const session = await auth();
-  const chip = session?.access ? trialChip(session.access) : null;
-  return chip ? <TrialChipView chip={chip} /> : null;
+  if (!session?.access) return null;
+  const chip = trialChip(session.access);
+  return chip ? <TrialChipView chip={chip} timezone={session.timezone} /> : null;
 }

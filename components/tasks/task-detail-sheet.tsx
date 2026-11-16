@@ -32,7 +32,8 @@ import {
   PRIORITY_LABEL_KEY,
   TASK_PRIORITIES,
 } from "@/lib/priority";
-import { DEFAULT_TIMEZONE, addDays, blockInstant, timeInTimeZone, todayISO } from "@/lib/date";
+import { addDays, blockInstant, timeInTimeZone, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import {
   REMINDER_OFFSETS,
   offsetFromRemindAt,
@@ -193,7 +194,8 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
     setAddingChannel(false);
   }
 
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const tomorrow = addDays(today, 1);
 
   /** Reschedule the task to another day (clears its time-blocks, like a drag).
@@ -620,7 +622,7 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
               ) : reminderOffset !== null ? (
                 tt(reminderOffsetLabelKey(reminderOffset), { n: reminderOffset })
               ) : (
-                tt("reminderAtTime", { time: timeInTimeZone(task.remind_at, TZ) })
+                tt("reminderAtTime", { time: timeInTimeZone(task.remind_at, tz) })
               )
             }
           >
@@ -878,8 +880,6 @@ function TaskDetailContent({ task: snapshot, onClose }: { task: Task; onClose: (
   );
 }
 
-const TZ = DEFAULT_TIMEZONE;
-
 function ReminderControl({
   task,
   update,
@@ -888,10 +888,11 @@ function ReminderControl({
   update: ReturnType<typeof useUpdateTask>;
 }) {
   const tt = useTranslations("tasks");
+  const tz = useTz();
   const hasBlock = !!task.block_start;
   const currentOffset = offsetFromRemindAt(task.block_start, task.remind_at);
   const customTime =
-    task.remind_at && currentOffset === null ? timeInTimeZone(task.remind_at, TZ) : null;
+    task.remind_at && currentOffset === null ? timeInTimeZone(task.remind_at, tz) : null;
 
   function setOffset(o: number) {
     if (!task.block_start) return;
@@ -907,7 +908,7 @@ function ReminderControl({
     if (!task.planned_date) return;
     update.mutate({
       task,
-      patch: { remind_at: blockInstant(task.planned_date, time, TZ), reminder_sent_at: null },
+      patch: { remind_at: blockInstant(task.planned_date, time, tz), reminder_sent_at: null },
     });
   }
 

@@ -22,6 +22,7 @@ import {
 } from "@/lib/analytics";
 import { canHaveWorked, WORK_GOAL_MIN, workedState } from "@/lib/worked";
 import { addDays, addMonths, todayISO, weekRange, type DayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Well } from "@/components/ui";
@@ -91,7 +92,8 @@ export function ResumenView() {
   const labels = useDateLabels();
   const t = useTranslations("summary");
   const [period, setPeriod] = useState<Period>("week");
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const shape = useMemo(() => buildPeriod(today, period, labels), [today, period, labels]);
   const days = useMemo(() => [...shape.days], [shape.days]);
 

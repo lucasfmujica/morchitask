@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { skipOnboarding } from "@/lib/actions/onboarding";
+import { adoptDeviceTimeZone } from "@/lib/actions/timezone";
 import { ONBOARDING_STEPS, onboardingStepPath, type OnboardingStep } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,18 @@ export function OnboardingFrame({
   children: ReactNode;
   footer: ReactNode;
 }) {
+  // A profile is created on the server, with no clock to read, so it starts in
+  // the default zone. This is the first moment there is a browser to ask.
+  // Before onboarding ends only; the action refuses afterwards.
+  useEffect(() => {
+    try {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (zone) adoptDeviceTimeZone(zone).catch(() => {});
+    } catch {
+      // No zone to offer: the default stays, and Settings can change it.
+    }
+  }, []);
+
   return (
     <div className="min-h-dvh bg-[linear-gradient(180deg,var(--wash-mint)_0%,var(--wash-mint-2)_36%,var(--surface)_66%)] text-fg">
       <div className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col px-5 pt-[max(56px,calc(env(safe-area-inset-top)+24px))] pb-[max(32px,calc(env(safe-area-inset-bottom)+16px))] md:pt-20">

@@ -650,7 +650,19 @@
     "deleteBillingFailed": "We couldn't cancel your plan, so nothing was deleted. Try again in a bit.",
     "inviteCopyShort": "Copy link",
     "inviteCopied": "Copied",
-    "inviteLinkNote": "Send the link wherever you already talk. If they already use Morchitask, opening it lets them choose whether to join; their things come in private."
+    "inviteLinkNote": "Send the link wherever you already talk. If they already use Morchitask, opening it lets them choose whether to join; their things come in private.",
+    "tzTitle": "Time zone",
+    "tzChange": "Change",
+    "tzDone": "Done",
+    "tzSearch": "Search for a city or country",
+    "tzListLabel": "Time zones",
+    "tzEmpty": "We couldn't find that city. Try the country's capital, or its name in English.",
+    "tzHint": "It decides when your day starts and ends, and when the reminder to plan arrives. It's yours: if you share the space, the other person has their own.",
+    "tzKeepNote": "Your tasks keep their times: a task at 10:00 is still at 10:00 in the new zone.",
+    "tzError": "We couldn't change the time zone. Try again.",
+    "tzBanner": "Looks like you're in a different time zone. <b>Use {city}?</b> <soft>It's <clock>{time}</clock> there.</soft>",
+    "tzBannerKeep": "Stay on {city}",
+    "tzBannerUse": "Use {city}"
   },
   "goals": {
     "title": "Goals",

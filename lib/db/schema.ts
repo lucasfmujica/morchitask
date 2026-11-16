@@ -154,6 +154,20 @@ export const subscriptions = pgTable(
     recurring_interval: text("recurring_interval"),
     current_period_end: timestamp("current_period_end", { withTimezone: true, mode: "string" }),
     cancel_at_period_end: boolean("cancel_at_period_end").notNull().default(false),
+    /**
+     * The member whose checkout this was: the one who manages the plan. Was a
+     * key in that person's `notification_prefs` until billing got a migration.
+     * Null for a subscription whose checkout carried no user id, and again when
+     * the payer's account is deleted. A payer who has left the space still
+     * points here, so readers check membership (see `billingManager`).
+     */
+    payer_id: uuid("payer_id").references(() => profiles.id, { onDelete: "set null" }),
+    /**
+     * The provider's own `modified_at` for the state in this row. Webhooks are
+     * not delivered in order: without this, a late "active" could overwrite
+     * the "canceled" that came after it.
+     */
+    provider_modified_at: timestamp("provider_modified_at", { withTimezone: true, mode: "string" }),
     created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -218,6 +232,13 @@ export const profiles = pgTable(
     /** Interface language. The cookie that renders each request is a copy of
      *  this; the column is what makes the choice follow you to another device. */
     locale: text("locale").notNull().default("es"),
+    /**
+     * IANA zone that decides when this person's day starts and ends. Per
+     * person, not per space: two people sharing a space can live in different
+     * zones. `households.timezone` is what every profile started from and is
+     * no longer read.
+     */
+    timezone: text("timezone").notNull().default("America/Argentina/Buenos_Aires"),
     color: text("color").notNull().default("#0d9488"),
     avatar_url: text("avatar_url"),
     capacity_target_min: integer("capacity_target_min"),
@@ -459,6 +480,12 @@ export const tasks = pgTable(
     completed_at: timestamp("completed_at", { withTimezone: true, mode: "string" }),
     remind_at: timestamp("remind_at", { withTimezone: true, mode: "string" }),
     reminder_sent_at: timestamp("reminder_sent_at", { withTimezone: true, mode: "string" }),
+    /**
+     * Who set the reminder, and so who it is pushed to. On a shared task that
+     * is not always the owner. Null on rows older than the column falls back
+     * to the owner.
+     */
+    remind_by: uuid("remind_by").references(() => profiles.id, { onDelete: "set null" }),
     rollover_count: integer("rollover_count").notNull().default(0),
     rollover_origin_date: date("rollover_origin_date", { mode: "string" }),
     gcal_event_id: text("gcal_event_id"),

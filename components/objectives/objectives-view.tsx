@@ -13,6 +13,7 @@ import {
 import type { ObjectiveProgress } from "@/lib/queries/objectives";
 import type { Objective, ObjectivePeriod } from "@/lib/queries/types";
 import { addDays, addMonths, todayISO, weekRange } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
@@ -49,7 +50,8 @@ export function ObjectivesView() {
   const week = objectives.filter((o) => o.period === "week");
   const month = objectives.filter((o) => o.period === "month");
 
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const thisWeek = periodRange("week", today);
   const thisMonth = periodRange("month", today);
 
@@ -101,11 +103,12 @@ function NewObjective() {
   const create = useCreateObjective();
   const [title, setTitle] = useState("");
   const [period, setPeriod] = useState<ObjectivePeriod>("week");
+  const tz = useTz();
 
   function add() {
     const value = title.trim();
     if (!value) return;
-    const { start, end } = periodRange(period, todayISO());
+    const { start, end } = periodRange(period, todayISO(tz));
     create.mutate({ title: value, period, start_date: start, end_date: end });
     setTitle("");
   }

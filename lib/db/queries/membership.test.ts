@@ -144,21 +144,84 @@ beforeEach(async () => {
   await seed();
 });
 
+/** A subscription for `householdId` whose checkout was `userId`'s. */
+const paidBy = (householdId: string, userId: string, modifiedAt?: string) =>
+  subs.upsertSubscription({
+    householdId,
+    providerSubscriptionId: `sub_${householdId.slice(0, 8)}`,
+    providerCustomerId: `cus_${householdId.slice(0, 8)}`,
+    status: "active",
+    recurringInterval: "month",
+    currentPeriodEnd: "2027-01-01T00:00:00.000Z",
+    cancelAtPeriodEnd: false,
+    payerUserId: userId,
+    providerModifiedAt: modifiedAt ?? null,
+  });
+
 describe("who runs a space", () => {
   it("is whoever nobody invited, until someone pays", async () => {
     const before = await m.spaceMembers(CASA);
     expect(before.roles).toEqual({ creatorId: ANA, managerId: null, adminId: ANA });
 
-    await subs.recordBillingManager(CASA, MARTIN);
+    await paidBy(CASA, MARTIN);
     const after = await m.spaceMembers(CASA);
     expect(after.roles).toEqual({ creatorId: ANA, managerId: MARTIN, adminId: MARTIN });
   });
 
-  it("moves the payer marker instead of adding a second one", async () => {
-    await subs.recordBillingManager(CASA, MARTIN);
-    await subs.recordBillingManager(CASA, ANA);
+  it("has one payer per space: a later checkout replaces the earlier one", async () => {
+    await paidBy(CASA, MARTIN);
+    await paidBy(CASA, ANA);
     expect((await subs.billingManager(CASA))?.id).toBe(ANA);
-    expect(await count(`profiles where notification_prefs ? 'billing_manager_for'`)).toBe(1);
+    expect(await count(`subscriptions where household_id = '${CASA}'`)).toBe(1);
+  });
+
+  it("keeps the payer when a later event does not name one", async () => {
+    await paidBy(CASA, MARTIN);
+    await subs.upsertSubscription({
+      householdId: CASA,
+      providerSubscriptionId: "sub_x",
+      providerCustomerId: "cus_x",
+      status: "past_due",
+      recurringInterval: "month",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    });
+    expect((await subs.billingManager(CASA))?.id).toBe(MARTIN);
+  });
+
+  it("does not record a payer who is not in the space, or an id that is not one", async () => {
+    await paidBy(CASA, "00000000-0000-4000-8000-00000000dead");
+    expect(await subs.billingManager(CASA)).toBeNull();
+    await paidBy(CASA, "not-a-uuid");
+    expect(await subs.billingManager(CASA)).toBeNull();
+  });
+
+  it("drops an event older than the state already stored", async () => {
+    await paidBy(CASA, MARTIN, "2026-11-10T12:00:00.000Z");
+    const stale = await subs.upsertSubscription({
+      householdId: CASA,
+      providerSubscriptionId: "sub_late",
+      providerCustomerId: "cus_late",
+      status: "canceled",
+      recurringInterval: "month",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      providerModifiedAt: "2026-11-10T11:59:59.000Z",
+    });
+    expect(stale).toBeUndefined();
+    expect((await subs.getSubscription(CASA))?.status).toBe("active");
+
+    const newer = await subs.upsertSubscription({
+      householdId: CASA,
+      providerSubscriptionId: "sub_late",
+      providerCustomerId: "cus_late",
+      status: "canceled",
+      recurringInterval: "month",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      providerModifiedAt: "2026-11-10T12:00:01.000Z",
+    });
+    expect(newer?.status).toBe("canceled");
   });
 });
 
@@ -323,7 +386,7 @@ describe("leaving a shared space", () => {
   });
 
   it("lets the payer run the space even when they did not create it", async () => {
-    await subs.recordBillingManager(CASA, MARTIN);
+    await paidBy(CASA, MARTIN);
     expect(await m.separateMember(CASA, MARTIN, MARTIN)).toEqual({
       ok: false,
       reason: "admin_cannot_leave",

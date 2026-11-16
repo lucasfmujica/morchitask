@@ -14,6 +14,7 @@ import { useChannelLookup, EMPTY_CHANNEL_MAP } from "@/lib/queries/channels";
 import { useMe } from "@/lib/queries/profiles";
 import type { Channel } from "@/lib/queries/types";
 import { addMonths, monthGrid, monthOf, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes } from "@/lib/format";
 import { capacityState, resolveCapacity } from "@/lib/capacity";
 import { canHaveWorked, resolveWorkGoal, workedState } from "@/lib/worked";
@@ -40,7 +41,8 @@ export function MonthView({ date }: { date: string }) {
   const tnav = useTranslations("nav");
   const tt = useTranslations("tasks");
   const router = useRouter();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const weeks = monthGrid(date, 1);
   const targetMonth = monthOf(date);
   const isThisMonth = targetMonth === monthOf(today);

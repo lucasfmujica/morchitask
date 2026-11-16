@@ -15,7 +15,11 @@ import { isBillingEnabled } from "@/lib/billing-config";
 export async function requireSession() {
   const session = await auth();
   if (!session?.householdId) throw new Error("unauthorized");
-  return { householdId: session.householdId, userId: session.user.id };
+  return {
+    householdId: session.householdId,
+    userId: session.user.id,
+    timezone: session.timezone,
+  };
 }
 
 /**
@@ -35,5 +39,9 @@ export async function requireWriteAccess() {
   if (!hasWriteAccess(session.access, isBillingEnabled())) {
     throw new Error("subscription required");
   }
-  return { householdId: session.householdId, userId: session.user.id };
+  return {
+    householdId: session.householdId,
+    userId: session.user.id,
+    timezone: session.timezone,
+  };
 }

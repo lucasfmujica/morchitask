@@ -248,7 +248,12 @@ export async function updateTask(
   taskId: string,
   patch: TaskPatch,
 ) {
-  const clean = pickTaskPatch(patch);
+  const picked = pickTaskPatch(patch);
+  // A reminder belongs to whoever set it: on a shared task that is the person
+  // who gets the push, not necessarily the owner. Decided here, from the
+  // session, never from the client.
+  const clean =
+    "remind_at" in picked ? { ...picked, remind_by: picked.remind_at ? userId : null } : picked;
   // Ids the client names must point inside this household: a person, a
   // category, a goal. Otherwise the update matches nothing and throws.
   const where = and(
