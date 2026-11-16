@@ -749,6 +749,24 @@ describe("two people in one household", () => {
       expect(await n(`task_attachments where task_id = '${t}'`)).toBe(1);
     });
 
+    it("records who set a reminder from the session, and clears it with the reminder", async () => {
+      const at = "2027-01-01T12:00:00.000Z";
+      // S1 sets a reminder on the shared task S2 owns: it is S1's.
+      const set = await tasksQueries.updateTask(S, S1, ids.shared, { remind_at: at });
+      expect(set.remind_by).toBe(S1);
+      // A client cannot name someone else as the one to notify.
+      const forged = await tasksQueries.updateTask(S, S1, ids.shared, {
+        remind_at: at,
+        remind_by: S2,
+      } as never);
+      expect(forged.remind_by).toBe(S1);
+      // An unrelated edit leaves it alone; clearing the reminder clears it.
+      expect((await tasksQueries.updateTask(S, S2, ids.shared, { title: "x" })).remind_by).toBe(S1);
+      expect(
+        (await tasksQueries.updateTask(S, S2, ids.shared, { remind_at: null })).remind_by,
+      ).toBeNull();
+    });
+
     it("can still work on the shared task, without touching S2's time on it", async () => {
       const subs = await import("./subtasks");
       await tasksQueries.updateTask(S, S1, ids.shared, { notes: "s1 was here" });
@@ -945,18 +963,27 @@ describe("two people in one household", () => {
     });
 
     it("never names another household's payer as this one's", async () => {
-      // B pays for B, and a stale marker on B naming A must not make B A's payer.
-      await subscriptionQueries.recordBillingManager(B.household, B.user);
+      const sub = (householdId: string, payerUserId: string) =>
+        subscriptionQueries.upsertSubscription({
+          householdId,
+          providerSubscriptionId: `sub_payer_${householdId.slice(0, 8)}`,
+          providerCustomerId: `cus_payer_${householdId.slice(0, 8)}`,
+          status: "active",
+          recurringInterval: "month",
+          currentPeriodEnd: "2027-01-01T00:00:00.000Z",
+          cancelAtPeriodEnd: false,
+          payerUserId,
+        });
+      // B pays for B. A webhook naming B as A's payer records nobody: B is not in A.
+      await sub(B.household, B.user);
+      await sub(A.household, B.user);
+      expect(await subscriptionQueries.billingManager(A.household)).toBeNull();
+      // Even a payer_id forced onto A's row does not make an outsider A's payer.
       await client.exec(
-        `update profiles set notification_prefs = notification_prefs || '{"billing_manager_for": "${A.household}"}' where id = '${B.user}'`,
+        `update subscriptions set payer_id = '${B.user}' where household_id = '${A.household}'`,
       );
       expect(await subscriptionQueries.billingManager(A.household)).toBeNull();
-      // And a webhook naming A's user as B's payer does nothing: A is not in B.
-      await subscriptionQueries.recordBillingManager(B.household, A.user);
-      const marked = await client.query<{ n: number }>(
-        `select count(*)::int as n from profiles where id = '${A.user}' and notification_prefs ? 'billing_manager_for'`,
-      );
-      expect(marked.rows[0].n).toBe(0);
+      expect((await subscriptionQueries.billingManager(B.household))?.id).toBe(B.user);
     });
   });
 });

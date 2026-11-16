@@ -1,6 +1,7 @@
 "use client";
 
 import { dueTone, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { cn } from "@/lib/utils";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
@@ -19,7 +20,8 @@ const TONE_STYLES = {
 export function DueDateBadge({ dueDate, className }: { dueDate: string; className?: string }) {
   const t = useTranslations("tasks");
   const labels = useDateLabels();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const tone = dueTone(dueDate, today);
   return (
     <span

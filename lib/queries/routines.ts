@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/routines";
 import type { RoutineInput } from "@/lib/db/queries/routines";
 import { addDays, todayISO, type DayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import type { RecurringTemplate } from "./types";
 
 const routineKeys = {
@@ -57,10 +58,11 @@ export function useDeleteRoutine() {
  * this via `lib/streaks.ts`.
  */
 export function useRoutineStreaks() {
+  const tz = useTz();
   return useQuery({
     queryKey: routineKeys.streaks,
     queryFn: async (): Promise<RoutineCompletions> => {
-      const since = addDays(todayISO(), -90);
+      const since = addDays(todayISO(tz), -90);
       const rows = await getRoutineStreaks(since);
 
       const map: RoutineCompletions = new Map();

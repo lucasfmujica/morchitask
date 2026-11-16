@@ -4,7 +4,6 @@ import { partnerEmail } from "@/lib/db/queries/profiles";
 import { blockForCalendarSync, setBlockCalendarEvent } from "@/lib/db/queries/task-blocks";
 import { calendarAccessFailure, calendarAccessToken } from "@/lib/google-calendar";
 
-const TZ = "America/Argentina/Buenos_Aires";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://productivity-app-three-pink.vercel.app";
 const EVENTS = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 // sendUpdates=all so invited guests get the invite / cancellation notification.
@@ -43,8 +42,8 @@ export async function POST(req: Request) {
 
   const eventBody = {
     summary: block.title,
-    start: { dateTime: block.start_at, timeZone: TZ },
-    end: { dateTime: block.end_at, timeZone: TZ },
+    start: { dateTime: block.start_at, timeZone: session.timezone },
+    end: { dateTime: block.end_at, timeZone: session.timezone },
     // Always set attendees explicitly so un-sharing later clears the guest.
     attendees,
     source: { title: "Morchitask", url: APP_URL },

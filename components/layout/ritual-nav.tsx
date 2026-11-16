@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarCheck2, Check, Moon, Sun } from "lucide-react";
-import { todayISO } from "@/lib/date";
+import { minutesFromMidnight, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { useDailyNote } from "@/lib/queries/daily-notes";
 import { useWeeklyNote } from "@/lib/queries/weekly-notes";
 import { isReviewWindow, reviewWeekFor } from "@/lib/review";
@@ -29,18 +30,21 @@ type Ritual = {
 /** Today's plan/shutdown state, this week's review, plus a time-of-day "do
  *  this now" hint. */
 function useRitualStatus(): Ritual[] {
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const note = useDailyNote(today).data;
   const reviewWeek = reviewWeekFor(today);
   const weekly = useWeeklyNote(reviewWeek).data;
 
-  // Compute the hour only after mount: the server renders in its own timezone,
-  // so deriving emphasis during SSR would cause a hydration mismatch.
+  // Compute the hour only after mount: the server's "now" is not the
+  // browser's, so deriving emphasis during SSR would cause a hydration
+  // mismatch. The hour is the person's (their saved zone), like "today" above,
+  // not the device's.
   const [hour, setHour] = useState<number | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHour(new Date().getHours());
-  }, []);
+    setHour(Math.floor(minutesFromMidnight(new Date().toISOString(), tz) / 60));
+  }, [tz]);
   const isMorning = hour === null ? null : hour < MORNING_UNTIL;
 
   const planDone = !!note?.plan_completed_at;

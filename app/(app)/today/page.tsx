@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { DayView } from "@/components/day/day-view";
-import { todayISO } from "@/lib/date";
+import { auth } from "@/lib/auth";
+import { DEFAULT_TIMEZONE, todayISO } from "@/lib/date";
 import { onboardingStepPath } from "@/lib/onboarding";
 import { needsOnboarding } from "@/lib/onboarding-server";
 
@@ -17,5 +18,6 @@ export const dynamic = "force-dynamic";
  */
 export default async function TodayPage() {
   if (await needsOnboarding()) redirect(onboardingStepPath(1));
-  return <DayView date={todayISO()} />;
+  const session = await auth();
+  return <DayView date={todayISO(session?.timezone ?? DEFAULT_TIMEZONE)} />;
 }

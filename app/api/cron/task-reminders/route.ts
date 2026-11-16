@@ -12,12 +12,17 @@ import {
 } from "@/lib/db/queries/cron";
 import { isBillingEnabled } from "@/lib/billing-config";
 import { isAuthorizedCron } from "@/lib/cron-auth";
+import { sendDailyPlanPushes } from "@/lib/daily-plan-push";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/locale";
 import { mayNotify } from "@/lib/push-audience";
 
 /**
- * Fires per-task reminders. Scans tasks whose `remind_at` has passed and that
- * haven't been sent yet, and pushes the owner (if they enabled task reminders).
+ * Fires per-task reminders, and the morning "plan your day" push for whoever's
+ * local 08:00 just passed (`sendDailyPlanPushes`).
+ *
+ * Per-task reminders: scans tasks whose `remind_at` has passed and that
+ * haven't been sent yet, and pushes whoever set each one (if they enabled task
+ * reminders); see `dueTaskReminders` for who that is.
  *
  * **Scheduled outside this repo.** Unlike `daily-plan`, this one is NOT in
  * `vercel.json`: it needs to run every ~5 minutes and Vercel's Hobby plan caps
@@ -36,9 +41,14 @@ export async function GET(req: Request) {
     process.env.VAPID_PRIVATE_KEY!,
   );
 
-  const nowISO = new Date().toISOString();
+  // This is the only cron that runs often enough to catch 08:00 in every
+  // timezone, so the morning push rides along with it.
+  const now = new Date();
+  const plan = await sendDailyPlanPushes(now);
+
+  const nowISO = now.toISOString();
   const dueTasks = await dueTaskReminders(nowISO);
-  if (dueTasks.length === 0) return NextResponse.json({ sent: 0 });
+  if (dueTasks.length === 0) return NextResponse.json({ sent: 0, dailyPlan: plan.sent });
 
   const [prefs, facts] = await Promise.all([profileNotificationPrefs(), profileBillingFacts()]);
   const billingEnabled = isBillingEnabled();
@@ -50,7 +60,7 @@ export async function GET(req: Request) {
       .map(([id]) => id),
   );
 
-  const owners = [...new Set(dueTasks.map((t) => t.owner_id))];
+  const owners = [...new Set(dueTasks.map((t) => t.recipient_id))];
   const [subs, locales] = await Promise.all([subscriptionsForProfiles(owners), profileLocales()]);
 
   // Only the body is ours; the title is the task, which is whatever the person
@@ -71,13 +81,13 @@ export async function GET(req: Request) {
   const dead: string[] = [];
   await Promise.all(
     dueTasks.map(async (t) => {
-      if (!wantsReminders.has(t.owner_id)) return; // opted out — still marked sent below
+      if (!wantsReminders.has(t.recipient_id)) return; // opted out — still marked sent below
       const payload = JSON.stringify({
         title: t.title,
-        body: bodies.get(locales.get(t.owner_id) ?? DEFAULT_LOCALE)!,
+        body: bodies.get(locales.get(t.recipient_id) ?? DEFAULT_LOCALE)!,
         url: t.planned_date ? `/day/${t.planned_date}` : "/today",
       });
-      for (const s of subsByOwner.get(t.owner_id) ?? []) {
+      for (const s of subsByOwner.get(t.recipient_id) ?? []) {
         try {
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_key } },
@@ -99,5 +109,10 @@ export async function GET(req: Request) {
   );
   if (dead.length > 0) await deleteSubscriptions(dead);
 
-  return NextResponse.json({ sent, processed: dueTasks.length, removed: dead.length });
+  return NextResponse.json({
+    sent,
+    processed: dueTasks.length,
+    removed: dead.length,
+    dailyPlan: plan.sent,
+  });
 }

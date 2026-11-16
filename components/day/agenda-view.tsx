@@ -14,7 +14,8 @@ import { useMe } from "@/lib/queries/profiles";
 import { useDailyNote, useUpsertDailyNote } from "@/lib/queries/daily-notes";
 import { useCalendarEvents } from "@/lib/queries/calendar";
 import type { Channel, Task, TaskBlock } from "@/lib/queries/types";
-import { DEFAULT_TIMEZONE, minutesFromMidnight, timeInTimeZone, todayISO } from "@/lib/date";
+import { minutesFromMidnight, timeInTimeZone, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes } from "@/lib/format";
 import {
   DEFAULT_END_TARGET_MIN,
@@ -64,7 +65,6 @@ const DAY_END_MIN = 21 * 60;
 const SLOT_MIN = 30;
 const RESIZE_SNAP_MIN = 15;
 const MIN_BLOCK_MIN = 15;
-const TZ = DEFAULT_TIMEZONE;
 
 /**
  * The day's calendar. Each time-block is drawn as a draggable/resizable card; a
@@ -95,6 +95,7 @@ export function AgendaView({
   onReplanOpenChange?: (open: boolean) => void;
 }) {
   const td = useTranslations("day");
+  const tz = useTz();
   const me = useMe().data;
   const { scheduleNewBlock, moveBlock, resizeBlock, removeBlock, connected } =
     useAgendaScheduling(date);
@@ -134,8 +135,8 @@ export function AgendaView({
     for (const task of tasks) {
       for (const block of blocksByTask.get(task.id) ?? []) items.push({ task, block });
     }
-    return items.sort((a, b) => blockStartMin(a.block) - blockStartMin(b.block));
-  }, [tasks, blocksByTask]);
+    return items.sort((a, b) => blockStartMin(a.block, tz) - blockStartMin(b.block, tz));
+  }, [tasks, blocksByTask, tz]);
 
   // Tasks with time still to place (keep showing until blocks cover the estimate).
   const unscheduled = useMemo(
@@ -149,27 +150,27 @@ export function AgendaView({
     const ranges: ReplanEvent[] = [];
     for (const e of events) {
       if (e.allDay || !e.start) continue;
-      const startMin = minutesFromMidnight(e.start, TZ);
+      const startMin = minutesFromMidnight(e.start, tz);
       ranges.push({
         startMin,
-        endMin: e.end ? minutesFromMidnight(e.end, TZ) : startMin + 30,
+        endMin: e.end ? minutesFromMidnight(e.end, tz) : startMin + 30,
         title: e.title,
       });
     }
     return ranges;
-  }, [events]);
+  }, [events, tz]);
 
   // Everything that occupies the day, blocks and calendar events alike — the
   // openings have to account for both or "hueco de 1h" is a lie.
   const busy: BusyRange[] = useMemo(
     () => [
       ...scheduled.map(({ block }) => ({
-        startMin: blockStartMin(block),
-        endMin: blockEndMin(block),
+        startMin: blockStartMin(block, tz),
+        endMin: blockEndMin(block, tz),
       })),
       ...eventBusy,
     ],
-    [scheduled, eventBusy],
+    [scheduled, eventBusy, tz],
   );
 
   const openings = useMemo(() => freeSlots(busy, DAY_START_MIN, DAY_END_MIN, 30), [busy]);
@@ -182,19 +183,19 @@ export function AgendaView({
 
   // "Now" indicator (only for today, ticking each minute).
   const hydrated = useHydrated();
-  const isToday = date === todayISO();
-  const [nowMin, setNowMin] = useState(() => minutesFromMidnight(new Date().toISOString(), TZ));
+  const isToday = date === todayISO(tz);
+  const [nowMin, setNowMin] = useState(() => minutesFromMidnight(new Date().toISOString(), tz));
   useEffect(() => {
     const id = setInterval(
-      () => setNowMin(minutesFromMidnight(new Date().toISOString(), TZ)),
+      () => setNowMin(minutesFromMidnight(new Date().toISOString(), tz)),
       60_000,
     );
     return () => clearInterval(id);
-  }, []);
+  }, [tz]);
   // Open the window on the hour of the first block (09:00 at the latest), with
   // that hour's line where the canvas puts its first one — not at 06:00, the
   // early hours are almost always empty.
-  const firstMin = scheduled.length ? blockStartMin(scheduled[0].block) : 9 * 60;
+  const firstMin = scheduled.length ? blockStartMin(scheduled[0].block, tz) : 9 * 60;
   const firstMinRef = useRef(firstMin);
   useEffect(() => {
     firstMinRef.current = firstMin;
@@ -419,8 +420,8 @@ export function AgendaView({
             {events
               .filter((e) => !e.allDay && e.start)
               .map((e) => {
-                const sMin = minutesFromMidnight(e.start!, TZ);
-                const eMin = e.end ? minutesFromMidnight(e.end, TZ) : sMin + 30;
+                const sMin = minutesFromMidnight(e.start!, tz);
+                const eMin = e.end ? minutesFromMidnight(e.end, tz) : sMin + 30;
                 const top = Math.max(GRID_TOP, yFor(sMin));
                 const height = Math.max(((eMin - sMin) / 60) * PX_PER_HOUR - BLOCK_GAP_PX, 24);
                 const ec = e.color ?? "#94a3b8";
@@ -440,8 +441,8 @@ export function AgendaView({
                   >
                     <span className="block truncate font-medium text-muted">{e.title}</span>
                     <span className="font-mono text-[11px] text-subtle">
-                      {timeInTimeZone(e.start!, TZ)}
-                      {e.end ? `–${timeInTimeZone(e.end, TZ)}` : ""}
+                      {timeInTimeZone(e.start!, tz)}
+                      {e.end ? `–${timeInTimeZone(e.end, tz)}` : ""}
                     </span>
                   </div>
                 );
@@ -559,12 +560,13 @@ function ScheduledBlock({
   dragging: boolean;
 }) {
   const td = useTranslations("day");
+  const tz = useTz();
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: `block-${block.id}`,
     data: { block, task },
   });
-  const startMin = blockStartMin(block);
-  const endMin = blockEndMin(block);
+  const startMin = blockStartMin(block, tz);
+  const endMin = blockEndMin(block, tz);
 
   // Live resize: while dragging the bottom edge, render a draft end time and
   // commit on release. Manual pointer tracking (not dnd-kit) so it never fights

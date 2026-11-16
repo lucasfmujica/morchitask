@@ -3,6 +3,7 @@
 import type { MatchRange } from "@/lib/palette";
 import type { Channel, Task } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { cn } from "@/lib/utils";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { useTranslations } from "next-intl";
@@ -26,9 +27,10 @@ export function PaletteTaskRow({
 }) {
   const labels = useDateLabels();
   const tn = useTranslations("nav");
+  const tz = useTz();
   const done = task.status === "done";
   const where = task.planned_date
-    ? labels.relativeLabel(task.planned_date, todayISO())
+    ? labels.relativeLabel(task.planned_date, todayISO(tz))
     : tn("backlog");
 
   return (

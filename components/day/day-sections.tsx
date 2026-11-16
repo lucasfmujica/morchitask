@@ -6,11 +6,13 @@ import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import type { Channel, Task } from "@/lib/queries/types";
 import { formatMinutes } from "@/lib/format";
+import { todayISO } from "@/lib/date";
 import { orderForAppend } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
 import { CollapsibleSection } from "@/components/ui";
 import { TaskCheckbox } from "@/components/tasks/task-checkbox";
 import { useDateLabels } from "@/lib/use-date-labels";
+import { useTz } from "@/lib/use-tz";
 import { useTranslations } from "next-intl";
 
 /** The 3px category rail, shared by both section row types. */
@@ -122,6 +124,8 @@ export function UnscheduledSection({
   const tt = useTranslations("tasks");
   const td = useTranslations("day");
   const labels = useDateLabels();
+  const tz = useTz();
+  const today = todayISO(tz);
   const backlogQ = useBacklogTasks();
   const move = useMoveTaskToDate();
   const openDetail = useTaskDetail((s) => s.open);
@@ -172,7 +176,7 @@ export function UnscheduledSection({
               <span className="block truncate text-sm font-medium text-fg">{task.title}</span>
               <span className="block truncate text-2xs text-muted">
                 {channel ? `#${channel.name} · ` : ""}
-                {labels.ageLabel(task.created_at)}
+                {labels.ageLabel(task.created_at, today, tz)}
               </span>
             </button>
             {task.time_estimate_min ? (

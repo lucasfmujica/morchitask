@@ -143,27 +143,27 @@ describe("monthLabel, dueLabel and ageLabel", () => {
   const daysBefore = (n: number) => `${addDays(MON, -n)}T12:00:00.000Z`;
 
   it("reads ages in lowercase, because they sit mid-sentence", () => {
-    expect(es.ageLabel(daysBefore(0), MON)).toBe("hoy");
-    expect(es.ageLabel(daysBefore(1), MON)).toBe("ayer");
-    expect(en.ageLabel(daysBefore(0), MON)).toBe("today");
+    expect(es.ageLabel(daysBefore(0), MON, "America/Argentina/Buenos_Aires")).toBe("hoy");
+    expect(es.ageLabel(daysBefore(1), MON, "America/Argentina/Buenos_Aires")).toBe("ayer");
+    expect(en.ageLabel(daysBefore(0), MON, "America/Argentina/Buenos_Aires")).toBe("today");
   });
 
   it("pluralizes, including the one case each language spells out", () => {
-    expect(es.ageLabel(daysBefore(12), MON)).toBe("hace 12 días");
-    expect(es.ageLabel(daysBefore(29), MON)).toBe("hace 29 días");
+    expect(es.ageLabel(daysBefore(12), MON, "America/Argentina/Buenos_Aires")).toBe("hace 12 días");
+    expect(es.ageLabel(daysBefore(29), MON, "America/Argentina/Buenos_Aires")).toBe("hace 29 días");
     // Spanish writes "un mes", not "1 mes" — the reason these are functions
     // fed by the catalog rather than string concatenation.
-    expect(es.ageLabel(daysBefore(30), MON)).toBe("hace un mes");
-    expect(es.ageLabel(daysBefore(90), MON)).toBe("hace 3 meses");
+    expect(es.ageLabel(daysBefore(30), MON, "America/Argentina/Buenos_Aires")).toBe("hace un mes");
+    expect(es.ageLabel(daysBefore(90), MON, "America/Argentina/Buenos_Aires")).toBe("hace 3 meses");
 
-    expect(en.ageLabel(daysBefore(12), MON)).toBe("12 days ago");
-    expect(en.ageLabel(daysBefore(30), MON)).toBe("a month ago");
-    expect(en.ageLabel(daysBefore(90), MON)).toBe("3 months ago");
+    expect(en.ageLabel(daysBefore(12), MON, "America/Argentina/Buenos_Aires")).toBe("12 days ago");
+    expect(en.ageLabel(daysBefore(30), MON, "America/Argentina/Buenos_Aires")).toBe("a month ago");
+    expect(en.ageLabel(daysBefore(90), MON, "America/Argentina/Buenos_Aires")).toBe("3 months ago");
   });
 
   it("rounds to the nearest month past the 30-day threshold", () => {
-    expect(es.ageLabel(daysBefore(45), MON)).toBe("hace 2 meses"); // 45/30 = 1.5 -> 2
-    expect(es.ageLabel(daysBefore(74), MON)).toBe("hace 2 meses");
+    expect(es.ageLabel(daysBefore(45), MON, "America/Argentina/Buenos_Aires")).toBe("hace 2 meses"); // 45/30 = 1.5 -> 2
+    expect(es.ageLabel(daysBefore(74), MON, "America/Argentina/Buenos_Aires")).toBe("hace 2 meses");
   });
 });
 

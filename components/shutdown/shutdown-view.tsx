@@ -18,6 +18,7 @@ import {
 } from "@/lib/queries/daily-notes";
 import type { Channel, DailyNote, Task, TaskReaction } from "@/lib/queries/types";
 import { carryOverTarget, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { formatMinutes } from "@/lib/format";
 import {
   accuracyLabelKey,
@@ -96,7 +97,8 @@ function ShutdownRitual({
   const qc = useQueryClient();
   // Closing the day shows its own error line, so no generic toast on top.
   const upsert = useUpsertDailyNote(date, OWN_ERROR_UI);
-  const streak = useShutdownStreak(todayISO());
+  const tz = useTz();
+  const streak = useShutdownStreak(todayISO(tz));
   const channelsById = useChannelLookup().data ?? EMPTY_CHANNEL_MAP;
 
   const [step, setStep] = useState(0);
@@ -122,7 +124,7 @@ function ShutdownRitual({
   const partnerDone = tasks.filter((t) => t.shared && t.status === "done" && t.owner_id !== meId);
   // Not always `date + 1`: closing an old day carries its leftovers to today,
   // never to another past day where they'd strand out of sight.
-  const tomorrow = carryOverTarget(date);
+  const tomorrow = carryOverTarget(date, todayISO(tz));
   const alreadyClosed = !!note?.shutdown_completed_at;
   const move = useMoveTaskToDate(OWN_ERROR_UI);
   const tomorrowTasks = useTasksForDate(tomorrow).data ?? [];
@@ -791,11 +793,12 @@ function StepTomorrow({
   const tnav = useTranslations("nav");
   const tcm = useTranslations("common");
   const labels = useDateLabels();
+  const tz = useTz();
   // Closing an old day carries its leftovers to today, not to "mañana" — so the
   // copy has to name the day it's actually moving them to. Compared as dates:
   // this used to lowercase the day's LABEL and test it against "hoy", which
   // silently stopped being true the moment that label could be "Today".
-  const toToday = tomorrow === todayISO();
+  const toToday = tomorrow === todayISO(tz);
   const targetName = toToday ? tcm("today") : tcm("tomorrow");
   const over = projectedMin > capacityTarget;
   const options: { dest: CarryDestination; label: string }[] = [

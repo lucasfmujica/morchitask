@@ -5,15 +5,14 @@ import type { MetaVisibility } from "@/lib/task-meta";
 import type { Channel, HouseholdMember, Task } from "@/lib/queries/types";
 import { cn } from "@/lib/utils";
 import { formatClock, formatDuration } from "@/lib/format";
-import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
+import { timeInTimeZone } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { ObjectiveBadge } from "@/components/objectives/objective-badge";
 import { DueDateBadge } from "./due-date-badge";
 import { MoveToDayMenu } from "./move-to-day-menu";
 import { OwnerAvatar } from "./owner-avatar";
 import type { useTaskTimer } from "./use-task-timer";
 import { useTranslations } from "next-intl";
-
-const TZ = DEFAULT_TIMEZONE;
 
 /**
  * The card's second line — and the only one, so it is exactly one line tall no
@@ -63,6 +62,7 @@ export function TaskMetaRow({
   className?: string;
 }) {
   const t = useTranslations("tasks");
+  const tz = useTz();
   return (
     // Fixed at 16px tall: the controls on the right are allowed to overhang it,
     // so a card never grows because of a hover-only button.
@@ -71,7 +71,7 @@ export function TaskMetaRow({
       {task.block_start && (
         <span className="inline-flex shrink-0 items-center gap-1 font-mono">
           <Clock className="h-[11px] w-[11px]" aria-hidden />
-          {timeInTimeZone(task.block_start, TZ)}
+          {timeInTimeZone(task.block_start, tz)}
         </span>
       )}
       {vis.channel && channel && (

@@ -35,16 +35,21 @@ const DAILY_LIMIT = { breakdown: 30, plan: 10, capture: 40 } as const;
 async function requireUser() {
   const session = await auth();
   if (!session?.householdId || !session.user?.id) throw new Error("unauthorized");
-  return { userId: session.user.id, householdId: session.householdId, access: session.access };
+  return {
+    userId: session.user.id,
+    householdId: session.householdId,
+    access: session.access,
+    timezone: session.timezone,
+  };
 }
 
 async function run<T>(kind: keyof typeof DAILY_LIMIT, fn: () => Promise<T>): Promise<Result<T>> {
-  const { userId, householdId, access } = await requireUser();
+  const { userId, householdId, access, timezone } = await requireUser();
   // Every call costs money, so it sits behind the same gate as every write.
   // Checked before the quota so a locked-out call does not spend a use.
   if (!hasWriteAccess(access, isBillingEnabled())) return { ok: false, error: "locked" };
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "not_configured" };
-  if (!(await consumeAiQuota(householdId, userId, kind, todayISO(), DAILY_LIMIT[kind]))) {
+  if (!(await consumeAiQuota(householdId, userId, kind, todayISO(timezone), DAILY_LIMIT[kind]))) {
     return { ok: false, error: "limit" };
   }
   try {

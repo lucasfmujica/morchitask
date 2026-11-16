@@ -12,7 +12,8 @@ import { useCreateBlock } from "@/lib/queries/task-blocks";
 import { syncBlockCalendar, useCalendarEvents } from "@/lib/queries/calendar";
 import { useMe } from "@/lib/queries/profiles";
 import { useToast } from "@/lib/stores/toast";
-import { DEFAULT_TIMEZONE, blockInstant, minutesFromMidnight, todayISO } from "@/lib/date";
+import { blockInstant, minutesFromMidnight, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import {
   blockEndMin,
   blockStartMin,
@@ -22,7 +23,6 @@ import {
 import type { Task, TaskBlock } from "@/lib/queries/types";
 import { Button } from "@/components/ui";
 
-const TZ = DEFAULT_TIMEZONE;
 /** Same defaults as the agenda: the day starts at 9 and the target end is 18:00. */
 const DAY_START_MIN = 9 * 60;
 const DEFAULT_END_MIN = 18 * 60;
@@ -47,6 +47,7 @@ export function PlanAiSuggest({
 }) {
   const t = useTranslations("ai");
   const tt = useTranslations("tasks");
+  const tz = useTz();
   const me = useMe().data;
   const connected = !!me?.google_calendar_connected;
   const calendarQ = useCalendarEvents(date, connected);
@@ -80,27 +81,27 @@ export function PlanAiSuggest({
     const ownEventIds = new Set<string>();
     for (const t of tasks) {
       for (const b of blocksByTask.get(t.id) ?? []) {
-        ranges.push({ startMin: blockStartMin(b), endMin: blockEndMin(b) });
+        ranges.push({ startMin: blockStartMin(b, tz), endMin: blockEndMin(b, tz) });
         if (b.gcal_event_id) ownEventIds.add(b.gcal_event_id);
       }
     }
     for (const e of calendarQ.data ?? []) {
       if (e.allDay || !e.start || ownEventIds.has(e.id)) continue;
-      const startMin = minutesFromMidnight(e.start, TZ);
-      ranges.push({ startMin, endMin: e.end ? minutesFromMidnight(e.end, TZ) : startMin + 30 });
+      const startMin = minutesFromMidnight(e.start, tz);
+      ranges.push({ startMin, endMin: e.end ? minutesFromMidnight(e.end, tz) : startMin + 30 });
     }
     return ranges.filter((r) => r.endMin > r.startMin);
-  }, [tasks, blocksByTask, calendarQ.data]);
+  }, [tasks, blocksByTask, calendarQ.data, tz]);
 
   const titleById = useMemo(() => new Map(tasks.map((t) => [t.id, t.title])), [tasks]);
 
-  if (date < todayISO() || pending.length === 0) return null;
+  if (date < todayISO(tz) || pending.length === 0) return null;
 
   async function ask() {
     const toMin = endTargetMin ?? DEFAULT_END_MIN;
     const nowMin =
-      date === todayISO()
-        ? Math.ceil(minutesFromMidnight(new Date().toISOString(), TZ) / 15) * 15
+      date === todayISO(tz)
+        ? Math.ceil(minutesFromMidnight(new Date().toISOString(), tz) / 15) * 15
         : 0;
     const fromMin = Math.max(DAY_START_MIN, nowMin);
     if (fromMin >= toMin) {
@@ -140,8 +141,8 @@ export function PlanAiSuggest({
       for (const b of proposal.blocks) {
         const block = await create.mutateAsync({
           taskId: b.taskId,
-          startISO: blockInstant(date, minutesToHHMM(b.startMin), TZ),
-          endISO: blockInstant(date, minutesToHHMM(b.endMin), TZ),
+          startISO: blockInstant(date, minutesToHHMM(b.startMin), tz),
+          endISO: blockInstant(date, minutesToHHMM(b.endMin), tz),
         });
         created.push(block);
         if (connected) syncBlockCalendar({ action: "upsert", blockId: block.id }).catch(() => {});

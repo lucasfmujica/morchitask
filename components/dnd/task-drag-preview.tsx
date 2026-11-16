@@ -4,7 +4,7 @@ import type { Channel, HouseholdMember, Task } from "@/lib/queries/types";
 import type { Density } from "@/lib/task-meta";
 import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/format";
-import { DEFAULT_TIMEZONE, timeInTimeZone } from "@/lib/date";
+import { timeInTimeZone } from "@/lib/date";
 import { OwnerAvatar } from "@/components/tasks/owner-avatar";
 
 /**
@@ -29,15 +29,16 @@ export function TaskDragPreview({
   owner,
   density = "comfortable",
   variant = "card",
+  tz,
 }: {
   task: Task;
   channel?: Channel;
   owner?: HouseholdMember;
   density?: Density;
   variant?: "card" | "pill";
+  /** The person's timezone, from the parent: this component mounts no hooks. */
+  tz: string;
 }) {
-  const TZ = DEFAULT_TIMEZONE;
-
   if (variant === "pill") {
     return (
       <div className="pointer-events-none inline-flex cursor-grabbing items-center gap-1.5 rounded-lg border border-primary bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-drag">
@@ -88,7 +89,7 @@ export function TaskDragPreview({
         </span>
         <div className="flex min-w-0 items-center gap-2 text-2xs text-muted">
           {task.block_start && (
-            <span className="shrink-0 font-mono">{timeInTimeZone(task.block_start, TZ)}</span>
+            <span className="shrink-0 font-mono">{timeInTimeZone(task.block_start, tz)}</span>
           )}
           {channel && (
             <span className="inline-flex min-w-0 items-center gap-1.5">

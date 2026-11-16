@@ -55,7 +55,21 @@ describe("reading the subscription", () => {
       currentPeriodEnd: "2026-10-01T00:00:00.000Z",
       cancelAtPeriodEnd: false,
       payerUserId: null,
+      providerModifiedAt: null,
     });
+  });
+
+  // What orders deliveries that arrive out of order (see `upsertSubscription`).
+  it("takes the provider's clock from modifiedAt, or createdAt before any change", () => {
+    const created = new Date("2026-11-01T10:00:00.000Z");
+    const modified = new Date("2026-11-05T10:00:00.000Z");
+    expect(
+      parseSubscriptionEvent(payload({ createdAt: created, modifiedAt: null }))?.providerModifiedAt,
+    ).toBe("2026-11-01T10:00:00.000Z");
+    expect(
+      parseSubscriptionEvent(payload({ createdAt: created, modifiedAt: modified }))
+        ?.providerModifiedAt,
+    ).toBe("2026-11-05T10:00:00.000Z");
   });
 
   // Who manages the plan is whoever paid; the checkout says so in metadata.

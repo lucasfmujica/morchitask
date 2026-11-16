@@ -4,10 +4,9 @@ import { useMe } from "@/lib/queries/profiles";
 import { useCreateBlock, useDeleteBlock, useUpdateBlock } from "@/lib/queries/task-blocks";
 import { syncBlockCalendar } from "@/lib/queries/calendar";
 import { blockDurationMin } from "@/lib/scheduling";
-import { DEFAULT_TIMEZONE, blockInstant, minutesFromMidnight } from "@/lib/date";
+import { blockInstant, minutesFromMidnight } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import type { Task, TaskBlock } from "@/lib/queries/types";
-
-const TZ = DEFAULT_TIMEZONE;
 
 /** Clamp minutes-from-midnight to a valid HH:MM string. */
 export function minutesToHHMM(min: number) {
@@ -27,6 +26,7 @@ export function useAgendaScheduling(date: string) {
   const update = useUpdateBlock(date);
   const remove = useDeleteBlock(date);
   const connected = !!useMe().data?.google_calendar_connected;
+  const tz = useTz();
 
   function syncUpsert(blockId: string) {
     if (connected) syncBlockCalendar({ action: "upsert", blockId }).catch(() => {});
@@ -37,8 +37,8 @@ export function useAgendaScheduling(date: string) {
     create.mutate(
       {
         taskId: task.id,
-        startISO: blockInstant(date, minutesToHHMM(startMin), TZ),
-        endISO: blockInstant(date, minutesToHHMM(startMin + durMin), TZ),
+        startISO: blockInstant(date, minutesToHHMM(startMin), tz),
+        endISO: blockInstant(date, minutesToHHMM(startMin + durMin), tz),
       },
       { onSuccess: (block) => syncUpsert(block.id) },
     );
@@ -50,8 +50,8 @@ export function useAgendaScheduling(date: string) {
     update.mutate(
       {
         block,
-        startISO: blockInstant(date, minutesToHHMM(startMin), TZ),
-        endISO: blockInstant(date, minutesToHHMM(startMin + dur), TZ),
+        startISO: blockInstant(date, minutesToHHMM(startMin), tz),
+        endISO: blockInstant(date, minutesToHHMM(startMin + dur), tz),
       },
       { onSuccess: (b) => syncUpsert(b.id) },
     );
@@ -63,7 +63,7 @@ export function useAgendaScheduling(date: string) {
       {
         block,
         startISO: block.start_at,
-        endISO: blockInstant(date, minutesToHHMM(endMin), TZ),
+        endISO: blockInstant(date, minutesToHHMM(endMin), tz),
       },
       { onSuccess: (b) => syncUpsert(b.id) },
     );
@@ -77,12 +77,12 @@ export function useAgendaScheduling(date: string) {
   return { scheduleNewBlock, moveBlock, resizeBlock, removeBlock, connected };
 }
 
-/** Minutes-from-midnight of a block's start, in the household timezone. */
-export function blockStartMin(block: TaskBlock): number {
-  return minutesFromMidnight(block.start_at, TZ);
+/** Minutes-from-midnight of a block's start, in the person's timezone. */
+export function blockStartMin(block: TaskBlock, tz: string): number {
+  return minutesFromMidnight(block.start_at, tz);
 }
 
-/** Minutes-from-midnight of a block's end, in the household timezone. */
-export function blockEndMin(block: TaskBlock): number {
-  return minutesFromMidnight(block.end_at, TZ);
+/** Minutes-from-midnight of a block's end, in the person's timezone. */
+export function blockEndMin(block: TaskBlock, tz: string): number {
+  return minutesFromMidnight(block.end_at, tz);
 }

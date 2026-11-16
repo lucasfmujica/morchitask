@@ -2,7 +2,7 @@ import { z } from "zod";
 import { AiError, parseCapture } from "@/lib/ai";
 import { consumeQuota } from "@/lib/ai-proposals";
 import { splitDictation, type CapturedTask } from "@/lib/capture";
-import { todayISO } from "@/lib/date";
+import { toTimeZone, todayISO } from "@/lib/date";
 import { cleanEmailText, isAuthorizedInbound, userFromAddress } from "@/lib/inbound";
 import { orderForAppend } from "@/lib/ordering";
 import { myChannels } from "@/lib/db/queries/channels";
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   if (!profile?.household_id) return Response.json({ ignored: "no profile" });
   const householdId = profile.household_id;
 
-  const today = todayISO();
+  const today = todayISO(toTimeZone(profile.timezone));
   if (!consumeQuota(usage, `${userId}:${today}`, DAILY_LIMIT)) {
     return Response.json({ ignored: "daily limit" });
   }

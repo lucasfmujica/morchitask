@@ -42,6 +42,7 @@ import { useToast } from "@/lib/stores/toast";
 import { carryOverdueNow } from "@/lib/actions/carryover";
 import { carryoverKeys, useOverdueCount } from "@/lib/queries/carryover";
 import { addDays, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { cn } from "@/lib/utils";
 import { CarryoverNotice } from "./carryover-notice";
 import { PastDayNotice } from "./past-day-notice";
@@ -87,6 +88,7 @@ export function DayView({ date }: { date: string }) {
   const searchParams = useSearchParams();
   const [dictating, setDictating] = useState(() => searchParams.get("capture") === "1");
   const labels = useDateLabels();
+  const tz = useTz();
   const router = useRouter();
   const qc = useQueryClient();
 
@@ -278,12 +280,12 @@ export function DayView({ date }: { date: string }) {
   const agendaRange =
     allBlocks.length > 0
       ? {
-          from: minutesToHHMM(Math.min(...allBlocks.map(blockStartMin))),
-          to: minutesToHHMM(Math.max(...allBlocks.map(blockEndMin))),
+          from: minutesToHHMM(Math.min(...allBlocks.map((b) => blockStartMin(b, tz)))),
+          to: minutesToHHMM(Math.max(...allBlocks.map((b) => blockEndMin(b, tz)))),
         }
       : null;
-  const isToday = date === todayISO();
-  const goDay = (d: string) => router.push(d === todayISO() ? "/today" : `/day/${d}`);
+  const isToday = date === todayISO(tz);
+  const goDay = (d: string) => router.push(d === todayISO(tz) ? "/today" : `/day/${d}`);
 
   return (
     <div className="flex flex-col gap-4">
@@ -319,7 +321,7 @@ export function DayView({ date }: { date: string }) {
             </button>
             {!isToday && (
               <button
-                onClick={() => goDay(todayISO())}
+                onClick={() => goDay(todayISO(tz))}
                 className="h-8 cursor-pointer rounded-pill bg-surface-2 px-3 text-xs font-semibold text-fg transition-colors hover:bg-border"
               >
                 {t("goToToday")}
@@ -388,7 +390,7 @@ export function DayView({ date }: { date: string }) {
           tasks={myTasks}
           workedMin={workedMin}
           isToday={isToday}
-          isFuture={date > todayISO()}
+          isFuture={date > todayISO(tz)}
           plannedMin={myPlannedMin}
           targetMin={capacityTarget}
           onTargetChange={(capacity_min) => upsertNote.mutate({ capacity_min })}
@@ -528,6 +530,7 @@ export function DayView({ date }: { date: string }) {
               channel={activeTask.channel_id ? channelsById.get(activeTask.channel_id) : undefined}
               owner={profilesById.get(activeTask.owner_id)}
               variant={dragSource === "agenda" ? "pill" : "card"}
+              tz={tz}
             />
           )}
         </DragOverlay>

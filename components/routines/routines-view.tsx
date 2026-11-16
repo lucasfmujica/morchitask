@@ -12,6 +12,7 @@ import {
 import { useChannels } from "@/lib/queries/channels";
 import { formatMinutes } from "@/lib/format";
 import { todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { currentStreak, recentOccurrences } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
 import type { Channel, RecurringTemplate } from "@/lib/queries/types";
@@ -120,7 +121,8 @@ function RoutineRow({
   const monthDay = routine.month_day ?? Number(routine.active_from.slice(8, 10));
 
   const done = completed ?? new Set<string>();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const streak = currentStreak(routine, done, today);
   const history = recentOccurrences(routine, done, today, 14);
 

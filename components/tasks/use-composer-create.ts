@@ -9,7 +9,8 @@ import { useTaskDetail } from "@/lib/stores/task-detail";
 import { useToast } from "@/lib/stores/toast";
 import { orderForAppend } from "@/lib/ordering";
 import { useLocale, useTranslations } from "next-intl";
-import { DEFAULT_TIMEZONE, addDays, blockInstant, todayISO } from "@/lib/date";
+import { addDays, blockInstant, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { useDateLabels } from "@/lib/use-date-labels";
 import type { Task } from "@/lib/queries/types";
 import { minutesToHHMM } from "@/components/day/use-agenda-scheduling";
@@ -43,9 +44,10 @@ export function useComposerCreate(viewDate: string | null) {
   const t = useTranslations("tasks");
   const locale = useLocale();
   const labels = useDateLabels();
+  const tz = useTz();
 
   return function add(input: ComposerSubmit, viewTasks: Task[]) {
-    const today = todayISO();
+    const today = todayISO(tz);
     const target = input.plannedDate ?? (input.time ? (viewDate ?? today) : viewDate);
     const elsewhere = target !== viewDate;
     const targetOrders = elsewhere
@@ -72,11 +74,11 @@ export function useComposerCreate(viewDate: string | null) {
               {
                 date: target,
                 taskId: task.id,
-                startISO: blockInstant(target, input.time, DEFAULT_TIMEZONE),
+                startISO: blockInstant(target, input.time, tz),
                 endISO: blockInstant(
                   target,
                   minutesToHHMM(startMin + (input.timeEstimateMin ?? 30)),
-                  DEFAULT_TIMEZONE,
+                  tz,
                 ),
               },
               {

@@ -15,6 +15,7 @@ import { PRIORITY_DOT, PRIORITY_LABEL_KEY } from "@/lib/priority";
 import { formatMinutes } from "@/lib/format";
 import type { Channel, Task } from "@/lib/queries/types";
 import { todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { useDateLabels } from "@/lib/use-date-labels";
 import { SPRING_SOFT } from "@/lib/motion";
 import { Skeleton } from "@/components/ui";
@@ -67,7 +68,8 @@ function PaletteBody({ close }: { close: () => void }) {
   const tc = useTranslations("common");
   const router = useRouter();
   const qc = useQueryClient();
-  const createFromText = useComposerCreate(todayISO());
+  const tz = useTz();
+  const createFromText = useComposerCreate(todayISO(tz));
   const openDetail = useTaskDetail((s) => s.open);
   const pushRecent = useCommandPalette((s) => s.pushRecent);
   const recentTaskIds = useCommandPalette((s) => s.recentTaskIds);
@@ -84,7 +86,7 @@ function PaletteBody({ close }: { close: () => void }) {
   const searchQ = useTaskSearch(debouncedQuery);
 
   const actions: ActionMeta[] = useMemo(() => {
-    const today = todayISO();
+    const today = todayISO(tz);
     const go = (href: string) => () => {
       router.push(href);
       close();
@@ -105,7 +107,7 @@ function PaletteBody({ close }: { close: () => void }) {
     ];
     // tp/tn belong here: without them the labels would keep the language they
     // were built in, so switching to English left a Spanish palette behind.
-  }, [router, close, tp, tn]);
+  }, [router, close, tp, tn, tz]);
 
   // Recents resolve against whatever task data is already cached. Ids that no
   // longer resolve (deleted, or on a day never loaded) simply drop out.
@@ -128,8 +130,8 @@ function PaletteBody({ close }: { close: () => void }) {
   // The same quick-add the composer understands ("mañana 10hs 30m #trabajo"),
   // so the create card can show what it read before you press Enter.
   const parsed = useMemo(
-    () => parseQuickAdd(query, { today: todayISO(), channels: channels ?? [] }),
-    [query, channels],
+    () => parseQuickAdd(query, { today: todayISO(tz), channels: channels ?? [] }),
+    [query, channels, tz],
   );
 
   // Clamp at render rather than in an effect — selection follows a shrinking list.
@@ -161,7 +163,7 @@ function PaletteBody({ close }: { close: () => void }) {
     // then the words ARE the title (and nothing is taken from them).
     const raw = item.title.trim();
     const clean = parsed.title.trim();
-    const today = todayISO();
+    const today = todayISO(tz);
     close();
     createFromText(
       {
@@ -382,7 +384,8 @@ function CreateCard({
   const tp = useTranslations("palette");
   const tt = useTranslations("tasks");
   const labels = useDateLabels();
-  const today = todayISO();
+  const tz = useTz();
+  const today = todayISO(tz);
   const clean = parsed.title.trim();
   // With nothing left once the tokens are taken, the words are the title and
   // nothing is parsed out of them (same rule as runItem).

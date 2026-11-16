@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { addDays, addMonths, todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { SHORTCUTS, shortcutKeys, useIsApple } from "@/lib/shortcuts";
@@ -19,6 +20,7 @@ export function KeyboardShortcuts() {
   const router = useRouter();
   const [showHelp, setShowHelp] = useState(false);
   const apple = useIsApple();
+  const tz = useTz();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -64,7 +66,7 @@ export function KeyboardShortcuts() {
       // Arrow navigation, scoped to the current view (day / week / month).
       const dir = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
       if (!dir) return;
-      const cur = pathname.match(DATE_RE)?.[1] ?? todayISO();
+      const cur = pathname.match(DATE_RE)?.[1] ?? todayISO(tz);
       if (pathname.startsWith("/week")) {
         e.preventDefault();
         router.push(`/week/${addDays(cur, dir * 7)}`);
@@ -74,13 +76,13 @@ export function KeyboardShortcuts() {
       } else if (pathname === "/today" || pathname.startsWith("/day")) {
         e.preventDefault();
         const next = addDays(cur, dir);
-        router.push(next === todayISO() ? "/today" : `/day/${next}`);
+        router.push(next === todayISO(tz) ? "/today" : `/day/${next}`);
       }
     }
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pathname, router]);
+  }, [pathname, router, tz]);
 
   return (
     <AnimatePresence>

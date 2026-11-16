@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { AppChrome } from "@/components/layout/app-chrome";
+import { TimezoneBanner } from "@/components/layout/timezone-banner";
 import { TrialBanner } from "@/components/billing/trial-banner";
 import { TrialBannerSlot } from "@/components/billing/trial-banner-slot";
 import { TrialChip } from "@/components/billing/trial-chip";
@@ -22,13 +23,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await auth();
   const locked = !!session?.access && !hasWriteAccess(session.access, isBillingEnabled());
   return (
-    <NextIntlClientProvider>
+    <NextIntlClientProvider timeZone={session?.timezone}>
       <AppChrome trialChip={<TrialChip />} locked={locked}>
         <div className="flex flex-col gap-4">
           {/* Auth gating happens in the proxy; the one thing that has to be
               visible from every screen is a trial about to run out. The
               sidebar's chip says it where the sidebar is open; the banner
               covers everywhere else. */}
+          <TimezoneBanner />
           <TrialBannerSlot>
             <TrialBanner />
           </TrialBannerSlot>

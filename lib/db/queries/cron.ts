@@ -45,11 +45,26 @@ export async function deleteSubscriptions(ids: string[]) {
   await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, ids));
 }
 
+/**
+ * Reminders whose time has come, each with who to push.
+ *
+ * `recipient_id` is whoever set the reminder, as long as they are still in the
+ * household and can still see the task (it is shared, or theirs). Otherwise,
+ * and for reminders older than `remind_by`, the owner.
+ *
+ * The subquery names `"tasks"` by hand: in a single-table select Drizzle
+ * renders columns unqualified, and a bare `household_id` inside the subquery
+ * would be the profile's own, which is always equal to itself.
+ */
 export async function dueTaskReminders(nowISO: string) {
   return db
     .select({
       id: tasks.id,
       owner_id: tasks.owner_id,
+      recipient_id: sql<string>`case when ${tasks.remind_by} is not null
+        and (${tasks.shared} or ${tasks.owner_id} = ${tasks.remind_by})
+        and exists (select 1 from "profiles" p where p.id = "tasks"."remind_by" and p.household_id = "tasks"."household_id")
+        then ${tasks.remind_by} else ${tasks.owner_id} end`,
       title: tasks.title,
       planned_date: tasks.planned_date,
     })
@@ -127,4 +142,45 @@ export async function claimTrialReminders(profileIds: string[]): Promise<string[
     )
     .returning({ id: profiles.id });
   return rows.map((r) => r.id);
+}
+
+/** Local hours during which the "plan your day" push may go out: from 08:00,
+ *  with slack so a late or missed cron run still delivers that morning. */
+export const DAILY_PLAN_FROM_HOUR = 8;
+export const DAILY_PLAN_UNTIL_HOUR = 12;
+
+/**
+ * Claims today's "plan your day" push for whoever is due one right now.
+ *
+ * Due means: it is morning on that person's own clock (`profiles.timezone`),
+ * and they have not been sent the push for that local day. The claim is the
+ * same statement as the check, so two crons racing (this runs from both the
+ * daily Vercel cron and the every-few-minutes reminders cron) send it once.
+ * Returns each claimed person with their local day, which is the day the
+ * notification links to.
+ *
+ * The marker lives in `notification_prefs` with the other server-only keys;
+ * `pickNotificationPrefs` keeps a client from writing it.
+ */
+export async function claimDailyPlan(
+  profileIds: string[],
+  now: Date,
+): Promise<{ id: string; day: string }[]> {
+  if (profileIds.length === 0) return [];
+  const local = sql`(${now.toISOString()}::timestamptz at time zone ${profiles.timezone})`;
+  const day = sql<string>`to_char(${local}, 'YYYY-MM-DD')`;
+  return db
+    .update(profiles)
+    .set({
+      notification_prefs: sql`${profiles.notification_prefs} || jsonb_build_object('daily_plan_sent_for', ${day})`,
+    })
+    .where(
+      and(
+        inArray(profiles.id, profileIds),
+        sql`extract(hour from ${local}) >= ${DAILY_PLAN_FROM_HOUR}`,
+        sql`extract(hour from ${local}) < ${DAILY_PLAN_UNTIL_HOUR}`,
+        sql`coalesce(${profiles.notification_prefs} ->> 'daily_plan_sent_for', '') <> ${day}`,
+      ),
+    )
+    .returning({ id: profiles.id, day });
 }

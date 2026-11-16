@@ -650,7 +650,19 @@
     "deleteBillingFailed": "No pudimos cancelar tu plan, así que no borramos nada. Probá de nuevo en un rato.",
     "inviteCopyShort": "Copiar link",
     "inviteCopied": "Copiado",
-    "inviteLinkNote": "Mandale el link por donde ya hablan. Si esa persona ya usa Morchitask, al abrirlo elige si se une; lo suyo entra como privado."
+    "inviteLinkNote": "Mandale el link por donde ya hablan. Si esa persona ya usa Morchitask, al abrirlo elige si se une; lo suyo entra como privado.",
+    "tzTitle": "Zona horaria",
+    "tzChange": "Cambiar",
+    "tzDone": "Listo",
+    "tzSearch": "Buscar ciudad o país",
+    "tzListLabel": "Zonas horarias",
+    "tzEmpty": "No encontramos esa ciudad. Probá con la capital del país o con el nombre en inglés.",
+    "tzHint": "Define cuándo empieza y termina tu día y a qué hora llega el recordatorio para planificar. Es tuya: si compartís el espacio, la otra persona tiene la suya.",
+    "tzKeepNote": "Las horas de tus tareas no se mueven: una tarea a las 10:00 sigue a las 10:00 en la zona nueva.",
+    "tzError": "No pudimos cambiar la zona horaria. Probá de nuevo.",
+    "tzBanner": "Parece que estás en otra zona horaria. <b>¿Usar {city}?</b> <soft>Allá son las <clock>{time}</clock>.</soft>",
+    "tzBannerKeep": "Seguir con {city}",
+    "tzBannerUse": "Usar {city}"
   },
   "goals": {
     "title": "Metas",

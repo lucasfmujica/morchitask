@@ -9,6 +9,7 @@ import es from "@/messages/es.json";
 
 const sendNotification = vi.fn();
 const claimTrialReminders = vi.fn();
+const claimDailyPlan = vi.fn();
 let prefs: Map<string, { dailyPlan?: boolean }>;
 let facts: Map<string, BillingFacts>;
 let subs: { id: string; profile_id: string; endpoint: string; p256dh: string; auth_key: string }[];
@@ -28,6 +29,7 @@ vi.mock("@/lib/db/queries/cron", () => ({
   profileLocales: async () => new Map(),
   subscriptionsForProfiles: async (ids: string[]) => subs.filter((s) => ids.includes(s.profile_id)),
   claimTrialReminders,
+  claimDailyPlan,
   deleteSubscriptions: vi.fn(),
 }));
 
@@ -51,6 +53,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   sendNotification.mockResolvedValue({});
   claimTrialReminders.mockImplementation(async (ids: string[]) => ids);
+  claimDailyPlan.mockImplementation(async (ids: string[]) =>
+    ids.map((id) => ({ id, day: "2026-11-16" })),
+  );
 });
 
 describe("daily-plan cron", () => {
@@ -67,6 +72,26 @@ describe("daily-plan cron", () => {
 
     await GET(new Request("https://app.test/api/cron/daily-plan"));
     expect(sentTo().map((s) => s.to)).toEqual(["comped"]);
+  });
+
+  // Whose morning it is, and whether they already had it, is the claim's call.
+  it("sends the plan push only to whoever the claim returns, linking to their local day", async () => {
+    prefs = new Map([
+      ["madrid", { dailyPlan: true }],
+      ["baires", { dailyPlan: true }],
+    ]);
+    facts = new Map([
+      ["madrid", { planOverride: "comp", trialEndsAt: null, subscription: null }],
+      ["baires", { planOverride: "comp", trialEndsAt: null, subscription: null }],
+    ]);
+    subs = [sub("madrid"), sub("baires")];
+    claimDailyPlan.mockResolvedValue([{ id: "madrid", day: "2026-11-17" }]);
+
+    await GET(new Request("https://app.test/api/cron/daily-plan"));
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+    const [target, payload] = sendNotification.mock.calls[0];
+    expect((target as { endpoint: string }).endpoint).toContain("madrid");
+    expect(JSON.parse(payload as string).url).toBe("/plan/2026-11-17");
   });
 
   it("sends the trial reminder to whoever is in its last days and has a device", async () => {

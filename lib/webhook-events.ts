@@ -21,6 +21,9 @@ export type SubscriptionEvent = {
   /** Who opened the checkout, from its metadata. Null on subscriptions that
    *  predate it, or when Polar's payload does not carry it. */
   payerUserId: string | null;
+  /** Polar's clock for this state: `modifiedAt`, or `createdAt` for a
+   *  subscription nothing has touched yet. Orders out-of-order deliveries. */
+  providerModifiedAt: string | null;
 };
 
 /** The subset of Polar's payload this reads. Declared structurally so a version
@@ -33,6 +36,8 @@ type PolarSubscriptionLike = {
   endedAt?: unknown;
   cancelAtPeriodEnd?: unknown;
   recurringInterval?: unknown;
+  modifiedAt?: unknown;
+  createdAt?: unknown;
   metadata?: Record<string, unknown> | null;
   customer?: { externalId?: unknown } | null;
 };
@@ -105,6 +110,7 @@ export function parseSubscriptionEvent(
     currentPeriodEnd,
     cancelAtPeriodEnd: sub.cancelAtPeriodEnd === true,
     payerUserId: str(sub.metadata?.user_id),
+    providerModifiedAt: iso(sub.modifiedAt) ?? iso(sub.createdAt),
   };
 }
 

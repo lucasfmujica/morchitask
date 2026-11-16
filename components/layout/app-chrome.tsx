@@ -29,6 +29,7 @@ import { bindActiveTimersToUser } from "@/lib/stores/active-timer";
 import { useCommandPalette } from "@/lib/stores/command-palette";
 import { MOD, shortcutKeys, useIsApple } from "@/lib/shortcuts";
 import { todayISO } from "@/lib/date";
+import { useTz } from "@/lib/use-tz";
 import { useDailyNote } from "@/lib/queries/daily-notes";
 import { DEFAULT_END_TARGET_MIN } from "@/lib/scheduling";
 import { minutesToHHMM } from "@/components/day/use-agenda-scheduling";
@@ -207,6 +208,7 @@ export function AppChrome({
   locked?: boolean;
 }) {
   const tn = useTranslations("nav");
+  const tz = useTz();
   const pathname = usePathname();
   const ritual = isRitualRoute(pathname);
 
@@ -277,7 +279,7 @@ export function AppChrome({
             )}
           >
             <div className="flex">
-              {bottomNav(todayISO()).map(({ href, labelKey, icon: Icon, match }) => {
+              {bottomNav(todayISO(tz)).map(({ href, labelKey, icon: Icon, match }) => {
                 const active = match(pathname);
                 return (
                   <Link
@@ -404,9 +406,10 @@ function SidebarBody({
   const me = useMe().data;
   const profiles = useProfiles().data ?? [];
   const household = useHousehold().data;
+  const tz = useTz();
   // "Cierre a las" is today's own end target (set on the agenda), so the
   // sidebar and the agenda never disagree about when the day ends.
-  const endTarget = useDailyNote(todayISO()).data?.end_target_min ?? DEFAULT_END_TARGET_MIN;
+  const endTarget = useDailyNote(todayISO(tz)).data?.end_target_min ?? DEFAULT_END_TARGET_MIN;
 
   return (
     <>
@@ -445,7 +448,7 @@ function SidebarBody({
           two of you at the foot. Categories and sign-out live in Ajustes. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <nav className="flex flex-col gap-0.5">
-          {sidebarNav(todayISO()).map((item) => (
+          {sidebarNav(todayISO(tz)).map((item) => (
             <SidebarLink
               key={item.href}
               item={item}

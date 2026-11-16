@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/db/queries/cron", () => ({
   dueTaskReminders: vi.fn(async () => []),
   profileNotificationPrefs: vi.fn(async () => new Map()),
+  profileBillingFacts: vi.fn(async () => new Map()),
+  profileLocales: vi.fn(async () => new Map()),
+  claimDailyPlan: vi.fn(async () => []),
   subscriptionsForProfiles: vi.fn(async () => []),
   deleteSubscriptions: vi.fn(async () => {}),
   markRemindersSent: vi.fn(async () => {}),
